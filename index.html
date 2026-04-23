@@ -698,6 +698,16 @@ img { max-width: 100%; display: block; }
   opacity: 1;
   transform: translate(var(--x), var(--y)) rotate(var(--rot)) scale(1);
 }
+.cardstack__deck.is-revealed.is-floating .cardstack__card--resting {
+  animation: cardstackFloat var(--float-dur, 5s) ease-in-out var(--float-delay, 0s) infinite;
+}
+@keyframes cardstackFloat {
+  0%   { transform: translate(var(--x), calc(var(--y) - 0px))  rotate(var(--rot))                     scale(1); }
+  25%  { transform: translate(var(--x), calc(var(--y) - 6px))  rotate(calc(var(--rot) - 0.4deg))       scale(1); }
+  50%  { transform: translate(var(--x), calc(var(--y) - 10px)) rotate(calc(var(--rot) + 0.2deg))       scale(1.008); }
+  75%  { transform: translate(var(--x), calc(var(--y) - 4px))  rotate(calc(var(--rot) + 0.5deg))       scale(1); }
+  100% { transform: translate(var(--x), calc(var(--y) - 0px))  rotate(var(--rot))                     scale(1); }
+}
 @media (hover: hover) and (pointer: fine) {
   .cardstack__deck.is-revealed .cardstack__card--resting:hover {
     transform: translate(var(--x), var(--y)) rotate(var(--rot)) scale(1.05);
@@ -726,17 +736,17 @@ img { max-width: 100%; display: block; }
   margin-top: -74px;
 }
 .cardstack__texture {
-  flex: 0 0 46%;
+  flex: 1 1 auto;
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid rgba(0,0,0,0.08);
+  border-top: 1px solid rgba(0,0,0,0.08);
 }
 .cardstack__label {
-  flex: 1;
-  padding: 16px 20px 20px;
+  flex: 0 0 auto;
+  padding: 16px 18px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   justify-content: flex-start;
 }
 .cardstack__rank {
@@ -773,7 +783,7 @@ img { max-width: 100%; display: block; }
 .cardstack__card--collapsed .cardstack__label { padding: 8px 10px 10px; }
 .cardstack__card--collapsed .cardstack__rank { font-size: 8px; }
 .cardstack__card--dark { --ink: #FAFAFA; }
-.cardstack__card--dark .cardstack__texture { border-bottom-color: rgba(255,255,255,0.14); }
+.cardstack__card--dark .cardstack__texture { border-top-color: rgba(255,255,255,0.14); }
 /* textures */
 .cardstack__tx--bars {
   background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.22) 0 3px, transparent 3px 12px);
@@ -1554,6 +1564,7 @@ img { image-rendering: -webkit-optimize-contrast; }
   .cardstack__deck.is-revealed .cardstack__card--resting {
     transform: translateY(0) scale(1) !important;
     opacity: 1;
+    animation: none !important;
   }
   .cardstack__card--active {
     transform: translateY(0) scale(1) !important;
@@ -1565,8 +1576,8 @@ img { image-rendering: -webkit-optimize-contrast; }
     opacity: 1;
     min-height: 64px;
   }
-  .cardstack__texture { flex: 0 0 36% !important; border-right: 1px solid rgba(0,0,0,0.08); border-bottom: none !important; }
-  .cardstack__card--dark .cardstack__texture { border-right-color: rgba(255,255,255,0.14); }
+  .cardstack__texture { flex: 0 0 36% !important; border-left: 1px solid rgba(0,0,0,0.08); border-top: none !important; border-bottom: none !important; }
+  .cardstack__card--dark .cardstack__texture { border-left-color: rgba(255,255,255,0.14); }
   .cardstack__label { padding: 14px 16px !important; justify-content: center !important; }
   .cardstack__title { font-size: 22px !important; }
   .cardstack__card--active .cardstack__title { font-size: 24px !important; }
@@ -2133,20 +2144,18 @@ function Hero({ variant = "orange" }) {
 
   // Scroll choreography (revised):
   //   1. Owl-flight intro plays (laptop frozen — no sway, no bobbing).
-  //   2. 500 ms after owl lands, laptop idle float begins and persists —
+  //   2. The moment the owl lands, laptop idle float begins and persists —
   //      no scroll-driven spin, no lid close. Just a stationary, gently
   //      floating laptop that normal page scroll passes by.
   const heroRef = React.useRef(null);
   const lidClose = 0;
   const spinProgress = 0;
 
-  // Laptop idle-sway gate — 500 ms AFTER the owl lands on-screen.
+  // Laptop idle-sway gate — kicks in at the instant the owl finishes its flight.
+  // Owl flight runs over phase 0.30..0.65, so ≥ 0.65 is landed.
   const [idleEnabled, setIdleEnabled] = React.useState(false);
   React.useEffect(() => {
-    if (phase >= 0.62 && !idleEnabled) {
-      const id = setTimeout(() => setIdleEnabled(true), 500);
-      return () => clearTimeout(id);
-    }
+    if (phase >= 0.65 && !idleEnabled) setIdleEnabled(true);
   }, [phase, idleEnabled]);
 
   React.useEffect(() => {
@@ -2565,23 +2574,36 @@ function AuditCardStack() {
 
   const [sel, setSel] = React.useState(null);
   const [revealed, setRevealed] = React.useState(false);
+  const [floating, setFloating] = React.useState(false);
   const deckRef = React.useRef(null);
 
   useRevealOnView(deckRef, setRevealed);
 
+  // Kick off the idle float shortly after the reveal settles so the entry
+  // transition and the drift don't fight for the same frames.
+  React.useEffect(() => {
+    if (!revealed) return;
+    const t = setTimeout(() => setFloating(true), 900);
+    return () => clearTimeout(t);
+  }, [revealed]);
+
   const layouts = [
-    { rot: -10, x: -280, y:  20 },
-    { rot:  -5, x: -150, y:  50 },
-    { rot:   2, x:    0, y: -30 },
-    { rot:   6, x:  150, y:  40 },
-    { rot:  12, x:  290, y:   0 },
+    // Hand-of-cards fan. Outer cards rotate more and sit slightly higher
+    // so their top edge (where the title is) peeks out above the neighbour.
+    // Staggered float params per card: different durations + negative delays
+    // so each card is at a different phase in its cycle, never in sync.
+    { rot: -16, x: -310, y: -20, floatDur: "5.4s", floatDelay: "-0.2s" },
+    { rot:  -8, x: -165, y:  -5, floatDur: "6.7s", floatDelay: "-2.1s" },
+    { rot:   0, x:    0, y:  10, floatDur: "5.9s", floatDelay: "-1.4s" },
+    { rot:   8, x:  165, y:  -5, floatDur: "7.1s", floatDelay: "-3.3s" },
+    { rot:  16, x:  310, y: -20, floatDur: "6.3s", floatDelay: "-0.9s" },
   ];
 
   return (
     <div className="cardstack" onClick={() => setSel(null)}>
       <div
         ref={deckRef}
-        className={`cardstack__deck ${sel !== null ? "is-expanded" : ""} ${revealed ? "is-revealed" : ""}`}
+        className={`cardstack__deck ${sel !== null ? "is-expanded" : ""} ${revealed ? "is-revealed" : ""} ${floating && sel === null ? "is-floating" : ""}`}
       >
         {cards.map((c, i) => {
           const L = layouts[i];
@@ -2597,6 +2619,8 @@ function AuditCardStack() {
               "--x": `${L.x}px`,
               "--y": `${L.y}px`,
               "--z": i === 2 ? 5 : (i < 2 ? i + 1 : 6 - i),
+              "--float-dur": L.floatDur,
+              "--float-delay": L.floatDelay,
               transitionDelay: `${i * 0.12}s, ${i * 0.12}s, 0s`,
             };
           } else if (sel === i) {
@@ -2628,11 +2652,11 @@ function AuditCardStack() {
               style={style}
               onClick={(e) => { e.stopPropagation(); setSel(sel === i ? null : i); }}
             >
-              <div className={`cardstack__texture cardstack__tx--${c.tx}`} aria-hidden="true" />
               <div className="cardstack__label">
                 <span className="cardstack__title">{c.title}</span>
                 <p className="cardstack__desc">{c.desc}</p>
               </div>
+              <div className={`cardstack__texture cardstack__tx--${c.tx}`} aria-hidden="true" />
             </div>
           );
         })}
