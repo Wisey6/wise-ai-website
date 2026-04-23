@@ -7,37 +7,2310 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles/site.css?v=17" />
+  <style>
+/* ================================================================
+   WISE Ai — site styles (simplified)
+   ================================================================ */
+
+:root {
+  --snow: #FAFAFA;
+  --snow-2: #F2EEE8;
+  --coil: #1A1A1A;
+  --coil-2: #333333;
+  --fire: #FF4D00;
+  --sand: #C5A474;
+  --ocean: #256AFF;
+
+  --bg: var(--snow);
+  --ink: var(--coil);
+  --accent: var(--fire);
+
+  --font-display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --edge: 40px;
+  --maxw: 1360px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+::selection { background: var(--fire); color: #fff; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+img { max-width: 100%; display: block; }
+
+/* ---- shared ---- */
+.section-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.section-kicker--light { color: var(--snow); opacity: 0.7; }
+
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(48px, 6vw, 88px);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  margin: 14px 0 0;
+}
+.section-lede {
+  font-size: clamp(18px, 1.4vw, 22px);
+  line-height: 1.45;
+  max-width: 620px;
+  margin: 20px 0 0;
+  opacity: 0.75;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  border-radius: 999px;
+  transition: all 0.2s ease;
+  border: 1.5px solid transparent;
+  line-height: 1;
+}
+.btn--lg { padding: 20px 32px; font-size: 16px; }
+.btn--primary { background: var(--coil); color: var(--snow); }
+.btn--primary:hover { background: var(--fire); }
+.btn--ghost { background: transparent; border-color: currentColor; }
+.btn--ghost:hover { background: var(--ink); color: var(--snow); border-color: var(--ink); }
+.btn--outline { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
+.btn--outline:hover { background: var(--ink); color: var(--snow); }
+
+/* ============== NAV (app-icon bubble) ============== */
+.nav-bubble {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+.nav-bubble.is-visible {
+  opacity: 1;
+}
+.nav-bubble__icon {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.06),
+    0 6px 14px rgba(0,0,0,0.10),
+    0 16px 32px rgba(0,0,0,0.14),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(0,0,0,0.04),
+    inset 0 0 0 1px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  padding: 10px;
+  border: none;
+  isolation: isolate;
+}
+/* Pseudo-elements intentionally removed — tile uses a plain white glass look */
+.nav-bubble__icon::before,
+.nav-bubble__icon::after {
+  content: none;
+}
+.nav-bubble__icon:hover,
+.nav-bubble.is-open .nav-bubble__icon {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 14px 40px rgba(242, 120, 47, 0.35), 0 10px 30px rgba(0,0,0,0.18);
+}
+.nav-bubble__icon img {
+  position: relative;
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  z-index: 1;
+}
+.nav-bubble__menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--snow);
+  border-radius: 999px;
+  padding: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.nav-bubble.is-open .nav-bubble__menu {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.nav-bubble__menu a {
+  padding: 12px 20px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 19px;
+  color: var(--coil);
+  border-radius: 999px;
+  transition: background 0.2s;
+  letter-spacing: -0.01em;
+}
+.nav-bubble__menu a:hover { background: rgba(0,0,0,0.06); }
+.nav-bubble__cta {
+  background: var(--fire);
+  color: var(--snow) !important;
+}
+.nav-bubble__cta:hover { background: var(--coil) !important; }
+@media (max-width: 820px) {
+  .nav-bubble__menu { flex-direction: column; align-items: stretch; border-radius: 22px; padding: 10px; }
+  .nav-bubble__menu a { text-align: center; font-size: 18px; }
+}
+
+/* hide legacy nav styles */
+.nav { display: none; }
+
+/* ============== HERO ============== */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  padding: 110px var(--edge) 40px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.hero--orange { background: var(--fire); color: var(--coil); }
+.hero--snow { background: var(--snow); color: var(--coil); }
+.hero--coil { background: var(--coil); color: var(--snow); }
+
+.hero__stage--split {
+  position: relative;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 40px;
+  align-items: start;
+  padding: 40px 0;
+  min-height: 70vh;
+}
+.hero__left {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: flex-start;
+  text-align: left;
+  /* raise left column slightly so WISE cap-line aligns with laptop bezel top */
+  padding-top: clamp(8px, 2vh, 32px);
+}
+
+.hero__right {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 420px;
+  gap: 8px;
+}
+
+.hero__laptop-caption {
+  position: relative;
+  z-index: 3;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(22px, 2.1vw, 30px);
+  letter-spacing: -0.02em;
+  color: var(--coil);
+  text-align: center;
+  margin-top: -8px;
+  max-width: 420px;
+  line-height: 1.15;
+}
+
+/* ---- Cinematic intro reveal ---- */
+.hero-intro-white {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.hero-intro-wordmark {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + min(36vmin, 290px));
+  transform: translateX(-50%);
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: 800;
+  font-size: clamp(28px, 4.4vmin, 56px);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  transition: opacity 120ms linear;
+}
+.hero-intro-owl-flight {
+  /* drop shadow softens so it reads against both white and the darker laptop bezel */
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.06));
+}
+.hero__right--responsive {
+  height: 560px;
+  min-height: 560px;
+}
+@media (max-width: 820px) {
+  .hero__right--responsive {
+    height: 380px;
+    min-height: 380px;
+  }
+}
+
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero__3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  z-index: 2;
+  pointer-events: none;
+}
+.hero__3d-mount { position: absolute; inset: 0; }
+.hero__3d-mount canvas { display: block; width: 100% !important; height: 100% !important; }
+.hero__3d-status {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--coil);
+  opacity: 0.6;
+  background: rgba(255,255,255,0.3);
+  padding: 8px 14px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+.hero__wordmark {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 0.04em;
+  line-height: 0.85;
+}
+.hero__wise {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(92px, 14.5vw, 220px);
+  letter-spacing: -0.05em;
+  color: var(--coil);
+}
+.hero__ai {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--coil);
+  margin-bottom: 0;
+  line-height: 1;
+}
+
+/* Ready-to-implement CTA block, just below hero content */
+.hero__cta-block {
+  position: relative;
+  z-index: 3;
+  max-width: var(--maxw);
+  margin: 60px auto 20px;
+  padding: 36px 44px;
+  background: var(--coil);
+  color: var(--snow);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.18);
+}
+.hero__cta-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(28px, 3.2vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0;
+  max-width: 720px;
+}
+.hero__cta-sub {
+  font-family: var(--font-display);
+  font-size: clamp(15px, 1.2vw, 18px);
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.78;
+  max-width: 640px;
+}
+.hero__cta-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.hero__cta-block .btn--primary { background: var(--fire); color: var(--coil); }
+.hero__cta-block .btn--primary:hover { background: var(--snow); color: var(--coil); }
+.hero__cta-block .btn--ghost { color: var(--snow); border-color: rgba(255,255,255,0.5); }
+.hero__cta-block .btn--ghost:hover { background: var(--snow); color: var(--coil); border-color: var(--snow); }
+@media (max-width: 900px) {
+  .hero__cta-block { padding: 26px 22px; margin: 30px 0 0; }
+}
+
+.hero__tag {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(19px, 1.6vw, 24px);
+  line-height: 1.35;
+  max-width: 480px;
+  margin: 0;
+  color: var(--coil);
+  opacity: 0.85;
+}
+
+.hero__actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 900px) {
+  .hero__stage--split {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .hero__right { min-height: 320px; }
+  .hero__3d { height: 340px; }
+}
+
+.hero__topbar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  padding-bottom: 20px;
+  border-bottom: 1px solid currentColor;
+  margin-bottom: 20px;
+  z-index: 3;
+}
+.hero__kicker { display: inline-flex; align-items: center; gap: 10px; }
+.dot, .blink-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor;
+  animation: blink 1.8s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.hero--orange .btn--primary { background: var(--coil); color: var(--snow); }
+.hero--orange .btn--primary:hover { background: var(--snow); color: var(--coil); }
+.hero--orange .btn--ghost { color: var(--coil); border-color: var(--coil); }
+.hero--orange .btn--ghost:hover { background: var(--coil); color: var(--snow); }
+
+@media (max-width: 820px) {
+  .hero { padding: 100px 20px 30px; --edge: 20px; }
+  .hero__3d { width: 100%; height: 40vh; top: 50%; }
+}
+
+/* ============== MARQUEE ============== */
+.marquee {
+  background: var(--coil);
+  color: var(--snow);
+  padding: 22px 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(32px, 5vw, 64px);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.marquee__track { display: flex; white-space: nowrap; animation: tick 30s linear infinite; }
+.marquee__group { display: inline-flex; align-items: center; gap: 28px; padding-right: 28px; }
+.marquee__group i { font-style: normal; color: var(--fire); font-size: 0.45em; }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ============== SERVICES ============== */
+.services { padding: 120px var(--edge); max-width: var(--maxw); margin: 0 auto; }
+.services__header { max-width: 820px; margin-bottom: 50px; }
+.services__switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--snow-2);
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 32px;
+}
+.services__tab {
+  padding: 14px 24px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  transition: all 0.2s;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.services__tab-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+.services__tab-name { font-weight: 600; }
+.services__tab.is-active { background: var(--coil); color: var(--snow); }
+.services__tab.is-active .services__tab-num { opacity: 0.8; }
+
+.services__panel {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  padding: 48px;
+  background: var(--snow-2);
+  border-radius: 20px;
+}
+.services__panel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fire);
+  margin-bottom: 16px;
+}
+.services__panel-kicker {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(28px, 3vw, 40px);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0 0 20px;
+}
+.services__panel-body {
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 0 0 28px;
+  opacity: 0.8;
+}
+.services__panel-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.services__panel-list li {
+  display: flex; gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  font-size: 15px;
+  align-items: flex-start;
+}
+.services__panel-list li:last-child { border-bottom: none; }
+.services__panel-bullet { color: var(--fire); font-weight: 700; flex-shrink: 0; }
+
+.services__kpi-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.services__kpi {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--snow);
+  border-radius: 12px;
+}
+.services__kpi-big {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(32px, 3vw, 44px);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--fire);
+}
+.services__kpi-small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.services__diagram {
+  background: var(--snow);
+  border-radius: 12px;
+  padding: 20px;
+}
+.diagram { width: 100%; height: auto; color: var(--coil); }
+
+@media (max-width: 900px) {
+  .services__panel { grid-template-columns: 1fr; padding: 28px; gap: 32px; }
+  .services__switch { width: 100%; }
+  .services__kpi-stack { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* ============== PROCESS ============== */
+.process {
+  background: var(--coil);
+  color: var(--snow);
+  padding: 120px var(--edge);
+}
+.process__head { max-width: var(--maxw); margin: 0 auto 50px; }
+.process__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  max-width: var(--maxw);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.process__item {
+  padding: 32px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 16px;
+  transition: background 0.3s;
+}
+.process__item:hover { background: rgba(255,77,0,0.12); }
+.process__n {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--fire);
+}
+.process__t {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 12px 0 14px;
+}
+.process__d {
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.75;
+  margin: 0;
+}
+@media (max-width: 820px) {
+  .process__list { grid-template-columns: 1fr; }
+}
+
+/* ============== PROOF ============== */
+.proof { padding: 120px var(--edge); max-width: var(--maxw); margin: 0 auto; }
+.proof__head { margin-bottom: 50px; }
+.proof__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.proof__card {
+  padding: 32px;
+  background: var(--snow-2);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 360px;
+  transition: background 0.3s;
+}
+.proof__card:hover { background: var(--fire); color: var(--snow); }
+.proof__card:hover .proof__stat-big { color: var(--snow); }
+.proof__card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.proof__client { font-weight: 700; font-size: 16px; }
+.proof__sector { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; }
+.proof__stat { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.proof__stat-big {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(44px, 5vw, 64px);
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  color: var(--fire);
+  transition: color 0.3s;
+}
+.proof__stat-small {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.proof__quote {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.8;
+}
+.quote-mark { display: none; }
+.proof__card-bot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.proof__link { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 820px) {
+  .proof__grid { grid-template-columns: 1fr; }
+}
+
+/* ============== MANIFESTO ============== */
+.manifesto {
+  background: var(--snow-2);
+  padding: 120px var(--edge);
+}
+.manifesto__kicker {
+  max-width: var(--maxw);
+  margin: 0 auto 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.manifesto__sig { font-size: 14px; opacity: 0.6; font-family: var(--font-mono); letter-spacing: 0.05em; }
+.manifesto__body {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(28px, 3.4vw, 52px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.manifesto__body em { font-style: normal; font-weight: 700; color: var(--fire); }
+.manifesto__body mark {
+  background: var(--fire);
+  color: var(--snow);
+  padding: 0 0.15em;
+  border-radius: 4px;
+}
+.manifesto__grid {
+  max-width: var(--maxw);
+  margin: 60px auto 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.manifesto__tenet {
+  padding: 28px;
+  background: var(--snow);
+  border-radius: 14px;
+}
+.manifesto__tenet-n {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--fire);
+}
+.manifesto__tenet h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  margin: 10px 0 8px;
+}
+.manifesto__tenet p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  opacity: 0.75;
+}
+@media (max-width: 900px) {
+  .manifesto__grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ============== CONTACT ============== */
+.contact {
+  background: var(--coil);
+  color: var(--snow);
+  padding: 120px var(--edge);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+.contact__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(48px, 6.5vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  margin: 14px 0 24px;
+}
+.contact__title .italic { color: var(--fire); }
+.contact__lede {
+  font-size: 18px;
+  line-height: 1.5;
+  max-width: 480px;
+  opacity: 0.8;
+  margin-bottom: 40px;
+}
+.contact__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(250,250,250,0.2);
+}
+.contact__meta > div { display: flex; flex-direction: column; gap: 6px; }
+.contact__meta-k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.contact__meta span { font-size: 13px; line-height: 1.4; opacity: 0.85; }
+
+.contact__form {
+  background: rgba(250,250,250,0.04);
+  border: 1px solid rgba(250,250,250,0.15);
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-radius: 16px;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.contact__form label { display: flex; flex-direction: column; gap: 8px; }
+.contact__form label span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.contact__form input,
+.contact__form textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(250,250,250,0.3);
+  padding: 10px 0;
+  color: var(--snow);
+  font-family: var(--font-display);
+  font-size: 16px;
+  outline: none;
+  transition: border 0.2s;
+}
+.contact__form input:focus,
+.contact__form textarea:focus { border-color: var(--fire); }
+.contact__form textarea { resize: vertical; }
+
+.form-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.form-chips > span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-right: 6px;
+}
+.chip {
+  padding: 8px 14px;
+  border: 1px solid rgba(250,250,250,0.3);
+  border-radius: 999px;
+  font-size: 13px;
+  transition: all 0.2s;
+  color: var(--snow);
+}
+.chip:hover { border-color: var(--fire); }
+.chip.is-on { background: var(--fire); border-color: var(--fire); }
+
+.contact__form .btn--primary { background: var(--fire); color: var(--snow); }
+.contact__form .btn--primary:hover { background: var(--snow); color: var(--coil); }
+.btn--full { width: 100%; justify-content: center; padding: 18px; }
+.form-fine { font-size: 11px; opacity: 0.5; margin: 0; text-align: center; font-family: var(--font-mono); letter-spacing: 0.05em; }
+
+.contact__thanks { text-align: center; padding: 40px 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.contact__check {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--fire);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.contact__thanks h3 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.contact__thanks p { font-size: 15px; opacity: 0.8; max-width: 320px; margin: 0 0 12px; }
+
+@media (max-width: 900px) {
+  .contact { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
+  .contact__meta { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+}
+
+/* ============== FOOTER ============== */
+.footer {
+  background: var(--fire);
+  color: var(--coil);
+  padding: 50px var(--edge) 30px;
+}
+.footer__big {
+  display: flex;
+  justify-content: center;
+  padding: 30px 0 60px;
+  border-bottom: 1px solid var(--coil);
+  overflow: hidden;
+}
+.footer__cols {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  padding: 32px 0;
+  border-bottom: 1px solid var(--coil);
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+.footer__cols > div { display: flex; flex-direction: column; gap: 6px; }
+.footer__k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0.7;
+}
+.footer__cols a, .footer__cols span { font-size: 13px; line-height: 1.5; transition: opacity 0.2s; }
+.footer__cols a:hover { opacity: 0.6; }
+.footer__base {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  max-width: var(--maxw);
+  margin: 0 auto;
+}
+@media (max-width: 820px) {
+  .footer__cols { grid-template-columns: 1fr 1fr; }
+  .footer__base { flex-direction: column; gap: 10px; }
+}
+
+/* ============== TWEAKS ============== */
+.tweaks {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 500;
+  background: var(--snow);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 16px;
+  padding: 18px;
+  width: 260px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  font-family: var(--font-display);
+}
+.tweaks__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.tweaks__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.tweaks__close { font-size: 18px; padding: 4px; }
+.tweaks__row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.tweaks__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.tweaks__swatches { display: flex; gap: 8px; }
+.tweaks__swatch {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.tweaks__swatch:hover { transform: scale(1.08); }
+.tweaks__swatch.is-on { box-shadow: 0 0 0 2px var(--snow), 0 0 0 4px var(--coil); }
+.tweaks__seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tweaks__seg button {
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-right: 1px solid rgba(0,0,0,0.1);
+}
+.tweaks__seg button:last-child { border-right: none; }
+.tweaks__seg button.is-on { background: var(--coil); color: var(--snow); }
+
+  </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-  <script type="text/babel" src="components/OwlMark.jsx"></script>
-  <script type="text/babel" src="components/Wordmark.jsx"></script>
-  <script type="text/babel" src="components/Nav.jsx"></script>
-  <script type="text/babel" src="components/Hero.jsx"></script>
-  <script type="text/babel" src="components/Services.jsx"></script>
-  <script type="text/babel" src="components/Process.jsx"></script>
-  <script type="text/babel" src="components/Closing.jsx"></script>
-  <script type="text/babel" src="components/Tweaks.jsx"></script>
+  <script type="text/babel">
+// WISE Ai wordmark — WISE bold, Ai at a quarter of the size, aligned to top.
+function Wordmark({ size = 28, color = "currentColor", className = "" }) {
+  return (
+    <span
+      className={className}
+      style={{
+        fontFamily: "var(--font-display)",
+        fontWeight: 900,
+        letterSpacing: "-0.03em",
+        color,
+        lineHeight: 0.9,
+        display: "inline-flex",
+        alignItems: "flex-start",
+        gap: size * 0.12,
+      }}
+    >
+      <span style={{ fontSize: size, letterSpacing: "-0.04em", fontWeight: 700 }}>WISE</span>
+      <span
+        style={{
+          fontSize: size * 0.25,
+          fontWeight: 700,
+          marginTop: size * 0.08,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        AI
+      </span>
+    </span>
+  );
+}
 
-  <script type="text/babel" data-presets="env,react">
-    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+window.Wordmark = Wordmark;
+
+// Uses the real Wise Ai owl logo (cropped, background knocked out)
+function OwlMark({ size = 64, variant = "coil", className = "" }) {
+  const src =
+    variant === "white" ? "assets/owl-white.png" :
+    variant === "fire"  ? "assets/owl-fire.png"  :
+                          "assets/owl-transparent.png";
+  return (
+    <img
+      className={className}
+      src={src}
+      style={{ width: "60px", height: "auto", display: "block" }}
+      alt="Wise Ai owl"
+    />
+  );
+}
+
+window.OwlMark = OwlMark;
+
+function Nav({ onNav }) {
+  const [open, setOpen] = React.useState(false);
+  const [hover, setHover] = React.useState(false);
+  const [visible, setVisible] = React.useState(() => {
+    try { return sessionStorage.getItem("wiseai_intro_done") === "1"; } catch (e) { return false; }
+  });
+
+  React.useEffect(() => {
+    if (visible) return;
+    const onReady = () => setVisible(true);
+    window.addEventListener("wiseai:intro-done", onReady);
+    return () => window.removeEventListener("wiseai:intro-done", onReady);
+  }, [visible]);
+
+  const items = [
+    ["work", "Work"],
+    ["services", "Services"],
+    ["process", "Process"],
+  ];
+  const showMenu = hover || open;
+  return (
+    <nav
+      className={`nav-bubble ${showMenu ? "is-open" : ""} ${visible ? "is-visible" : ""}`}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      aria-hidden={!visible}
+    >
+      <button
+        className="nav-bubble__icon"
+        aria-label="Menu"
+        onClick={(e) => {
+          e.preventDefault();
+          setOpen(!open);
+        }}
+      >
+        <img src="assets/owl-transparent.png" alt="Wise Ai" />
+      </button>
+
+      <div className="nav-bubble__menu" role="menu">
+        {items.map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            role="menuitem"
+            onClick={(e) => {
+              e.preventDefault();
+              onNav(id);
+              setOpen(false);
+              setHover(false);
+            }}
+          >
+            {label}
+          </a>
+        ))}
+        <a
+          className="nav-bubble__cta"
+          href="#contact"
+          onClick={(e) => {
+            e.preventDefault();
+            onNav("contact");
+            setOpen(false);
+            setHover(false);
+          }}
+        >
+          Book a call →
+        </a>
+      </div>
+    </nav>
+  );
+}
+
+window.Nav = Nav;
+
+// Loads the real MacBook GLTF model from the Wise Ai GitHub repo.
+// Files (scene.gltf, scene.bin, textures/) must sit alongside the HTML when deployed.
+const MODEL_BASE_URLS = [
+  "", // same directory as the deployed HTML (prod)
+  "https://cdn.jsdelivr.net/gh/Wisey6/wise-ai-website@main/", // fallback for preview
+];
+
+function HeroLaptop3D({ showOwlOnScreen = false, lidClose = 0, onScreenRect = null, idleEnabled = true, spinProgress = 0 }) {
+  const mountRef = React.useRef(null);
+  const rafRef = React.useRef(0);
+  const cameraRef = React.useRef(null);
+  const onScreenRectRef = React.useRef(onScreenRect);
+  React.useEffect(() => { onScreenRectRef.current = onScreenRect; }, [onScreenRect]);
+  const idleEnabledRef = React.useRef(idleEnabled);
+  React.useEffect(() => { idleEnabledRef.current = idleEnabled; }, [idleEnabled]);
+  const spinProgressRef = React.useRef(spinProgress);
+  React.useEffect(() => { spinProgressRef.current = spinProgress; }, [spinProgress]);
+  const showOwlRef = React.useRef(showOwlOnScreen);
+  React.useEffect(() => { showOwlRef.current = showOwlOnScreen; }, [showOwlOnScreen]);
+  const lidCloseRef = React.useRef(lidClose);
+  React.useEffect(() => { lidCloseRef.current = lidClose; }, [lidClose]);
+  const [status, setStatus] = React.useState("Loading MacBook…");
+
+  React.useEffect(() => {
+    if (!window.THREE) return;
+    const THREE = window.THREE;
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const width = mount.clientWidth;
+    const height = mount.clientHeight;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, width / height, 0.1, 100);
+    cameraRef.current = camera;
+    // Camera sits at its resting composition for the entire page life.
+    // The intro reveal is handled entirely in the DOM (white panel + owl PNG)
+    // so the 3D model never scales/distorts — it's always at its natural aspect.
+    const restingPos = new THREE.Vector3(0, 0.8, 5.0);
+    const restingLookAt = new THREE.Vector3(0, 0, 0);
+    camera.position.copy(restingPos);
+    camera.lookAt(restingLookAt);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    mount.appendChild(renderer.domElement);
+
+    // lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const key = new THREE.DirectionalLight(0xffffff, 1.2);
+    key.position.set(4, 6, 3);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0xffd9c2, 0.6);
+    fill.position.set(-5, 3, -2);
+    scene.add(fill);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.4);
+    rim.position.set(0, 4, -6);
+    scene.add(rim);
+
+    let model = null;
+    let disposed = false;
+
+    const loader = new THREE.GLTFLoader();
+
+    // owl screen overlay texture
+    const texLoader = new THREE.TextureLoader();
+    texLoader.crossOrigin = "anonymous";
+    // Screen texture starts BLANK WHITE. paintOwlOnScreen() is called later
+    // (when the flying PNG lands) to swap in the owl wallpaper — a clean texture
+    // handoff instead of pixel-matched animation.
+    const size = 1024;
+    const aspect = 16 / 10;
+    const texW = size, texH = Math.round(size / aspect);
+    let screenCanvas = document.createElement("canvas");
+    screenCanvas.width = texW;
+    screenCanvas.height = texH;
+    let screenCtx = screenCanvas.getContext("2d");
+    screenCtx.fillStyle = "#ffffff";
+    screenCtx.fillRect(0, 0, texW, texH);
+    const owlTex = new THREE.CanvasTexture(screenCanvas);
+    owlTex.encoding = THREE.sRGBEncoding;
+    owlTex.flipY = false;
+    owlTex.wrapS = THREE.ClampToEdgeWrapping;
+    owlTex.wrapT = THREE.ClampToEdgeWrapping;
+    let owlPaintedOnScreen = false;
+    const paintOwlOnScreen = () => {
+      if (owlPaintedOnScreen) return;
+      const owlSrc = (window.__resources && window.__resources.owlTransparent) || "assets/owl-transparent.png";
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const targetH = texH * 0.6;
+        const targetW = targetH * (img.width / img.height);
+        const x = (texW - targetW) / 2;
+        const y = (texH - targetH) / 2;
+        screenCtx.fillStyle = "#ffffff";
+        screenCtx.fillRect(0, 0, texW, texH);
+        screenCtx.drawImage(img, x, y, targetW, targetH);
+        owlTex.needsUpdate = true;
+        owlPaintedOnScreen = true;
+      };
+      img.src = owlSrc;
+    };
+
+    let screenMesh = null;
+    let lidGroup = null;
+    let lidPivot = null;
+    const applyOwlToScreen = (root) => {
+      root.traverse((child) => {
+        if (!child.isMesh) return;
+        const matName = (child.material && child.material.name) || "";
+        if (matName !== "HlQwFCAPWzetDQy") return;
+        screenMesh = child;
+        const m = child.material;
+        if (m.emissiveMap && m.emissiveMap.dispose) m.emissiveMap.dispose();
+        m.emissiveMap = owlTex;
+        m.emissive = new THREE.Color(0xffffff);
+        m.emissiveIntensity = 1.0;
+        if (m.map && m.map.dispose) m.map.dispose();
+        m.map = owlTex;
+        m.color = new THREE.Color(0xffffff);
+        m.needsUpdate = true;
+      });
+      // Find the lid subtree. In the Sketchfab MacBook model, the parent node
+      // "nIhhmAXgzOpXafM_62" has exactly 2 children: base (EhCmdLAMoLoXcIA_43)
+      // and lid (RcexTyyhpuJYATQ_61). The lid's local AABB gives us the hinge
+      // location — bottom-front edge (y = min_y, z = max_z).
+      // NOTE: lid-close animation disabled — the Sketchfab GLTF hierarchy has
+      // meshes with baked-in transforms that don't respond to a hinge-pivot
+      // rotation on their parent group. Leaving the laptop open for now.
+      let lidParent = null;
+      // eslint-disable-next-line no-constant-condition
+      if (false && lidParent && lidParent.children.length >= 2) {
+        // Pick the child whose AABB is TALLER (bigger Y extent) = the lid.
+        let tallest = null, tallestH = 0;
+        for (const c of lidParent.children) {
+          const b = new THREE.Box3().setFromObject(c);
+          const h = b.max.y - b.min.y;
+          if (h > tallestH) { tallestH = h; tallest = c; }
+        }
+        if (tallest) {
+          lidGroup = tallest;
+          const lidBox = new THREE.Box3().setFromObject(lidGroup);
+          // Hinge on a MacBook: the BACK-BOTTOM edge of the lid. That point
+          // stays fixed as the lid rotates forward to close. Lid sits at
+          // negative z (screen faces +z toward camera), so back = min.z.
+          const hingeWorld = new THREE.Vector3(0, lidBox.min.y, lidBox.min.z);
+          // Convert to lidParent local space
+          lidParent.updateWorldMatrix(true, false);
+          const hingeLocal = lidParent.worldToLocal(hingeWorld.clone());
+          lidPivot = new THREE.Group();
+          lidPivot.position.copy(hingeLocal);
+          lidParent.add(lidPivot);
+          lidPivot.updateWorldMatrix(true, false);
+          // `attach` reparents while preserving world transform. This is the
+          // correct API for arbitrary-pivot rotation.
+          lidPivot.attach(lidGroup);
+        }
+      }
+    };
+
+    const tryLoad = (i) => {
+      if (i >= MODEL_BASE_URLS.length || disposed) {
+        setStatus("Using fallback display");
+        // fallback: show a stylised placeholder block
+        const g = new THREE.Group();
+        const metal = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.85, roughness: 0.35 });
+        const base = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 1.6), metal);
+        base.position.y = -0.04;
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.5, 0.06), metal);
+        lid.position.set(0, 0.75, -0.78);
+        lid.rotation.x = -0.15;
+        g.add(base, lid);
+        model = g;
+        scene.add(model);
+        return;
+      }
+      const base = MODEL_BASE_URLS[i];
+      const url = base + "scene.gltf";
+      loader.setResourcePath(base);
+      loader.load(
+        url,
+        (gltf) => {
+          if (disposed) return;
+          model = gltf.scene;
+          // normalise scale + centre
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          // Scale target — a touch smaller so it sits calmer in the layout.
+          const target = 1.55;
+          const scale = target / maxDim;
+          model.scale.setScalar(scale);
+          const center = box.getCenter(new THREE.Vector3()).multiplyScalar(scale);
+          model.position.sub(center);
+          // Drop the laptop a bit below centre — top of the lid lands
+          // around the mid-line of the "E" in the WISE wordmark.
+          model.position.y += -0.55;
+          applyOwlToScreen(model);
+          scene.add(model);
+          setStatus("");
+          // DEBUG: expose model for inspection
+          window.__wiseModel = model;
+          window.__wiseScreenMesh = screenMesh;
+          window.__wiseTHREE = THREE;
+        },
+        undefined,
+        (err) => {
+          console.warn("gltf load failed from", base, err);
+          tryLoad(i + 1);
+        }
+      );
+    };
+    tryLoad(0);
+
+    let t0 = performance.now();
+    let idleAmpCur = 0;
+    const loop = () => {
+      const t = (performance.now() - t0) / 1000;
+      const close = Math.max(0, Math.min(1, lidCloseRef.current || 0));
+      const idleTarget = idleEnabledRef.current ? 1 : 0;
+      // smoothly ramp the idle amplitude in/out so sway doesn't snap on
+      idleAmpCur += (idleTarget - idleAmpCur) * 0.04;
+      const spin = Math.max(0, Math.min(1, spinProgressRef.current || 0));
+      if (model) {
+        const idleAmount = (1 - close) * idleAmpCur;
+        // Pure hover — no Y rotation, just a pronounced vertical float.
+        model.rotation.y = 0;
+        model.position.y = -0.55 + Math.sin(t * 1.05) * 0.09 * idleAmount;
+      }
+      // REAL lid close: rotate the lid pivot about its X axis. At close=0
+      // the lid is at its default open angle (~110°). At close=1 the lid
+      // is flat closed (parallel to keyboard). The lid sits at the back with
+      // its normal pointing roughly -Z (toward camera), so a POSITIVE X rotation
+      // folds it forward onto the keyboard.
+      if (lidPivot) {
+        // MacBook lid open angle ≈ 110° from keyboard plane. The model already
+        // ships with lid open, so rotation 0 = open. Close by rotating forward
+        // (+X) by ~110° → ~1.92 rad.
+        lidPivot.rotation.x = close * 1.92;
+      }
+      if (showOwlRef.current) {
+        paintOwlOnScreen();
+      }
+      // Project the screen mesh's world AABB into viewport-pixel coords so the
+      // flying PNG owl can land exactly on top of the 3D on-screen owl.
+      if (screenMesh && onScreenRectRef.current) {
+        const box = new THREE.Box3().setFromObject(screenMesh);
+        const corners = [
+          new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+          new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+          new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+          new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+          new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+          new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+          new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+          new THREE.Vector3(box.max.x, box.max.y, box.max.z),
+        ];
+        const rect = mount.getBoundingClientRect();
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const c of corners) {
+          const v = c.clone().project(camera);
+          const px = rect.left + (v.x + 1) * 0.5 * rect.width;
+          const py = rect.top + (1 - (v.y + 1) * 0.5) * rect.height;
+          if (px < minX) minX = px;
+          if (py < minY) minY = py;
+          if (px > maxX) maxX = px;
+          if (py > maxY) maxY = py;
+        }
+        onScreenRectRef.current({
+          x: minX, y: minY,
+          w: maxX - minX, h: maxY - minY,
+          cx: (minX + maxX) / 2, cy: (minY + maxY) / 2,
+        });
+      }
+      renderer.render(scene, camera);
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    loop();
+
+    const onResize = () => {
+      const w = mount.clientWidth;
+      const h = mount.clientHeight;
+      if (!w || !h) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("resize", onResize);
+      renderer.dispose();
+      if (renderer.domElement.parentNode) {
+        renderer.domElement.parentNode.removeChild(renderer.domElement);
+      }
+    };
+  }, []);
+
+  return (
+    <div className="hero__3d" aria-hidden>
+      <div ref={mountRef} className="hero__3d-mount" />
+      {status && <div className="hero__3d-status">{status}</div>}
+    </div>
+  );
+}
+
+function Hero({ variant = "orange" }) {
+  // Cinematic auto-play reveal. No scroll lock.
+  // phase progress: 0..1 over INTRO_MS; drives opacities and the owl flight.
+  const INTRO_MS = 2400;
+  const [phase, setPhase] = React.useState(() => {
+    try { return sessionStorage.getItem("wiseai_intro_done") === "1" ? 1 : 0; } catch (e) { return 0; }
+  });
+  const phaseRef = React.useRef(phase);
+  phaseRef.current = phase;
+
+  // Live screen-mesh bounds — legacy; no longer required for pixel-accurate
+  // handoff since we now texture-swap the 3D laptop screen instead. Kept as a
+  // rough flight target.
+  const [screenRect, setScreenRect] = React.useState(null);
+  const [viewport, setViewport] = React.useState({
+    w: typeof window !== "undefined" ? window.innerWidth : 1440,
+    h: typeof window !== "undefined" ? window.innerHeight : 900,
+  });
+
+  const handleScreenBounds = React.useCallback((b) => {
+    if (typeof window !== "undefined") window.__wiseScreenRect = b;
+    setScreenRect(b);
+  }, []);
+
+  // Scroll choreography (revised):
+  //   1. Owl-flight intro plays (laptop frozen — no sway, no bobbing).
+  //   2. 500 ms after owl lands, laptop idle float begins and persists —
+  //      no scroll-driven spin, no lid close. Just a stationary, gently
+  //      floating laptop that normal page scroll passes by.
+  const heroRef = React.useRef(null);
+  const lidClose = 0;
+  const spinProgress = 0;
+
+  // Laptop idle-sway gate — 500 ms AFTER the owl lands on-screen.
+  const [idleEnabled, setIdleEnabled] = React.useState(false);
+  React.useEffect(() => {
+    if (phase >= 0.62 && !idleEnabled) {
+      const id = setTimeout(() => setIdleEnabled(true), 500);
+      return () => clearTimeout(id);
+    }
+  }, [phase, idleEnabled]);
+
+  React.useEffect(() => {
+    const measure = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // Laptop sits still once it lands — idle hover only, no scroll-driven spin.
+
+  React.useEffect(() => {
+    if (phase >= 1) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - t0;
+      const p = Math.min(1, elapsed / INTRO_MS);
+      setPhase(p);
+      if (p < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        try { sessionStorage.setItem("wiseai_intro_done", "1"); } catch (e) {}
+        try { window.dispatchEvent(new Event("wiseai:intro-done")); } catch (e) {}
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // easing helpers
+  const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3);
+  const easeInOutCubic = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+
+  // phase breakdown:
+  //   0.00 – 0.30  owl rises in, wordmark traces (white fullscreen)
+  //   0.30 – 0.65  owl flies from viewport centre to laptop-screen position; laptop canvas fades in; white panel recedes
+  //   0.65 – 1.00  copy + topbar + CTAs rise into place; PNG owl fades (3D on-screen owl takes over)
+  const p = phase;
+  const owlRevealT = easeOutCubic(Math.min(1, p / 0.30));           // 0..1 during first segment
+  const owlFlightT = easeInOutCubic(Math.max(0, Math.min(1, (p - 0.30) / 0.35))); // 0..1 during middle
+  const copyT      = easeOutCubic(Math.max(0, Math.min(1, (p - 0.65) / 0.35)));   // 0..1 during last
+  const whiteFadeT = easeInOutCubic(Math.max(0, Math.min(1, (p - 0.30) / 0.30))); // white panel dissolves mid-animation
+  const laptopFadeT= easeOutCubic(Math.max(0, Math.min(1, (p - 0.35) / 0.35)));    // laptop fades in during middle
+
+  // PNG owl position/size interpolation
+  // starting state: centred in viewport, ~min(56vmin, 480px)
+  const startSize = Math.min(viewport.w, viewport.h) * 0.56;
+  const startSizeClamped = Math.min(startSize, 480);
+  const startCx = viewport.w / 2;
+  const startCy = viewport.h / 2;
+  // end state: MATCH the 3D on-screen owl exactly. It's drawn at 60% of the
+  // screen-mesh height, centred. The screen mesh projects to screenRect, so:
+  //   endCy = screenRect.cy
+  //   endSize = 0.60 * screenRect.height  (the PNG owl is a square-ish box; size = side length)
+  // If bounds haven't arrived yet, fall back to a sensible approximation.
+  // Flight target: center of the right-column laptop area. Roughly 75% across
+  // the viewport, 45% down. Pixel-perfect landing no longer required since the
+  // 3D laptop screen texture-swaps to the owl at p≈0.62.
+  // end state: match the 3D on-screen owl exactly. The owl is drawn at 60%
+  // of the screen-canvas height, centred within the 16:10 screen. The screen
+  // mesh projects into viewport pixels via `screenRect`. If the rect hasn't
+  // arrived yet, fall back to a reasonable approximation.
+  let endSize, endCx, endCy;
+  if (screenRect && screenRect.w > 0 && screenRect.h > 0) {
+    endSize = screenRect.h * 0.72;
+    endCx = screenRect.cx;
+    endCy = screenRect.cy + screenRect.h * 0.09;
+  } else {
+    endSize = Math.min(viewport.w, viewport.h) * 0.19;
+    endCx = viewport.w * 0.72;
+    endCy = viewport.h * 0.30;
+  }
+
+  const owlCx = startCx + (endCx - startCx) * owlFlightT;
+  const owlCy = startCy + (endCy - startCy) * owlFlightT;
+  const owlSize = startSizeClamped + (endSize - startSizeClamped) * owlFlightT;
+  // reveal scale/opacity during first segment
+  const owlRevealScale = 0.92 + owlRevealT * 0.08;
+  const owlBaseOpacity = owlRevealT;
+  // once flight reaches the laptop, cross-fade out — the 3D screen texture
+  // has just been painted with the owl, so this is a seamless handoff.
+  const owlHandoffOpacity = Math.max(0, 1 - Math.max(0, (p - 0.60) / 0.08));
+  const pngOwlOpacity = Math.min(owlBaseOpacity, owlHandoffOpacity);
+
+  const whiteOpacity = 1 - whiteFadeT;
+  // show introductory wordmark only during the opening beat
+  const introWordmarkOpacity = Math.max(0, owlRevealT - Math.max(0, (p - 0.22) / 0.15));
+
+  // copy fade / rise
+  const copyOpacity = copyT;
+  const copyShiftY = (1 - copyT) * 18;
+
+  const [time, setTime] = React.useState(
+    new Date().toLocaleTimeString("en-AU", { hour12: false, timeZone: "Australia/Brisbane" })
+  );
+  React.useEffect(() => {
+    const t = setInterval(() => setTime(new Date().toLocaleTimeString("en-AU", { hour12: false, timeZone: "Australia/Brisbane" })), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // rightColRef kept as a ref for potential layout math but we no longer
+  // pin the laptop — it scrolls naturally with the hero.
+  const rightColRef = React.useRef(null);
+
+  const owlSrc = (typeof window !== "undefined" && window.__resources && window.__resources.owlTransparent) || "assets/owl-transparent.png";
+
+  return (
+    <section
+      id="top"
+      ref={heroRef}
+      className={`hero hero--${variant} hero--v2`}
+      data-screen-label="01 Hero"
+      style={{
+        // gentle fade only — the real drama is the 3D lid closing
+        opacity: 1 - lidClose * 0.5,
+      }}
+    >
+      <div
+        className="hero__topbar"
+        style={{ opacity: copyOpacity, transform: `translateY(${(1 - copyOpacity) * 8}px)` }}
+      >
+        <span className="hero__kicker">
+          <span className="dot" /> Available — Accepting new clients
+        </span>
+        <span className="hero__clock">Brisbane · {time}</span>
+      </div>
+
+      <div className="hero__stage hero__stage--split">
+        <div
+          className="hero__left"
+          style={{
+            opacity: copyOpacity,
+            transform: `translateY(${copyShiftY}px)`,
+            pointerEvents: copyOpacity > 0.5 ? "auto" : "none",
+          }}
+        >
+          <div className="hero__wordmark">
+            <span className="hero__wise" style={{ color: "rgb(242, 120, 47)", fontWeight: 700 }}>WISE</span>
+            <span className="hero__ai" style={{ color: "rgb(242, 120, 47)", height: "177px", fontSize: "35px", display: "inline-block" }}> AI</span>
+          </div>
+          <p className="hero__tag" style={{ fontWeight: 500, color: "rgb(0, 0, 0)", maxWidth: "500px" }}>
+            From AI confusion to competitive advantage.
+          </p>
+          <div className="hero__actions">
+            <a href="#services" className="btn btn--primary btn--lg">
+              <span>See services</span>
+              <Arrow />
+            </a>
+            <a href="#contact" className="btn btn--ghost btn--lg">
+              Book a call
+            </a>
+          </div>
+        </div>
+
+        <div
+          ref={rightColRef}
+          className="hero__right hero__right--responsive"
+          style={{ width: "100%", position: "relative" }}
+        >
+          {/* 3D laptop canvas — stays in its column. Scroll-driven spin
+              turns the model a half-turn as you move toward Services;
+              the whole element simply scrolls out of view with the hero,
+              which is cleaner than trying to pin it over the page. */}
+          <div
+            className="hero__3d-wrap"
+            style={{
+              position: "absolute",
+              // expand beyond the column a touch so the screen corner
+              // never clips when the model tilts / rotates.
+              left: "-12%",
+              top: "-18%",
+              width: "124%",
+              height: "136%",
+              opacity: laptopFadeT,
+              transform: `translateY(${(1 - laptopFadeT) * 24}px)`,
+              transition: "none",
+              pointerEvents: "none",
+            }}
+          >
+            <HeroLaptop3D
+              showOwlOnScreen={p > 0.62}
+              lidClose={lidClose}
+              onScreenRect={handleScreenBounds}
+              idleEnabled={idleEnabled}
+              spinProgress={spinProgress}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* White intro panel — fades out mid-animation */}
+      {whiteOpacity > 0.001 && (
+        <div
+          className="hero-intro-white"
+          style={{
+            opacity: whiteOpacity,
+            pointerEvents: whiteOpacity > 0.5 ? "auto" : "none",
+          }}
+          aria-hidden
+        >
+          {/* intro wordmark under the owl — only during the opening beat */}
+          <div
+            className="hero-intro-wordmark"
+            style={{ opacity: introWordmarkOpacity }}
+          >
+            <span style={{ color: "rgb(242, 120, 47)", fontWeight: 700 }}>WISE</span>
+            <span style={{ color: "rgb(242, 120, 47)", fontWeight: 700 }}> AI</span>
+          </div>
+        </div>
+      )}
+
+      {/* Owl PNG — rises centre-screen, then flies to the laptop screen */}
+      {pngOwlOpacity > 0.001 && (
+        <img
+          className="hero-intro-owl-flight"
+          src={owlSrc}
+          alt=""
+          aria-hidden
+          style={{
+            position: "fixed",
+            left: `${owlCx - owlSize / 2}px`,
+            top:  `${owlCy - owlSize / 2}px`,
+            width: `${owlSize}px`,
+            height: "auto",
+            opacity: pngOwlOpacity,
+            transform: `scale(${owlRevealScale})`,
+            transformOrigin: "center center",
+            pointerEvents: "none",
+            zIndex: 30,
+            willChange: "transform, left, top, width, opacity",
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+function Arrow() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 13 L13 3 M6 3 H13 V10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+window.Hero = Hero;
+
+function Marquee() {
+  return (
+    <div className="marquee" aria-hidden>
+      <div className="marquee__track">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <span key={i} className="marquee__group">
+            <span>Audit</span><i>◆</i>
+            <span>Deploy</span><i>◆</i>
+            <span>Govern</span><i>◆</i>
+            <span>Measure</span><i>◆</i>
+            <span>Save hours</span><i>◆</i>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Services() {
+  const [active, setActive] = React.useState(0);
+  const phases = [
+    {
+      tag: "01",
+      title: "Audit",
+      kicker: "Every engagement starts here — know where AI actually fits, before you spend a dollar.",
+      body: "Two weeks inside your business. We shadow your team, map the workflows, and measure where hours are being lost. You get a clear, honest read on where AI will pay off — and where it won't.",
+      items: [
+        "Full workflow &amp; stack review",
+        "Time-study across 3–5 key roles",
+        "Honest read on where AI fits (and where it doesn't)",
+        "Evidence-backed findings document",
+      ],
+      kpi: [["14", "days"], ["3–5", "roles shadowed"], ["$", "fixed fee"]],
+    },
+    {
+      tag: "02",
+      title: "Opportunities",
+      kicker: "A prioritised shortlist of the wins that actually matter.",
+      body: "We turn the audit into a ranked list of opportunities — scored by hours saved, cost, risk and time-to-value. You decide which ones to pursue; we help you pick.",
+      items: [
+        "Ranked opportunity register",
+        "Effort vs. impact scoring",
+        "Clear go / no-go recommendation per item",
+        "90-day roadmap with owners &amp; dates",
+      ],
+      kpi: [["8–12", "opportunities"], ["Top 3", "recommended"], ["90d", "roadmap"]],
+    },
+    {
+      tag: "03",
+      title: "Build",
+      kicker: "The right AI systems for the job — tools, agents, or both.",
+      body: "We design and deploy the systems that fit each opportunity. Sometimes it's an agent on payroll. Sometimes it's a workflow tool, a prompt library, or just better evals. We build what the evidence says you need — nothing more.",
+      items: [
+        "Agents, tools or workflow automation",
+        "Guardrails &amp; human oversight built-in",
+        "Evals, audit logs and monthly reporting",
+        "Handover to your team when ready",
+      ],
+      kpi: [["2–3 wks", "per sprint"], ["24/7", "on shift"], ["100%", "auditable"]],
+    },
+  ];
+  const s = phases[active];
+
+  return (
+    <section id="services" className="services" data-screen-label="02 Services">
+      <div className="services__header">
+        <span className="section-kicker">Service</span>
+        <h2 className="section-title">One service.<br/>Three phases.</h2>
+        <p className="section-lede">
+          Every engagement starts with an audit. We then surface the opportunities worth pursuing,
+          and build the AI systems — tools, agents, workflows — best suited to each one.
+        </p>
+      </div>
+
+      <div className="services__switch">
+        {phases.map((sv, i) => (
+          <button
+            key={i}
+            className={`services__tab ${active === i ? "is-active" : ""}`}
+            onClick={() => setActive(i)}
+          >
+            <span className="services__tab-num">0{i+1}</span>
+            <span className="services__tab-name">{sv.title}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="services__panel">
+        <div className="services__panel-lhs">
+          <div className="services__panel-label">
+            <span className="blink-dot" /> Phase {s.tag} · {s.title}
+          </div>
+          <h3 className="services__panel-kicker">{s.kicker}</h3>
+          <p className="services__panel-body">{s.body}</p>
+          <ul className="services__panel-list">
+            {s.items.map((it, i) => (
+              <li key={i}>
+                <span className="services__panel-bullet">✓</span>
+                <span dangerouslySetInnerHTML={{ __html: it }} />
+              </li>
+            ))}
+          </ul>
+          <a href="#contact" className="btn btn--outline">
+            Start with an audit <Arrow />
+          </a>
+        </div>
+        <div className="services__panel-rhs">
+          <div className="services__kpi-stack">
+            {s.kpi.map(([big, small], i) => (
+              <div key={i} className="services__kpi">
+                <span className="services__kpi-big">{big}</span>
+                <span className="services__kpi-small">{small}</span>
+              </div>
+            ))}
+          </div>
+          <div className="services__diagram">
+            <ServiceDiagram kind={["audit","opps","build"][active]} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ServiceDiagram({ kind }) {
+  if (kind === "audit") {
+    return (
+      <svg viewBox="0 0 400 220" className="diagram">
+        {["People","Process","Tools","Data","Risk"].map((lbl, i) => (
+          <g key={i} transform={`translate(${30 + i*70},${40})`}>
+            <rect width="56" height="56" fill="none" stroke="currentColor" strokeWidth="1.2" rx="8"/>
+            <text x="28" y="32" textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{lbl}</text>
+          </g>
+        ))}
+        <path d="M60 140 Q 200 190 360 140" stroke="var(--fire)" strokeWidth="2" fill="none" />
+        <circle cx="360" cy="140" r="6" fill="var(--fire)" />
+        <text x="30" y="205" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6">
+          INPUT · 5 DOMAINS → OUTPUT · 1 FINDINGS DOC
+        </text>
+      </svg>
+    );
+  }
+  if (kind === "opps") {
+    const rows = [
+      { label: "Invoice triage",      impact: 0.92, effort: 0.25 },
+      { label: "Sales follow-up",     impact: 0.78, effort: 0.40 },
+      { label: "Report generation",   impact: 0.70, effort: 0.30 },
+      { label: "Inbox routing",       impact: 0.55, effort: 0.20 },
+      { label: "Forecast drafting",   impact: 0.40, effort: 0.60 },
+    ];
+    return (
+      <svg viewBox="0 0 400 220" className="diagram">
+        <text x="20" y="22" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6">RANKED · IMPACT vs. EFFORT</text>
+        {rows.map((r, i) => {
+          const y = 44 + i * 30;
+          return (
+            <g key={i}>
+              <text x="20" y={y + 10} fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{r.label}</text>
+              <rect x="150" y={y} width="220" height="14" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" rx="2"/>
+              <rect x="150" y={y} width={220 * r.impact} height="14" fill={i < 3 ? "var(--fire)" : "currentColor"} opacity={i < 3 ? 1 : 0.35} rx="2"/>
+              {i < 3 && <text x={378} y={y + 11} fontSize="9" fontFamily="var(--font-mono)" fill="var(--fire)">✓</text>}
+            </g>
+          );
+        })}
+      </svg>
+    );
+  }
+  // build
+  return (
+    <svg viewBox="0 0 400 220" className="diagram">
+      <g stroke="currentColor" strokeWidth="1.2" fill="none">
+        <circle cx="200" cy="110" r="50" />
+        <circle cx="200" cy="110" r="90" strokeDasharray="4 4" />
+      </g>
+      <text x="200" y="114" textAnchor="middle" fontSize="13" fontFamily="var(--font-display)" fontWeight="700" fill="currentColor">SYSTEM</text>
+      {[
+        [60, 50, "Agent"],
+        [340, 50, "Tools"],
+        [60, 180, "Workflow"],
+        [340, 180, "Humans"],
+      ].map(([x, y, l], i) => (
+        <g key={i}>
+          <line x1="200" y1="110" x2={x} y2={y} stroke="var(--fire)" strokeWidth="1.6" />
+          <circle cx={x} cy={y} r="6" fill="var(--fire)" />
+          <text x={x} y={y - 12} textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{l}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+window.Marquee = Marquee;
+window.Services = Services;
+
+function Process() {
+  const steps = [
+    { n: "01", t: "Listen", d: "Two weeks shadowing your team to understand how work actually happens — no slides, just questions." },
+    { n: "02", t: "Map", d: "We show you where hours are lost, where money leaks, and where AI can actually help." },
+    { n: "03", t: "Prioritise", d: "Together we pick the three highest-value wins. No boil-the-ocean projects." },
+    { n: "04", t: "Deploy", d: "Agents ship in 2–3 week sprints. Each one has a name, a role, and clear KPIs." },
+    { n: "05", t: "Govern", d: "Evals, guardrails, audit logs, human oversight. The essentials, done properly." },
+    { n: "06", t: "Grow", d: "Hours saved get reinvested into the next agent. The programme pays for itself." },
+  ];
+  return (
+    <section id="process" className="process" data-screen-label="03 Process">
+      <div className="process__head">
+        <span className="section-kicker section-kicker--light">Process</span>
+        <h2 className="section-title">Six steps. No jargon.</h2>
+      </div>
+      <ol className="process__list">
+        {steps.map((s) => (
+          <li key={s.n} className="process__item">
+            <span className="process__n">{s.n}</span>
+            <h3 className="process__t">{s.t}</h3>
+            <p className="process__d">{s.d}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Proof() {
+  const stats = [
+    {
+      topic: "Productivity",
+      scope: "Knowledge work",
+      stat: "66%",
+      stat_label: "Avg. productivity lift on AI-assisted tasks",
+      detail: "Meta-analysis across customer support, coding and professional writing — workers using generative AI completed tasks 66% faster on average.",
+      source: "Nielsen Norman Group, 2024",
+    },
+    {
+      topic: "Adoption",
+      scope: "Enterprise",
+      stat: "78%",
+      stat_label: "Of organisations now use AI in ≥1 function",
+      detail: "Up from 55% the year prior. Most common uses: marketing and sales, service operations, and software engineering.",
+      source: "McKinsey State of AI, 2024",
+    },
+    {
+      topic: "ROI",
+      scope: "Implementation",
+      stat: "3.7×",
+      stat_label: "Return per dollar spent on generative AI",
+      detail: "Leading implementers report average returns of $3.70 for every $1 invested, with top-quartile deployments reaching 10×+.",
+      source: "IDC / Microsoft, 2024",
+    },
+  ];
+  return (
+    <section id="work" className="proof" data-screen-label="04 Proof">
+      <div className="proof__head">
+        <span className="section-kicker">The numbers</span>
+        <h2 className="section-title">What the research<br/>actually says.</h2>
+      </div>
+      <div className="proof__grid">
+        {stats.map((c, i) => (
+          <article key={i} className="proof__card">
+            <div className="proof__card-top">
+              <span className="proof__client">{c.topic}</span>
+              <span className="proof__sector">{c.scope}</span>
+            </div>
+            <div className="proof__stat">
+              <span className="proof__stat-big">{c.stat}</span>
+              <span className="proof__stat-small">{c.stat_label}</span>
+            </div>
+            <blockquote className="proof__quote">{c.detail}</blockquote>
+            <div className="proof__card-bot">
+              <span>Source · {c.source}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+window.Process = Process;
+window.Proof = Proof;
+
+function Manifesto() {
+  return (
+    <section id="manifesto" className="manifesto" data-screen-label="05 Manifesto">
+      <div className="manifesto__kicker">
+        <span className="section-kicker">Our promise</span>
+        <span className="manifesto__sig">Wise Ai · 2024</span>
+      </div>
+      <p className="manifesto__body">
+        AI should buy you <em>time</em>, not headlines.
+        We stay until your team actually gets their hours back —
+        with an <mark>audit</mark> before deployment, a clear <mark>owner</mark> for every agent,
+        and a real <mark>number</mark> on every hour saved.
+      </p>
+      <div className="manifesto__grid">
+        {[
+          ["Independent", "No vendor lock-in, no kickbacks. We pick what works for you."],
+          ["Outcome-priced", "Pay for hours saved, not for showing up."],
+          ["Safe by default", "Guardrails, audit logs, human oversight — always on."],
+          ["Plain English", "Clear reports your board can read. No AI jargon."],
+        ].map(([t, d], i) => (
+          <div key={i} className="manifesto__tenet">
+            <span className="manifesto__tenet-n">0{i + 1}</span>
+            <h4>{t}</h4>
+            <p>{d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Contact() {
+  const [sent, setSent] = React.useState(false);
+  const [form, setForm] = React.useState({ name: "", company: "", email: "", interest: "Audit", message: "" });
+  const submit = (e) => {
+    e.preventDefault();
+    setSent(true);
+  };
+  return (
+    <section id="contact" className="contact" data-screen-label="06 Contact">
+      <div className="contact__lhs">
+        <span className="section-kicker section-kicker--light">Contact</span>
+        <h2 className="contact__title">
+          Book a free<br/>
+          <span className="italic">15-minute call.</span>
+        </h2>
+        <p className="contact__lede">
+          Tell us what's taking up your team's time. We'll tell you — honestly —
+          whether AI can help, and what it would cost.
+        </p>
+        <div className="contact__meta">
+          <div>
+            <span className="contact__meta-k">STUDIO</span>
+            <span>Brisbane, QLD, AUS</span>
+          </div>
+          <div>
+            <span className="contact__meta-k">General</span>
+            <span>Tyler@wiseai.website<br/>+44 20 7946 0112</span>
+          </div>
+          <div>
+            <span className="contact__meta-k">Hours</span>
+            <span>9AM-5PM Mon-Sat</span>
+          </div>
+        </div>
+      </div>
+
+      <form className={`contact__form ${sent ? "is-sent" : ""}`} onSubmit={submit}>
+        {sent ? (
+          <div className="contact__thanks">
+            <span className="contact__check">✓</span>
+            <h3>Noted, {form.name.split(" ")[0] || "friend"}.</h3>
+            <p>
+              We'll be in touch within one working day. In the meantime — the owl
+              is watching.
+            </p>
+            <button type="button" className="btn btn--ghost" onClick={() => { setSent(false); setForm({ name: "", company: "", email: "", interest: "Audit", message: "" }); }}>
+              Send another
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="form-row">
+              <label>
+                <span>Your name</span>
+                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ada Lovelace" />
+              </label>
+              <label>
+                <span>Company</span>
+                <input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Analytical Engines Ltd" />
+              </label>
+            </div>
+            <label>
+              <span>Email</span>
+              <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="ada@engines.co" />
+            </label>
+            <div className="form-chips">
+              <span>Interested in</span>
+              {["Audit", "Agent Officer", "Both", "Just curious"].map((o) => (
+                <button
+                  type="button"
+                  key={o}
+                  className={`chip ${form.interest === o ? "is-on" : ""}`}
+                  onClick={() => setForm({ ...form, interest: o })}
+                >
+                  {o}
+                </button>
+              ))}
+            </div>
+            <label>
+              <span>What are you tired of doing?</span>
+              <textarea rows="4" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Reconciling invoices. Drafting RFPs. Answering tier-1 support. Everything." />
+            </label>
+            <button type="submit" className="btn btn--primary btn--full">
+              <span>Send message</span>
+              <Arrow />
+            </button>
+            <p className="form-fine">We reply within one working day. No spam, ever.</p>
+          </>
+        )}
+      </form>
+    </section>
+  );
+}
+
+function Footer() {
+  const [time, setTime] = React.useState("");
+  React.useEffect(() => {
+    const u = () => setTime(new Date().toLocaleTimeString("en-GB", { hour12: false }));
+    u();
+    const t = setInterval(u, 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <footer className="footer">
+      <div className="footer__big">
+        <Wordmark size={180} />
+      </div>
+      <div className="footer__cols">
+        <div>
+          <span className="footer__k">Index</span>
+          <a href="#services">Services</a>
+          <a href="#process">Process</a>
+          <a href="#work">Work</a>
+          <a href="#manifesto">Manifesto</a>
+          <a href="#contact">Contact</a>
+        </div>
+        <div>
+          <span className="footer__k">Elsewhere</span>
+          <a href="https://www.linkedin.com/company/wise-ai-solutions" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
+        </div>
+        <div>
+          <span className="footer__k">LOCATION</span>
+          <span>Brisbane, QLD, Austrlia</span>
+          <span>Tyler@wiseai.website</span>
+          <span>+61 438560606</span>
+        </div>
+        <div>
+          <span className="footer__k">Now</span>
+          <span>BNE · {time}</span>
+          <span>Accepting Clients</span>
+          <span>{"\n"}</span>
+        </div>
+      </div>
+      <div className="footer__base">
+        <span>© Wise Ai Ltd. 2024–{new Date().getFullYear()}. Made quietly in London.</span>
+        <span>Registered 14829920 · VAT GB 441 2200 98</span>
+      </div>
+    </footer>
+  );
+}
+
+window.Manifesto = Manifesto;
+window.Contact = Contact;
+window.Footer = Footer;
+
+function Tweaks({ state, setState }) {
+  const [visible, setVisible] = React.useState(false);
+  const [open, setOpen] = React.useState(true);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === "__activate_edit_mode") setVisible(true);
+      if (e.data?.type === "__deactivate_edit_mode") setVisible(false);
+    };
+    window.addEventListener("message", handler);
+    window.parent.postMessage({ type: "__edit_mode_available" }, "*");
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  if (!visible) return null;
+
+  const update = (patch) => {
+    const next = { ...state, ...patch };
+    setState(next);
+    window.parent.postMessage({ type: "__edit_mode_set_keys", edits: patch }, "*");
+  };
+
+  const accents = [
+    { name: "Fire", v: "#FF4D00" },
+    { name: "Ocean", v: "#256AFF" },
+    { name: "Sand", v: "#C5A474" },
+    { name: "Coil", v: "#1A1A1A" },
+  ];
+
+  return (
+    <div className="tweaks">
+      <div className="tweaks__head">
+        <span className="tweaks__title">◆ Tweaks</span>
+        <button className="tweaks__close" onClick={() => setOpen(!open)}>{open ? "+" : "+"}</button>
+      </div>
+      {open && (
+        <>
+          <div className="tweaks__row">
+            <span className="tweaks__label">Accent</span>
+            <div className="tweaks__swatches">
+              {accents.map((a) => (
+                <button
+                  key={a.v}
+                  className={`tweaks__swatch ${state.accent === a.v ? "is-on" : ""}`}
+                  style={{ background: a.v }}
+                  onClick={() => update({ accent: a.v })}
+                  title={a.name}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="tweaks__row">
+            <span className="tweaks__label">Hero variant</span>
+            <div className="tweaks__seg">
+              {["orange", "snow", "coil"].map((v) => (
+                <button
+                  key={v}
+                  className={state.heroVariant === v ? "is-on" : ""}
+                  onClick={() => update({ heroVariant: v })}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="tweaks__row">
+            <span className="tweaks__label">Headline italic</span>
+            <div className="tweaks__seg">
+              {["serif", "stroke"].map((v) => (
+                <button
+                  key={v}
+                  className={state.italic === v ? "is-on" : ""}
+                  onClick={() => update({ italic: v })}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+window.Tweaks = Tweaks;
+
+
+    const TWEAK_DEFAULTS = {
       "accent": "#FF4D00",
       "heroVariant": "snow",
       "italic": "stroke"
-    }/*EDITMODE-END*/;
+    };
 
     function App() {
       const [state, setState] = React.useState(TWEAK_DEFAULTS);
 
-      // apply accent to CSS var
       React.useEffect(() => {
         document.documentElement.style.setProperty("--accent", state.accent);
       }, [state.accent]);
