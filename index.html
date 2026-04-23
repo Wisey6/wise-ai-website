@@ -824,7 +824,7 @@ img { max-width: 100%; display: block; }
 }
 .contact__meta {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   padding-top: 24px;
   border-top: 1px solid rgba(250,250,250,0.2);
@@ -1290,13 +1290,10 @@ function Nav({ onNav }) {
         ))}
         <a
           className="nav-bubble__cta"
-          href="#contact"
-          onClick={(e) => {
-            e.preventDefault();
-            onNav("contact");
-            setOpen(false);
-            setHover(false);
-          }}
+          href="https://calendly.com/tyler-wiseai/15min"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => { setOpen(false); setHover(false); }}
         >
           Book a call →
         </a>
@@ -1819,7 +1816,7 @@ function Hero({ variant = "orange" }) {
               <span>See services</span>
               <Arrow />
             </a>
-            <a href="#contact" className="btn btn--ghost btn--lg">
+            <a href="https://calendly.com/tyler-wiseai/15min" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--lg">
               Book a call
             </a>
           </div>
@@ -2369,20 +2366,34 @@ function Contact() {
         </h2>
         <p className="contact__lede">
           Tell us what's taking up your team's time. We'll tell you — honestly —
-          whether AI can help, and what it would cost.
+          whether AI can help, and what it would cost. No pitch deck, no jargon.
         </p>
+        <a
+          href="https://calendly.com/tyler-wiseai/15min"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn--primary btn--lg contact__calendly"
+          style={{ marginBottom: "32px" }}
+        >
+          <span>Pick a time on Calendly</span>
+          <Arrow />
+        </a>
         <div className="contact__meta">
           <div>
-            <span className="contact__meta-k">STUDIO</span>
-            <span>Brisbane, QLD, AUS</span>
+            <span className="contact__meta-k">Studio</span>
+            <span>Brisbane, QLD — working with clients worldwide</span>
           </div>
           <div>
-            <span className="contact__meta-k">General</span>
-            <span>Tyler@wiseai.website<br/>+44 20 7946 0112</span>
+            <span className="contact__meta-k">Email</span>
+            <span><a href="mailto:tyler@wiseai.website" style={{ color: "inherit", textDecoration: "none" }}>tyler@wiseai.website</a></span>
+          </div>
+          <div>
+            <span className="contact__meta-k">Phone</span>
+            <span><a href="tel:+61438560606" style={{ color: "inherit", textDecoration: "none" }}>+61 438 560 606</a></span>
           </div>
           <div>
             <span className="contact__meta-k">Availability</span>
-            <span>Taking on select engagements</span>
+            <span>Mon–Fri · 9AM–5PM AEST · 15-min slots</span>
           </div>
         </div>
       </div>
@@ -2473,21 +2484,21 @@ function Footer() {
           <a href="https://www.linkedin.com/company/wise-ai-solutions" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>
         </div>
         <div>
-          <span className="footer__k">LOCATION</span>
-          <span>Brisbane, QLD, Austrlia</span>
-          <span>Tyler@wiseai.website</span>
-          <span>+61 438560606</span>
+          <span className="footer__k">Location</span>
+          <span>Brisbane, QLD, Australia</span>
+          <a href="mailto:tyler@wiseai.website">tyler@wiseai.website</a>
+          <a href="tel:+61438560606">+61 438 560 606</a>
         </div>
         <div>
           <span className="footer__k">Now</span>
           <span>BNE · {time}</span>
-          <span>Accepting Clients</span>
-          <span>{"\n"}</span>
+          <span>Accepting clients</span>
+          <a href="https://calendly.com/tyler-wiseai/15min" target="_blank" rel="noopener noreferrer">Book a call ↗</a>
         </div>
       </div>
       <div className="footer__base">
-        <span>© Wise Ai Ltd. 2024–{new Date().getFullYear()}. Made quietly in London.</span>
-        <span>Registered 14829920 · VAT GB 441 2200 98</span>
+        <span>© Wise Ai. 2024–{new Date().getFullYear()}. Built in Brisbane.</span>
+        <span>ABN pending · Independently owned</span>
       </div>
     </footer>
   );
