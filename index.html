@@ -839,6 +839,15 @@ img { max-width: 100%; display: block; }
 }
 .contact__meta span { font-size: 13px; line-height: 1.4; opacity: 0.85; }
 
+.contact__calendly-embed {
+  min-width: 320px;
+  height: 700px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(250,250,250,0.12);
+  background: #000;
+}
+
 .contact__form {
   background: rgba(250,250,250,0.04);
   border: 1px solid rgba(250,250,250,0.15);
@@ -1136,13 +1145,8 @@ img { image-rendering: -webkit-optimize-contrast; }
   .contact { padding: 80px 18px; gap: 32px; }
   .contact__title { font-size: clamp(38px, 11vw, 64px); }
   .contact__lede { font-size: 16px; }
-  .contact__meta { grid-template-columns: 1fr; gap: 16px; }
-  .contact__form { padding: 22px; gap: 16px; }
-  .form-row { grid-template-columns: 1fr; gap: 14px; }
-  .contact__form input,
-  .contact__form textarea { font-size: 16px; /* prevents iOS zoom on focus */ }
-  .form-chips { gap: 6px; }
-  .chip { padding: 7px 12px; font-size: 12px; }
+  .contact__meta { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .contact__calendly-embed { height: 640px !important; min-width: 0 !important; }
 
   /* ---- footer ---- */
   .footer { padding: 40px 18px 24px; }
@@ -1290,7 +1294,7 @@ function Nav({ onNav }) {
         ))}
         <a
           className="nav-bubble__cta"
-          href="https://calendly.com/tyler-wiseai/15min"
+          href="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f"
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => { setOpen(false); setHover(false); }}
@@ -1816,7 +1820,7 @@ function Hero({ variant = "orange" }) {
               <span>See services</span>
               <Arrow />
             </a>
-            <a href="https://calendly.com/tyler-wiseai/15min" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--lg">
+            <a href="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--lg">
               Book a call
             </a>
           </div>
@@ -2318,66 +2322,21 @@ function Manifesto() {
 }
 
 function Contact() {
-  const [sent, setSent] = React.useState(false);
-  const [sending, setSending] = React.useState(false);
-  const [error, setError] = React.useState("");
-  const [form, setForm] = React.useState({ name: "", company: "", email: "", interest: "Audit", message: "" });
-  const submit = async (e) => {
-    e.preventDefault();
-    if (sending) return;
-    setSending(true);
-    setError("");
-    try {
-      const res = await fetch("https://formsubmit.co/ajax/tyler@wiseai.website", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          company: form.company,
-          email: form.email,
-          interest: form.interest,
-          message: form.message,
-          _subject: `New Wise Ai enquiry — ${form.name} (${form.company})`,
-          _template: "table",
-          _captcha: "false",
-        }),
-      });
-      if (!res.ok) throw new Error("Submission failed");
-      setSent(true);
-    } catch (err) {
-      // fallback: open user's email client pre-filled
-      const subject = encodeURIComponent(`Wise Ai enquiry — ${form.name} (${form.company})`);
-      const body = encodeURIComponent(
-        `Name: ${form.name}\nCompany: ${form.company}\nEmail: ${form.email}\nInterest: ${form.interest}\n\n${form.message}`
-      );
-      window.location.href = `mailto:tyler@wiseai.website?subject=${subject}&body=${body}`;
-      setError("Couldn't submit directly — your email app should now be open. If not, please email tyler@wiseai.website.");
-    } finally {
-      setSending(false);
-    }
-  };
   return (
     <section id="contact" className="contact" data-screen-label="06 Contact">
       <div className="contact__lhs">
         <span className="section-kicker section-kicker--light">Contact</span>
         <h2 className="contact__title">
           Book a free<br/>
-          <span className="italic">15-minute call.</span>
+          <span className="italic">30-minute call.</span>
         </h2>
         <p className="contact__lede">
           Tell us what's taking up your team's time. We'll tell you — honestly —
           whether AI can help, and what it would cost. No pitch deck, no jargon.
         </p>
-        <a
-          href="https://calendly.com/tyler-wiseai/15min"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn--primary btn--lg contact__calendly"
-          style={{ marginBottom: "32px" }}
-        >
-          <span>Pick a time on Calendly</span>
-          <Arrow />
-        </a>
+        <p className="contact__lede" style={{ opacity: 0.75, marginTop: "-8px" }}>
+          Pick a slot on the right — Mon–Fri, 9AM–5PM AEST.
+        </p>
         <div className="contact__meta">
           <div>
             <span className="contact__meta-k">Studio</span>
@@ -2393,67 +2352,39 @@ function Contact() {
           </div>
           <div>
             <span className="contact__meta-k">Availability</span>
-            <span>Mon–Fri · 9AM–5PM AEST · 15-min slots</span>
+            <span>Mon–Fri · 9AM–5PM AEST · 30-min slots</span>
           </div>
         </div>
       </div>
 
-      <form className={`contact__form ${sent ? "is-sent" : ""}`} onSubmit={submit}>
-        {sent ? (
-          <div className="contact__thanks">
-            <span className="contact__check">✓</span>
-            <h3>Noted, {form.name.split(" ")[0] || "friend"}.</h3>
-            <p>
-              We'll be in touch shortly. In the meantime — the owl
-              is watching.
-            </p>
-            <button type="button" className="btn btn--ghost" onClick={() => { setSent(false); setForm({ name: "", company: "", email: "", interest: "Audit", message: "" }); }}>
-              Send another
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="form-row">
-              <label>
-                <span>Your name</span>
-                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ada Lovelace" />
-              </label>
-              <label>
-                <span>Company</span>
-                <input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Analytical Engines Ltd" />
-              </label>
-            </div>
-            <label>
-              <span>Email</span>
-              <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="ada@engines.co" />
-            </label>
-            <div className="form-chips">
-              <span>Interested in</span>
-              {["Audit", "Agent Officer", "Both", "Just curious"].map((o) => (
-                <button
-                  type="button"
-                  key={o}
-                  className={`chip ${form.interest === o ? "is-on" : ""}`}
-                  onClick={() => setForm({ ...form, interest: o })}
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-            <label>
-              <span>What are you tired of doing?</span>
-              <textarea rows="4" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Reconciling invoices. Drafting RFPs. Answering tier-1 support. Everything." />
-            </label>
-            <button type="submit" className="btn btn--primary btn--full" disabled={sending}>
-              <span>{sending ? "Sending…" : "Send message"}</span>
-              <Arrow />
-            </button>
-            {error && <p className="form-fine" style={{ color: "#ffb3a0", opacity: 0.9 }}>{error}</p>}
-            <p className="form-fine">Direct reply from Tyler. No spam, ever.</p>
-          </>
-        )}
-      </form>
+      <CalendlyInline />
     </section>
+  );
+}
+
+function CalendlyInline() {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const SRC = "https://assets.calendly.com/assets/external/widget.js";
+    const existing = document.querySelector(`script[src="${SRC}"]`);
+    if (!existing) {
+      const s = document.createElement("script");
+      s.src = SRC;
+      s.async = true;
+      document.body.appendChild(s);
+    } else if (window.Calendly && ref.current) {
+      window.Calendly.initInlineWidget({
+        url: "https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f",
+        parentElement: ref.current,
+      });
+    }
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className="calendly-inline-widget contact__calendly-embed"
+      data-url="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f"
+    />
   );
 }
 
@@ -2493,7 +2424,7 @@ function Footer() {
           <span className="footer__k">Now</span>
           <span>BNE · {time}</span>
           <span>Accepting clients</span>
-          <a href="https://calendly.com/tyler-wiseai/15min" target="_blank" rel="noopener noreferrer">Book a call ↗</a>
+          <a href="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f" target="_blank" rel="noopener noreferrer">Book a call ↗</a>
         </div>
       </div>
       <div className="footer__base">
