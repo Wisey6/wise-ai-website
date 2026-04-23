@@ -1735,13 +1735,13 @@ function Hero({ variant = "orange" }) {
   // arrived yet, fall back to a reasonable approximation.
   let endSize, endCx, endCy;
   if (screenRect && screenRect.w > 0 && screenRect.h > 0) {
-    endSize = screenRect.h * 0.72;
+    endSize = screenRect.h * (isMobile ? 0.60 : 0.72);
     endCx = screenRect.cx;
-    endCy = screenRect.cy + screenRect.h * 0.09;
+    endCy = screenRect.cy;
   } else {
-    endSize = Math.min(viewport.w, viewport.h) * 0.19;
-    endCx = viewport.w * 0.72;
-    endCy = viewport.h * 0.30;
+    endSize = Math.min(viewport.w, viewport.h) * (isMobile ? 0.16 : 0.19);
+    endCx = isMobile ? viewport.w * 0.50 : viewport.w * 0.72;
+    endCy = isMobile ? viewport.h * 0.27 : viewport.h * 0.30;
   }
 
   const owlCx = startCx + (endCx - startCx) * owlFlightT;
