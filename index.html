@@ -271,14 +271,20 @@ img { max-width: 100%; display: block; }
 .hero-intro-wordmark {
   position: absolute;
   left: 50%;
-  top: calc(50% + min(36vmin, 290px));
+  top: calc(50% + min(28vmin, 240px));
   transform: translateX(-50%);
   font-family: var(--font-display, var(--font-sans));
   font-weight: 800;
-  font-size: clamp(28px, 4.4vmin, 56px);
+  font-size: clamp(22px, 4vmin, 52px);
   letter-spacing: -0.02em;
   white-space: nowrap;
   transition: opacity 120ms linear;
+}
+@media (max-width: 640px) {
+  .hero-intro-wordmark {
+    top: calc(50% + min(24vh, 180px));
+    font-size: clamp(20px, 5vw, 34px);
+  }
 }
 .hero-intro-owl-flight {
   /* drop shadow softens so it reads against both white and the darker laptop bezel */
@@ -425,6 +431,9 @@ img { max-width: 100%; display: block; }
   }
   .hero__right { min-height: 320px; }
   .hero__3d { height: 340px; }
+  /* AI sub-letters need to scale down so they align with WISE on smaller viewports */
+  .hero__ai { height: auto !important; font-size: clamp(20px, 4.5vw, 36px) !important; line-height: 1 !important; }
+  .hero__wordmark { align-items: flex-end; line-height: 0.95; }
 }
 
 .hero__topbar {
@@ -1021,6 +1030,143 @@ img { max-width: 100%; display: block; }
 .tweaks__seg button:last-child { border-right: none; }
 .tweaks__seg button.is-on { background: var(--coil); color: var(--snow); }
 
+/* Hide dev Tweaks panel on production */
+.tweaks { display: none !important; }
+
+/* ============== POLISH ============== */
+/* subtle elevation on interactive cards */
+.proof__card,
+.process__item,
+.services__panel,
+.hero__cta-block {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
+  transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+.proof__card:hover,
+.process__item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06), 0 18px 40px rgba(0,0,0,0.08);
+}
+.btn {
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+.btn:active { transform: translateY(0); }
+.btn[disabled] { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* smoother image rendering */
+img { image-rendering: -webkit-optimize-contrast; }
+
+/* ============== MOBILE / iPHONE (≤ 640px) ============== */
+@media (max-width: 640px) {
+  :root { --edge: 18px; }
+
+  /* ---- hero ---- */
+  .hero { padding: 90px 18px 30px; min-height: auto; }
+  .hero__stage--split {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 20px 0;
+    min-height: auto;
+  }
+  /* iPhone: laptop sits above the WISE heading + CTAs */
+  .hero__right { order: 1; margin-bottom: 8px; }
+  .hero__left { order: 2; gap: 18px; padding-top: 0; align-items: center; text-align: center; }
+  /* keep the 3D wrap contained within its column on mobile */
+  .hero__3d-wrap {
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .hero__wordmark { justify-content: center; }
+  .hero__wise { font-size: clamp(64px, 22vw, 120px) !important; }
+  .hero__ai { font-size: clamp(18px, 6vw, 32px) !important; height: auto !important; }
+  .hero__tag { font-size: 16px; max-width: 92vw !important; margin: 0 auto; }
+  .hero__actions { justify-content: center; width: 100%; }
+  .hero__actions .btn { flex: 1; justify-content: center; min-width: 140px; }
+  .hero__topbar { font-size: 10px; padding-bottom: 14px; margin-bottom: 14px; }
+  .hero__right--responsive { height: 260px; min-height: 260px; }
+  .hero__3d { min-height: 260px !important; height: 260px !important; top: 0 !important; width: 100% !important; }
+  .hero__3d-mount { overflow: visible; }
+
+  /* ---- nav ---- */
+  /* Keep the app-icon at the top on iPhone: iOS-style rounded tile, glossy & floating */
+  .nav-bubble { top: 16px; gap: 10px; }
+  .nav-bubble__icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px; /* iOS home-screen icon curvature */
+    padding: 8px;
+  }
+  .nav-bubble__menu { font-size: 14px; padding: 8px; }
+  .nav-bubble__menu a { padding: 10px 14px; font-size: 16px; }
+
+  /* ---- marquee ---- */
+  .marquee { padding: 16px 0; font-size: clamp(26px, 8vw, 42px); }
+
+  /* ---- services ---- */
+  .services { padding: 80px 18px; }
+  .services__switch { grid-template-columns: 1fr !important; }
+  .services__panel { padding: 22px !important; gap: 24px !important; }
+  .services__kpi-stack { grid-template-columns: 1fr !important; gap: 10px; }
+  .services__lhs h3 { font-size: 30px !important; }
+
+  /* ---- process ---- */
+  .process { padding: 80px 18px; }
+  .process__item { padding: 24px; }
+  .process__t { font-size: 22px; }
+
+  /* ---- proof ---- */
+  .proof { padding: 80px 18px; }
+  .proof__card { padding: 24px; min-height: auto; gap: 16px; }
+
+  /* ---- manifesto ---- */
+  .manifesto { padding: 80px 18px !important; }
+  .manifesto__grid { grid-template-columns: 1fr !important; gap: 16px; }
+  .manifesto__body { font-size: 22px !important; }
+
+  /* ---- contact ---- */
+  .contact { padding: 80px 18px; gap: 32px; }
+  .contact__title { font-size: clamp(38px, 11vw, 64px); }
+  .contact__lede { font-size: 16px; }
+  .contact__meta { grid-template-columns: 1fr; gap: 16px; }
+  .contact__form { padding: 22px; gap: 16px; }
+  .form-row { grid-template-columns: 1fr; gap: 14px; }
+  .contact__form input,
+  .contact__form textarea { font-size: 16px; /* prevents iOS zoom on focus */ }
+  .form-chips { gap: 6px; }
+  .chip { padding: 7px 12px; font-size: 12px; }
+
+  /* ---- footer ---- */
+  .footer { padding: 40px 18px 24px; }
+  .footer__cols { grid-template-columns: 1fr 1fr !important; gap: 20px; }
+  .footer__base { flex-direction: column; gap: 10px; text-align: center; }
+
+  /* section titles scale down */
+  .section-title { font-size: clamp(36px, 11vw, 60px); }
+  .section-lede { font-size: 16px; }
+}
+
+/* ---- extra small phones (≤ 380px) ---- */
+@media (max-width: 380px) {
+  .hero__wise { font-size: 56px !important; }
+  .hero__ai { font-size: 18px !important; }
+  .hero__actions { flex-direction: column; }
+  .hero__actions .btn { width: 100%; }
+  .contact__title { font-size: 36px; }
+  .section-title { font-size: 36px; }
+}
+
+/* ---- landscape phones: keep the hero tight ---- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .hero { min-height: auto; padding: 80px 20px 20px; }
+  .hero__right--responsive { height: 260px; min-height: 260px; }
+  .hero__3d { min-height: 260px; height: 260px; }
+}
+
   </style>
 </head>
 <body>
@@ -1388,8 +1534,11 @@ function HeroLaptop3D({ showOwlOnScreen = false, lidClose = 0, onScreenRect = nu
       const spin = Math.max(0, Math.min(1, spinProgressRef.current || 0));
       if (model) {
         const idleAmount = (1 - close) * idleAmpCur;
-        // Pure hover — no Y rotation, just a pronounced vertical float.
-        model.rotation.y = 0;
+        // Subtle left-right sway + gentle vertical float for a polished idle.
+        // Sway is offset in phase from the bob so movement feels organic.
+        model.rotation.y = Math.sin(t * 0.55) * 0.06 * idleAmount;
+        model.rotation.z = Math.sin(t * 0.75 + 1.2) * 0.012 * idleAmount;
+        model.position.x = Math.sin(t * 0.65 + 0.8) * 0.035 * idleAmount;
         model.position.y = -0.55 + Math.sin(t * 1.05) * 0.09 * idleAmount;
       }
       // REAL lid close: rotate the lid pivot about its X axis. At close=0
@@ -1557,11 +1706,17 @@ function Hero({ variant = "orange" }) {
   const laptopFadeT= easeOutCubic(Math.max(0, Math.min(1, (p - 0.35) / 0.35)));    // laptop fades in during middle
 
   // PNG owl position/size interpolation
-  // starting state: centred in viewport, ~min(56vmin, 480px)
-  const startSize = Math.min(viewport.w, viewport.h) * 0.56;
-  const startSizeClamped = Math.min(startSize, 480);
+  // starting state: centred in viewport — sized so it fits with breathing room
+  // on every aspect ratio (portrait phone, tablet, wide desktop).
+  // Reserve ~20% viewport width margin AND room below for the wordmark.
+  const isMobile = viewport.w < 640;
+  const widthBound = viewport.w * (isMobile ? 0.68 : 0.55);
+  const heightBound = viewport.h * (isMobile ? 0.42 : 0.52);
+  const startSize = Math.min(widthBound, heightBound, 480);
+  const startSizeClamped = Math.max(160, startSize);
   const startCx = viewport.w / 2;
-  const startCy = viewport.h / 2;
+  // On very short screens, lift the owl slightly so the wordmark fits beneath.
+  const startCy = viewport.h / 2 - (isMobile ? viewport.h * 0.04 : 0);
   // end state: MATCH the 3D on-screen owl exactly. It's drawn at 60% of the
   // screen-mesh height, centred. The screen mesh projects to screenRect, so:
   //   endCy = screenRect.cy
@@ -1784,27 +1939,27 @@ function Services() {
       tag: "01",
       title: "Audit",
       kicker: "Every engagement starts here — know where AI actually fits, before you spend a dollar.",
-      body: "Two weeks inside your business. We shadow your team, map the workflows, and measure where hours are being lost. You get a clear, honest read on where AI will pay off — and where it won't.",
+      body: "A focused look inside your business. We shadow your team, map the workflows, and measure where time is being lost. You get a clear, honest read on where AI will pay off — and where it won't.",
       items: [
         "Full workflow &amp; stack review",
-        "Time-study across 3–5 key roles",
+        "Time-study across key roles",
         "Honest read on where AI fits (and where it doesn't)",
         "Evidence-backed findings document",
       ],
-      kpi: [["14", "days"], ["3–5", "roles shadowed"], ["$", "fixed fee"]],
+      kpi: [["Scoped", "engagement"], ["Key", "roles shadowed"], ["Fixed", "fee"]],
     },
     {
       tag: "02",
       title: "Opportunities",
       kicker: "A prioritised shortlist of the wins that actually matter.",
-      body: "We turn the audit into a ranked list of opportunities — scored by hours saved, cost, risk and time-to-value. You decide which ones to pursue; we help you pick.",
+      body: "We turn the audit into a ranked list of opportunities — scored by time saved, cost, risk and time-to-value. You decide which ones to pursue; we help you pick.",
       items: [
         "Ranked opportunity register",
         "Effort vs. impact scoring",
         "Clear go / no-go recommendation per item",
-        "90-day roadmap with owners &amp; dates",
+        "Phased roadmap with owners &amp; milestones",
       ],
-      kpi: [["8–12", "opportunities"], ["Top 3", "recommended"], ["90d", "roadmap"]],
+      kpi: [["Ranked", "opportunities"], ["Top picks", "recommended"], ["Phased", "roadmap"]],
     },
     {
       tag: "03",
@@ -1814,10 +1969,10 @@ function Services() {
       items: [
         "Agents, tools or workflow automation",
         "Guardrails &amp; human oversight built-in",
-        "Evals, audit logs and monthly reporting",
+        "Evals, audit logs and reporting",
         "Handover to your team when ready",
       ],
-      kpi: [["2–3 wks", "per sprint"], ["24/7", "on shift"], ["100%", "auditable"]],
+      kpi: [["Focused", "sprints"], ["Always", "on"], ["100%", "auditable"]],
     },
   ];
   const s = phases[active];
@@ -1885,65 +2040,156 @@ function Services() {
 
 function ServiceDiagram({ kind }) {
   if (kind === "audit") {
+    const domains = [
+      { label: "People",  icon: "M9 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM3 17c0-3 3-5 6-5s6 2 6 5v1H3v-1z" },
+      { label: "Process", icon: "M3 5h14M3 10h14M3 15h10" },
+      { label: "Tools",   icon: "M4 4l4 4M4 4h4v4M14 14l-4-4M14 14v-4h-4" },
+      { label: "Data",    icon: "M10 3c-4 0-7 1.5-7 3.5v7c0 2 3 3.5 7 3.5s7-1.5 7-3.5v-7c0-2-3-3.5-7-3.5zM3 10c0 2 3 3.5 7 3.5s7-1.5 7-3.5" },
+      { label: "Risk",    icon: "M10 3l8 14H2L10 3zm0 5v4m0 2v1" },
+    ];
     return (
-      <svg viewBox="0 0 400 220" className="diagram">
-        {["People","Process","Tools","Data","Risk"].map((lbl, i) => (
-          <g key={i} transform={`translate(${30 + i*70},${40})`}>
-            <rect width="56" height="56" fill="none" stroke="currentColor" strokeWidth="1.2" rx="8"/>
-            <text x="28" y="32" textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{lbl}</text>
+      <svg viewBox="0 0 400 240" className="diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="audit-box" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.08"/>
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.02"/>
+          </linearGradient>
+          <linearGradient id="audit-flow" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.15"/>
+            <stop offset="60%" stopColor="var(--fire)" stopOpacity="0.9"/>
+            <stop offset="100%" stopColor="var(--fire)" stopOpacity="1"/>
+          </linearGradient>
+          <filter id="audit-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <text x="20" y="20" fontSize="9" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="2">INPUT · FIVE DOMAINS</text>
+        {domains.map((d, i) => (
+          <g key={i} transform={`translate(${24 + i*72},${36})`}>
+            <rect width="60" height="76" fill="url(#audit-box)" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" rx="10"/>
+            <g transform="translate(20, 14) scale(1)" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.75">
+              <path d={d.icon}/>
+            </g>
+            <text x="30" y="58" textAnchor="middle" fontSize="9" fontFamily="var(--font-mono)" fontWeight="500" fill="currentColor" opacity="0.85">{d.label}</text>
+            <line x1="30" y1="68" x2="30" y2="78" stroke="var(--fire)" strokeWidth="1.5" opacity="0.6"/>
           </g>
         ))}
-        <path d="M60 140 Q 200 190 360 140" stroke="var(--fire)" strokeWidth="2" fill="none" />
-        <circle cx="360" cy="140" r="6" fill="var(--fire)" />
-        <text x="30" y="205" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6">
-          INPUT · 5 DOMAINS → OUTPUT · 1 FINDINGS DOC
-        </text>
+        <path d="M54 140 Q 200 200 346 140" stroke="url(#audit-flow)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+        <g transform="translate(346,140)" filter="url(#audit-glow)">
+          <circle r="10" fill="var(--fire)" opacity="0.25"/>
+          <circle r="5" fill="var(--fire)"/>
+        </g>
+        <g transform="translate(200, 172)">
+          <rect x="-70" y="0" width="140" height="46" rx="8" fill="var(--fire)" opacity="0.08" stroke="var(--fire)" strokeWidth="1" strokeOpacity="0.4"/>
+          <text x="0" y="18" textAnchor="middle" fontSize="9" fontFamily="var(--font-mono)" fill="var(--fire)" letterSpacing="1.5">OUTPUT</text>
+          <text x="0" y="34" textAnchor="middle" fontSize="12" fontFamily="var(--font-display)" fontWeight="700" fill="currentColor">Findings Report</text>
+        </g>
+        <text x="20" y="230" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.4" letterSpacing="1.5">SIGNAL → SYNTHESIS → DECISION</text>
       </svg>
     );
   }
   if (kind === "opps") {
     const rows = [
-      { label: "Invoice triage",      impact: 0.92, effort: 0.25 },
-      { label: "Sales follow-up",     impact: 0.78, effort: 0.40 },
-      { label: "Report generation",   impact: 0.70, effort: 0.30 },
-      { label: "Inbox routing",       impact: 0.55, effort: 0.20 },
-      { label: "Forecast drafting",   impact: 0.40, effort: 0.60 },
+      { label: "Invoice triage",    impact: 0.92, tag: "HIGH" },
+      { label: "Sales follow-up",   impact: 0.78, tag: "HIGH" },
+      { label: "Report generation", impact: 0.70, tag: "HIGH" },
+      { label: "Inbox routing",     impact: 0.55, tag: "MED"  },
+      { label: "Forecast drafting", impact: 0.40, tag: "LOW"  },
     ];
     return (
-      <svg viewBox="0 0 400 220" className="diagram">
-        <text x="20" y="22" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6">RANKED · IMPACT vs. EFFORT</text>
+      <svg viewBox="0 0 400 240" className="diagram" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bar-top" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.85"/>
+            <stop offset="100%" stopColor="var(--fire)" stopOpacity="1"/>
+          </linearGradient>
+          <linearGradient id="bar-low" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.18"/>
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0.32"/>
+          </linearGradient>
+        </defs>
+        <text x="20" y="20" fontSize="9" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="2">RANKED · IMPACT vs. EFFORT</text>
+        <g stroke="currentColor" strokeOpacity="0.1" strokeWidth="1">
+          <line x1="150" y1="36" x2="150" y2="200"/>
+          <line x1="205" y1="36" x2="205" y2="200"/>
+          <line x1="260" y1="36" x2="260" y2="200"/>
+          <line x1="315" y1="36" x2="315" y2="200"/>
+          <line x1="370" y1="36" x2="370" y2="200"/>
+        </g>
         {rows.map((r, i) => {
-          const y = 44 + i * 30;
+          const y = 44 + i * 32;
+          const top = i < 3;
           return (
             <g key={i}>
-              <text x="20" y={y + 10} fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{r.label}</text>
-              <rect x="150" y={y} width="220" height="14" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" rx="2"/>
-              <rect x="150" y={y} width={220 * r.impact} height="14" fill={i < 3 ? "var(--fire)" : "currentColor"} opacity={i < 3 ? 1 : 0.35} rx="2"/>
-              {i < 3 && <text x={378} y={y + 11} fontSize="9" fontFamily="var(--font-mono)" fill="var(--fire)">✓</text>}
+              <text x="20" y={y + 12} fontSize="10" fontFamily="var(--font-display)" fontWeight="500" fill="currentColor" opacity={top ? 1 : 0.55}>{r.label}</text>
+              <rect x="150" y={y} width="220" height="18" fill="currentColor" opacity="0.04" rx="4"/>
+              <rect x="150" y={y} width={220 * r.impact} height="18" fill={top ? "url(#bar-top)" : "url(#bar-low)"} rx="4"/>
+              {top && (
+                <g transform={`translate(${150 + 220 * r.impact - 4}, ${y + 9})`}>
+                  <circle r="3" fill="#fff" opacity="0.9"/>
+                </g>
+              )}
+              <text x={378} y={y + 12} fontSize="8" fontFamily="var(--font-mono)" fontWeight="500" fill={top ? "var(--fire)" : "currentColor"} opacity={top ? 1 : 0.4} letterSpacing="1">{r.tag}</text>
             </g>
           );
         })}
+        <g transform="translate(20, 218)">
+          <circle cx="4" cy="4" r="3" fill="var(--fire)"/>
+          <text x="14" y="8" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6" letterSpacing="1">TOP PICKS</text>
+          <circle cx="100" cy="4" r="3" fill="currentColor" opacity="0.3"/>
+          <text x="110" y="8" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.4" letterSpacing="1">DEFERRED</text>
+        </g>
       </svg>
     );
   }
   // build
+  const nodes = [
+    { x:  70, y:  60, l: "Agent",    s: "reasoning"  },
+    { x: 330, y:  60, l: "Tools",    s: "actions"    },
+    { x:  70, y: 180, l: "Workflow", s: "orchestration" },
+    { x: 330, y: 180, l: "Humans",   s: "oversight"  },
+  ];
   return (
-    <svg viewBox="0 0 400 220" className="diagram">
-      <g stroke="currentColor" strokeWidth="1.2" fill="none">
-        <circle cx="200" cy="110" r="50" />
-        <circle cx="200" cy="110" r="90" strokeDasharray="4 4" />
+    <svg viewBox="0 0 400 240" className="diagram" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="core-grad">
+          <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.35"/>
+          <stop offset="60%" stopColor="var(--fire)" stopOpacity="0.12"/>
+          <stop offset="100%" stopColor="var(--fire)" stopOpacity="0"/>
+        </radialGradient>
+        <linearGradient id="spoke" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.9"/>
+          <stop offset="100%" stopColor="var(--fire)" stopOpacity="0.3"/>
+        </linearGradient>
+        <filter id="build-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <text x="20" y="20" fontSize="9" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="2">BUILD · OPERATING SYSTEM</text>
+      <g stroke="currentColor" strokeOpacity="0.12" fill="none">
+        <circle cx="200" cy="120" r="100"/>
+        <circle cx="200" cy="120" r="70" strokeDasharray="2 5"/>
       </g>
-      <text x="200" y="114" textAnchor="middle" fontSize="13" fontFamily="var(--font-display)" fontWeight="700" fill="currentColor">SYSTEM</text>
-      {[
-        [60, 50, "Agent"],
-        [340, 50, "Tools"],
-        [60, 180, "Workflow"],
-        [340, 180, "Humans"],
-      ].map(([x, y, l], i) => (
-        <g key={i}>
-          <line x1="200" y1="110" x2={x} y2={y} stroke="var(--fire)" strokeWidth="1.6" />
-          <circle cx={x} cy={y} r="6" fill="var(--fire)" />
-          <text x={x} y={y - 12} textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{l}</text>
+      <circle cx="200" cy="120" r="50" fill="url(#core-grad)"/>
+      {nodes.map((n, i) => (
+        <line key={`l${i}`} x1="200" y1="120" x2={n.x} y2={n.y} stroke="url(#spoke)" strokeWidth="1.4" strokeLinecap="round"/>
+      ))}
+      <g transform="translate(200, 120)" filter="url(#build-glow)">
+        <circle r="42" fill="var(--fire)" opacity="0.08"/>
+        <circle r="32" fill="var(--coil)" stroke="var(--fire)" strokeWidth="1.5"/>
+        <text y="-2" textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="var(--fire)" letterSpacing="1.5">CORE</text>
+        <text y="12" textAnchor="middle" fontSize="11" fontFamily="var(--font-display)" fontWeight="700" fill="#fff">SYSTEM</text>
+      </g>
+      {nodes.map((n, i) => (
+        <g key={`n${i}`} transform={`translate(${n.x}, ${n.y})`}>
+          <circle r="18" fill="var(--coil)" stroke="var(--fire)" strokeWidth="1.2" opacity="0.95"/>
+          <circle r="4" fill="var(--fire)"/>
+          <g transform={`translate(0, ${n.y < 120 ? -26 : 30})`}>
+            <text textAnchor="middle" fontSize="11" fontFamily="var(--font-display)" fontWeight="700" fill="currentColor">{n.l}</text>
+            <text y="11" textAnchor="middle" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="1">{n.s.toUpperCase()}</text>
+          </g>
         </g>
       ))}
     </svg>
@@ -1955,12 +2201,12 @@ window.Services = Services;
 
 function Process() {
   const steps = [
-    { n: "01", t: "Listen", d: "Two weeks shadowing your team to understand how work actually happens — no slides, just questions." },
-    { n: "02", t: "Map", d: "We show you where hours are lost, where money leaks, and where AI can actually help." },
-    { n: "03", t: "Prioritise", d: "Together we pick the three highest-value wins. No boil-the-ocean projects." },
-    { n: "04", t: "Deploy", d: "Agents ship in 2–3 week sprints. Each one has a name, a role, and clear KPIs." },
+    { n: "01", t: "Listen", d: "We shadow your team to understand how work actually happens — no slides, just questions." },
+    { n: "02", t: "Map", d: "We show you where time is lost, where money leaks, and where AI can actually help." },
+    { n: "03", t: "Prioritise", d: "Together we pick the highest-value wins. No boil-the-ocean projects." },
+    { n: "04", t: "Deploy", d: "Agents ship in focused sprints. Each one has a name, a role, and clear KPIs." },
     { n: "05", t: "Govern", d: "Evals, guardrails, audit logs, human oversight. The essentials, done properly." },
-    { n: "06", t: "Grow", d: "Hours saved get reinvested into the next agent. The programme pays for itself." },
+    { n: "06", t: "Grow", d: "Time saved gets reinvested into the next agent. The programme pays for itself." },
   ];
   return (
     <section id="process" className="process" data-screen-label="03 Process">
@@ -2072,10 +2318,42 @@ function Manifesto() {
 
 function Contact() {
   const [sent, setSent] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
+  const [error, setError] = React.useState("");
   const [form, setForm] = React.useState({ name: "", company: "", email: "", interest: "Audit", message: "" });
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    setSent(true);
+    if (sending) return;
+    setSending(true);
+    setError("");
+    try {
+      const res = await fetch("https://formsubmit.co/ajax/tyler@wiseai.website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          company: form.company,
+          email: form.email,
+          interest: form.interest,
+          message: form.message,
+          _subject: `New Wise Ai enquiry — ${form.name} (${form.company})`,
+          _template: "table",
+          _captcha: "false",
+        }),
+      });
+      if (!res.ok) throw new Error("Submission failed");
+      setSent(true);
+    } catch (err) {
+      // fallback: open user's email client pre-filled
+      const subject = encodeURIComponent(`Wise Ai enquiry — ${form.name} (${form.company})`);
+      const body = encodeURIComponent(
+        `Name: ${form.name}\nCompany: ${form.company}\nEmail: ${form.email}\nInterest: ${form.interest}\n\n${form.message}`
+      );
+      window.location.href = `mailto:tyler@wiseai.website?subject=${subject}&body=${body}`;
+      setError("Couldn't submit directly — your email app should now be open. If not, please email tyler@wiseai.website.");
+    } finally {
+      setSending(false);
+    }
   };
   return (
     <section id="contact" className="contact" data-screen-label="06 Contact">
@@ -2099,8 +2377,8 @@ function Contact() {
             <span>Tyler@wiseai.website<br/>+44 20 7946 0112</span>
           </div>
           <div>
-            <span className="contact__meta-k">Hours</span>
-            <span>9AM-5PM Mon-Sat</span>
+            <span className="contact__meta-k">Availability</span>
+            <span>Taking on select engagements</span>
           </div>
         </div>
       </div>
@@ -2111,7 +2389,7 @@ function Contact() {
             <span className="contact__check">✓</span>
             <h3>Noted, {form.name.split(" ")[0] || "friend"}.</h3>
             <p>
-              We'll be in touch within one working day. In the meantime — the owl
+              We'll be in touch shortly. In the meantime — the owl
               is watching.
             </p>
             <button type="button" className="btn btn--ghost" onClick={() => { setSent(false); setForm({ name: "", company: "", email: "", interest: "Audit", message: "" }); }}>
@@ -2151,11 +2429,12 @@ function Contact() {
               <span>What are you tired of doing?</span>
               <textarea rows="4" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Reconciling invoices. Drafting RFPs. Answering tier-1 support. Everything." />
             </label>
-            <button type="submit" className="btn btn--primary btn--full">
-              <span>Send message</span>
+            <button type="submit" className="btn btn--primary btn--full" disabled={sending}>
+              <span>{sending ? "Sending…" : "Send message"}</span>
               <Arrow />
             </button>
-            <p className="form-fine">We reply within one working day. No spam, ever.</p>
+            {error && <p className="form-fine" style={{ color: "#ffb3a0", opacity: 0.9 }}>{error}</p>}
+            <p className="form-fine">Direct reply from Tyler. No spam, ever.</p>
           </>
         )}
       </form>
