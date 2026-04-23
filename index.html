@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wise Ai — AI Audit &amp; Agent Officer</title>
+  <title>Wise Ai · AI audit, ranking, and build for SMBs</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -606,9 +606,119 @@ img { max-width: 100%; display: block; }
 .services__diagram {
   background: var(--snow);
   border-radius: 12px;
-  padding: 20px;
+  padding: 28px 20px 36px;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .diagram { width: 100%; height: auto; color: var(--coil); }
+
+/* ---- tilted card stack (service diagrams) ---- */
+.cardstack { position: relative; width: 100%; }
+.cardstack__kicker {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.55;
+  text-transform: uppercase;
+  color: var(--coil);
+  margin-bottom: 6px;
+  text-align: center;
+}
+.cardstack__deck {
+  position: relative;
+  height: 240px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  perspective: 900px;
+}
+.cardstack__card {
+  position: absolute;
+  width: 118px;
+  height: 178px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--tint);
+  color: var(--ink, #1A1A1A);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.08);
+  transform: translateX(var(--shift)) translateY(var(--lift)) rotate(var(--rot));
+  transition: transform 0.45s cubic-bezier(.2,.8,.2,1), box-shadow 0.45s ease;
+  z-index: var(--z);
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+.cardstack__card:hover {
+  transform: translateX(var(--shift)) translateY(calc(var(--lift) - 14px)) rotate(var(--rot));
+  box-shadow: 0 22px 44px rgba(0,0,0,0.22), 0 4px 10px rgba(0,0,0,0.12);
+  z-index: 99;
+}
+.cardstack__texture {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.cardstack__label {
+  padding: 10px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 52px;
+}
+.cardstack__rank {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  opacity: 0.7;
+}
+.cardstack__title {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.cardstack__card--dark { --ink: #FAFAFA; }
+.cardstack__card--dark .cardstack__texture { border-bottom-color: rgba(255,255,255,0.14); }
+/* textures */
+.cardstack__tx--bars {
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,0.22) 0 3px, transparent 3px 12px);
+}
+.cardstack__tx--grid {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.14) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.cardstack__tx--waves {
+  background-image: repeating-radial-gradient(circle at 50% 240%, transparent 0 22px, rgba(255,255,255,0.4) 22px 23px);
+}
+.cardstack__tx--dots {
+  background-image: radial-gradient(rgba(255,255,255,0.4) 1.6px, transparent 2px);
+  background-size: 11px 11px;
+}
+.cardstack__tx--wire {
+  background-image:
+    linear-gradient(rgba(255,77,0,0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,77,0,0.55) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.cardstack__foot {
+  margin-top: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  opacity: 0.5;
+  text-transform: uppercase;
+  color: var(--coil);
+}
+.cardstack__foot strong { color: var(--fire); font-weight: 500; }
 
 @media (max-width: 900px) {
   .services__panel { grid-template-columns: 1fr; padding: 28px; gap: 32px; }
@@ -1126,6 +1236,10 @@ img { image-rendering: -webkit-optimize-contrast; }
   .services__kpi-small { font-size: 8px !important; letter-spacing: 0.06em !important; }
   .services__lhs h3 { font-size: 30px !important; }
   .diagram { width: 100% !important; height: auto !important; }
+  .services__diagram { padding: 20px 12px 28px !important; min-height: 260px !important; }
+  .cardstack__deck { height: 210px !important; transform: scale(0.78); }
+  .cardstack__card { width: 110px !important; height: 164px !important; }
+  .cardstack__title { font-size: 19px !important; }
 
   /* ---- process ---- */
   .process { padding: 80px 18px; }
@@ -1794,7 +1908,7 @@ function Hero({ variant = "orange" }) {
         style={{ opacity: copyOpacity, transform: `translateY(${(1 - copyOpacity) * 8}px)` }}
       >
         <span className="hero__kicker">
-          <span className="dot" /> Available — Accepting new clients
+          <span className="dot" /> Available · Accepting new clients
         </span>
         <span className="hero__clock">Brisbane · {time}</span>
       </div>
@@ -1813,7 +1927,7 @@ function Hero({ variant = "orange" }) {
             <span className="hero__ai" style={{ color: "rgb(242, 120, 47)", height: "177px", fontSize: "35px", display: "inline-block" }}> AI</span>
           </div>
           <p className="hero__tag" style={{ fontWeight: 500, color: "rgb(0, 0, 0)", maxWidth: "500px" }}>
-            From AI confusion to competitive advantage.
+            We turn AI confusion into compounding advantage.
           </p>
           <div className="hero__actions">
             <a href="#services" className="btn btn--primary btn--lg">
@@ -1943,8 +2057,8 @@ function Services() {
     {
       tag: "01",
       title: "Audit",
-      kicker: "Every engagement starts here — know where AI actually fits, before you spend a dollar.",
-      body: "A focused look inside your business. We shadow your team, map the workflows, and measure where time is being lost. You get a clear, honest read on where AI will pay off — and where it won't.",
+      kicker: "Every engagement starts here. We find where AI actually fits, before you spend a dollar.",
+      body: "A focused look inside your business. We shadow your team, map the workflows, and measure where time is being lost. The outcome is a clear, honest read on where AI pays off. And where it quietly won't.",
       items: [
         "Full workflow &amp; stack review",
         "Time-study across key roles",
@@ -1957,7 +2071,7 @@ function Services() {
       tag: "02",
       title: "Opportunities",
       kicker: "A prioritised shortlist of the wins that actually matter.",
-      body: "We turn the audit into a ranked list of opportunities — scored by time saved, cost, risk and time-to-value. You decide which ones to pursue; we help you pick.",
+      body: "We turn the audit into a ranked list of opportunities, scored by time saved, cost, risk and time-to-value. You decide which ones to pursue. We help you pick with conviction.",
       items: [
         "Ranked opportunity register",
         "Effort vs. impact scoring",
@@ -1969,8 +2083,8 @@ function Services() {
     {
       tag: "03",
       title: "Build",
-      kicker: "The right AI systems for the job — tools, agents, or both.",
-      body: "We design and deploy the systems that fit each opportunity. Sometimes it's an agent on payroll. Sometimes it's a workflow tool, a prompt library, or just better evals. We build what the evidence says you need — nothing more.",
+      kicker: "The right AI systems for the job. Tools, agents, or both.",
+      body: "We design and deploy the systems that fit each opportunity. Sometimes it's an agent on payroll. Sometimes it's a workflow tool, a prompt library, or just better evals. We build what the evidence says you need. Nothing more.",
       items: [
         "Agents, tools or workflow automation",
         "Guardrails &amp; human oversight built-in",
@@ -1988,8 +2102,8 @@ function Services() {
         <span className="section-kicker">Service</span>
         <h2 className="section-title">One service.<br/>Three phases.</h2>
         <p className="section-lede">
-          Every engagement starts with an audit. We then surface the opportunities worth pursuing,
-          and build the AI systems — tools, agents, workflows — best suited to each one.
+          Every engagement starts with an audit. We surface the opportunities worth pursuing,
+          then build the AI systems (tools, agents, workflows) best suited to each one.
         </p>
       </div>
 
@@ -2044,160 +2158,79 @@ function Services() {
 }
 
 function ServiceDiagram({ kind }) {
-  if (kind === "audit") {
-    const domains = [
-      { label: "People",  icon: "M9 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM3 17c0-3 3-5 6-5s6 2 6 5v1H3v-1z" },
-      { label: "Process", icon: "M3 5h14M3 10h14M3 15h10" },
-      { label: "Tools",   icon: "M4 4l4 4M4 4h4v4M14 14l-4-4M14 14v-4h-4" },
-      { label: "Data",    icon: "M10 3c-4 0-7 1.5-7 3.5v7c0 2 3 3.5 7 3.5s7-1.5 7-3.5v-7c0-2-3-3.5-7-3.5zM3 10c0 2 3 3.5 7 3.5s7-1.5 7-3.5" },
-      { label: "Risk",    icon: "M10 3l8 14H2L10 3zm0 5v4m0 2v1" },
-    ];
-    return (
-      <svg viewBox="0 0 400 240" className="diagram" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="audit-box" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0.08"/>
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0.02"/>
-          </linearGradient>
-          <linearGradient id="audit-flow" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.15"/>
-            <stop offset="60%" stopColor="var(--fire)" stopOpacity="0.9"/>
-            <stop offset="100%" stopColor="var(--fire)" stopOpacity="1"/>
-          </linearGradient>
-          <filter id="audit-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <text x="20" y="20" fontSize="9" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="2">INPUT · FIVE DOMAINS</text>
-        {domains.map((d, i) => (
-          <g key={i} transform={`translate(${24 + i*72},${36})`}>
-            <rect width="60" height="76" fill="url(#audit-box)" stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" rx="10"/>
-            <g transform="translate(20, 14) scale(1)" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.75">
-              <path d={d.icon}/>
-            </g>
-            <text x="30" y="58" textAnchor="middle" fontSize="9" fontFamily="var(--font-mono)" fontWeight="500" fill="currentColor" opacity="0.85">{d.label}</text>
-            <line x1="30" y1="68" x2="30" y2="78" stroke="var(--fire)" strokeWidth="1.5" opacity="0.6"/>
-          </g>
-        ))}
-        <path d="M54 140 Q 200 200 346 140" stroke="url(#audit-flow)" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <g transform="translate(346,140)" filter="url(#audit-glow)">
-          <circle r="10" fill="var(--fire)" opacity="0.25"/>
-          <circle r="5" fill="var(--fire)"/>
-        </g>
-        <g transform="translate(200, 172)">
-          <rect x="-70" y="0" width="140" height="46" rx="8" fill="var(--fire)" opacity="0.08" stroke="var(--fire)" strokeWidth="1" strokeOpacity="0.4"/>
-          <text x="0" y="18" textAnchor="middle" fontSize="9" fontFamily="var(--font-mono)" fill="var(--fire)" letterSpacing="1.5">OUTPUT</text>
-          <text x="0" y="34" textAnchor="middle" fontSize="12" fontFamily="var(--font-display)" fontWeight="700" fill="currentColor">Findings Report</text>
-        </g>
-        <text x="20" y="230" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.4" letterSpacing="1.5">SIGNAL → SYNTHESIS → DECISION</text>
-      </svg>
-    );
-  }
-  if (kind === "opps") {
-    const rows = [
-      { label: "Invoice triage",    impact: 0.92, tag: "HIGH" },
-      { label: "Sales follow-up",   impact: 0.78, tag: "HIGH" },
-      { label: "Report generation", impact: 0.70, tag: "HIGH" },
-      { label: "Inbox routing",     impact: 0.55, tag: "MED"  },
-      { label: "Forecast drafting", impact: 0.40, tag: "LOW"  },
-    ];
-    return (
-      <svg viewBox="0 0 400 240" className="diagram" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="bar-top" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.85"/>
-            <stop offset="100%" stopColor="var(--fire)" stopOpacity="1"/>
-          </linearGradient>
-          <linearGradient id="bar-low" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0.18"/>
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0.32"/>
-          </linearGradient>
-        </defs>
-        <text x="20" y="20" fontSize="9" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="2">RANKED · IMPACT vs. EFFORT</text>
-        <g stroke="currentColor" strokeOpacity="0.1" strokeWidth="1">
-          <line x1="150" y1="36" x2="150" y2="200"/>
-          <line x1="205" y1="36" x2="205" y2="200"/>
-          <line x1="260" y1="36" x2="260" y2="200"/>
-          <line x1="315" y1="36" x2="315" y2="200"/>
-          <line x1="370" y1="36" x2="370" y2="200"/>
-        </g>
-        {rows.map((r, i) => {
-          const y = 44 + i * 32;
-          const top = i < 3;
-          return (
-            <g key={i}>
-              <text x="20" y={y + 12} fontSize="10" fontFamily="var(--font-display)" fontWeight="500" fill="currentColor" opacity={top ? 1 : 0.55}>{r.label}</text>
-              <rect x="150" y={y} width="220" height="18" fill="currentColor" opacity="0.04" rx="4"/>
-              <rect x="150" y={y} width={220 * r.impact} height="18" fill={top ? "url(#bar-top)" : "url(#bar-low)"} rx="4"/>
-              {top && (
-                <g transform={`translate(${150 + 220 * r.impact - 4}, ${y + 9})`}>
-                  <circle r="3" fill="#fff" opacity="0.9"/>
-                </g>
-              )}
-              <text x={378} y={y + 12} fontSize="8" fontFamily="var(--font-mono)" fontWeight="500" fill={top ? "var(--fire)" : "currentColor"} opacity={top ? 1 : 0.4} letterSpacing="1">{r.tag}</text>
-            </g>
-          );
-        })}
-        <g transform="translate(20, 218)">
-          <circle cx="4" cy="4" r="3" fill="var(--fire)"/>
-          <text x="14" y="8" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6" letterSpacing="1">TOP PICKS</text>
-          <circle cx="100" cy="4" r="3" fill="currentColor" opacity="0.3"/>
-          <text x="110" y="8" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.4" letterSpacing="1">DEFERRED</text>
-        </g>
-      </svg>
-    );
-  }
-  // build
-  const nodes = [
-    { x:  70, y:  60, l: "Agent",    s: "reasoning"  },
-    { x: 330, y:  60, l: "Tools",    s: "actions"    },
-    { x:  70, y: 180, l: "Workflow", s: "orchestration" },
-    { x: 330, y: 180, l: "Humans",   s: "oversight"  },
+  const decks = {
+    audit: {
+      kicker: "Five domains we inspect",
+      foot: <>Output <strong>·</strong> Findings brief</>,
+      cards: [
+        { tint: "#FF4D00", tx: "bars",  title: "People"  },
+        { tint: "#F2EEE8", tx: "grid",  title: "Process" },
+        { tint: "#256AFF", tx: "waves", title: "Tools",   dark: true },
+        { tint: "#2E7D4F", tx: "dots",  title: "Data",    dark: true },
+        { tint: "#1A1A1A", tx: "wire",  title: "Risk",    dark: true },
+      ],
+    },
+    opps: {
+      kicker: "Ranked by payoff and speed",
+      foot: <>Top three <strong>·</strong> Your roadmap</>,
+      cards: [
+        { tint: "#FF4D00", tx: "bars",  title: "Invoices", rank: "01" },
+        { tint: "#F2EEE8", tx: "grid",  title: "Sales",    rank: "02" },
+        { tint: "#256AFF", tx: "waves", title: "Reports",  rank: "03", dark: true },
+        { tint: "#2E7D4F", tx: "dots",  title: "Inbox",    rank: "04", dark: true },
+        { tint: "#1A1A1A", tx: "wire",  title: "Forecast", rank: "05", dark: true },
+      ],
+    },
+    build: {
+      kicker: "The system we ship",
+      foot: <>Sprint <strong>·</strong> Ship <strong>·</strong> Measure</>,
+      cards: [
+        { tint: "#FF4D00", tx: "bars",  title: "Agent"     },
+        { tint: "#F2EEE8", tx: "grid",  title: "Tools"     },
+        { tint: "#256AFF", tx: "waves", title: "Workflow", dark: true },
+        { tint: "#2E7D4F", tx: "dots",  title: "Oversight", dark: true },
+        { tint: "#1A1A1A", tx: "wire",  title: "Metrics",  dark: true },
+      ],
+    },
+  };
+  const deck = decks[kind] || decks.audit;
+  const layouts = [
+    { rot: -14, shift: -140, lift:  10 },
+    { rot:  -7, shift:  -70, lift:  -2 },
+    { rot:   1, shift:    0, lift: -10 },
+    { rot:   8, shift:   70, lift:  -2 },
+    { rot:  15, shift:  140, lift:   10 },
   ];
   return (
-    <svg viewBox="0 0 400 240" className="diagram" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="core-grad">
-          <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.35"/>
-          <stop offset="60%" stopColor="var(--fire)" stopOpacity="0.12"/>
-          <stop offset="100%" stopColor="var(--fire)" stopOpacity="0"/>
-        </radialGradient>
-        <linearGradient id="spoke" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="var(--fire)" stopOpacity="0.9"/>
-          <stop offset="100%" stopColor="var(--fire)" stopOpacity="0.3"/>
-        </linearGradient>
-        <filter id="build-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <text x="20" y="20" fontSize="9" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="2">BUILD · OPERATING SYSTEM</text>
-      <g stroke="currentColor" strokeOpacity="0.12" fill="none">
-        <circle cx="200" cy="120" r="100"/>
-        <circle cx="200" cy="120" r="70" strokeDasharray="2 5"/>
-      </g>
-      <circle cx="200" cy="120" r="50" fill="url(#core-grad)"/>
-      {nodes.map((n, i) => (
-        <line key={`l${i}`} x1="200" y1="120" x2={n.x} y2={n.y} stroke="url(#spoke)" strokeWidth="1.4" strokeLinecap="round"/>
-      ))}
-      <g transform="translate(200, 120)" filter="url(#build-glow)">
-        <circle r="42" fill="var(--fire)" opacity="0.08"/>
-        <circle r="32" fill="var(--coil)" stroke="var(--fire)" strokeWidth="1.5"/>
-        <text y="-2" textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="var(--fire)" letterSpacing="1.5">CORE</text>
-        <text y="12" textAnchor="middle" fontSize="11" fontFamily="var(--font-display)" fontWeight="700" fill="#fff">SYSTEM</text>
-      </g>
-      {nodes.map((n, i) => (
-        <g key={`n${i}`} transform={`translate(${n.x}, ${n.y})`}>
-          <circle r="18" fill="var(--coil)" stroke="var(--fire)" strokeWidth="1.2" opacity="0.95"/>
-          <circle r="4" fill="var(--fire)"/>
-          <g transform={`translate(0, ${n.y < 120 ? -26 : 30})`}>
-            <text textAnchor="middle" fontSize="11" fontFamily="var(--font-display)" fontWeight="700" fill="currentColor">{n.l}</text>
-            <text y="11" textAnchor="middle" fontSize="8" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.5" letterSpacing="1">{n.s.toUpperCase()}</text>
-          </g>
-        </g>
-      ))}
-    </svg>
+    <div className="cardstack">
+      <span className="cardstack__kicker">{deck.kicker}</span>
+      <div className="cardstack__deck">
+        {deck.cards.map((c, i) => {
+          const L = layouts[i];
+          const style = {
+            "--tint": c.tint,
+            "--rot": `${L.rot}deg`,
+            "--shift": `${L.shift}px`,
+            "--lift": `${L.lift}px`,
+            "--z": i + 1,
+          };
+          return (
+            <div
+              key={i}
+              className={`cardstack__card ${c.dark ? "cardstack__card--dark" : ""}`}
+              style={style}
+            >
+              <div className={`cardstack__texture cardstack__tx--${c.tx}`} aria-hidden="true" />
+              <div className="cardstack__label">
+                {c.rank && <span className="cardstack__rank">{c.rank}</span>}
+                <span className="cardstack__title">{c.title}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="cardstack__foot">{deck.foot}</div>
+    </div>
   );
 }
 
@@ -2206,7 +2239,7 @@ window.Services = Services;
 
 function Process() {
   const steps = [
-    { n: "01", t: "Listen", d: "We shadow your team to understand how work actually happens — no slides, just questions." },
+    { n: "01", t: "Listen", d: "We shadow your team to understand how work actually happens. No slides, just questions." },
     { n: "02", t: "Map", d: "We show you where time is lost, where money leaks, and where AI can actually help." },
     { n: "03", t: "Prioritise", d: "Together we pick the highest-value wins. No boil-the-ocean projects." },
     { n: "04", t: "Deploy", d: "Agents ship in focused sprints. Each one has a name, a role, and clear KPIs." },
@@ -2239,7 +2272,7 @@ function Proof() {
       scope: "Knowledge work",
       stat: "66%",
       stat_label: "Avg. productivity lift on AI-assisted tasks",
-      detail: "Meta-analysis across customer support, coding and professional writing — workers using generative AI completed tasks 66% faster on average.",
+      detail: "Meta-analysis across customer support, coding and professional writing. Workers using generative AI completed tasks 66% faster on average.",
       source: "Nielsen Norman Group, 2024",
     },
     {
@@ -2299,15 +2332,15 @@ function Manifesto() {
       </div>
       <p className="manifesto__body">
         AI should earn its keep, <em>not</em> the headlines.
-        We stay until your team actually feels the difference —
-        with an <mark>audit</mark> before anything ships, a clear <mark>owner</mark> for every agent,
-        and <mark>measurable</mark> outcomes you can defend to the board.
+        We stay until your team actually feels the difference.
+        An <mark>audit</mark> before anything ships. A clear <mark>owner</mark> for every agent.
+        And <mark>measurable</mark> outcomes you can defend to the board.
       </p>
       <div className="manifesto__grid">
         {[
           ["Independent", "No vendor lock-in, no kickbacks. We pick what works for you."],
           ["Outcome-priced", "Pay for hours saved, not for showing up."],
-          ["Safe by default", "Guardrails, audit logs, human oversight — always on."],
+          ["Safe by default", "Guardrails, audit logs, human oversight. Always on."],
           ["Plain English", "Clear reports your board can read. No AI jargon."],
         ].map(([t, d], i) => (
           <div key={i} className="manifesto__tenet">
@@ -2331,16 +2364,16 @@ function Contact() {
           <span className="italic">30-minute call.</span>
         </h2>
         <p className="contact__lede">
-          Tell us what's taking up your team's time. We'll tell you — honestly —
-          whether AI can help, and what it would cost. No pitch deck, no jargon.
+          Tell us what's taking up your team's time. We'll tell you, honestly,
+          whether AI can help and what it would cost. No pitch deck, no jargon.
         </p>
         <p className="contact__lede" style={{ opacity: 0.75, marginTop: "-8px" }}>
-          Pick a slot on the right — Mon–Fri, 9AM–5PM AEST.
+          Pick a slot on the right. Mon to Fri, 9AM to 5PM AEST.
         </p>
         <div className="contact__meta">
           <div>
             <span className="contact__meta-k">Studio</span>
-            <span>Brisbane, QLD — working with clients worldwide</span>
+            <span>Brisbane, QLD. Working with clients worldwide.</span>
           </div>
           <div>
             <span className="contact__meta-k">Email</span>
