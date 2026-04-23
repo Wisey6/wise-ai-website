@@ -690,22 +690,22 @@ img { max-width: 100%; display: block; }
 }
 .cardstack__card:active { filter: brightness(0.97); }
 .cardstack__card--resting {
-  animation: card-enter 500ms var(--ease-out) both, card-float 6s ease-in-out infinite;
-  animation-delay: var(--delay), var(--delay);
+  opacity: 0;
+  transform: translate(var(--x), var(--y)) rotate(var(--rot)) scale(0.92);
+  transition: opacity 550ms cubic-bezier(0.23, 1, 0.32, 1), transform 650ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 300ms ease;
 }
-@keyframes card-enter {
-  0%   { opacity: 0; filter: blur(6px); }
-  100% { opacity: 1; filter: blur(0); }
+.cardstack__deck.is-revealed .cardstack__card--resting {
+  opacity: 1;
+  transform: translate(var(--x), var(--y)) rotate(var(--rot)) scale(1);
 }
 @media (hover: hover) and (pointer: fine) {
-  .cardstack__card--resting:hover {
-    animation-play-state: paused;
+  .cardstack__deck.is-revealed .cardstack__card--resting:hover {
+    transform: translate(var(--x), var(--y)) rotate(var(--rot)) scale(1.05);
     box-shadow: 0 26px 54px rgba(0,0,0,0.22), 0 6px 14px rgba(0,0,0,0.12);
-    z-index: 50;
+    /* no z-index change — hovered card grows in place, natural neighbors keep overlapping */
   }
   .cardstack__card--collapsed:hover {
     box-shadow: 0 18px 36px rgba(0,0,0,0.22);
-    z-index: 50;
   }
 }
 .cardstack__card--active,
@@ -724,10 +724,6 @@ img { max-width: 100%; display: block; }
   height: 148px;
   margin-left: -54px;
   margin-top: -74px;
-}
-@keyframes card-float {
-  0%, 100% { transform: translate(var(--x), var(--y)) rotate(var(--rot)); }
-  50%      { transform: translate(var(--x), calc(var(--y) - 10px)) rotate(var(--rot)); }
 }
 .cardstack__texture {
   flex: 0 0 46%;
@@ -800,6 +796,218 @@ img { max-width: 100%; display: block; }
     linear-gradient(rgba(255,77,0,0.55) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,77,0,0.55) 1px, transparent 1px);
   background-size: 18px 18px;
+}
+
+/* ---- Phase 2 · Opportunities ranked bar chart ---- */
+.oppchart {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 12px;
+}
+.oppchart__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 0 4px 14px;
+  border-bottom: 1px dashed rgba(26,26,26,0.14);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.oppchart__kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.oppchart__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.oppchart__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.oppchart__row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 16px;
+  padding: 14px 14px 16px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(26,26,26,0.08);
+  border-radius: 14px;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 520ms cubic-bezier(0.23, 1, 0.32, 1), transform 620ms cubic-bezier(0.23, 1, 0.32, 1), border-color 220ms ease, background 220ms ease;
+}
+.oppchart.is-revealed .oppchart__row {
+  opacity: 1;
+  transform: translateY(0);
+}
+.oppchart__row.is-top {
+  background: #FFFFFF;
+  border-color: rgba(255,77,0,0.35);
+}
+@media (hover: hover) and (pointer: fine) {
+  .oppchart__row:hover { border-color: rgba(26,26,26,0.25); background: #FFFFFF; }
+  .oppchart__row.is-top:hover { border-color: var(--fire); }
+}
+.oppchart__rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  opacity: 0.55;
+  padding-top: 4px;
+}
+.oppchart__row.is-top .oppchart__rank { color: var(--fire); opacity: 1; }
+.oppchart__body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.oppchart__title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.oppchart__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+.oppchart__score {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+.oppchart__row.is-top .oppchart__score { color: var(--fire); opacity: 1; font-weight: 600; }
+.oppchart__desc {
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin: 0;
+  opacity: 0.72;
+}
+.oppchart__bar-track {
+  position: relative;
+  height: 5px;
+  background: rgba(26,26,26,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.oppchart__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: rgba(26,26,26,0.45);
+  border-radius: 3px;
+  transition: width 900ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.oppchart.is-revealed .oppchart__bar { width: var(--w, 0%); }
+.oppchart__row.is-top .oppchart__bar { background: var(--fire); }
+
+/* ---- Phase 3 · Build system diagram ---- */
+.bsystem {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  aspect-ratio: 1 / 0.68;
+  margin: 0 auto;
+}
+.bsystem__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.bsystem__line {
+  stroke-dashoffset: 40;
+  transition: stroke-dashoffset 900ms cubic-bezier(0.23, 1, 0.32, 1), opacity 500ms cubic-bezier(0.23, 1, 0.32, 1);
+  opacity: 0;
+}
+.bsystem.is-revealed .bsystem__line { stroke-dashoffset: 0; opacity: 1; }
+.bsystem__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--coil);
+  color: var(--snow);
+  padding: 18px 24px;
+  border-radius: 999px;
+  min-width: 170px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+  opacity: 0;
+  transition: opacity 500ms cubic-bezier(0.23, 1, 0.32, 1) 100ms, transform 600ms cubic-bezier(0.23, 1, 0.32, 1) 100ms;
+}
+.bsystem.is-revealed .bsystem__center { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.bsystem__center-kicker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+.bsystem__center-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+}
+.bsystem__center-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+}
+.bsystem__node {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(0.94);
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: #FFFFFF;
+  border: 1px solid rgba(26,26,26,0.12);
+  padding: 10px 16px;
+  border-radius: 12px;
+  min-width: 128px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  transition: opacity 500ms cubic-bezier(0.23, 1, 0.32, 1), transform 620ms cubic-bezier(0.23, 1, 0.32, 1), border-color 220ms ease;
+}
+.bsystem.is-revealed .bsystem__node { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+@media (hover: hover) and (pointer: fine) {
+  .bsystem__node:hover { border-color: var(--fire); }
+}
+.bsystem__node-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.bsystem__node-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
 }
 
 @media (max-width: 900px) {
@@ -1138,6 +1346,9 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--coil);
   overflow: hidden;
 }
+.footer__mark { max-width: 100%; }
+.footer__mark > span:first-child { font-size: clamp(64px, 22vw, 180px) !important; }
+.footer__mark > span:last-child  { font-size: clamp(16px, 5.5vw, 45px) !important; margin-top: 0.08em !important; }
 .footer__cols {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1322,10 +1533,81 @@ img { image-rendering: -webkit-optimize-contrast; }
   .services__kpi-big { font-size: 18px !important; line-height: 1.05 !important; }
   .services__kpi-small { font-size: 8px !important; letter-spacing: 0.06em !important; }
   .services__panel--wide { padding: 24px 12px 28px !important; }
-  .services__playground { padding: 12px 6px 24px !important; min-height: 420px !important; overflow: hidden !important; }
-  .cardstack { min-height: 400px !important; }
-  .cardstack__deck { height: 400px !important; transform: scale(0.52); transform-origin: center center; }
-  .cardstack__card--active .cardstack__desc { font-size: 13px !important; }
+  .services__playground { padding: 16px 8px 24px !important; min-height: auto !important; overflow: hidden !important; }
+
+  /* Phase 1 cardstack — stacked vertically on mobile for readability */
+  .cardstack { min-height: auto !important; padding: 0 !important; }
+  .cardstack__deck { height: auto !important; display: flex !important; flex-direction: column; gap: 14px; width: 100%; padding: 4px; }
+  .cardstack__card {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 140px;
+    transform: translateY(18px) scale(0.98) !important;
+    opacity: 0;
+    transition: opacity 500ms var(--ease-out) var(--delay, 0s), transform 620ms var(--ease-out) var(--delay, 0s), background 200ms ease;
+    flex-direction: row !important;
+  }
+  .cardstack__deck.is-revealed .cardstack__card--resting {
+    transform: translateY(0) scale(1) !important;
+    opacity: 1;
+  }
+  .cardstack__card--active {
+    transform: translateY(0) scale(1) !important;
+    opacity: 1;
+    min-height: 180px;
+  }
+  .cardstack__card--collapsed {
+    transform: translateY(0) scale(1) !important;
+    opacity: 1;
+    min-height: 64px;
+  }
+  .cardstack__texture { flex: 0 0 36% !important; border-right: 1px solid rgba(0,0,0,0.08); border-bottom: none !important; }
+  .cardstack__card--dark .cardstack__texture { border-right-color: rgba(255,255,255,0.14); }
+  .cardstack__label { padding: 14px 16px !important; justify-content: center !important; }
+  .cardstack__title { font-size: 22px !important; }
+  .cardstack__card--active .cardstack__title { font-size: 24px !important; }
+  .cardstack__card--collapsed .cardstack__title { font-size: 14px !important; }
+  .cardstack__card--active .cardstack__desc { font-size: 13px !important; max-height: 160px !important; }
+
+  /* Phase 2 opps chart */
+  .oppchart { padding: 12px 4px; }
+  .oppchart__row { grid-template-columns: 36px 1fr; gap: 12px; padding: 12px; }
+  .oppchart__title { font-size: 17px; }
+  .oppchart__desc { font-size: 12.5px; }
+
+  /* Phase 3 system — vertical list on mobile */
+  .bsystem { aspect-ratio: auto !important; padding: 4px; }
+  .bsystem__lines { display: none; }
+  .bsystem__center {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: scale(0.92) !important;
+    margin: 0 auto 18px;
+    width: fit-content;
+  }
+  .bsystem.is-revealed .bsystem__center { transform: scale(1) !important; }
+  .bsystem__node {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: translateY(14px) !important;
+    opacity: 0;
+    margin: 0 0 10px;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100%;
+    text-align: left !important;
+    padding: 12px 14px;
+  }
+  .bsystem.is-revealed .bsystem__node { transform: translateY(0) !important; opacity: 1; }
+  .bsystem__node-title { font-size: 15px; }
+  .bsystem__node-sub { font-size: 10px; }
 
   /* ---- process ---- */
   .process { padding: 80px 18px; }
@@ -1934,13 +2216,20 @@ function Hero({ variant = "orange" }) {
   // of the screen-canvas height, centred within the 16:10 screen. The screen
   // mesh projects into viewport pixels via `screenRect`. If the rect hasn't
   // arrived yet, fall back to a reasonable approximation.
+  // owl-transparent.png is 660 x 520 — wider than tall.
+  const OWL_ASPECT = 660 / 520; // w/h ≈ 1.269
+  // The 3D on-screen owl is painted at 60% of screen-texture height.
+  // Matching THAT in projected pixels means the PNG's displayed width =
+  //   (0.60 * screenRect.h) * OWL_ASPECT
+  // so the PNG height (auto) = 0.60 * screenRect.h, lining up exactly.
+  const ONSCREEN_H_RATIO = 0.60;
   let endSize, endCx, endCy;
   if (screenRect && screenRect.w > 0 && screenRect.h > 0) {
-    endSize = screenRect.h * (isMobile ? 0.60 : 0.72);
+    endSize = screenRect.h * ONSCREEN_H_RATIO * OWL_ASPECT;
     endCx = screenRect.cx;
     endCy = screenRect.cy;
   } else {
-    endSize = Math.min(viewport.w, viewport.h) * (isMobile ? 0.16 : 0.19);
+    endSize = Math.min(viewport.w, viewport.h) * (isMobile ? 0.20 : 0.24);
     endCx = isMobile ? viewport.w * 0.50 : viewport.w * 0.72;
     endCy = isMobile ? viewport.h * 0.27 : viewport.h * 0.30;
   }
@@ -1948,6 +2237,7 @@ function Hero({ variant = "orange" }) {
   const owlCx = startCx + (endCx - startCx) * owlFlightT;
   const owlCy = startCy + (endCy - startCy) * owlFlightT;
   const owlSize = startSizeClamped + (endSize - startSizeClamped) * owlFlightT;
+  const owlPngHeight = owlSize / OWL_ASPECT;
   // reveal scale/opacity during first segment
   const owlRevealScale = 0.92 + owlRevealT * 0.08;
   const owlBaseOpacity = owlRevealT;
@@ -2083,7 +2373,9 @@ function Hero({ variant = "orange" }) {
         </div>
       )}
 
-      {/* Owl PNG — rises centre-screen, then flies to the laptop screen */}
+      {/* Owl PNG — rises centre-screen, then flies to the laptop screen.
+          Centred with transform so the box's actual pixel size (which differs
+          from width because height is aspect-auto) doesn't shift the midpoint. */}
       {pngOwlOpacity > 0.001 && (
         <img
           className="hero-intro-owl-flight"
@@ -2092,12 +2384,12 @@ function Hero({ variant = "orange" }) {
           aria-hidden
           style={{
             position: "fixed",
-            left: `${owlCx - owlSize / 2}px`,
-            top:  `${owlCy - owlSize / 2}px`,
+            left: `${owlCx}px`,
+            top:  `${owlCy}px`,
             width: `${owlSize}px`,
-            height: "auto",
+            height: `${owlPngHeight}px`,
             opacity: pngOwlOpacity,
-            transform: `scale(${owlRevealScale})`,
+            transform: `translate(-50%, -50%) scale(${owlRevealScale})`,
             transformOrigin: "center center",
             pointerEvents: "none",
             zIndex: 30,
@@ -2226,34 +2518,56 @@ function Services() {
   );
 }
 
-function ServiceDiagram({ kind }) {
-  const decks = {
-    audit: [
-      { tint: "#FF4D00", tx: "bars",  title: "People",  desc: "We shadow the roles that move the work. Real interviews, real time studies, no slideware." },
-      { tint: "#F2EEE8", tx: "grid",  title: "Process", desc: "Your workflows mapped end to end. Where handoffs drag, where AI can take the first pass." },
-      { tint: "#256AFF", tx: "waves", title: "Tools",    desc: "An honest inventory of what's in play. Where tools duplicate, miss, or can be bridged.", dark: true },
-      { tint: "#2E7D4F", tx: "dots",  title: "Data",     desc: "A plain-English read on what you have, where it sits, and whether it's ready for AI.", dark: true },
-      { tint: "#1A1A1A", tx: "wire",  title: "Risk",     desc: "Where AI is a bad fit, and where guardrails are non-negotiable. Said out loud, in writing.", dark: true },
-    ],
-    opps: [
-      { tint: "#FF4D00", tx: "bars",  title: "Invoices", rank: "01", desc: "Invoice triage with human sign-off. Days cut to minutes, paid faster, fewer surprises." },
-      { tint: "#F2EEE8", tx: "grid",  title: "Sales",    rank: "02", desc: "Personalised follow-up at scale. Warm, specific, never a cold template." },
-      { tint: "#256AFF", tx: "waves", title: "Reports",  rank: "03", desc: "Operational reports generated from your data. Friday afternoons back for your team.", dark: true },
-      { tint: "#2E7D4F", tx: "dots",  title: "Inbox",    rank: "04", desc: "Smart routing and drafting for shared inboxes. Your people on the hard stuff.", dark: true },
-      { tint: "#1A1A1A", tx: "wire",  title: "Forecast", rank: "05", desc: "Forecast drafts with real context, not guesswork. Sharper calls, faster cycles.", dark: true },
-    ],
-    build: [
-      { tint: "#FF4D00", tx: "bars",  title: "Agent",     desc: "Autonomous reasoning on a defined scope. A named owner, clear boundaries, clean handoffs." },
-      { tint: "#F2EEE8", tx: "grid",  title: "Tools",     desc: "The integrations the agent needs. Your stack, wired properly. No duct tape." },
-      { tint: "#256AFF", tx: "waves", title: "Workflow",  desc: "The orchestration layer that stitches humans and agents together into one clean flow.", dark: true },
-      { tint: "#2E7D4F", tx: "dots",  title: "Oversight", desc: "Evals, guardrails, audit logs, and approvals. Confidence it's behaving as intended.", dark: true },
-      { tint: "#1A1A1A", tx: "wire",  title: "Metrics",   desc: "Hours saved, dollars kept, errors avoided. Numbers your board will actually read.", dark: true },
-    ],
-  };
-  const cards = decks[kind] || decks.audit;
-  const [sel, setSel] = React.useState(null);
+function useRevealOnView(ref, setRevealed) {
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let done = false;
+    let tid = 0;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      setRevealed(true);
+      clearTimeout(tid);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+    const check = () => {
+      if (done) return;
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight || 0;
+      if (r.top < vh * 0.92 && r.bottom > vh * 0.05) {
+        finish();
+      } else {
+        tid = setTimeout(check, 140);
+      }
+    };
+    tid = setTimeout(check, 40);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      done = true;
+      clearTimeout(tid);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [ref, setRevealed]);
+}
 
-  React.useEffect(() => { setSel(null); }, [kind]);
+function AuditCardStack() {
+  const cards = [
+    { tint: "#FF4D00", tx: "bars",  title: "People",  desc: "We shadow the roles that move the work. Real interviews, real time studies, no slideware." },
+    { tint: "#F2EEE8", tx: "grid",  title: "Process", desc: "Your workflows mapped end to end. Where handoffs drag, where AI can take the first pass." },
+    { tint: "#256AFF", tx: "waves", title: "Tools",    desc: "An honest inventory of what's in play. Where tools duplicate, miss, or can be bridged.", dark: true },
+    { tint: "#2E7D4F", tx: "dots",  title: "Data",     desc: "A plain-English read on what you have, where it sits, and whether it's ready for AI.", dark: true },
+    { tint: "#1A1A1A", tx: "wire",  title: "Risk",     desc: "Where AI is a bad fit, and where guardrails are non-negotiable. Said out loud, in writing.", dark: true },
+  ];
+
+  const [sel, setSel] = React.useState(null);
+  const [revealed, setRevealed] = React.useState(false);
+  const deckRef = React.useRef(null);
+
+  useRevealOnView(deckRef, setRevealed);
 
   const layouts = [
     { rot: -10, x: -280, y:  20 },
@@ -2265,7 +2579,10 @@ function ServiceDiagram({ kind }) {
 
   return (
     <div className="cardstack" onClick={() => setSel(null)}>
-      <div key={kind} className={`cardstack__deck ${sel !== null ? "is-expanded" : ""}`}>
+      <div
+        ref={deckRef}
+        className={`cardstack__deck ${sel !== null ? "is-expanded" : ""} ${revealed ? "is-revealed" : ""}`}
+      >
         {cards.map((c, i) => {
           const L = layouts[i];
           const others = cards.map((_, j) => j).filter(j => j !== sel);
@@ -2280,7 +2597,7 @@ function ServiceDiagram({ kind }) {
               "--x": `${L.x}px`,
               "--y": `${L.y}px`,
               "--z": i === 2 ? 5 : (i < 2 ? i + 1 : 6 - i),
-              "--delay": `${i * 0.45}s`,
+              transitionDelay: `${i * 0.12}s, ${i * 0.12}s, 0s`,
             };
           } else if (sel === i) {
             style = {
@@ -2303,16 +2620,16 @@ function ServiceDiagram({ kind }) {
             };
             state = "collapsed";
           }
+          const revealCls = revealed && state === "resting" ? " is-revealed" : "";
           return (
             <div
               key={i}
-              className={`cardstack__card cardstack__card--${state} ${c.dark ? "cardstack__card--dark" : ""}`}
+              className={`cardstack__card cardstack__card--${state}${revealCls} ${c.dark ? "cardstack__card--dark" : ""}`}
               style={style}
               onClick={(e) => { e.stopPropagation(); setSel(sel === i ? null : i); }}
             >
               <div className={`cardstack__texture cardstack__tx--${c.tx}`} aria-hidden="true" />
               <div className="cardstack__label">
-                {c.rank && <span className="cardstack__rank">{c.rank}</span>}
                 <span className="cardstack__title">{c.title}</span>
                 <p className="cardstack__desc">{c.desc}</p>
               </div>
@@ -2322,6 +2639,115 @@ function ServiceDiagram({ kind }) {
       </div>
     </div>
   );
+}
+
+function OppsDiagram() {
+  const opps = [
+    { rank: "01", title: "Invoices", desc: "Triage with human sign-off — days cut to minutes.",       score: 94, top: true },
+    { rank: "02", title: "Sales",    desc: "Personalised follow-up at scale. Warm, not cold.",        score: 88, top: true },
+    { rank: "03", title: "Reports",  desc: "Operational reports from your data. Fridays back.",       score: 81, top: true },
+    { rank: "04", title: "Inbox",    desc: "Smart routing for shared inboxes.",                       score: 63 },
+    { rank: "05", title: "Forecast", desc: "Forecast drafts with real context, not guesswork.",       score: 55 },
+  ];
+
+  const [revealed, setRevealed] = React.useState(false);
+  const rootRef = React.useRef(null);
+
+  useRevealOnView(rootRef, setRevealed);
+
+  return (
+    <div ref={rootRef} className={`oppchart ${revealed ? "is-revealed" : ""}`}>
+      <div className="oppchart__head">
+        <span className="oppchart__kicker">Ranked register</span>
+        <span className="oppchart__meta">Top 3 recommended · 90-day roadmap</span>
+      </div>
+      <ul className="oppchart__list">
+        {opps.map((o, i) => (
+          <li
+            key={o.rank}
+            className={`oppchart__row ${o.top ? "is-top" : ""}`}
+            style={{ transitionDelay: `${i * 100}ms`, "--w": `${o.score}%` }}
+          >
+            <span className="oppchart__rank">{o.rank}</span>
+            <div className="oppchart__body">
+              <div className="oppchart__title-row">
+                <span className="oppchart__title">{o.title}</span>
+                <span className="oppchart__score">{o.score}</span>
+              </div>
+              <p className="oppchart__desc">{o.desc}</p>
+              <div className="oppchart__bar-track">
+                <div className="oppchart__bar" />
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function BuildDiagram() {
+  const nodes = [
+    { title: "Agent",     sub: "Autonomous reasoning",  angle: 270 },
+    { title: "Tools",     sub: "Stack integrations",    angle: 342 },
+    { title: "Workflow",  sub: "Orchestration layer",   angle:  54 },
+    { title: "Oversight", sub: "Evals & guardrails",    angle: 126 },
+    { title: "Metrics",   sub: "Hours & dollars saved", angle: 198 },
+  ];
+  const [revealed, setRevealed] = React.useState(false);
+  const rootRef = React.useRef(null);
+
+  useRevealOnView(rootRef, setRevealed);
+
+  const R = 36; // radius for nodes (percent)
+  const positioned = nodes.map((n) => {
+    const a = (n.angle * Math.PI) / 180;
+    return { ...n, left: 50 + Math.cos(a) * R, top: 50 + Math.sin(a) * R };
+  });
+
+  return (
+    <div ref={rootRef} className={`bsystem ${revealed ? "is-revealed" : ""}`}>
+      <svg className="bsystem__lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        {positioned.map((n, i) => (
+          <line
+            key={i}
+            x1="50" y1="50"
+            x2={n.left} y2={n.top}
+            stroke="rgba(26,26,26,0.18)"
+            strokeWidth="0.25"
+            strokeDasharray="0.8 0.9"
+            style={{ transitionDelay: `${i * 90 + 200}ms` }}
+            className="bsystem__line"
+          />
+        ))}
+      </svg>
+      <div className="bsystem__center">
+        <span className="bsystem__center-kicker">System</span>
+        <span className="bsystem__center-title">Your AI stack</span>
+        <span className="bsystem__center-sub">One source of truth</span>
+      </div>
+      {positioned.map((n, i) => (
+        <div
+          key={i}
+          className="bsystem__node"
+          style={{
+            left: `${n.left}%`,
+            top: `${n.top}%`,
+            transitionDelay: `${i * 100 + 400}ms`,
+          }}
+        >
+          <span className="bsystem__node-title">{n.title}</span>
+          <span className="bsystem__node-sub">{n.sub}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ServiceDiagram({ kind }) {
+  if (kind === "opps")  return <OppsDiagram />;
+  if (kind === "build") return <BuildDiagram />;
+  return <AuditCardStack key="audit" />;
 }
 
 window.Marquee = Marquee;
@@ -2522,7 +2948,7 @@ function Footer() {
   return (
     <footer className="footer">
       <div className="footer__big">
-        <Wordmark size={180} />
+        <Wordmark size={180} className="footer__mark" />
       </div>
       <div className="footer__cols">
         <div>
