@@ -39,6 +39,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+html { scroll-padding-top: 110px; -webkit-text-size-adjust: 100%; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -47,7 +48,14 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  overflow-x: clip;
+  min-width: 320px;
 }
+/* keyboard focus ring (only when navigating by keyboard) */
+:focus-visible { outline: 2px solid var(--fire); outline-offset: 3px; border-radius: 4px; }
+:focus:not(:focus-visible) { outline: none; }
+/* prevent long words (URLs, emails) from forcing horizontal overflow on narrow viewports */
+h1, h2, h3, h4, p, li, .hero__tag, .section-lede, .contact__lede, .footer__cols a, .contact__meta span { overflow-wrap: break-word; }
 ::selection { background: var(--fire); color: #fff; }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
@@ -216,6 +224,7 @@ img { max-width: 100%; display: block; }
 .hero {
   position: relative;
   min-height: 100vh;
+  min-height: 100svh;
   padding: 110px var(--edge) 40px;
   overflow: hidden;
   display: flex;
@@ -1357,8 +1366,8 @@ img { max-width: 100%; display: block; }
   overflow: hidden;
 }
 .footer__mark { max-width: 100%; }
-.footer__mark > span:first-child { font-size: clamp(64px, 22vw, 180px) !important; }
-.footer__mark > span:last-child  { font-size: clamp(16px, 5.5vw, 45px) !important; margin-top: 0.08em !important; }
+.footer__mark > span:first-child { font-size: clamp(64px, 18vw, 180px) !important; }
+.footer__mark > span:last-child  { font-size: clamp(16px, 4.5vw, 45px) !important; margin-top: 0.08em !important; }
 .footer__cols {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1666,6 +1675,99 @@ img { image-rendering: -webkit-optimize-contrast; }
   .hero { min-height: auto; padding: 80px 20px 20px; }
   .hero__right--responsive { height: 260px; min-height: 260px; }
   .hero__3d { min-height: 260px; height: 260px; }
+}
+
+/* ============== TABLET (641px – 1023px) ==============
+   Bridges the gap between large phone and small desktop so layout
+   doesn't pop straight from stacked-mobile to wide-desktop. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  :root { --edge: 28px; }
+
+  /* generous but not desktop-sized vertical rhythm */
+  .services, .process, .proof, .manifesto, .contact { padding-top: 96px; padding-bottom: 96px; }
+
+  /* hero — already stacks at 900, but keep the 3D area at a proper portrait/landscape height */
+  .hero { padding-top: 100px; }
+  .hero__right--responsive { height: clamp(360px, 48vw, 480px); min-height: clamp(360px, 48vw, 480px); }
+  .hero__3d { min-height: clamp(360px, 48vw, 480px); }
+
+  /* services panel — tighter columns + readable padding when stacked */
+  .services__panel { padding: 32px; gap: 32px; }
+  .services__panel--wide { padding: 28px 22px 36px; }
+  .services__playground { padding: 24px 12px 32px; min-height: 520px; }
+
+  /* services tab switch keeps row layout but trims padding for narrower tablets */
+  .services__switch { width: 100%; }
+  .services__tab { padding: 12px 18px; font-size: 14px; }
+
+  /* process & proof: keep 3-up but tighten card padding */
+  .process__item { padding: 28px; }
+  .process__t { font-size: 24px; }
+  .proof__card { padding: 26px; min-height: 320px; }
+
+  /* manifesto: 2-up reads better on portrait tablets */
+  .manifesto__grid { grid-template-columns: 1fr 1fr; }
+
+  /* contact: stays 2-col on landscape tablets, but Calendly gets shorter */
+  .contact__calendly-embed { height: 600px; }
+
+  /* footer: 4 cols still readable above 820, otherwise inherits 2-col */
+  .footer__big { padding: 24px 0 48px; }
+}
+
+/* iPad portrait specifically: stack the contact column for more breathing room */
+@media (min-width: 641px) and (max-width: 900px) {
+  .contact { grid-template-columns: 1fr; gap: 40px; padding: 80px var(--edge); }
+  .contact__meta { grid-template-columns: 1fr 1fr; }
+  .form-row { grid-template-columns: 1fr 1fr; }
+  .contact__calendly-embed { min-width: 0; height: 620px; }
+
+  /* proof grid 2-up here makes the cards breathable */
+  .proof__grid { grid-template-columns: 1fr 1fr; }
+  .proof__card:last-child { grid-column: 1 / -1; }
+
+  /* process grid 2-up */
+  .process__list { grid-template-columns: 1fr 1fr; }
+  .process__list > li:last-child { grid-column: 1 / -1; }
+}
+
+/* ============== LARGE DESKTOP (≥ 1440px) ============== */
+@media (min-width: 1440px) {
+  :root { --edge: 56px; --maxw: 1440px; }
+}
+
+/* ============== ULTRAWIDE (≥ 1920px) ==============
+   Cap content width and let the surrounding canvas breathe rather
+   than letting type & gutters balloon endlessly. */
+@media (min-width: 1920px) {
+  :root { --edge: 80px; --maxw: 1520px; }
+  .hero__wise { font-size: clamp(160px, 11vw, 240px); }
+  .section-title { font-size: clamp(72px, 5vw, 104px); }
+  .marquee { font-size: clamp(48px, 3.6vw, 72px); }
+}
+
+/* ============== ACCESSIBILITY: reduced motion ==============
+   Honour OS preference — avoids vestibular discomfort and stops
+   the hero from auto-spinning / floating for users who opt out. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .marquee__track { animation: none !important; }
+  .cardstack__card,
+  .cardstack__deck.is-revealed.is-floating .cardstack__card--resting { animation: none !important; }
+}
+
+/* ============== TINY VIEWPORTS (≤ 320px) safety ==============
+   Last-mile guard for iPhone SE & smaller / older Android. */
+@media (max-width: 360px) {
+  :root { --edge: 14px; }
+  .hero { padding-left: 14px; padding-right: 14px; }
+  .hero__actions .btn { padding: 14px 18px; font-size: 14px; }
+  .nav-bubble__menu a { padding: 9px 12px; font-size: 15px; }
 }
 
   </style>
