@@ -1218,12 +1218,20 @@ img { max-width: 100%; display: block; }
 .contact {
   background: var(--coil);
   color: var(--snow);
-  padding: 120px var(--edge);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
+  padding: 140px var(--edge);
   max-width: var(--maxw);
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.contact__lhs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 760px;
 }
 .contact__title {
   font-family: var(--font-display);
@@ -1233,20 +1241,34 @@ img { max-width: 100%; display: block; }
   letter-spacing: -0.04em;
   margin: 14px 0 24px;
 }
-.contact__title .italic { color: var(--fire); }
+.contact__title .italic { color: var(--fire); font-style: normal; }
 .contact__lede {
-  font-size: 18px;
-  line-height: 1.5;
-  max-width: 480px;
-  opacity: 0.8;
-  margin-bottom: 40px;
+  font-size: clamp(17px, 1.4vw, 20px);
+  line-height: 1.55;
+  max-width: 580px;
+  opacity: 0.85;
+  margin: 0 0 16px;
 }
+.contact__cta-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 28px 0 8px;
+}
+.contact__cta-row .btn--primary { background: var(--fire); color: var(--snow); }
+.contact__cta-row .btn--primary:hover { background: var(--snow); color: var(--coil); }
+.contact__cta-row .btn--ghost { color: var(--snow); border-color: rgba(250,250,250,0.5); }
+.contact__cta-row .btn--ghost:hover { background: var(--snow); color: var(--coil); border-color: var(--snow); }
 .contact__meta {
+  width: 100%;
+  margin-top: 56px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  padding-top: 24px;
+  padding-top: 28px;
   border-top: 1px solid rgba(250,250,250,0.2);
+  text-align: left;
 }
 .contact__meta > div { display: flex; flex-direction: column; gap: 6px; }
 .contact__meta-k {
@@ -1257,15 +1279,6 @@ img { max-width: 100%; display: block; }
   color: var(--fire);
 }
 .contact__meta span { font-size: 13px; line-height: 1.4; opacity: 0.85; }
-
-.contact__calendly-embed {
-  min-width: 320px;
-  height: 700px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(250,250,250,0.12);
-  background: #000;
-}
 
 .contact__form {
   background: rgba(250,250,250,0.04);
@@ -1347,8 +1360,8 @@ img { max-width: 100%; display: block; }
 .contact__thanks p { font-size: 15px; opacity: 0.8; max-width: 320px; margin: 0 0 12px; }
 
 @media (max-width: 900px) {
-  .contact { grid-template-columns: 1fr; gap: 40px; padding: 80px 20px; }
-  .contact__meta { grid-template-columns: 1fr; }
+  .contact { padding: 100px 20px; }
+  .contact__meta { grid-template-columns: 1fr 1fr; }
   .form-row { grid-template-columns: 1fr; }
 }
 
@@ -1644,11 +1657,11 @@ img { image-rendering: -webkit-optimize-contrast; }
   .manifesto__body { font-size: 22px !important; }
 
   /* ---- contact ---- */
-  .contact { padding: 80px 18px; gap: 32px; }
+  .contact { padding: 80px 18px; }
   .contact__title { font-size: clamp(38px, 11vw, 64px); }
   .contact__lede { font-size: 16px; }
-  .contact__meta { grid-template-columns: 1fr 1fr; gap: 14px; }
-  .contact__calendly-embed { height: 640px !important; min-width: 0 !important; }
+  .contact__meta { grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 40px; }
+  .contact__cta-row .btn { flex: 1; min-width: 140px; justify-content: center; }
 
   /* ---- footer ---- */
   .footer { padding: 40px 18px 24px; }
@@ -1708,19 +1721,18 @@ img { image-rendering: -webkit-optimize-contrast; }
   /* manifesto: 2-up reads better on portrait tablets */
   .manifesto__grid { grid-template-columns: 1fr 1fr; }
 
-  /* contact: stays 2-col on landscape tablets, but Calendly gets shorter */
-  .contact__calendly-embed { height: 600px; }
+  /* contact meta tightens on tablet */
+  .contact__meta { grid-template-columns: repeat(4, 1fr); }
 
   /* footer: 4 cols still readable above 820, otherwise inherits 2-col */
   .footer__big { padding: 24px 0 48px; }
 }
 
-/* iPad portrait specifically: stack the contact column for more breathing room */
+/* iPad portrait specifically: tighten contact + 2-up grids for breathing room */
 @media (min-width: 641px) and (max-width: 900px) {
-  .contact { grid-template-columns: 1fr; gap: 40px; padding: 80px var(--edge); }
+  .contact { padding: 100px var(--edge); }
   .contact__meta { grid-template-columns: 1fr 1fr; }
   .form-row { grid-template-columns: 1fr 1fr; }
-  .contact__calendly-embed { min-width: 0; height: 620px; }
 
   /* proof grid 2-up here makes the cards breathable */
   .proof__grid { grid-template-columns: 1fr 1fr; }
@@ -1771,6 +1783,8 @@ img { image-rendering: -webkit-optimize-contrast; }
 }
 
   </style>
+  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+  <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
 </head>
 <body>
   <div id="root"></div>
@@ -1889,7 +1903,7 @@ function Nav({ onNav }) {
         ))}
         <a
           className="nav-bubble__cta"
-          href="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f"
+          href="https://calendly.com/tyler6wise/30min"
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => { setOpen(false); setHover(false); }}
@@ -2421,7 +2435,7 @@ function Hero({ variant = "orange" }) {
               <span>See services</span>
               <Arrow />
             </a>
-            <a href="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--lg">
+            <a href="https://calendly.com/tyler6wise/30min" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--lg">
               Book a call
             </a>
           </div>
@@ -2552,35 +2566,35 @@ function Services() {
         "Full workflow &amp; stack review",
         "Time-study across key roles",
         "Honest read on where AI fits (and where it doesn't)",
-        "Evidence-backed findings document",
+        "Quick-win opportunities flagged early",
       ],
-      kpi: [["Scoped", "engagement"], ["Key", "roles shadowed"], ["Fixed", "fee"]],
+      kpi: [["Scoped", "engagement"], ["Key", "roles shadowed"], ["No-cost", "until report"]],
     },
     {
       tag: "02",
-      title: "Opportunities",
-      kicker: "A prioritised shortlist of the wins that actually matter.",
-      body: "We turn the audit into a ranked list of opportunities, scored by time saved, cost, risk and time-to-value. You decide which ones to pursue. We help you pick with conviction.",
+      title: "Report",
+      kicker: "Quick wins, longer-term plays, and custom agents — written up so you can decide with conviction.",
+      body: "We turn the audit into a written report: the quick wins worth doing this month, the longer-term changes worth planning for, and any custom agents we'd build for your specific use cases. You decide what's worth pursuing.",
       items: [
-        "Ranked opportunity register",
-        "Effort vs. impact scoring",
+        "Quick-win opportunities scored by time saved",
+        "Longer-term roadmap with effort vs. impact",
+        "Custom agent specs per use case",
         "Clear go / no-go recommendation per item",
-        "Phased roadmap with owners &amp; milestones",
       ],
-      kpi: [["Ranked", "opportunities"], ["Top picks", "recommended"], ["Phased", "roadmap"]],
+      kpi: [["Quick", "wins"], ["Longer-term", "roadmap"], ["Custom", "agent specs"]],
     },
     {
       tag: "03",
-      title: "Build",
-      kicker: "The right AI systems for the job. Tools, agents, or both.",
-      body: "We design and deploy the systems that fit each opportunity. Sometimes it's an agent on payroll. Sometimes it's a workflow tool, a prompt library, or just better evals. We build what the evidence says you need. Nothing more.",
+      title: "Build &amp; Train",
+      kicker: "Fixed fee. Paid on completion. Training so the system has an owner inside your business.",
+      body: "If you green-light any item from the report, we build it for a fixed fee — and you don't pay a cent until it's done and working. Where the system warrants it, we hand over with free training so someone in your business owns the day-to-day, even though it mostly runs itself.",
       items: [
-        "Agents, tools or workflow automation",
-        "Guardrails &amp; human oversight built-in",
-        "Evals, audit logs and reporting",
-        "Handover to your team when ready",
+        "Fixed-fee implementation, paid on completion",
+        "Custom agents, tools or workflow automation",
+        "Free training where the system warrants it",
+        "Named owner inside your business at handover",
       ],
-      kpi: [["Focused", "sprints"], ["Always", "on"], ["100%", "auditable"]],
+      kpi: [["Fixed", "fee"], ["Paid on", "completion"], ["Owner-led", "handover"]],
     },
   ];
   const s = phases[active];
@@ -2591,8 +2605,9 @@ function Services() {
         <span className="section-kicker">Service</span>
         <h2 className="section-title">One service.<br/>Three phases.</h2>
         <p className="section-lede">
-          Every engagement starts with an audit. We surface the opportunities worth pursuing,
-          then build the AI systems (tools, agents, workflows) best suited to each one.
+          Audit, report, build. We start with a clear-eyed audit, write up the quick wins,
+          longer-term plays and custom agents — then build whatever you green-light for a
+          fixed fee, paid only on completion.
         </p>
       </div>
 
@@ -2784,8 +2799,8 @@ function OppsDiagram() {
   return (
     <div ref={rootRef} className={`oppchart ${revealed ? "is-revealed" : ""}`}>
       <div className="oppchart__head">
-        <span className="oppchart__kicker">Ranked register</span>
-        <span className="oppchart__meta">Top 3 recommended · 90-day roadmap</span>
+        <span className="oppchart__kicker">Report shortlist</span>
+        <span className="oppchart__meta">Quick wins · Longer-term · Custom agents</span>
       </div>
       <ul className="oppchart__list">
         {opps.map((o, i) => (
@@ -2881,18 +2896,21 @@ window.Services = Services;
 
 function Process() {
   const steps = [
-    { n: "01", t: "Listen", d: "We shadow your team to understand how work actually happens. No slides, just questions." },
-    { n: "02", t: "Map", d: "We show you where time is lost, where money leaks, and where AI can actually help." },
-    { n: "03", t: "Prioritise", d: "Together we pick the highest-value wins. No boil-the-ocean projects." },
-    { n: "04", t: "Deploy", d: "Agents ship in focused sprints. Each one has a name, a role, and clear KPIs." },
-    { n: "05", t: "Govern", d: "Evals, guardrails, audit logs, human oversight. The essentials, done properly." },
-    { n: "06", t: "Grow", d: "Time saved gets reinvested into the next agent. The programme pays for itself." },
+    { n: "01", t: "Reach out", d: "You tell us what's taking up your team's time. A short call to scope what an audit would look like." },
+    { n: "02", t: "Audit", d: "We shadow your team and map the workflows to find where AI actually fits — and where it quietly won't." },
+    { n: "03", t: "Report", d: "You get a written report covering the quick wins, longer-term plays, and any custom agents we'd build for your specific use cases." },
+    { n: "04", t: "Decide", d: "You pick what to implement, when. No pressure, no all-or-nothing. The report is yours either way." },
+    { n: "05", t: "Build", d: "If you green-light an item, we build it for a fixed fee. You don't pay until it's live and working." },
+    { n: "06", t: "Train & hand over", d: "Free training where the system warrants it, so a named owner inside your business runs the day-to-day even though it's mostly automatic." },
   ];
   return (
     <section id="process" className="process" data-screen-label="03 Process">
       <div className="process__head">
         <span className="section-kicker section-kicker--light">Process</span>
-        <h2 className="section-title">Six steps. No jargon.</h2>
+        <h2 className="section-title">How it works.</h2>
+        <p className="section-lede" style={{ opacity: 0.75 }}>
+          Six steps from first email to a working system with someone in your team owning it.
+        </p>
       </div>
       <ol className="process__list">
         {steps.map((s) => (
@@ -3002,16 +3020,29 @@ function Contact() {
       <div className="contact__lhs">
         <span className="section-kicker section-kicker--light">Contact</span>
         <h2 className="contact__title">
-          Book a free<br/>
-          <span className="italic">30-minute call.</span>
+          Ready when<br/>
+          <span className="italic">you are.</span>
         </h2>
         <p className="contact__lede">
-          Tell us what's taking up your team's time. We'll tell you, honestly,
-          whether AI can help and what it would cost. No pitch deck, no jargon.
+          Tell us what's taking up your team's time. We audit it, prove the quick wins,
+          and only build the rest if the numbers add up.
         </p>
-        <p className="contact__lede" style={{ opacity: 0.75, marginTop: "-8px" }}>
-          Pick a slot on the right. Mon to Fri, 9AM to 5PM AEST.
+        <p className="contact__lede" style={{ opacity: 0.7, marginTop: "0", fontSize: "15px" }}>
+          Fixed fee · Paid on completion · Free training where it makes sense.
         </p>
+        <div className="contact__cta-row">
+          <a
+            href="https://calendly.com/tyler6wise/30min"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn--primary btn--lg"
+          >
+            Book now <Arrow />
+          </a>
+          <a href="mailto:tyler@wiseai.website" className="btn btn--ghost btn--lg">
+            Email instead
+          </a>
+        </div>
         <div className="contact__meta">
           <div>
             <span className="contact__meta-k">Studio</span>
@@ -3031,35 +3062,7 @@ function Contact() {
           </div>
         </div>
       </div>
-
-      <CalendlyInline />
     </section>
-  );
-}
-
-function CalendlyInline() {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    const SRC = "https://assets.calendly.com/assets/external/widget.js";
-    const existing = document.querySelector(`script[src="${SRC}"]`);
-    if (!existing) {
-      const s = document.createElement("script");
-      s.src = SRC;
-      s.async = true;
-      document.body.appendChild(s);
-    } else if (window.Calendly && ref.current) {
-      window.Calendly.initInlineWidget({
-        url: "https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f",
-        parentElement: ref.current,
-      });
-    }
-  }, []);
-  return (
-    <div
-      ref={ref}
-      className="calendly-inline-widget contact__calendly-embed"
-      data-url="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f"
-    />
   );
 }
 
@@ -3099,7 +3102,7 @@ function Footer() {
           <span className="footer__k">Now</span>
           <span>BNE · {time}</span>
           <span>Accepting clients</span>
-          <a href="https://calendly.com/tyler-wiseai/30min?background_color=000000&text_color=ffffff&primary_color=ec702f" target="_blank" rel="noopener noreferrer">Book a call ↗</a>
+          <a href="https://calendly.com/tyler6wise/30min" target="_blank" rel="noopener noreferrer">Book a call ↗</a>
         </div>
       </div>
       <div className="footer__base">
@@ -3238,6 +3241,26 @@ window.Tweaks = Tweaks;
     }
 
     ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+
+  <!-- Calendly badge widget -->
+  <script type="text/javascript">
+    (function initCalendlyBadge() {
+      function go() {
+        if (!window.Calendly || !Calendly.initBadgeWidget) {
+          return setTimeout(go, 200);
+        }
+        Calendly.initBadgeWidget({
+          url: 'https://calendly.com/tyler6wise/30min',
+          text: 'Schedule time with me',
+          color: '#f19810',
+          textColor: '#000000',
+          branding: true
+        });
+      }
+      if (document.readyState === 'complete') go();
+      else window.addEventListener('load', go);
+    })();
   </script>
 </body>
 </html>
