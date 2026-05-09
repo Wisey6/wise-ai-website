@@ -361,25 +361,26 @@ img { max-width: 100%; display: block; }
   position: relative;
   z-index: 2;
   display: inline-flex;
-  align-items: flex-end;
-  gap: 0.04em;
-  line-height: 0.85;
+  align-items: flex-start;
+  gap: 0.06em;
+  line-height: 1;
 }
 .hero__wise {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(92px, 14.5vw, 220px);
   letter-spacing: -0.05em;
+  line-height: 1;
   color: var(--coil);
 }
 .hero__ai {
   font-family: var(--font-display);
-  font-size: clamp(22px, 3vw, 44px);
-  font-weight: 500;
+  font-weight: 700;
+  font-size: clamp(22px, 3.2vw, 48px);
   letter-spacing: -0.02em;
-  color: var(--coil);
-  margin-bottom: 0;
   line-height: 1;
+  margin-top: 0.12em;
+  color: var(--coil);
 }
 
 /* Ready-to-implement CTA block, just below hero content */
@@ -456,9 +457,7 @@ img { max-width: 100%; display: block; }
   }
   .hero__right { min-height: 320px; }
   .hero__3d { height: 340px; }
-  /* AI sub-letters need to scale down so they align with WISE on smaller viewports */
-  .hero__ai { height: auto !important; font-size: clamp(20px, 4.5vw, 36px) !important; line-height: 1 !important; }
-  .hero__wordmark { align-items: flex-end; line-height: 0.95; }
+  .hero__ai { font-size: clamp(20px, 4.5vw, 36px); }
 }
 
 .hero__topbar {
@@ -1530,9 +1529,9 @@ img { image-rendering: -webkit-optimize-contrast; }
     width: 100% !important;
     height: 100% !important;
   }
-  .hero__wordmark { justify-content: center; align-items: flex-start !important; }
-  .hero__wise { font-size: clamp(64px, 22vw, 120px) !important; line-height: 0.9 !important; }
-  .hero__ai { font-size: clamp(18px, 5vw, 28px) !important; height: auto !important; align-self: flex-start !important; vertical-align: top !important; margin-top: 0 !important; padding-top: 4px !important; }
+  .hero__wordmark { justify-content: center; }
+  .hero__wise { font-size: clamp(64px, 22vw, 120px); }
+  .hero__ai { font-size: clamp(18px, 5vw, 28px); }
   .hero__tag { font-size: 16px; max-width: 92vw !important; margin: 0 auto; }
   .hero__actions { justify-content: center; width: 100%; }
   .hero__actions .btn { flex: 1; justify-content: center; min-width: 140px; }
@@ -1783,9 +1782,7 @@ img { image-rendering: -webkit-optimize-contrast; }
 }
 
   </style>
-  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
-  <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
-</head>
+  </head>
 <body>
   <div id="root"></div>
 
@@ -2424,8 +2421,8 @@ function Hero({ variant = "orange" }) {
           }}
         >
           <div className="hero__wordmark">
-            <span className="hero__wise" style={{ color: "rgb(242, 120, 47)", fontWeight: 700 }}>WISE</span>
-            <span className="hero__ai" style={{ color: "rgb(242, 120, 47)", height: "177px", fontSize: "35px", display: "inline-block" }}> AI</span>
+            <span className="hero__wise" style={{ color: "rgb(242, 120, 47)" }}>WISE</span>
+            <span className="hero__ai" style={{ color: "rgb(242, 120, 47)" }}>AI</span>
           </div>
           <p className="hero__tag" style={{ fontWeight: 500, color: "rgb(0, 0, 0)", maxWidth: "500px" }}>
             We turn AI confusion into compounding advantage.
@@ -3241,26 +3238,6 @@ window.Tweaks = Tweaks;
     }
 
     ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
-
-  <!-- Calendly badge widget -->
-  <script type="text/javascript">
-    (function initCalendlyBadge() {
-      function go() {
-        if (!window.Calendly || !Calendly.initBadgeWidget) {
-          return setTimeout(go, 200);
-        }
-        Calendly.initBadgeWidget({
-          url: 'https://calendly.com/tyler6wise/30min',
-          text: 'Schedule time with me',
-          color: '#f19810',
-          textColor: '#000000',
-          branding: true
-        });
-      }
-      if (document.readyState === 'complete') go();
-      else window.addEventListener('load', go);
-    })();
   </script>
 </body>
 </html>
