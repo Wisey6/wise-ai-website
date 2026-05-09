@@ -738,71 +738,6 @@ img { max-width: 100%; display: block; }
   .proof__grid { grid-template-columns: 1fr; }
 }
 
-/* ============== MANIFESTO ============== */
-.manifesto {
-  background: var(--snow-2);
-  padding: 120px var(--edge);
-}
-.manifesto__kicker {
-  max-width: var(--maxw);
-  margin: 0 auto 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-.manifesto__sig { font-size: 14px; opacity: 0.6; font-family: var(--font-mono); letter-spacing: 0.05em; }
-.manifesto__body {
-  max-width: var(--maxw);
-  margin: 0 auto;
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: clamp(28px, 3.4vw, 52px);
-  line-height: 1.15;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-}
-.manifesto__body em { font-style: normal; font-weight: 700; color: var(--fire); }
-.manifesto__body mark {
-  background: var(--fire);
-  color: var(--snow);
-  padding: 0 0.15em;
-  border-radius: 4px;
-}
-.manifesto__grid {
-  max-width: var(--maxw);
-  margin: 60px auto 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-.manifesto__tenet {
-  padding: 28px;
-  background: var(--snow);
-  border-radius: 14px;
-}
-.manifesto__tenet-n {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.15em;
-  color: var(--fire);
-}
-.manifesto__tenet h4 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 19px;
-  letter-spacing: -0.01em;
-  margin: 10px 0 8px;
-}
-.manifesto__tenet p {
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-  opacity: 0.75;
-}
-@media (max-width: 900px) {
-  .manifesto__grid { grid-template-columns: 1fr 1fr; }
-}
-
 /* ============== CONTACT ============== */
 .contact {
   background: var(--coil);
@@ -1381,10 +1316,6 @@ img { image-rendering: -webkit-optimize-contrast; }
   .proof { padding: 80px 18px; }
   .proof__card { padding: 24px; min-height: auto; gap: 16px; }
 
-  /* ---- manifesto ---- */
-  .manifesto { padding: 80px 18px !important; }
-  .manifesto__grid { grid-template-columns: 1fr !important; gap: 16px; }
-  .manifesto__body { font-size: 22px !important; }
 
   /* ---- contact ---- */
   .contact { padding: 80px 18px; }
@@ -1427,7 +1358,7 @@ img { image-rendering: -webkit-optimize-contrast; }
   :root { --edge: 28px; }
 
   /* generous but not desktop-sized vertical rhythm */
-  .services, .process, .proof, .manifesto, .contact { padding-top: 96px; padding-bottom: 96px; }
+  .services, .process, .proof, .contact { padding-top: 96px; padding-bottom: 96px; }
 
   /* hero — already stacks at 900, but keep the 3D area at a proper portrait/landscape height */
   .hero { padding-top: 100px; }
@@ -1439,8 +1370,6 @@ img { image-rendering: -webkit-optimize-contrast; }
   .process__t { font-size: 24px; }
   .proof__card { padding: 26px; min-height: 320px; }
 
-  /* manifesto: 2-up reads better on portrait tablets */
-  .manifesto__grid { grid-template-columns: 1fr 1fr; }
 
   /* contact meta tightens on tablet */
   .contact__meta { grid-template-columns: repeat(4, 1fr); }
@@ -2153,7 +2082,7 @@ function Hero({ variant = "orange" }) {
             <span className="hero__ai" style={{ color: "rgb(242, 120, 47)" }}>AI</span>
           </div>
           <p className="hero__tag" style={{ fontWeight: 500, color: "rgb(0, 0, 0)", maxWidth: "500px" }}>
-            We turn AI confusion into compounding advantage.
+            AI that earns its keep.
           </p>
           <div className="hero__actions">
             <a href="#solutions" className="btn btn--primary btn--lg">
@@ -2268,10 +2197,8 @@ function Marquee() {
         {Array.from({ length: 2 }).map((_, i) => (
           <span key={i} className="marquee__group">
             <span>Audit</span><i>◆</i>
-            <span>Deploy</span><i>◆</i>
-            <span>Govern</span><i>◆</i>
-            <span>Measure</span><i>◆</i>
-            <span>Save hours</span><i>◆</i>
+            <span>Build</span><i>◆</i>
+            <span>Hand over</span><i>◆</i>
           </span>
         ))}
       </div>
@@ -2522,12 +2449,10 @@ window.VoiceAgent = VoiceAgent;
 
 function Process() {
   const steps = [
-    { n: "01", t: "Reach out", d: "You tell us what's taking up your team's time. A short call to scope what an audit would look like." },
-    { n: "02", t: "Audit", d: "We shadow your team and map the workflows to find where AI actually fits — and where it quietly won't." },
-    { n: "03", t: "Report", d: "You get a written report covering the quick wins, longer-term plays, and any custom agents we'd build for your specific use cases." },
-    { n: "04", t: "Decide", d: "You pick what to implement, when. No pressure, no all-or-nothing. The report is yours either way." },
-    { n: "05", t: "Build", d: "If you green-light an item, we build it for a fixed fee. You don't pay until it's live and working." },
-    { n: "06", t: "Train & hand over", d: "Free training where the system warrants it, so a named owner inside your business runs the day-to-day even though it's mostly automatic." },
+    { n: "01", t: "Audit", d: "We shadow your team and find where AI actually fits." },
+    { n: "02", t: "Report", d: "Quick wins, longer plays, custom agents — written up so you can decide." },
+    { n: "03", t: "Build", d: "Fixed fee, paid on completion. Only what you green-light." },
+    { n: "04", t: "Hand over", d: "Named owner inside your business. Trained, not dependent." },
   ];
   return (
     <section id="process" className="process" data-screen-label="04 Process">
@@ -2535,7 +2460,7 @@ function Process() {
         <span className="section-kicker section-kicker--light">Process</span>
         <h2 className="section-title">How it works.</h2>
         <p className="section-lede" style={{ opacity: 0.75 }}>
-          Six steps from first email to a working system with someone in your team owning it.
+          Four steps. From first email to a working system you own.
         </p>
       </div>
       <ol className="process__list">
@@ -2558,7 +2483,7 @@ function Proof() {
       scope: "Knowledge work",
       stat: "66%",
       stat_label: "Avg. productivity lift on AI-assisted tasks",
-      detail: "Meta-analysis across customer support, coding and professional writing. Workers using generative AI completed tasks 66% faster on average.",
+      detail: "Workers using generative AI complete tasks 66% faster on average. Across coding, support, and writing.",
       source: "Nielsen Norman Group, 2024",
     },
     {
@@ -2566,7 +2491,7 @@ function Proof() {
       scope: "Enterprise",
       stat: "78%",
       stat_label: "Of organisations now use AI in ≥1 function",
-      detail: "Up from 55% the year prior. Most common uses: marketing and sales, service operations, and software engineering.",
+      detail: "Up from 55% the year prior. Most common in marketing, service ops, and engineering.",
       source: "McKinsey State of AI, 2024",
     },
     {
@@ -2574,7 +2499,7 @@ function Proof() {
       scope: "Implementation",
       stat: "3.7×",
       stat_label: "Return per dollar spent on generative AI",
-      detail: "Leading implementers report average returns of $3.70 for every $1 invested, with top-quartile deployments reaching 10×+.",
+      detail: "$3.70 returned per dollar invested. Top-quartile deployments hit 10× and above.",
       source: "IDC / Microsoft, 2024",
     },
   ];
@@ -2609,40 +2534,10 @@ function Proof() {
 window.Process = Process;
 window.Proof = Proof;
 
-function Manifesto() {
-  return (
-    <section id="manifesto" className="manifesto" data-screen-label="06 Manifesto">
-      <div className="manifesto__kicker">
-        <span className="section-kicker">Our promise</span>
-        <span className="manifesto__sig">Wise Ai · 2024</span>
-      </div>
-      <p className="manifesto__body">
-        AI should earn its keep, <em>not</em> the headlines.
-        We stay until your team actually feels the difference.
-        An <mark>audit</mark> before anything ships. A clear <mark>owner</mark> for every agent.
-        And <mark>measurable</mark> outcomes you can defend to the board.
-      </p>
-      <div className="manifesto__grid">
-        {[
-          ["Independent", "No vendor lock-in, no kickbacks. We pick what works for you."],
-          ["Outcome-priced", "Pay for hours saved, not for showing up."],
-          ["Safe by default", "Guardrails, audit logs, human oversight. Always on."],
-          ["Plain English", "Clear reports your board can read. No AI jargon."],
-        ].map(([t, d], i) => (
-          <div key={i} className="manifesto__tenet">
-            <span className="manifesto__tenet-n">0{i + 1}</span>
-            <h4>{t}</h4>
-            <p>{d}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function Contact() {
   return (
-    <section id="contact" className="contact" data-screen-label="07 Contact">
+    <section id="contact" className="contact" data-screen-label="06 Contact">
       <div className="contact__lhs">
         <span className="section-kicker section-kicker--light">Contact</span>
         <h2 className="contact__title">
@@ -2650,8 +2545,7 @@ function Contact() {
           <span className="italic">you are.</span>
         </h2>
         <p className="contact__lede">
-          Tell us what's taking up your team's time. We audit it, prove the quick wins,
-          and only build the rest if the numbers add up.
+          Tell us what's taking up your team's time. We do the rest.
         </p>
         <p className="contact__lede" style={{ opacity: 0.7, marginTop: "0", fontSize: "15px" }}>
           Fixed fee · Paid on completion · Free training where it makes sense.
@@ -2712,7 +2606,6 @@ function Footer() {
           <a href="#pricing">Pricing</a>
           <a href="#process">Process</a>
           <a href="#work">Work</a>
-          <a href="#manifesto">Manifesto</a>
           <a href="#contact">Contact</a>
         </div>
         <div>
@@ -2740,7 +2633,6 @@ function Footer() {
   );
 }
 
-window.Manifesto = Manifesto;
 window.Contact = Contact;
 window.Footer = Footer;
 
@@ -2860,7 +2752,6 @@ window.Tweaks = Tweaks;
           <Pricing />
           <Process />
           <Proof />
-          <Manifesto />
           <Contact />
           <Footer />
           <VoiceAgent />
