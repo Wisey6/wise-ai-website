@@ -1,0 +1,12 @@
+name = "wise-ai-inquiry-agent"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# Replace <KV_ID> after running:
+#   wrangler kv namespace create USAGE
+[[kv_namespaces]]
+binding = "USAGE"
+id = "<KV_ID>"
+
+# Set with: wrangler secret put ANTHROPIC_API_KEY
+# (Do not commit the key. wrangler stores it encrypted in Cloudflare.)
