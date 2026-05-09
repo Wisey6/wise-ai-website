@@ -1147,9 +1147,56 @@ img { max-width: 100%; display: block; }
 .voice-msg--user .voice-msg__role { color: var(--fire); }
 .voice-modal__controls {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding-top: 14px;
   border-top: 1px solid rgba(0,0,0,0.08);
+}
+.voice-form {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+.voice-form__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: var(--snow);
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--coil);
+  transition: border-color 0.15s ease;
+}
+.voice-form__input:focus {
+  outline: none;
+  border-color: var(--fire);
+}
+.voice-form__input:disabled {
+  opacity: 0.6;
+}
+.voice-form__send {
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: var(--coil);
+  color: var(--snow);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.voice-form__send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.voice-modal__fallback {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.55;
+  text-align: center;
 }
 .voice-mic {
   background: var(--fire);
@@ -2326,6 +2373,7 @@ function VoiceAgent() {
   const [pending, setPending] = React.useState(false);
   const [messages, setMessages] = React.useState([]);
   const [error, setError] = React.useState("");
+  const [draft, setDraft] = React.useState("");
   const recognitionRef = React.useRef(null);
   const transcriptRef = React.useRef(null);
   const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -2430,14 +2478,40 @@ function VoiceAgent() {
           {error && <p className="voice-modal__error">{error}</p>}
         </div>
         <div className="voice-modal__controls">
-          <button
-            className={`voice-mic ${listening ? "is-listening" : ""}`}
-            onClick={startListening}
-            disabled={listening || pending}
-            aria-label={listening ? "Listening" : "Tap to speak"}
+          <form
+            className="voice-form"
+            onSubmit={(e) => { e.preventDefault(); const t = draft; setDraft(""); handleUserTurn(t); }}
           >
-            {listening ? "Listening…" : pending ? "Thinking…" : "Tap to speak"}
-          </button>
+            <input
+              className="voice-form__input"
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Type your question…"
+              disabled={pending || listening}
+              aria-label="Type your message"
+            />
+            <button
+              type="submit"
+              className="voice-form__send"
+              disabled={!draft.trim() || pending || listening}
+              aria-label="Send"
+            >
+              Send
+            </button>
+          </form>
+          {SR ? (
+            <button
+              className={`voice-mic ${listening ? "is-listening" : ""}`}
+              onClick={startListening}
+              disabled={listening || pending}
+              aria-label={listening ? "Listening" : "Tap to speak"}
+            >
+              {listening ? "Listening…" : pending ? "Thinking…" : "Tap to speak"}
+            </button>
+          ) : (
+            <p className="voice-modal__fallback">Voice input isn't supported in this browser — type your message above.</p>
+          )}
         </div>
       </div>
     </div>
