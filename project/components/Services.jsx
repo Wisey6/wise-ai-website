@@ -4,10 +4,10 @@ function Marquee() {
       <div className="marquee__track">
         {Array.from({ length: 2 }).map((_, i) => (
           <span key={i} className="marquee__group">
+            <span>Pre-made</span><i>◆</i>
             <span>Audit</span><i>◆</i>
+            <span>Custom</span><i>◆</i>
             <span>Deploy</span><i>◆</i>
-            <span>Govern</span><i>◆</i>
-            <span>Measure</span><i>◆</i>
             <span>Save hours</span><i>◆</i>
           </span>
         ))}
@@ -21,8 +21,21 @@ function Services() {
   const services = [
     {
       tag: "01",
+      title: "Pre-made Solutions",
+      kicker: "AI workflows that are ready today — no custom build, no waiting.",
+      body: "Pick from our proven playbook of off-the-shelf AI solutions. Each one is battle-tested across industries, configured for immediate deployment, and priced for quick ROI. Start saving hours this week.",
+      items: [
+        "Email automation &amp; routing",
+        "Document processing &amp; extraction",
+        "Customer service bots",
+        "Workflow optimization modules",
+      ],
+      kpi: [["Days", "to deploy"], ["40%", "faster ROI"], ["£k", "starting from"]],
+    },
+    {
+      tag: "02",
       title: "AI Audit",
-      kicker: "Know exactly where AI will save you time — before you spend a penny.",
+      kicker: "Know exactly where AI will save you time — before you commit any budget.",
       body: "Two weeks inside your business. We map your workflows, spot the bottlenecks, and return a clear, prioritised plan for where AI will pay off — and where it won't.",
       items: [
         "Full workflow &amp; stack review",
@@ -33,15 +46,15 @@ function Services() {
       kpi: [["14", "days"], ["38%", "hours freed"], ["£", "fixed fee"]],
     },
     {
-      tag: "02",
-      title: "Agent Officer",
-      kicker: "A deployed AI agent, doing real work — on payroll, on day one.",
-      body: "We build and run production AI agents for your team. Each one has a job description, a budget, and measurable KPIs — just like any other hire. Outcome-based pricing available.",
+      tag: "03",
+      title: "Custom Solutions",
+      kicker: "AI built exactly for your business — bespoke agents doing your unique work.",
+      body: "We build production AI agents tailored to your specific workflows and industry. Each one has clear KPIs, human oversight, and runs on your infrastructure. Scale with agents that fit your business, not the other way around.",
       items: [
-        "Agent scoped like a role, not a tool",
-        "Guardrails &amp; human oversight built-in",
+        "Custom agent architecture",
+        "Guardrails &amp; human oversight",
         "Monthly performance reports",
-        "30-day cancellation on any agent",
+        "Flexible pricing &amp; cancellation",
       ],
       kpi: [["6 wks", "to live"], ["24/7", "on shift"], ["100%", "auditable"]],
     },
@@ -52,10 +65,10 @@ function Services() {
     <section id="services" className="services" data-screen-label="02 Services">
       <div className="services__header">
         <span className="section-kicker">Services</span>
-        <h2 className="section-title">Two services.<br/>One simple promise.</h2>
+        <h2 className="section-title">Three ways to win with AI.<br/>One simple promise.</h2>
         <p className="section-lede">
-          We find the hours AI can save you, then we build the agents that save them.
-          Start with an audit, scale with agents — or both.
+          Start with pre-made solutions, audit your potential, or go custom.
+          We find the hours AI can save you, then we build what saves them.
         </p>
       </div>
 
@@ -66,7 +79,7 @@ function Services() {
             className={`services__tab ${active === i ? "is-active" : ""}`}
             onClick={() => setActive(i)}
           >
-            <span className="services__tab-num">0{i+1}</span>
+            <span className="services__tab-num">{String(i+1).padStart(2, '0')}</span>
             <span className="services__tab-name">{sv.title}</span>
           </button>
         ))}
@@ -101,7 +114,7 @@ function Services() {
             ))}
           </div>
           <div className="services__diagram">
-            <ServiceDiagram kind={active === 0 ? "audit" : "agent"} />
+            <ServiceDiagram kind={active === 0 ? "premade" : active === 1 ? "audit" : "custom"} />
           </div>
         </div>
       </div>
@@ -110,6 +123,24 @@ function Services() {
 }
 
 function ServiceDiagram({ kind }) {
+  if (kind === "premade") {
+    return (
+      <svg viewBox="0 0 400 220" className="diagram">
+        {["Email","Documents","Support","Workflows"].map((lbl, i) => (
+          <g key={i} transform={`translate(${50 + i*85},${60})`}>
+            <rect width="60" height="60" fill="none" stroke="currentColor" strokeWidth="1.2" rx="6"/>
+            <text x="30" y="35" textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor">{lbl}</text>
+          </g>
+        ))}
+        <path d="M80 150 L320 150" stroke="var(--fire)" strokeWidth="2" fill="none" />
+        <circle cx="80" cy="150" r="6" fill="var(--fire)" />
+        <circle cx="320" cy="150" r="6" fill="var(--fire)" />
+        <text x="200" y="190" textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity="0.6">
+          PICK &amp; DEPLOY · READY IN DAYS
+        </text>
+      </svg>
+    );
+  }
   if (kind === "audit") {
     return (
       <svg viewBox="0 0 400 220" className="diagram">
