@@ -45,7 +45,7 @@ function Services() {
         "Prioritised 90-day roadmap",
         "Executive-ready summary deck",
       ],
-      kpi: [["14", "days"], ["38%", "hours freed"], ["£", "fixed fee"]],
+      kpi: [["14", "days"], ["38%", "hours freed"], ["Tailored", "roadmap"]],
     },
     {
       tag: "03",
