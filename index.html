@@ -2198,9 +2198,10 @@ function Marquee() {
       <div className="marquee__track">
         {Array.from({ length: 2 }).map((_, i) => (
           <span key={i} className="marquee__group">
+            <span>Implement</span><i>◆</i>
             <span>Audit</span><i>◆</i>
-            <span>Build</span><i>◆</i>
-            <span>Hand over</span><i>◆</i>
+            <span>Custom</span><i>◆</i>
+            <span>Deliver</span><i>◆</i>
           </span>
         ))}
       </div>
@@ -2212,54 +2213,56 @@ function Solutions() {
   const items = [
     {
       n: "01",
-      title: "Pre-made Solutions",
-      kicker: "Ready-to-deploy AI for Brisbane SMBs — start saving hours today.",
-      body: "No custom builds, no waiting. Pick from our battle-tested playbook: automated lead capture, quote generators, website creation without the hefty SaaS fees, and more. Deploy in days. Pay for results.",
+      title: "Implement Now",
+      kicker: "Get running immediately with our proven systems.",
+      body: "If you need results fast, we deploy from our battle-tested library of ready-made solutions. Lead capture, quote generators, email automation, intake systems, document processing—proven systems that work. You get ROI in weeks.",
       bullets: [
         "Automated lead capture & nurture",
         "Smart quote & proposal generators",
-        "Website creation (no $300/month fees)",
         "Email automation & scheduling",
         "Customer intake & qualification",
         "Invoice & document processing",
+        "Live within 2-4 weeks",
       ],
-      cta: { label: "Explore pre-made solutions", href: "#contact" },
+      cta: { label: "Get started now", href: "#contact" },
     },
     {
       n: "02",
-      title: "AI Audit",
-      kicker: "Know exactly where AI will save you time — before you commit any budget.",
-      body: "Two weeks inside your business. We map your workflows, spot the bottlenecks, and return a clear, prioritised plan for where AI will pay off — and where it won't.",
+      title: "Audit First",
+      kicker: "Find exactly what AI can do for you—backed by ROI analysis.",
+      body: "We shadow your team, map every workflow, and identify where AI creates the highest return. This audit-first approach means you only implement what saves time and money. More accurate, more cost-effective.",
       bullets: [
-        "Full workflow & stack review",
-        "Team time-study across 3–5 roles",
-        "Prioritised 90-day roadmap",
-        "Executive-ready summary deck",
+        "Full workflow & operations review",
+        "Team time studies across key roles",
+        "ROI-prioritised recommendations",
+        "Roadmap focused on impact, not features",
+        "Clear next steps & pricing",
       ],
-      cta: { label: "Start with an audit", href: "#contact" },
+      cta: { label: "Schedule an audit", href: "#contact" },
     },
     {
       n: "03",
-      title: "Custom Solutions",
-      kicker: "AI built exactly for your business — bespoke agents doing your unique work.",
-      body: "We build production AI agents tailored to your specific workflows and industry. Each one has clear KPIs, human oversight, and runs on your infrastructure. Scale with agents that fit your business, not the other way around.",
+      title: "Custom Build",
+      kicker: "Purpose-built agents for your unique business problems.",
+      body: "Sometimes you need something that doesn't exist yet. We build custom AI systems tailored to your specific challenges—from lead qualification to invoice processing to sales workflows. Built to integrate with your tools and team.",
       bullets: [
-        "Custom agent architecture",
-        "Guardrails & human oversight",
-        "Monthly performance reports",
-        "Flexible pricing & cancellation",
+        "Purpose-built for your business",
+        "Integrated with your existing systems",
+        "Clear performance tracking & KPIs",
+        "Human oversight built in",
+        "Runs on your infrastructure",
       ],
-      cta: { label: "Book a custom call", href: "#contact" },
+      cta: { label: "Discuss custom solutions", href: "#contact" },
     },
   ];
 
   return (
     <section id="solutions" className="solutions" data-screen-label="02 Solutions">
       <div className="solutions__header">
-        <span className="section-kicker">Solutions</span>
+        <span className="section-kicker">Three Paths</span>
         <h2 className="section-title">Three ways to win with AI.</h2>
         <p className="section-lede">
-          Start with pre-made solutions, audit your potential, or go custom. We find the hours AI can save you, then we build what saves them.
+          Once we connect, you can implement immediately, audit first to maximize ROI, or build something custom. We find the hours AI can save, then deliver them.
         </p>
       </div>
 
