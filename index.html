@@ -446,6 +446,19 @@ img { max-width: 100%; display: block; }
   opacity: 0.85;
 }
 
+.hero__sub {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(15px, 1.15vw, 18px);
+  line-height: 1.55;
+  max-width: 470px;
+  margin: 0;
+  color: var(--coil);
+  opacity: 0.68;
+}
+
 .hero__actions {
   position: relative;
   z-index: 3;
@@ -1068,6 +1081,7 @@ img { image-rendering: -webkit-optimize-contrast; }
   .hero__wise { font-size: clamp(64px, 22vw, 120px); }
   .hero__ai { font-size: clamp(18px, 5vw, 28px); margin-top: 0.51em; }
   .hero__tag { font-size: 16px; max-width: 92vw !important; margin: 0 auto; }
+  .hero__sub { font-size: 15px; max-width: 92vw; margin: 0 auto; text-align: center; }
   .hero__actions { justify-content: center; width: 100%; }
   .hero__actions .btn { flex: 1; justify-content: center; min-width: 140px; }
   .hero__topbar { font-size: 10px; padding-bottom: 14px; margin-bottom: 14px; }
@@ -1861,6 +1875,9 @@ function Hero({ variant = "orange" }) {
           </div>
           <p className="hero__tag" style={{ fontWeight: 500, color: "rgb(0, 0, 0)", maxWidth: "500px" }}>
             AI that earns its keep.
+          </p>
+          <p className="hero__sub">
+            We build and deploy AI automations for Brisbane SMBs — lead capture, quote generators, and custom agents that do real work. Live in weeks, not months.
           </p>
           <div className="hero__actions">
             <a href="#solutions" className="btn btn--primary btn--lg">
