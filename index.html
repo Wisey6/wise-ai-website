@@ -96,7 +96,7 @@ img { max-width: 100%; display: block; }
   font-weight: 600;
   font-size: 15px;
   border-radius: 999px;
-  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, transform 160ms var(--ease-out), box-shadow 200ms ease;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
   border: 1.5px solid transparent;
   line-height: 1;
   will-change: transform;
@@ -515,7 +515,7 @@ img { max-width: 100%; display: block; }
 .solutions__header { max-width: 820px; margin-bottom: 64px; }
 .solutions__grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
 }
 .solutions__card {
@@ -619,7 +619,7 @@ img { max-width: 100%; display: block; }
 
 @media (max-width: 900px) {
   .solutions { padding: 80px var(--edge); }
-  .solutions__grid { grid-template-columns: 1fr; }
+  .solutions__grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
   .solutions__card { padding: 36px 28px; }
   .pricing { padding: 70px var(--edge); }
 }
@@ -2210,29 +2210,44 @@ function Solutions() {
   const items = [
     {
       n: "01",
-      title: "AI Audit",
-      kicker: "Find the wins worth chasing.",
-      body: "We shadow your team, map the workflows, and write up where AI pays off — and where it quietly won't. A clear-eyed report your board can read.",
+      title: "Pre-made Solutions",
+      kicker: "Ready-to-deploy AI for Brisbane SMBs — start saving hours today.",
+      body: "No custom builds, no waiting. Pick from our battle-tested playbook: automated lead capture, quote generators, website creation without the hefty SaaS fees, and more. Deploy in days. Pay for results.",
       bullets: [
-        "Workflow + stack review",
-        "Time-study across key roles",
-        "Quick wins, scored by hours saved",
-        "Custom agent specs per use case",
+        "Automated lead capture & nurture",
+        "Smart quote & proposal generators",
+        "Website creation (no $300/month fees)",
+        "Email automation & scheduling",
+        "Customer intake & qualification",
+        "Invoice & document processing",
+      ],
+      cta: { label: "Explore pre-made solutions", href: "#contact" },
+    },
+    {
+      n: "02",
+      title: "AI Audit",
+      kicker: "Know exactly where AI will save you time — before you commit any budget.",
+      body: "Two weeks inside your business. We map your workflows, spot the bottlenecks, and return a clear, prioritised plan for where AI will pay off — and where it won't.",
+      bullets: [
+        "Full workflow & stack review",
+        "Team time-study across 3–5 roles",
+        "Prioritised 90-day roadmap",
+        "Executive-ready summary deck",
       ],
       cta: { label: "Start with an audit", href: "#contact" },
     },
     {
-      n: "02",
-      title: "AI Build",
-      kicker: "Ship the agents that earn their keep.",
-      body: "Green-light an item from the audit and we build it for a fixed fee — paid on completion. Custom agents, automations, the lot. Owner-led handover so it runs without us.",
+      n: "03",
+      title: "Custom Solutions",
+      kicker: "AI built exactly for your business — bespoke agents doing your unique work.",
+      body: "We build production AI agents tailored to your specific workflows and industry. Each one has clear KPIs, human oversight, and runs on your infrastructure. Scale with agents that fit your business, not the other way around.",
       bullets: [
-        "Fixed fee, paid on completion",
-        "Custom agents + workflow automation",
-        "Free training where it makes sense",
-        "Named owner inside your business",
+        "Custom agent architecture",
+        "Guardrails & human oversight",
+        "Monthly performance reports",
+        "Flexible pricing & cancellation",
       ],
-      cta: { label: "Book a build call", href: "#contact" },
+      cta: { label: "Book a custom call", href: "#contact" },
     },
   ];
 
@@ -2240,9 +2255,9 @@ function Solutions() {
     <section id="solutions" className="solutions" data-screen-label="02 Solutions">
       <div className="solutions__header">
         <span className="section-kicker">Solutions</span>
-        <h2 className="section-title">Two ways in.</h2>
+        <h2 className="section-title">Three ways to win with AI.</h2>
         <p className="section-lede">
-          Audit first. Build only what proves out. No retainers, no all-or-nothing.
+          Start with pre-made solutions, audit your potential, or go custom. We find the hours AI can save you, then we build what saves them.
         </p>
       </div>
 
