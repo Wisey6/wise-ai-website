@@ -1442,17 +1442,17 @@ img { image-rendering: -webkit-optimize-contrast; }
   <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script type="text/babel">
-// WISE Ai wordmark — WISE bold, Ai at a quarter of the size, aligned to top.
-function Wordmark({ size = 28, color = "currentColor", className = "" }) {
+// WISE Ai wordmark — WISE bold, Ai at a quarter of the size, aligned flush to top
+function Wordmark({ size = 28, color = "black", className = "" }) {
   return (
     <span
       className={className}
       style={{
         fontFamily: "var(--font-display)",
-        fontWeight: 900,
+        fontWeight: 700,
         letterSpacing: "-0.03em",
-        color,
-        lineHeight: 0.9,
+        color: "black",
+        lineHeight: 1,
         display: "inline-flex",
         alignItems: "flex-start",
         gap: size * 0.12,
@@ -1463,7 +1463,7 @@ function Wordmark({ size = 28, color = "currentColor", className = "" }) {
         style={{
           fontSize: size * 0.25,
           fontWeight: 700,
-          marginTop: size * 0.08,
+          lineHeight: 1,
           letterSpacing: "-0.01em",
         }}
       >
