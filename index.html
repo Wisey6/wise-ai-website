@@ -73,43 +73,46 @@ img { max-width: 100%; display: block; }
 
 .section-title {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(48px, 6vw, 88px);
-  line-height: 0.95;
-  letter-spacing: -0.035em;
-  margin: 14px 0 0;
+  font-weight: 900;
+  font-size: clamp(52px, 6.5vw, 92px);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  margin: 16px 0 0;
 }
 .section-lede {
-  font-size: clamp(18px, 1.4vw, 22px);
-  line-height: 1.45;
-  max-width: 620px;
-  margin: 20px 0 0;
+  font-size: clamp(18px, 1.5vw, 24px);
+  line-height: 1.5;
+  max-width: 700px;
+  margin: 24px 0 0;
   opacity: 0.75;
+  font-weight: 400;
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 16px 24px;
+  padding: 14px 28px;
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
-  border-radius: 999px;
-  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  border-radius: 8px;
+  transition: all 0.35s cubic-bezier(0.23, 1, 0.32, 1);
   border: 1.5px solid transparent;
-  line-height: 1;
+  line-height: 1.2;
   will-change: transform;
+  letter-spacing: -0.01em;
 }
-.btn:active { transform: scale(0.97); }
-.btn--lg { padding: 20px 32px; font-size: 16px; }
-.btn--primary { background: var(--coil); color: var(--snow); }
+.btn:active { transform: scale(0.96); }
+.btn--lg { padding: 18px 36px; font-size: 16px; }
+.btn--primary { background: var(--coil); color: var(--snow); box-shadow: 0 4px 12px rgba(26, 26, 26, 0.15); }
 .btn--ghost { background: transparent; border-color: currentColor; }
 .btn--outline { background: transparent; border: 1.5px solid var(--ink); color: var(--ink); }
 @media (hover: hover) and (pointer: fine) {
-  .btn--primary:hover { background: var(--fire); }
+  .btn--primary:hover { background: var(--fire); box-shadow: 0 12px 32px rgba(255, 77, 0, 0.2); transform: translateY(-2px); }
   .btn--ghost:hover { background: var(--ink); color: var(--snow); border-color: var(--ink); }
-  .btn--outline:hover { background: var(--ink); color: var(--snow); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+  .btn--outline:hover { background: var(--ink); color: var(--snow); transform: translateY(-2px); box-shadow: 0 12px 32px rgba(26, 26, 26, 0.15); }
 }
 
 /* ============== NAV (app-icon bubble) ============== */
@@ -132,13 +135,14 @@ img { max-width: 100%; display: block; }
   position: relative;
   width: 72px;
   height: 72px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow:
-    0 1px 2px rgba(0,0,0,0.06),
-    0 6px 14px rgba(0,0,0,0.10),
+    0 2px 4px rgba(0,0,0,0.04),
+    0 8px 20px rgba(0,0,0,0.12),
     0 16px 32px rgba(0,0,0,0.14),
     inset 0 1px 0 rgba(255,255,255,0.9),
     inset 0 -1px 0 rgba(0,0,0,0.04),
@@ -546,11 +550,11 @@ img { max-width: 100%; display: block; }
 }
 .solutions__title {
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(36px, 4.5vw, 56px);
-  letter-spacing: -0.03em;
-  line-height: 0.95;
-  margin: 4px 0 0;
+  font-weight: 900;
+  font-size: clamp(34px, 4.5vw, 52px);
+  letter-spacing: -0.035em;
+  line-height: 1.0;
+  margin: 8px 0 0;
 }
 .solutions__kicker {
   font-family: var(--font-display);
@@ -560,10 +564,11 @@ img { max-width: 100%; display: block; }
   margin: 8px 0 0;
 }
 .solutions__body {
-  font-size: 16px;
-  line-height: 1.55;
-  margin: 6px 0 4px;
-  opacity: 0.78;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 8px 0 6px;
+  opacity: 0.75;
+  font-weight: 400;
 }
 .solutions__bullets {
   margin: 8px 0 28px;
@@ -644,31 +649,34 @@ img { max-width: 100%; display: block; }
   gap: 16px;
 }
 .process__item {
-  padding: 32px;
-  background: rgba(255,255,255,0.04);
-  border-radius: 16px;
-  transition: background 0.3s;
+  padding: 40px 36px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
-.process__item:hover { background: rgba(255,77,0,0.12); }
+.process__item:hover { background: rgba(255,77,0,0.08); border-color: rgba(255,77,0,0.2); }
 .process__n {
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.15em;
+  font-size: 12px;
+  letter-spacing: 0.2em;
   color: var(--fire);
+  font-weight: 700;
 }
 .process__t {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 28px;
+  font-weight: 800;
+  font-size: 26px;
   letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin: 12px 0 14px;
+  line-height: 1.15;
+  margin: 14px 0 16px;
 }
 .process__d {
   font-size: 15px;
-  line-height: 1.5;
-  opacity: 0.75;
+  line-height: 1.6;
+  opacity: 0.78;
   margin: 0;
+  font-weight: 400;
 }
 @media (max-width: 820px) {
   .process__list { grid-template-columns: 1fr; }
@@ -1445,7 +1453,7 @@ img { image-rendering: -webkit-optimize-contrast; }
   <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <script type="text/babel">
-// WISE Ai wordmark — WISE bold, Ai at a quarter of the size, aligned to top.
+// WISE Ai wordmark — WISE bold, Ai smaller and baseline-aligned at top
 function Wordmark({ size = 28, color = "currentColor", className = "" }) {
   return (
     <span
@@ -1455,19 +1463,20 @@ function Wordmark({ size = 28, color = "currentColor", className = "" }) {
         fontWeight: 900,
         letterSpacing: "-0.03em",
         color,
-        lineHeight: 0.9,
+        lineHeight: 1,
         display: "inline-flex",
-        alignItems: "flex-start",
-        gap: size * 0.12,
+        alignItems: "baseline",
+        gap: size * 0.08,
       }}
     >
-      <span style={{ fontSize: size, letterSpacing: "-0.04em", fontWeight: 700 }}>WISE</span>
+      <span style={{ fontSize: size, letterSpacing: "-0.04em", fontWeight: 900, lineHeight: 1 }}>WISE</span>
       <span
         style={{
-          fontSize: size * 0.25,
-          fontWeight: 700,
-          marginTop: size * 0.08,
+          fontSize: size * 0.28,
+          fontWeight: 900,
+          lineHeight: 1,
           letterSpacing: "-0.01em",
+          display: "inline-block",
         }}
       >
         AI
@@ -2512,18 +2521,18 @@ window.VoiceAgent = VoiceAgent;
 
 function Process() {
   const steps = [
-    { n: "01", t: "Audit", d: "We shadow your team and find where AI actually fits." },
-    { n: "02", t: "Report", d: "Quick wins, longer plays, custom agents — written up so you can decide." },
-    { n: "03", t: "Build", d: "Fixed fee, paid on completion. Only what you green-light." },
-    { n: "04", t: "Hand over", d: "Named owner inside your business. Trained, not dependent." },
+    { n: "01", t: "Connect", d: "Reach out through word of mouth, referral, or direct contact. We get to know your business." },
+    { n: "02", t: "Choose your path", d: "Implement immediately from our systems library, audit first for ROI clarity, or scope a custom build." },
+    { n: "03", t: "Build & deploy", d: "Fixed fee, paid on completion. Only what you approve. We handle everything." },
+    { n: "04", t: "You own it", d: "Handover, training, documentation. You run it independently. We're a call away." },
   ];
   return (
     <section id="process" className="process" data-screen-label="04 Process">
       <div className="process__head">
-        <span className="section-kicker section-kicker--light">Process</span>
-        <h2 className="section-title">How it works.</h2>
+        <span className="section-kicker section-kicker--light">How It Works</span>
+        <h2 className="section-title">From conversation to ownership.</h2>
         <p className="section-lede" style={{ opacity: 0.75 }}>
-          Four steps. From first email to a working system you own.
+          Four simple steps. We handle the complexity. You get the system.
         </p>
       </div>
       <ol className="process__list">
