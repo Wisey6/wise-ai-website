@@ -1397,7 +1397,6 @@ function Nav({ onNav }) {
   }, [visible]);
 
   const items = [
-    ["solutions", "Solutions"],
     ["products", "Products"],
     ["work", "Work"],
     ["process", "Process"],
@@ -2092,72 +2091,7 @@ function Marquee() {
   );
 }
 
-function Solutions() {
-  const items = [
-    {
-      n: "01",
-      title: "Custom Quote Calculator",
-      kicker: "Instantly generate accurate quotes tailored to your pricing.",
-      body: "Automate your quoting process with AI-powered calculations. Custom rules for your business, instant delivery to clients, and full integration with your sales workflow.",
-      bullets: [
-        "AI-powered quote generation",
-        "Custom pricing rules & logic",
-        "Email & SMS delivery",
-        "Client-facing dashboard",
-        "Integration with your CRM",
-        "Real-time tracking & analytics",
-      ],
-      cta: { label: "Learn more", href: "#contact" },
-    },
-    {
-      n: "02",
-      title: "Invoicer",
-      kicker: "Automate invoicing from start to finish.",
-      body: "Generate, send, and track invoices automatically. Reduce manual work, improve cash flow, and get paid faster with intelligent invoice management powered by AI.",
-      bullets: [
-        "Automated invoice generation",
-        "Smart payment reminders",
-        "Multi-currency support",
-        "Payment tracking & reporting",
-        "Integration with accounting tools",
-        "Recurring invoice automation",
-      ],
-      cta: { label: "Learn more", href: "#contact" },
-    },
-  ];
-
-  return (
-    <section id="solutions" className="solutions" data-screen-label="02 What We Offer">
-      <div className="solutions__header">
-        <span className="section-kicker">Services</span>
-        <h2 className="section-title">What we offer.</h2>
-        <p className="section-lede">
-          Purpose-built AI tools designed to save your team time and reduce manual work. Get started in days, not months.
-        </p>
-      </div>
-
-      <div className="solutions__grid">
-        {items.map((s) => (
-          <article key={s.n} className="solutions__card">
-            <span className="solutions__n">{s.n}</span>
-            <h3 className="solutions__title">{s.title}</h3>
-            <p className="solutions__kicker">{s.kicker}</p>
-            <p className="solutions__body">{s.body}</p>
-            <ul className="solutions__bullets">
-              {s.bullets.map((b, i) => <li key={i}>{b}</li>)}
-            </ul>
-            <a href={s.cta.href} className="btn btn--outline">
-              {s.cta.label} <Arrow />
-            </a>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 window.Marquee = Marquee;
-window.Solutions = Solutions;
 
 function Products() {
   const items = [
@@ -2378,7 +2312,6 @@ function Footer() {
       <div className="footer__cols">
         <div>
           <span className="footer__k">Index</span>
-          <a href="#solutions">Solutions</a>
           <a href="#products">Products</a>
           <a href="#process">Process</a>
           <a href="#work">Work</a>
@@ -2524,7 +2457,6 @@ window.Tweaks = Tweaks;
           <Nav onNav={go} />
           <Hero variant={state.heroVariant} />
           <Marquee />
-          <Solutions />
           <Products />
           <Process />
           <Proof />
