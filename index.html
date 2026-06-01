@@ -131,21 +131,22 @@ h1, h2, h3, p, li { overflow-wrap: break-word; }
 }
 .nav__brand { display: inline-flex; align-items: center; gap: 10px; }
 .nav__owl { width: 30px; height: auto; display: block; }
-.nav__lockup { display: inline-flex; align-items: flex-start; gap: 3px; line-height: 1; }
+.nav__lockup { display: inline-flex; align-items: flex-start; gap: 4px; line-height: 1; }
 .nav__wise {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 24px;
-  letter-spacing: -0.05em;
+  font-size: 26px;
+  letter-spacing: -0.02em;
   line-height: 1;
   color: var(--ink);
 }
 .nav__ai {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 11px;
-  letter-spacing: -0.01em;
+  font-size: 11px;          /* ~0.42 of WISE */
+  letter-spacing: 0;
   line-height: 1;
+  margin-top: 0.08em;        /* top of Ai flush with WISE cap top */
   color: var(--ink);
 }
 .nav .btn { padding: 10px 20px; font-size: 14px; }
@@ -161,17 +162,17 @@ h1, h2, h3, p, li { overflow-wrap: break-word; }
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(84px, 15vw, 188px);
-  letter-spacing: -0.05em;
-  line-height: 0.9;
+  letter-spacing: -0.02em;
+  line-height: 1;
   color: var(--ink);
 }
 .wordmark__ai {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(20px, 3vw, 40px);
-  letter-spacing: -0.02em;
+  font-size: clamp(35px, 6.3vw, 79px);   /* ~0.42 of WISE */
+  letter-spacing: 0;
   line-height: 1;
-  margin-top: 0.1em;
+  margin-top: 0.08em;                    /* top flush with WISE cap top */
   color: var(--ink);
 }
 
@@ -352,8 +353,8 @@ h1, h2, h3, p, li { overflow-wrap: break-word; }
 }
 .footer__owl { width: clamp(48px, 7vw, 84px); height: auto; }
 .footer__wordmark { display: inline-flex; align-items: flex-start; gap: 10px; line-height: 1; }
-.footer__wise { font-family: var(--font-display); font-weight: 700; font-size: clamp(56px, 13vw, 150px); letter-spacing: -0.05em; line-height: 0.9; }
-.footer__ai { font-family: var(--font-display); font-weight: 700; font-size: clamp(14px, 2.8vw, 32px); margin-top: 0.1em; line-height: 1; }
+.footer__wise { font-family: var(--font-display); font-weight: 700; font-size: clamp(56px, 13vw, 150px); letter-spacing: -0.02em; line-height: 1; }
+.footer__ai { font-family: var(--font-display); font-weight: 700; font-size: clamp(24px, 5.5vw, 63px); letter-spacing: 0; margin-top: 0.08em; line-height: 1; }  /* ~0.42 of WISE, top flush */
 .footer__cols {
   max-width: var(--maxw);
   margin: 0 auto;
