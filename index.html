@@ -129,19 +129,23 @@ h1, h2, h3, p, li { overflow-wrap: break-word; }
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--line);
 }
-.nav__brand { display: inline-flex; align-items: baseline; gap: 6px; }
+.nav__brand { display: inline-flex; align-items: center; gap: 10px; }
+.nav__owl { width: 30px; height: auto; display: block; }
+.nav__lockup { display: inline-flex; align-items: flex-start; gap: 3px; line-height: 1; }
 .nav__wise {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 22px;
-  letter-spacing: -0.04em;
+  font-size: 24px;
+  letter-spacing: -0.05em;
+  line-height: 1;
   color: var(--ink);
 }
 .nav__ai {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: -0.01em;
+  line-height: 1;
   color: var(--ink);
 }
 .nav .btn { padding: 10px 20px; font-size: 14px; }
@@ -402,8 +406,9 @@ h1, h2, h3, p, li { overflow-wrap: break-word; }
 
   <!-- ============== NAV ============== -->
   <nav class="nav">
-    <a class="nav__brand" href="#top" aria-label="WISE AI home">
-      <span class="nav__wise">WISE</span><span class="nav__ai">AI</span>
+    <a class="nav__brand" href="#top" aria-label="WISE Ai home">
+      <img class="nav__owl" src="assets/owl-transparent.png" alt="" />
+      <span class="nav__lockup"><span class="nav__wise">WISE</span><span class="nav__ai">Ai</span></span>
     </a>
     <a class="btn btn--solid" href="https://calendly.com/tyler6wise/30min" target="_blank" rel="noopener noreferrer">Book a call</a>
   </nav>
