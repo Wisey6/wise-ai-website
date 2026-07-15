@@ -46,6 +46,21 @@ h1 .dim{color:var(--steel)}
 .scaleline{margin-top:22px;font-size:14.5px;color:var(--silver);max-width:600px;margin-left:auto;margin-right:auto;line-height:1.6}
 .scaleline b{color:var(--platinum);font-weight:600}
 
+/* ---- mantra + paths ---- */
+.mantra{max-width:1040px;margin:70px auto 0;padding:0 26px;text-align:center}
+.mantra .eyebrow{display:block;margin-bottom:22px}
+.mantra-line{font-family:'Archivo';font-weight:600;font-size:clamp(20px,3vw,29px);line-height:1.45;
+  color:var(--platinum);max-width:840px;margin:0 auto;letter-spacing:-.01em}
+.mantra-line b{color:var(--white);font-weight:700}
+.paths{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px;text-align:left}
+@media(max-width:720px){.paths{grid-template-columns:1fr}}
+.pathcard{padding:30px 28px;border-radius:20px;
+  background:linear-gradient(160deg,rgba(31,35,39,.55),rgba(13,17,20,.5));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(184,189,194,.30);
+  box-shadow:inset 0 1px 0 rgba(232,235,237,.35),inset 0 -1px 0 rgba(83,88,93,.5),0 14px 30px rgba(0,0,0,.5)}
+.pathcard .pk{font-family:'Archivo';font-weight:700;font-size:17.5px;color:var(--white);line-height:1.35}
+.pathcard .pd{color:var(--silver);font-size:14.5px;line-height:1.62;margin-top:12px}
+
 /* ---- section heading ---- */
 .sec-head{text-align:center;max-width:760px;margin:0 auto}
 .sec-head h2{font-family:'Archivo';font-weight:700;font-size:clamp(24px,3.6vw,34px);color:var(--white);letter-spacing:-.02em}
