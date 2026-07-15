@@ -8,5 +8,9 @@ compatibility_date = "2026-01-01"
 binding = "USAGE"
 id = "<KV_ID>"
 
-# Set with: wrangler secret put ANTHROPIC_API_KEY
-# (Do not commit the key. wrangler stores it encrypted in Cloudflare.)
+# Secrets (set with `wrangler secret put <NAME>`, stored encrypted — never in git):
+#   ANTHROPIC_API_KEY   — for the /  inquiry-chat endpoint
+#   RESEND_API_KEY      — for the /lead audit-form endpoint (emails leads to Tyler)
+#   FROM_EMAIL          — (optional) verified sender, e.g. "Wise Ai <hello@wiseai.website>"
+#   OWNER_EMAIL         — (optional) override lead recipient (defaults to tyler@wiseai.website)
+# See README.md → "Audit form email setup".

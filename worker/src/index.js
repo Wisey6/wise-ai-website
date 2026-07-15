@@ -42,6 +42,15 @@ const ALLOWED_ORIGINS = new Set([
   "https://www.wiseai.website",
   "https://wisey6.github.io",
 ]);
+
+// Lead / audit form ----------------------------------------------------
+// Where audit submissions are emailed. Override with env vars if needed.
+const OWNER_EMAIL = "tyler@wiseai.website";
+// The "from" address Resend sends as. MUST be on a domain you've verified
+// in Resend (https://resend.com/domains). Falls back to Resend's shared
+// onboarding sender so the Worker still works before the domain is verified.
+const DEFAULT_FROM = "Wise Ai <onboarding@resend.dev>";
+const MAX_LEADS_PER_IP_PER_DAY = 15; // light anti-spam guard
 // -----------------------------------------------------------------------
 
 export default {
@@ -54,6 +63,12 @@ export default {
     }
     if (request.method !== "POST") {
       return new Response("Method not allowed", { status: 405, headers: cors });
+    }
+
+    // Route: the audit quiz posts here to email the lead to Tyler.
+    const path = new URL(request.url).pathname;
+    if (path === "/lead" || path === "/audit") {
+      return handleLead(request, env, cors);
     }
 
     const ip = request.headers.get("CF-Connecting-IP") || "unknown";
@@ -139,6 +154,121 @@ export default {
     return json({ reply }, 200, cors);
   },
 };
+
+// Handles an audit-quiz submission: emails Tyler the lead + sends the
+// visitor a thank-you auto-reply. Uses Resend (https://resend.com).
+// Requires env.RESEND_API_KEY. Optional: env.OWNER_EMAIL, env.FROM_EMAIL.
+async function handleLead(request, env, cors) {
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ ok: false, error: "bad_json" }, 400, cors); }
+
+  // Honeypot: bots fill hidden fields; real users leave it empty.
+  if (body.website || body.company_url) {
+    return json({ ok: true }, 200, cors); // silently accept, do nothing
+  }
+
+  const name = String(body.name || "").slice(0, 120).trim();
+  const email = String(body.email || "").slice(0, 160).trim();
+  const phone = String(body.phone || "").slice(0, 60).trim();
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ ok: false, error: "missing_fields" }, 400, cors);
+  }
+
+  if (!env.RESEND_API_KEY) {
+    // Not configured yet — tell the client so it can use its mailto fallback.
+    return json({ ok: false, error: "email_not_configured" }, 503, cors);
+  }
+
+  // Light per-IP daily cap to blunt spam.
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  const today = new Date().toISOString().slice(0, 10);
+  const countKey = `leads:${today}:ip:${ip}`;
+  if (env.USAGE) {
+    const n = parseInt((await env.USAGE.get(countKey)) || "0", 10);
+    if (n >= MAX_LEADS_PER_IP_PER_DAY) {
+      return json({ ok: false, error: "rate_limited" }, 429, cors);
+    }
+  }
+
+  const owner = env.OWNER_EMAIL || OWNER_EMAIL;
+  const from = env.FROM_EMAIL || DEFAULT_FROM;
+  const business = String(body.business || "").slice(0, 160).trim();
+  const summary = String(body.summary || "").slice(0, 4000);
+  const recs = Array.isArray(body.recommendations) ? body.recommendations.slice(0, 6) : [];
+
+  // 1) Notify Tyler. reply_to = the lead so he can reply straight back.
+  const ownerSubject = `New AI audit — ${name}${business ? " (" + business + ")" : ""}`;
+  const ownerText =
+    summary ||
+    [
+      "New AI-audit enquiry from wiseai.website",
+      "",
+      `Name:     ${name}`,
+      `Email:    ${email}`,
+      `Phone:    ${phone || "—"}`,
+      `Business: ${business || "—"}`,
+      `Industry: ${body.industry || "—"}`,
+      `Team:     ${body.teamSize || "—"}`,
+      `Time sinks: ${(Array.isArray(body.timeSinks) ? body.timeSinks.join(", ") : "—")}`,
+      `Goal:     ${body.goal || "—"}`,
+      `Notes:    ${body.notes || "—"}`,
+      "",
+      `Recommended: ${recs.join(", ") || "—"}`,
+    ].join("\n");
+
+  const ownerRes = await sendEmail(env, {
+    from,
+    to: owner,
+    reply_to: email,
+    subject: ownerSubject,
+    text: ownerText,
+  });
+  if (!ownerRes.ok) {
+    const detail = await ownerRes.text().catch(() => "");
+    console.error(`Resend owner ${ownerRes.status}: ${detail.slice(0, 200)}`);
+    return json({ ok: false, error: "send_failed" }, 502, cors);
+  }
+
+  // 2) Thank-you auto-reply to the visitor (best-effort — don't fail on this).
+  const firstName = name.split(" ")[0];
+  const replyText =
+    `Hi ${firstName},\n\n` +
+    `Thanks for taking the Wise Ai mini audit — it's landed with me and I'll ` +
+    `personally review your answers.\n\n` +
+    `I'll be in touch within one business day with a clear plan and fixed pricing. ` +
+    `If you'd like to grab a time sooner, you can book a 30-minute call here:\n` +
+    `https://calendly.com/tyler6wise/30min\n\n` +
+    (recs.length ? `Based on what you shared, we'd likely start with: ${recs.join(", ")}.\n\n` : "") +
+    `Talk soon,\nTyler Wise\nWise Ai · ${owner}`;
+
+  await sendEmail(env, {
+    from,
+    to: email,
+    reply_to: owner,
+    subject: "Thanks — your Wise Ai audit is in",
+    text: replyText,
+  }).catch(() => {});
+
+  if (env.USAGE) {
+    const n = parseInt((await env.USAGE.get(countKey)) || "0", 10);
+    await env.USAGE.put(countKey, String(n + 1), { expirationTtl: 90000 });
+  }
+
+  return json({ ok: true }, 200, cors);
+}
+
+// Thin Resend wrapper. Returns the raw fetch Response.
+function sendEmail(env, { from, to, reply_to, subject, text }) {
+  return fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from, to, reply_to, subject, text }),
+  });
+}
 
 function corsHeaders(origin) {
   const allow = ALLOWED_ORIGINS.has(origin) ? origin : "https://wiseai.website";
