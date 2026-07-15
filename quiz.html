@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI — Your free 2-minute business audit</title>
+<meta name="description" content="Answer a few questions about your business and get instant, tailored suggestions on where AI and automation would pay off.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav>
+    <a href="/" class="brand" aria-label="Wise AI"><img src="logo.svg" alt="Wise AI"></a>
+    <a href="/" class="nav-cta">← Back to home</a>
+  </nav>
+
+  <section class="quiz">
+    <div class="glass">
+      <div id="form">
+        <span class="eyebrow">Your free 2-minute audit</span>
+        <h1>Let's find what's worth automating.</h1>
+        <p class="lead">A few quick questions about your business. At the end I'll show you — straight — where there's time and money worth reclaiming, and exactly where I'd start.</p>
+
+        <div class="row2">
+          <div class="field">
+            <label for="name">Your name</label>
+            <input id="name" type="text" placeholder="Jane Smith" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="business">Business name</label>
+            <input id="business" type="text" placeholder="Smith &amp; Co" autocomplete="organization">
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" placeholder="jane@business.com" autocomplete="email">
+          </div>
+          <div class="field">
+            <label for="phone">Contact number</label>
+            <input id="phone" type="tel" placeholder="0400 000 000" autocomplete="tel">
+          </div>
+        </div>
+
+        <!-- questions injected by JS -->
+        <div id="questions"></div>
+
+        <button class="submit" id="submitBtn">Show my result</button>
+        <div class="err" id="err"></div>
+      </div>
+
+      <!-- RESULT -->
+      <div class="result" id="result">
+        <div class="verdict">
+          <span class="badge" id="verdictBadge">Strong fit</span>
+          <h3 id="verdictTitle"></h3>
+          <p id="verdictText"></p>
+        </div>
+        <div id="recoWrap"></div>
+        <div class="book">
+          <a class="btn btn-primary" id="bookBtn" href="#">Send this to Tyler &amp; book a walkthrough</a>
+        </div>
+        <span class="again" id="againBtn">Start over</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Wise AI · Brisbane · <b>local, embedded, accountable</b><br>
+    <a href="mailto:tyler@wiseai.website">tyler@wiseai.website</a>
+  </footer>
+
+<script src="quiz.js"></script>
+</body>
+</html>

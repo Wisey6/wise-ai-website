@@ -4,155 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wise AI — Your business, running itself.</title>
+<meta name="description" content="Wise AI takes the repetitive admin, bookings, follow-ups and banking off small businesses in Brisbane — and makes them run themselves. Local, embedded, accountable.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --void:#0A0E11;--noir:#0D1114;--onyx:#1F2327;--graphite:#3A3F44;
-    --steel:#53585D;--silver:#989CA0;--chrome:#B8BDC2;--platinum:#E8EBED;--white:#fff;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
-  body{font-family:'Inter',system-ui,sans-serif;color:var(--platinum);overflow-x:hidden;
-    background:radial-gradient(120% 80% at 50% 4%,#161b20 0%,#0d1114 42%,#0a0e11 100%) fixed}
-  a{color:inherit;text-decoration:none}
-  .wrap{max-width:1040px;margin:0 auto;padding:0 26px}
-
-  /* ---- nav ---- */
-  nav{display:flex;align-items:center;justify-content:space-between;max-width:1040px;margin:0 auto;padding:24px 26px}
-  .brand{display:flex;align-items:center}
-  .brand img{height:30px;width:auto;display:block}
-  .nav-cta{border:1px solid var(--graphite);border-radius:999px;padding:9px 18px;font-size:13px;font-weight:500;color:var(--platinum);
-    background:linear-gradient(160deg,rgba(31,35,39,.7),rgba(13,17,20,.6));transition:.2s}
-  .nav-cta:hover{border-color:var(--chrome);box-shadow:0 0 18px rgba(255,255,255,.06)}
-
-  /* ---- hero ---- */
-  .hero{text-align:center;padding:56px 26px 20px;max-width:1040px;margin:0 auto}
-  .eyebrow{font-family:'Archivo';font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--silver)}
-  h1{font-family:'Archivo';font-weight:900;font-size:clamp(34px,6.4vw,64px);line-height:1.02;letter-spacing:-.025em;color:var(--white);margin:18px auto 0;max-width:760px}
-  h1 .dim{color:var(--steel)}
-  .sub{max-width:560px;margin:20px auto 0;color:var(--silver);font-size:17px;line-height:1.55}
-  .ctas{margin-top:32px;display:flex;gap:13px;justify-content:center;flex-wrap:wrap}
-  .btn{border-radius:999px;padding:14px 26px;font-size:15px;font-weight:600;transition:.2s;cursor:pointer;border:1px solid transparent;font-family:'Inter'}
-  .btn-primary{background:linear-gradient(180deg,#ffffff,#dfe3e6);color:#0c1013;box-shadow:0 0 30px rgba(255,255,255,.16)}
-  .btn-primary:hover{box-shadow:0 0 42px rgba(255,255,255,.30)}
-  .btn-ghost{border-color:var(--graphite);color:var(--platinum);background:linear-gradient(160deg,rgba(31,35,39,.6),rgba(13,17,20,.5))}
-  .btn-ghost:hover{border-color:var(--chrome)}
-
-  /* ---- who we work with ---- */
-  .scale{max-width:1040px;margin:64px auto 0;padding:0 26px;text-align:center}
-  .scale .eyebrow{display:block;margin-bottom:22px}
-  .scalebar{display:flex;align-items:stretch;gap:16px;justify-content:center;flex-wrap:wrap}
-  .scaleitem{flex:1;min-width:200px;max-width:320px;padding:26px 22px;border-radius:20px;
-    background:linear-gradient(160deg,rgba(31,35,39,.55),rgba(13,17,20,.5));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border:1px solid rgba(184,189,194,.32);
-    box-shadow:inset 0 1px 0 rgba(232,235,237,.4),inset 0 -1px 0 rgba(83,88,93,.5),0 14px 30px rgba(0,0,0,.5)}
-  .scaleitem .num{font-family:'Archivo';font-weight:900;font-size:30px;color:var(--white)}
-  .scaleitem .lbl{margin-top:6px;font-size:14px;color:var(--silver);line-height:1.45}
-  .scaleline{margin-top:22px;font-size:14.5px;color:var(--silver);max-width:600px;margin-left:auto;margin-right:auto;line-height:1.6}
-  .scaleline b{color:var(--platinum);font-weight:600}
-
-  /* ---- what we take off your plate (glass tiles) ---- */
-  .plate{max-width:1040px;margin:70px auto 0;padding:0 26px;text-align:center}
-  .plate h2{font-family:'Archivo';font-weight:700;font-size:clamp(24px,3.6vw,34px);color:var(--white);letter-spacing:-.02em}
-  .plate .sub{margin-top:14px}
-  .tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:36px}
-  @media(max-width:820px){.tiles{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:480px){.tiles{grid-template-columns:1fr}}
-  .tilecard{padding:24px 16px;border-radius:22px;
-    background:linear-gradient(160deg,rgba(31,35,39,.68),rgba(13,17,20,.55));
-    backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);
-    border:1px solid rgba(184,189,194,.42);
-    box-shadow:inset 0 1px 0 rgba(232,235,237,.55),inset 0 -1px 0 rgba(83,88,93,.6),0 16px 34px rgba(0,0,0,.55),0 0 22px rgba(255,255,255,.04)}
-  .tilecard .ico{width:44px;height:44px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
-  .tilecard svg{width:34px;height:34px;stroke:var(--platinum);stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;
-    filter:drop-shadow(0 0 3px rgba(255,255,255,.4))}
-  .tilecard .t{font-family:'Archivo';font-weight:600;font-size:14px;color:var(--platinum)}
-
-  /* ---- questionnaire ---- */
-  .quiz{max-width:760px;margin:80px auto 0;padding:0 26px 90px}
-  .glass{padding:38px 34px;border-radius:26px;
-    background:linear-gradient(160deg,rgba(31,35,39,.62),rgba(13,17,20,.55));
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-    border:1px solid rgba(184,189,194,.40);
-    box-shadow:inset 0 1px 0 rgba(232,235,237,.5),inset 0 -1px 0 rgba(83,88,93,.6),0 22px 48px rgba(0,0,0,.6),0 0 26px rgba(255,255,255,.04)}
-  @media(max-width:520px){.glass{padding:28px 20px}}
-  .quiz .eyebrow{text-align:center;display:block}
-  .quiz h2{font-family:'Archivo';font-weight:900;font-size:clamp(26px,4.4vw,40px);color:var(--white);text-align:center;letter-spacing:-.02em;margin-top:14px}
-  .quiz .lead{text-align:center;color:var(--silver);font-size:15.5px;line-height:1.55;margin:14px auto 30px;max-width:520px}
-
-  .field{margin-bottom:18px}
-  .field label{display:block;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--silver);margin-bottom:8px;font-family:'Archivo'}
-  .field input{width:100%;padding:13px 15px;border-radius:12px;font-family:'Inter';font-size:15px;color:var(--platinum);
-    background:rgba(10,14,17,.55);border:1px solid var(--graphite);outline:none;transition:.2s}
-  .field input:focus{border-color:var(--chrome);box-shadow:0 0 0 3px rgba(184,189,194,.10)}
-  .field input::placeholder{color:var(--steel)}
-  .row2{display:flex;gap:14px}
-  @media(max-width:520px){.row2{flex-direction:column;gap:0}}
-  .row2 .field{flex:1}
-
-  .qblock{margin:24px 0}
-  .qblock .q{font-family:'Archivo';font-weight:600;font-size:15.5px;color:var(--platinum);margin-bottom:12px}
-  .qblock .q .n{color:var(--steel);margin-right:8px}
-  .opts{display:flex;flex-direction:column;gap:9px}
-  .opt{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:12px;cursor:pointer;transition:.15s;
-    background:rgba(10,14,17,.4);border:1px solid var(--graphite);font-size:14.5px;color:var(--silver)}
-  .opt:hover{border-color:var(--steel);color:var(--platinum)}
-  .opt input{position:absolute;opacity:0;pointer-events:none}
-  .opt .dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--steel);flex:none;transition:.15s;position:relative}
-  .opt.sel{border-color:var(--chrome);color:var(--white);background:rgba(31,35,39,.6);box-shadow:0 0 18px rgba(255,255,255,.05)}
-  .opt.sel .dot{border-color:var(--white);box-shadow:0 0 10px rgba(255,255,255,.5)}
-  .opt.sel .dot:after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--white);box-shadow:0 0 8px rgba(255,255,255,.9)}
-  /* multi-select: square box + checkmark */
-  .opt.multi .dot{border-radius:5px}
-  .opt.multi.sel .dot:after{content:"";inset:auto;position:absolute;left:5px;top:1px;width:5px;height:9px;
-    border:solid var(--white);border-width:0 2px 2px 0;border-radius:0;background:none;transform:rotate(45deg);
-    box-shadow:none;filter:drop-shadow(0 0 4px rgba(255,255,255,.8))}
-  .qhint{font-size:11.5px;color:var(--steel);font-weight:400;font-family:'Inter';margin-left:9px;letter-spacing:0;text-transform:none}
-
-  /* start-now reveal */
-  .startwrap{margin-top:8px}
-  #startBtn{display:block;width:100%;max-width:280px;margin:0 auto}
-  #survey{overflow:hidden;max-height:0;opacity:0;transition:max-height .55s ease,opacity .45s ease}
-  #survey.open{max-height:4000px;opacity:1}
-
-  .submit{width:100%;margin-top:12px;padding:16px;border-radius:14px;font-family:'Archivo';font-weight:700;font-size:16px;cursor:pointer;
-    background:linear-gradient(180deg,#ffffff,#dfe3e6);color:#0c1013;border:none;box-shadow:0 0 30px rgba(255,255,255,.16);transition:.2s}
-  .submit:hover{box-shadow:0 0 42px rgba(255,255,255,.30)}
-  .err{color:var(--chrome);font-size:13px;text-align:center;margin-top:14px;min-height:16px}
-
-  /* ---- result ---- */
-  .result{display:none;margin-top:8px}
-  .result.show{display:block;animation:fade .5s ease}
-  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-  .verdict{text-align:center;margin-bottom:26px}
-  .verdict .badge{display:inline-block;font-family:'Archivo';font-weight:600;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--noir);background:linear-gradient(180deg,#fff,#dfe3e6);padding:7px 16px;border-radius:999px;box-shadow:0 0 24px rgba(255,255,255,.22)}
-  .verdict h3{font-family:'Archivo';font-weight:900;font-size:clamp(24px,4vw,34px);color:var(--white);margin-top:18px;letter-spacing:-.02em}
-  .verdict p{color:var(--silver);font-size:15px;line-height:1.6;margin:12px auto 0;max-width:480px}
-  .reco{padding:24px 22px;border-radius:18px;margin-top:8px;
-    background:rgba(10,14,17,.5);border:1px solid rgba(184,189,194,.32);
-    box-shadow:inset 0 1px 0 rgba(232,235,237,.3)}
-  .reco .rl{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--silver)}
-  .reco .rt{font-family:'Archivo';font-weight:700;font-size:20px;color:var(--white);margin-top:8px}
-  .reco .rd{color:var(--silver);font-size:14.5px;line-height:1.6;margin-top:10px}
-  .reco ul{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:9px}
-  .reco li{display:flex;gap:10px;font-size:14px;color:var(--platinum);align-items:flex-start}
-  .reco li svg{width:17px;height:17px;flex:none;margin-top:2px;stroke:var(--white);stroke-width:2;fill:none;filter:drop-shadow(0 0 3px rgba(255,255,255,.5))}
-  .result .book{margin-top:24px;text-align:center}
-  .result .book .btn-primary{display:inline-block}
-  .result .again{display:block;text-align:center;margin-top:16px;font-size:13px;color:var(--steel);cursor:pointer;text-decoration:underline}
-  .result .again:hover{color:var(--silver)}
-
-  footer{text-align:center;padding:30px 26px 50px;color:var(--steel);font-size:12.5px;letter-spacing:.05em}
-  footer b{color:var(--silver);font-weight:600}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <nav>
-    <a href="#" class="brand" aria-label="Wise AI"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIxNTggMzY3IDI1NiA2MCI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbDogIzIzMWYyMDsKICAgICAgfQoKICAgICAgLmNscy0yIHsKICAgICAgICBjbGlwLXBhdGg6IHVybCgjY2xpcHBhdGgtMyk7CiAgICAgIH0KCiAgICAgIC5jbHMtMywgLmNscy00LCAuY2xzLTUsIC5jbHMtNiB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLmNscy00IHsKICAgICAgICBjbGlwLXBhdGg6IHVybCgjY2xpcHBhdGgtMSk7CiAgICAgIH0KCiAgICAgIC5jbHMtNSB7CiAgICAgICAgY2xpcC1wYXRoOiB1cmwoI2NsaXBwYXRoLTIpOwogICAgICB9CgogICAgICAuY2xzLTYgewogICAgICAgIGNsaXAtcGF0aDogdXJsKCNjbGlwcGF0aCk7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgICA8Y2xpcFBhdGggaWQ9ImNsaXBwYXRoIj4KICAgICAgPHBhdGggY2xhc3M9ImNscy0zIiBkPSJNMTg0LjU1LDQxNC4xNWwyLjg1LDUuMTIsMS45NS4wNGMxLjM3LjAzLDIuNSwxLjEsMi40MiwyLjQ4aC0xNS4yMmMtLjA0LTEuMjMuNzQtMi4xNSwxLjgyLTIuMzVsMS41MS0uMTEtMS44NC0zLjItMi4yMS4yYy0xLjY0LDQuMS00LjksNS44MS05LjQsNS40M2wuMDYtMjAuOTVjMC0zLjI1LDEuODEtNi4wNSw0LjQ5LTcuNjUtLjcxLTEuMDItMS40MS0xLjk2LTEuOTItMy4wMy0xLjU4LTMuMzgtMS40Mi03LjI0LjU0LTEwLjQ1bDIuMTQuOTljLTIuMzQsNC4wMS0xLjQ0LDguNDgsMS44MywxMS42MiwyLjgtLjQsNS42Ny44OSw3LjM4LDMuMjcsMy40OS4zNiw3LS42MSw5LjY5LTIuOTIsMy42Mi0zLjEsNC42My03Ljk0LDIuMjEtMTIuMDFsMi4xNC0uOTljLjg5LDEuNDgsMS41NiwzLjI3LDEuNTgsNS4xNC4wNiwzLjkuMTQsNy43NC0uMDIsMTEuNjQtLjI1LDYuMjktMy40MywxMS45Mi04LjQ1LDE1LjU4LTEuMTUuODQtMi4xMywxLjQ5LTMuNTgsMi4xNFpNMTc2LjYzLDQxMy43OGMyLjU3LS4wMSw0Ljg0LS44LDcuMDMtMS44NCw1Ljk5LTIuODUsMTAuNDYtOS4yLDEwLjU0LTE1LjcybC4wNS0zLjg4LTEuMjksMS40OGMtMi4zNiwyLjI5LTUuMzUsMy43OS04LjYzLDQuMTJsLTIuMDMuMi40NiwyLjQ4Yy4xOSw1LjM3LTEuNjksOS45MS02LjEyLDEzLjE3Wk0xNjguOTUsNDExLjMybC4wNCwyLjZjMi44LS4wOSw1LjE1LTEuMTQsNy4xOS0yLjg1LDEuMzktMS4xNywyLjQyLTIuNjQsMy4xNy00LjMzLDEuNDQtMy4yMywxLjY1LTguMjEtMS4xNy0xMC42OS0xLjMyLTEuMTctMy4wMi0xLjU3LTQuODEtMS4xNy0xLjM5LjMxLTIuNzYsMS4yOS0zLjUyLDIuNzctLjQxLjgtLjg1LDEuNzgtLjg2LDIuNzRsLS4wMyw4LjUyYzQuMDgtLjQ4LDYuMTItMy42Nyw2LjQyLTcuNmwyLjM3LS4wNGMtLjA4LDUuMzEtMy41MSw5LjU4LTguOCwxMC4wNlpNMTgyLjU5LDQxOS4yOGwyLjA5LjAyLTIuMzYtNC4yNy0xLjc1LjU5LDIuMDIsMy42NlpNMTczLjE0LDQxNi40MWwtNC4xOS0uMDIuMDQsMi45NGMxLjg5LS4zMiwzLjM5LTEuMzEsNC4xNS0yLjkyWiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxjbGlwUGF0aCBpZD0iY2xpcHBhdGgtMSI+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtNiIgZD0iTTE4Mi4zLDM5Mi40N2wtMi40Ny0zLjk0Yy43Ny0xLjA1LDEuMzItMi4xNywxLjI1LTMuNDMtLjE5LTMuNTctMi43NS01LjEyLTYuMTctNS4zNC0zLjgyLS4yNC03LjA4LTIuMjgtNy42My02LjJsMi4zOS0uMDljLjI5LDEuMzQsMS4wOCwyLjM4LDIuMzIsMyw1Ljc5LTUuNDQsMTQuODEtNS40OSwyMC42Ni4wMiwxLjE3LS42MywxLjk3LTEuNjMsMi4yLTIuOTdsMi40Ny0uMDNjLS4zNywyLjY0LTIuMDQsNC42NS00LjQ0LDUuNTctMS4zOS41NC0yLjgzLjY4LTQuMzEuODEtMi45Ny4yNi01LjE2LDIuNTktNS4wOCw1LjU3LjE2LDEuMTQuNTUsMi4xMSwxLjMxLDMuMDVsLTIuNTEsMy45NlpNMTg4LjM0LDM3Ny41MWwxLjQ1LS4xNGMtMi4xOC0xLjg4LTUuNzItMi43Ny04LjYyLTIuNDgtMi4zMi4yMy00LjUxLjk1LTYuNDEsMi40OCwzLjIuMTgsNS42NywxLjAyLDcuNTksMy43LDEuMzgtMi4xMywzLjU1LTMuMzEsNi0zLjU2WiIvPgogICAgPC9jbGlwUGF0aD4KICAgIDxjbGlwUGF0aCBpZD0iY2xpcHBhdGgtMiI+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtNCIgZD0iTTE4OC42MSwzODMuNDVjLS4wNS42NC4zNCwxLjA5Ljg3LDEuMjRzMS4wNC0uMTQsMS4zOC0uNzhjLjU2LDEuMTIuMDcsMi41Ny0uOSwzLjIxLTEuMS43Mi0yLjUxLjYtMy4zOS0uMjhzLTEuMDYtMi4zMS0uMzYtMy40LDEuOTUtMS41OCwzLjE0LTEuMDFjLS40Ny4yOC0uNzEuNTgtLjc1LDEuMDJaIi8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoIGlkPSJjbGlwcGF0aC0zIj4KICAgICAgPHBhdGggY2xhc3M9ImNscy01IiBkPSJNMTc2LjM0LDM4My43OGMuMDguNjQuNTcuOTEsMS4wOS45NHMuODgtLjMsMS4yLS44NWMuNSwxLjA5LjE2LDIuMjktLjY0LDMuMDNzLTIuMDEuOTEtMi45OS4zOC0xLjUzLTEuNTItMS40LTIuNzFjLjE4LTEuNjEsMS44Mi0yLjgzLDMuNDYtMi4yLS40Ni4zNi0uNzkuNzUtLjcxLDEuNDFaIi8+CiAgICA8L2NsaXBQYXRoPgogIDwvZGVmcz4KICA8ZyBpZD0iTE9HT19URVhUIiBkYXRhLW5hbWU9IkxPR08gVEVYVCI+CiAgICA8Zz4KICAgICAgPGc+CiAgICAgICAgPHBhdGggY2xhc3M9ImNscy0zIiBkPSJNMjIyLjAyLDQyMS44bC0xMi45Ni00OS4zOWgxMS4zOGw3LjIsMjkuNDVjLjE0LjQzLjI5LDEuMDcuNDMsMS45MS4xNC44NC4yOSwxLjcyLjQzLDIuNjMuMTQuOTEuMjYsMS43My4zNiwyLjQ1aC4zNmMuMS0uNTMuMTgtMS4xMy4yNS0xLjguMDctLjY3LjE3LTEuMzMuMjktMS45OC4xMi0uNjUuMjQtMS4yNi4zNi0xLjg0LjEyLS41OC4yLTEuMDMuMjUtMS4zN2w2LjctMjkuNDVoMTIuODJsNi44NCwyOS40NWMuMTQuNDguMjksMS4xMy40MywxLjk0LjE0LjgyLjI5LDEuNjguNDMsMi41OS4xNC45MS4yNiwxLjczLjM2LDIuNDVoLjM2Yy4xLS41My4yLTEuMS4zMi0xLjczLjEyLS42Mi4yNC0xLjI2LjM2LTEuOTEuMTItLjY1LjI1LTEuMjYuNC0xLjg0LjE0LS41OC4yNi0xLjA4LjM2LTEuNTFsNy4xMy0yOS40NWgxMC4zbC0xMy4wMyw0OS4zOWgtMTIuMjRsLTcuMjctMzAuMzhjLS4xNC0uNjctLjMtMS40NS0uNDctMi4zNC0uMTctLjg5LS4zMi0xLjc2LS40Ny0yLjYzLS4xNC0uODYtLjI2LTEuNjMtLjM2LTIuM2gtLjI5Yy0uMS42Ny0uMiwxLjQ2LS4zMiwyLjM4LS4xMi45MS0uMjYsMS44LS40MywyLjY2LS4xNy44Ni0uMzIsMS42MS0uNDcsMi4yM2wtNy4yLDMwLjM4aC0xMi42WiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTI4MS4xMyw0MjEuOHYtNDkuMzloMTAuNzN2NDkuMzloLTEwLjczWiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTMxOS44Niw0MjIuNjZjLTIuODgsMC01LjYyLS4yOS04LjIxLS44NnMtNC44OC0xLjUtNi44OC0yLjc3Yy0xLjk5LTEuMjctMy41NS0yLjg4LTQuNjgtNC44Mi0xLjEzLTEuOTQtMS42OS00LjMxLTEuNjktNy4wOXYtLjc2YzAtLjI2LjAyLS40Ny4wNy0uNjFoMTAuNjZjLS4wNS4xNC0uMDcuMzQtLjA3LjU4di42NWMwLDEuNTQuNDIsMi44MywxLjI2LDMuODkuODQsMS4wNiwyLjA4LDEuODUsMy43MSwyLjM4LDEuNjMuNTMsMy41My43OSw1LjY5Ljc5LDEuMzksMCwyLjYzLS4wOCwzLjcxLS4yNSwxLjA4LS4xNywyLjA0LS40MSwyLjg4LS43Mi44NC0uMzEsMS41NC0uNjgsMi4wOS0xLjEyLjU1LS40My45Ni0uOTQsMS4yMi0xLjUxLjI2LS41OC40LTEuMjIuNC0xLjk0LDAtMS4zLS40Mi0yLjM1LTEuMjYtMy4xNy0uODQtLjgyLTEuOTktMS41MS0zLjQ2LTIuMDktMS40Ni0uNTgtMy4xMS0xLjEtNC45My0xLjU4LTEuODItLjQ4LTMuNy0uOTctNS42Mi0xLjQ4LTEuOTItLjUtMy43OS0xLjEzLTUuNjItMS44Ny0xLjgyLS43NC0zLjQ2LTEuNjQtNC45LTIuNy0xLjQ0LTEuMDYtMi41OS0yLjQtMy40Ni00LjAzLS44Ni0xLjYzLTEuMy0zLjYtMS4zLTUuOSwwLTIuNDUuNTItNC41NiwxLjU1LTYuMzQsMS4wMy0xLjc4LDIuNDgtMy4yNCw0LjM2LTQuMzlzNC4wMy0yLDYuNDgtMi41NmMyLjQ1LS41NSw1LjExLS44Myw3Ljk5LS44MywyLjY5LDAsNS4yMy4yOCw3LjYzLjgzLDIuNC41NSw0LjUxLDEuNDMsNi4zNCwyLjYzLDEuODIsMS4yLDMuMjUsMi43MSw0LjI4LDQuNTQsMS4wMywxLjgyLDEuNTUsMy45OCwxLjU1LDYuNDh2Ljg2aC0xMC40NHYtLjU4YzAtMS4zLS4zOC0yLjQtMS4xNS0zLjMxLS43Ny0uOTEtMS44NS0xLjYzLTMuMjQtMi4xNi0xLjM5LS41My0zLjAyLS43OS00LjktLjc5LTIuMDIsMC0zLjczLjE5LTUuMTUuNTgtMS40Mi4zOC0yLjUuOTUtMy4yNCwxLjY5LS43NC43NS0xLjEyLDEuNjItMS4xMiwyLjYzLDAsMS4xNS40MiwyLjEsMS4yNiwyLjg0Ljg0Ljc0LDEuOTksMS4zOSwzLjQ2LDEuOTQsMS40Ni41NSwzLjExLDEuMDQsNC45MywxLjQ4czMuNy45MSw1LjYyLDEuNDRjMS45Mi41MywzLjc5LDEuMTUsNS42MiwxLjg3LDEuODIuNzIsMy40NiwxLjYyLDQuOSwyLjcsMS40NCwxLjA4LDIuNTksMi40MSwzLjQ2LDRzMS4zLDMuNDgsMS4zLDUuNjljMCwzLjc5LS45MSw2Ljg0LTIuNzQsOS4xNC0xLjgzLDIuMy00LjMyLDMuOTgtNy40OSw1LjA0LTMuMTcsMS4wNi02Ljc5LDEuNTgtMTAuODcsMS41OFoiLz4KICAgICAgICA8cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Ik0zNDcuMzcsNDIxLjh2LTQ5LjM5aDM5LjQ2djguNzhoLTI4LjY2djExLjAyaDI1LjM0djguNzFoLTI1LjM0djEyLjAyaDI5LjA5djguODZoLTM5Ljg5WiIvPgogICAgICA8L2c+CiAgICAgIDxnPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTM5MC4yNywzODYuMTRsNS4yOC0xMy43MmgzLjY4bDUuMjgsMTMuNzJoLTMuMjJsLS45OC0yLjdoLTUuOThsLS45OCwyLjdoLTMuMDhaTTM5NS4xOSwzODEuMDRoNC4yNmwtMS4yMi0zLjM4Yy0uMDUtLjE1LS4xMi0uMzItLjE5LS41My0uMDctLjIxLS4xNS0uNDQtLjIzLS42OS0uMDgtLjI1LS4xNi0uNS0uMjMtLjc1LS4wNy0uMjUtLjE0LS40Ny0uMjEtLjY3aC0uMTJjLS4wNy4yNS0uMTUuNTUtLjI2Ljg5cy0uMjEuNjctLjMyLjk4Yy0uMTEuMzEtLjE5LjU3LS4yNi43N2wtMS4yMiwzLjM4WiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTQwNS41NSwzODYuMTR2LTEzLjcyaDIuOTh2MTMuNzJoLTIuOThaIi8+CiAgICAgIDwvZz4KICAgIDwvZz4KICA8L2c+CiAgPGcgaWQ9IkxPR08iPgogICAgPGc+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTE4NC41NSw0MTQuMTVsMi44NSw1LjEyLDEuOTUuMDRjMS4zNy4wMywyLjUsMS4xLDIuNDIsMi40OGgtMTUuMjJjLS4wNC0xLjIzLjc0LTIuMTUsMS44Mi0yLjM1bDEuNTEtLjExLTEuODQtMy4yLTIuMjEuMmMtMS42NCw0LjEtNC45LDUuODEtOS40LDUuNDNsLjA2LTIwLjk1YzAtMy4yNSwxLjgxLTYuMDUsNC40OS03LjY1LS43MS0xLjAyLTEuNDEtMS45Ni0xLjkyLTMuMDMtMS41OC0zLjM4LTEuNDItNy4yNC41NC0xMC40NWwyLjE0Ljk5Yy0yLjM0LDQuMDEtMS40NCw4LjQ4LDEuODMsMTEuNjIsMi44LS40LDUuNjcuODksNy4zOCwzLjI3LDMuNDkuMzYsNy0uNjEsOS42OS0yLjkyLDMuNjItMy4xLDQuNjMtNy45NCwyLjIxLTEyLjAxbDIuMTQtLjk5Yy44OSwxLjQ4LDEuNTYsMy4yNywxLjU4LDUuMTQuMDYsMy45LjE0LDcuNzQtLjAyLDExLjY0LS4yNSw2LjI5LTMuNDMsMTEuOTItOC40NSwxNS41OC0xLjE1Ljg0LTIuMTMsMS40OS0zLjU4LDIuMTRaTTE3Ni42Myw0MTMuNzhjMi41Ny0uMDEsNC44NC0uOCw3LjAzLTEuODQsNS45OS0yLjg1LDEwLjQ2LTkuMiwxMC41NC0xNS43MmwuMDUtMy44OC0xLjI5LDEuNDhjLTIuMzYsMi4yOS01LjM1LDMuNzktOC42Myw0LjEybC0yLjAzLjIuNDYsMi40OGMuMTksNS4zNy0xLjY5LDkuOTEtNi4xMiwxMy4xN1pNMTY4Ljk1LDQxMS4zMmwuMDQsMi42YzIuOC0uMDksNS4xNS0xLjE0LDcuMTktMi44NSwxLjM5LTEuMTcsMi40Mi0yLjY0LDMuMTctNC4zMywxLjQ0LTMuMjMsMS42NS04LjIxLTEuMTctMTAuNjktMS4zMi0xLjE3LTMuMDItMS41Ny00LjgxLTEuMTctMS4zOS4zMS0yLjc2LDEuMjktMy41MiwyLjc3LS40MS44LS44NSwxLjc4LS44NiwyLjc0bC0uMDMsOC41MmM0LjA4LS40OCw2LjEyLTMuNjcsNi40Mi03LjZsMi4zNy0uMDRjLS4wOCw1LjMxLTMuNTEsOS41OC04LjgsMTAuMDZaTTE4Mi41OSw0MTkuMjhsMi4wOS4wMi0yLjM2LTQuMjctMS43NS41OSwyLjAyLDMuNjZaTTE3My4xNCw0MTYuNDFsLTQuMTktLjAyLjA0LDIuOTRjMS44OS0uMzIsMy4zOS0xLjMxLDQuMTUtMi45MloiLz4KICAgICAgPHBhdGggY2xhc3M9ImNscy0zIiBkPSJNMTgyLjMsMzkyLjQ3bC0yLjQ3LTMuOTRjLjc3LTEuMDUsMS4zMi0yLjE3LDEuMjUtMy40My0uMTktMy41Ny0yLjc1LTUuMTItNi4xNy01LjM0LTMuODItLjI0LTcuMDgtMi4yOC03LjYzLTYuMmwyLjM5LS4wOWMuMjksMS4zNCwxLjA4LDIuMzgsMi4zMiwzLDUuNzktNS40NCwxNC44MS01LjQ5LDIwLjY2LjAyLDEuMTctLjYzLDEuOTctMS42MywyLjItMi45N2wyLjQ3LS4wM2MtLjM3LDIuNjQtMi4wNCw0LjY1LTQuNDQsNS41Ny0xLjM5LjU0LTIuODMuNjgtNC4zMS44MS0yLjk3LjI2LTUuMTYsMi41OS01LjA4LDUuNTcuMTYsMS4xNC41NSwyLjExLDEuMzEsMy4wNWwtMi41MSwzLjk2Wk0xODguMzQsMzc3LjUxbDEuNDUtLjE0Yy0yLjE4LTEuODgtNS43Mi0yLjc3LTguNjItMi40OC0yLjMyLjIzLTQuNTEuOTUtNi40MSwyLjQ4LDMuMi4xOCw1LjY3LDEuMDIsNy41OSwzLjcsMS4zOC0yLjEzLDMuNTUtMy4zMSw2LTMuNTZaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTE4OC42MSwzODMuNDVjLS4wNS42NC4zNCwxLjA5Ljg3LDEuMjRzMS4wNC0uMTQsMS4zOC0uNzhjLjU2LDEuMTIuMDcsMi41Ny0uOSwzLjIxLTEuMS43Mi0yLjUxLjYtMy4zOS0uMjhzLTEuMDYtMi4zMS0uMzYtMy40LDEuOTUtMS41OCwzLjE0LTEuMDFjLS40Ny4yOC0uNzEuNTgtLjc1LDEuMDJaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMyIgZD0iTTE3Ni4zNCwzODMuNzhjLjA4LjY0LjU3LjkxLDEuMDkuOTRzLjg4LS4zLDEuMi0uODUuNSwxLjA5LjE2LDIuMjktLjY0LDMuMDNzLTIuMDEuOTEtMi45OS4zOC0xLjUzLTEuNTItMS40LTIuNzFjLjE4LTEuNjEsMS44Mi0yLjgzLDMuNDYtMi4yLS40Ni4zNi0uNzkuNzUtLjcxLDEuNDFaIi8+CiAgICAgIDxnIGNsYXNzPSJjbHMtMiI+CiAgICAgICAgPHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjE4Mi41OSA0MTkuMjggMTgwLjU3IDQxNS42MiAxODIuMzIgNDE1LjAzIDE4NC42OCA0MTkuMyAxODIuNTkgNDE5LjI4Ii8+CiAgICAgIDwvZz4KICAgIDwvZz4KICA8L2c+Cjwvc3ZnPg==" alt="Wise AI"></a>
-    <a href="#quiz" class="nav-cta">Check your fit</a>
+    <a href="/" class="brand" aria-label="Wise AI"><img src="logo.svg" alt="Wise AI"></a>
+    <a href="quiz.html" class="nav-cta">Start your audit</a>
   </nav>
 
   <!-- HERO -->
@@ -161,12 +23,12 @@
     <h1>Your business,<br>running <span class="dim">itself.</span></h1>
     <p class="sub">I find the repetitive work eating your team's week — the bookings, the follow-ups, the banking — and make it run on its own. You get the time back.</p>
     <div class="ctas">
-      <a class="btn btn-primary" href="#quiz">See if it fits your business</a>
+      <a class="btn btn-primary" href="quiz.html">Start your free 2-minute audit</a>
       <a class="btn btn-ghost" href="#plate">What I take off your plate</a>
     </div>
   </section>
 
-  <!-- WHO WE WORK WITH -->
+  <!-- WHO I WORK WITH -->
   <section class="scale">
     <span class="eyebrow">Who I work with</span>
     <div class="scalebar">
@@ -184,8 +46,10 @@
 
   <!-- WHAT I TAKE OFF YOUR PLATE -->
   <section class="plate" id="plate">
-    <h2>What I take off your plate</h2>
-    <p class="sub">One system, quietly running the jobs that shouldn't need a human.</p>
+    <div class="sec-head">
+      <h2>What I take off your plate</h2>
+      <p class="sub">One system, quietly running the jobs that shouldn't need a human.</p>
+    </div>
     <div class="tiles">
       <div class="tilecard">
         <div class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></div>
@@ -210,323 +74,43 @@
     </div>
   </section>
 
-  <!-- QUESTIONNAIRE -->
-  <section class="quiz" id="quiz">
-    <div class="glass">
-      <div id="form">
-        <span class="eyebrow">2-minute fit check</span>
-        <h2>Is this right for your business?</h2>
-        <p class="lead">Answer a few questions and I'll tell you — straight — whether there's time and money worth reclaiming, and exactly where I'd start.</p>
-
-        <div class="startwrap" id="startwrap">
-          <button class="submit" id="startBtn">Start now</button>
-        </div>
-
-        <div id="survey">
-          <div class="row2">
-            <div class="field">
-              <label for="name">Your name</label>
-              <input id="name" type="text" placeholder="Jane Smith" autocomplete="name">
-            </div>
-            <div class="field">
-              <label for="business">Business name</label>
-              <input id="business" type="text" placeholder="Smith &amp; Co" autocomplete="organization">
-            </div>
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label for="email">Email</label>
-              <input id="email" type="email" placeholder="jane@business.com" autocomplete="email">
-            </div>
-            <div class="field">
-              <label for="phone">Contact number</label>
-              <input id="phone" type="tel" placeholder="0400 000 000" autocomplete="tel">
-            </div>
-          </div>
-
-          <!-- questions injected by JS -->
-          <div id="questions"></div>
-
-          <button class="submit" id="submitBtn">Show my result</button>
-          <div class="err" id="err"></div>
-        </div>
+  <!-- HOW IT WORKS -->
+  <section class="steps">
+    <div class="sec-head">
+      <h2>How it works</h2>
+      <p class="sub">A two-minute audit, then a clear plan — no jargon, no pressure.</p>
+    </div>
+    <div class="steprow">
+      <div class="step">
+        <div class="sn">1</div>
+        <div class="st">Take the 2-minute audit</div>
+        <div class="sd">Answer a few straight questions about your business and where the time goes. No prep, no call needed.</div>
       </div>
-
-      <!-- RESULT -->
-      <div class="result" id="result">
-        <div class="verdict">
-          <span class="badge" id="verdictBadge">Strong fit</span>
-          <h3 id="verdictTitle"></h3>
-          <p id="verdictText"></p>
-        </div>
-        <div id="recoWrap"></div>
-        <div class="book">
-          <a class="btn btn-primary" id="bookBtn" href="#">Book a no-pressure walkthrough</a>
-        </div>
-        <span class="again" id="againBtn">Start over</span>
+      <div class="step">
+        <div class="sn">2</div>
+        <div class="st">Get tailored suggestions</div>
+        <div class="sd">On the spot, I show you exactly where automation would pay off — and what I'd build first.</div>
+      </div>
+      <div class="step">
+        <div class="sn">3</div>
+        <div class="st">We build it, you step back</div>
+        <div class="sd">If it fits, I build it on your own accounts and stick around. Local, embedded, accountable.</div>
       </div>
     </div>
   </section>
 
+  <!-- CTA BAND -->
+  <section class="ctaband">
+    <div class="inner">
+      <h2>See what's worth automating.</h2>
+      <p>Two minutes tells you whether there's real time and money to reclaim — and exactly where I'd start.</p>
+      <a class="btn btn-primary" href="quiz.html">Start your free audit</a>
+    </div>
+  </section>
+
   <footer>
-    Wise AI · Brisbane · <b>local, embedded, accountable</b>
+    Wise AI · Brisbane · <b>local, embedded, accountable</b><br>
+    <a href="mailto:tyler@wiseai.website">tyler@wiseai.website</a>
   </footer>
-
-<script>
-  /* ---------- Questionnaire model (mapped to the Wise AI service wedges) ---------- */
-  const QUESTIONS = [
-    {
-      id:"size", q:"How big is your business?",
-      opts:[
-        {t:"Just me — sole trader", v:"solo"},
-        {t:"2–10 people", v:"small"},
-        {t:"11–25 people", v:"mid"},
-        {t:"26–45 people", v:"large"},
-        {t:"More than 45", v:"xl"}
-      ]
-    },
-    {
-      id:"pain", multi:true, q:"Where does most of your team's time disappear?",
-      opts:[
-        {t:"Booking & scheduling — the back-and-forth, the diary", v:"booking"},
-        {t:"Chasing leads & quotes that go cold", v:"leads"},
-        {t:"Invoicing & getting paid on time", v:"invoicing"},
-        {t:"Data entry, banking & reconciliation", v:"admin"},
-        {t:"Answering the same customer questions", v:"enquiries"}
-      ]
-    },
-    {
-      id:"bookings", q:"Do customers book appointments or time with you?",
-      opts:[
-        {t:"Yes — and no-shows / the chase cost us", v:"noshow"},
-        {t:"Yes — it runs fine", v:"fine"},
-        {t:"No, we don't take bookings", v:"none"}
-      ]
-    },
-    {
-      id:"leads", q:"When a new enquiry comes in, what happens?",
-      opts:[
-        {t:"We chase it manually — when we get to it", v:"manual"},
-        {t:"Honestly, some slip through the cracks", v:"leak"},
-        {t:"It's already handled automatically", v:"auto"}
-      ]
-    },
-    {
-      id:"hours", q:"Roughly how many hours a week go on repetitive admin?",
-      opts:[
-        {t:"Under 5", v:"low"},
-        {t:"5–15", v:"med"},
-        {t:"15+ — it's a real drain", v:"high"},
-        {t:"No idea, but too many", v:"unknown"}
-      ]
-    },
-    {
-      id:"tools", q:"How are you handling it today?",
-      opts:[
-        {t:"Manually / spreadsheets / notebooks", v:"manual"},
-        {t:"A patchwork of apps that don't talk", v:"patchwork"},
-        {t:"Fairly automated already", v:"auto"}
-      ]
-    }
-  ];
-
-  /* ---------- Solution library, keyed by the main pain ---------- */
-  const SOLUTIONS = {
-    booking:{
-      title:"Booking & no-show automation",
-      desc:"An automated booking flow that fills your diary, confirms and reminds customers, and chases the ones who go quiet — so the back-and-forth stops eating your day and empty slots stop costing you.",
-      bullets:["Online booking that syncs straight to your calendar","Automatic confirmations, reminders & reschedules","No-show follow-ups that recover the revenue","Live in ~2 weeks, on your own accounts"]
-    },
-    leads:{
-      title:"Lead-to-quote automation",
-      desc:"Every enquiry gets an instant response, gets logged, and gets followed up on a schedule — so the leads you're quietly losing turn into booked, quoted work instead.",
-      bullets:["Instant reply to every new enquiry","Nothing slips — every lead tracked to an outcome","Automated follow-up sequence until they book or decline","Turn website visitors into quotes on autopilot"]
-    },
-    invoicing:{
-      title:"Invoicing & payment-link automation",
-      desc:"Invoices go out the moment a job's done, payment links do the collecting, and reminders chase what's overdue — so you get paid faster without lifting a finger.",
-      bullets:["Invoices raised & sent automatically","One-tap payment links for customers","Polite, automatic reminders on overdue accounts","Fewer late payments, less chasing"]
-    },
-    admin:{
-      title:"Admin & reconciliation automation",
-      desc:"The data entry, the banking, the reconciliation — the invisible work that eats hours — handed to a system that just does it, accurately, in the background.",
-      bullets:["Data entry & record-keeping automated","Bank & transaction reconciliation handled","Fewer errors, no more end-of-week catch-up","Your team back on the work that actually pays"]
-    },
-    enquiries:{
-      title:"Customer enquiry automation",
-      desc:"The same questions, answered instantly and consistently, day or night — so your team stops repeating themselves and customers get a faster response.",
-      bullets:["Instant answers to your most common questions","Consistent, on-brand responses 24/7","Only the real conversations reach a human","Faster replies without adding headcount"]
-    }
-  };
-
-  /* ---------- Render questions ---------- */
-  const qContainer = document.getElementById("questions");
-  const answers = {};
-  QUESTIONS.forEach((question, qi) => {
-    const block = document.createElement("div");
-    block.className = "qblock";
-    const hint = question.multi ? `<span class="qhint">select all that apply</span>` : "";
-    block.innerHTML = `<div class="q"><span class="n">${String(qi+1).padStart(2,'0')}</span>${question.q}${hint}</div>`;
-    const opts = document.createElement("div");
-    opts.className = "opts";
-    question.opts.forEach(o => {
-      const label = document.createElement("label");
-      label.className = "opt" + (question.multi ? " multi" : "");
-      label.innerHTML = `<span class="dot"></span><span>${o.t}</span>`;
-      label.addEventListener("click", () => {
-        if(question.multi){
-          const arr = answers[question.id] || (answers[question.id] = []);
-          const idx = arr.indexOf(o.v);
-          if(idx >= 0){ arr.splice(idx,1); label.classList.remove("sel"); }
-          else { arr.push(o.v); label.classList.add("sel"); }
-        } else {
-          answers[question.id] = o.v;
-          opts.querySelectorAll(".opt").forEach(el => el.classList.remove("sel"));
-          label.classList.add("sel");
-        }
-      });
-      opts.appendChild(label);
-    });
-    block.appendChild(opts);
-    qContainer.appendChild(block);
-  });
-
-  /* ---------- Fit + recommendation logic ---------- */
-  function computeFit(){
-    let score = 0;
-    // hours of admin
-    if(answers.hours === "high") score += 3;
-    else if(answers.hours === "med" || answers.hours === "unknown") score += 2;
-    else if(answers.hours === "low") score += 1;
-    // current handling
-    if(answers.tools === "manual") score += 2;
-    else if(answers.tools === "patchwork") score += 2;
-    else if(answers.tools === "auto") score += 0;
-    // active pain signals
-    if(answers.bookings === "noshow") score += 1;
-    if(answers.leads === "manual" || answers.leads === "leak") score += 1;
-    // more pain areas selected = more opportunity
-    if(Array.isArray(answers.pain) && answers.pain.length >= 2) score += 1;
-    return score;
-  }
-
-  function pickSolutions(){
-    let keys = Array.isArray(answers.pain) ? answers.pain.slice() : (answers.pain ? [answers.pain] : []);
-    if(keys.length === 0){
-      if(answers.bookings === "noshow") keys.push("booking");
-      else if(answers.leads === "leak" || answers.leads === "manual") keys.push("leads");
-      else keys.push("admin");
-    }
-    const seen = {};
-    const sols = keys.filter(k => SOLUTIONS[k] && !seen[k] && (seen[k] = 1)).map(k => SOLUTIONS[k]);
-    return sols.length ? sols : [SOLUTIONS.admin];
-  }
-
-  /* ---------- Submit ---------- */
-  const err = document.getElementById("err");
-  document.getElementById("submitBtn").addEventListener("click", () => {
-    const name = document.getElementById("name").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const business = document.getElementById("business").value.trim();
-
-    if(!name || !email || !phone){ err.textContent = "Please add your name, email and contact number."; return; }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "That email doesn't look right — mind checking it?"; return; }
-    const answered = QUESTIONS.every(q => {
-      const a = answers[q.id];
-      return q.multi ? (Array.isArray(a) && a.length > 0) : !!a;
-    });
-    if(!answered){ err.textContent = "Please answer all the questions so I can point you to the right fix."; return; }
-    err.textContent = "";
-
-    const score = computeFit();
-    const sols = pickSolutions();
-
-    // verdict
-    const badge = document.getElementById("verdictBadge");
-    const vTitle = document.getElementById("verdictTitle");
-    const vText = document.getElementById("verdictText");
-    const first = name.split(" ")[0];
-
-    if(answers.tools === "auto" && score <= 3){
-      badge.textContent = "Worth a chat";
-      vTitle.textContent = `You're already ahead, ${first}.`;
-      vText.textContent = "You've automated a fair bit — so the wins here are sharper and more specific. A quick look would tell us if there's a worthwhile layer left to squeeze, or if you're already set.";
-    } else if(score >= 5){
-      badge.textContent = "Strong fit";
-      vTitle.textContent = `There's real time to reclaim, ${first}.`;
-      vText.textContent = "Based on your answers, repetitive work is quietly costing you hours and money every week. This is exactly the kind of business I build for — and there's a clear place to start.";
-    } else {
-      badge.textContent = "Good fit";
-      vTitle.textContent = `Yes — there's something here for you, ${first}.`;
-      vText.textContent = "You've got repetitive work worth removing. It may not be drowning you yet, but there's a straightforward first win that pays for itself.";
-    }
-
-    // recommendations (one card per selected pain)
-    const wrap = document.getElementById("recoWrap");
-    wrap.innerHTML = "";
-    sols.forEach((sol, i) => {
-      const card = document.createElement("div");
-      card.className = "reco";
-      card.style.marginTop = i === 0 ? "8px" : "14px";
-      const lis = sol.bullets.map(b => `<li><svg viewBox="0 0 24 24"><path d="M5 12.5l4 4 10-11"/></svg><span>${b}</span></li>`).join("");
-      const label = i === 0 ? "Where I&rsquo;d start" : "Also worth automating";
-      card.innerHTML = `<div class="rl">${label}</div><div class="rt">${sol.title}</div><div class="rd">${sol.desc}</div><ul>${lis}</ul>`;
-      wrap.appendChild(card);
-    });
-
-    // prefill a mailto so the lead actually reaches Tyler (no backend needed)
-    const subject = encodeURIComponent(`Fit check — ${business || name}: ${sols[0].title}`);
-    const bodyLines = [
-      `Name: ${name}`,
-      `Business: ${business || "-"}`,
-      `Email: ${email}`,
-      `Phone: ${phone}`,
-      ``,
-      `Recommended starting points: ${sols.map(s => s.title).join(", ")}`,
-      ``,
-      `Answers:`,
-      ...QUESTIONS.map(q => {
-        const a = answers[q.id];
-        const labels = q.multi
-          ? (a || []).map(v => (q.opts.find(o => o.v === v) || {}).t).filter(Boolean).join("; ")
-          : ((q.opts.find(o => o.v === a) || {}).t || "");
-        return `- ${q.q} ${labels}`;
-      }),
-      ``,
-      `I'd like a no-pressure walkthrough.`
-    ];
-    const body = encodeURIComponent(bodyLines.join("\n"));
-    document.getElementById("bookBtn").setAttribute("href", `mailto:tyler@wiseai.website?subject=${subject}&body=${body}`);
-
-    // swap views
-    document.getElementById("form").style.display = "none";
-    const result = document.getElementById("result");
-    result.classList.add("show");
-    result.scrollIntoView({behavior:"smooth", block:"start"});
-  });
-
-  // Start now → drop down the survey
-  document.getElementById("startBtn").addEventListener("click", () => {
-    document.getElementById("startwrap").style.display = "none";
-    const survey = document.getElementById("survey");
-    survey.classList.add("open");
-    setTimeout(() => { const n = document.getElementById("name"); if(n) n.focus({preventScroll:true}); }, 350);
-  });
-
-  document.getElementById("againBtn").addEventListener("click", () => {
-    // clear all answers + selections
-    Object.keys(answers).forEach(k => delete answers[k]);
-    document.querySelectorAll(".opt.sel").forEach(el => el.classList.remove("sel"));
-    ["name","business","email","phone"].forEach(id => { document.getElementById(id).value = ""; });
-    err.textContent = "";
-    // re-collapse the survey behind the Start-now button
-    document.getElementById("survey").classList.remove("open");
-    document.getElementById("startwrap").style.display = "block";
-    document.getElementById("result").classList.remove("show");
-    document.getElementById("form").style.display = "block";
-    document.getElementById("form").scrollIntoView({behavior:"smooth", block:"start"});
-  });
-</script>
 </body>
 </html>
