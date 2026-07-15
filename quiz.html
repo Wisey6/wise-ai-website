@@ -19,36 +19,23 @@
 
   <section class="quiz">
     <div class="glass">
-      <div id="form">
+      <div id="app">
         <span class="eyebrow">Your free 2-minute audit</span>
         <h1>Let's find what's worth automating.</h1>
-        <p class="lead">A few quick questions about your business. At the end I'll show you, straight, where there's time and money worth reclaiming, and exactly where I'd start.</p>
 
-        <div class="row2">
-          <div class="field">
-            <label for="name">Your name</label>
-            <input id="name" type="text" placeholder="Jane Smith" autocomplete="name">
-          </div>
-          <div class="field">
-            <label for="business">Business name</label>
-            <input id="business" type="text" placeholder="Smith &amp; Co" autocomplete="organization">
-          </div>
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="email">Email</label>
-            <input id="email" type="email" placeholder="jane@business.com" autocomplete="email">
-          </div>
-          <div class="field">
-            <label for="phone">Contact number</label>
-            <input id="phone" type="tel" placeholder="0400 000 000" autocomplete="tel">
-          </div>
+        <div class="progress" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="step-meta">
+          <span id="stepCount">Question 1</span>
+          <span class="step-mini">Local · embedded · accountable</span>
         </div>
 
-        <!-- questions injected by JS -->
-        <div id="questions"></div>
+        <!-- one step at a time, injected by JS -->
+        <div id="stage"></div>
 
-        <button class="submit" id="submitBtn">Show my result</button>
+        <div class="nav-row">
+          <button class="ghostbtn" id="backBtn" type="button" hidden>&larr; Back</button>
+          <button class="submit" id="nextBtn" type="button">Continue</button>
+        </div>
         <div class="err" id="err"></div>
       </div>
 
@@ -60,8 +47,9 @@
           <p id="verdictText"></p>
         </div>
         <div id="recoWrap"></div>
+        <p class="sent-note">Your results are on their way to Tyler — I'll be in touch within one business day. Want to get ahead?</p>
         <div class="book">
-          <a class="btn btn-primary" id="bookBtn" href="#">Send this to Tyler &amp; book a walkthrough</a>
+          <a class="btn btn-primary" id="bookBtn" href="#">Email Tyler &amp; book a walkthrough</a>
         </div>
         <span class="again" id="againBtn">Start over</span>
       </div>

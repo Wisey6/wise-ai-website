@@ -1,245 +1,418 @@
 /* ===========================================================================
-   Wise AI: 2-minute audit
-   NOTE: lead delivery is currently a mailto placeholder. Once the email route
-   is chosen (Resend serverless fn, recommended, or Formspree), replace the
-   submit handler's mailto with a POST that (1) emails the lead to
-   tyler@wiseai.website and (2) auto-replies "thanks, we'll be in touch" to
-   the prospect.
+   Wise AI: 2-minute AI audit
+   - One question at a time, with a progress bar.
+   - On submit: computes a tailored recommendation, then POSTs the lead to the
+     Supabase `submit-lead` edge function, which (1) stores it in the
+     `website_leads` table and (2) emails Tyler. Result shows instantly; the
+     network call runs in the background with a mailto fallback.
    =========================================================================== */
 
-/* ---------- Questions (mapped to the Wise AI service wedges) ---------- */
+const LEAD_ENDPOINT =
+  "https://uyopyiucnklwrddxpgzq.supabase.co/functions/v1/submit-lead";
+
+/* ---------- Questions (sharp, consultative, mapped to the service wedges) --- */
 const QUESTIONS = [
   {
-    id:"size", q:"How big is your business?",
-    opts:[
-      {t:"Just me, sole trader", v:"solo"},
-      {t:"2–10 people", v:"small"},
-      {t:"11–25 people", v:"mid"},
-      {t:"26–45 people", v:"large"},
-      {t:"More than 45", v:"xl"}
+    id: "trade", q: "What kind of business do you run?",
+    help: "So I can talk in your language, not jargon.",
+    opts: [
+      { t: "On the tools — trades & construction", v: "trades" },
+      { t: "Health, beauty & wellness", v: "wellness" },
+      { t: "Hospitality, food & events", v: "hospitality" },
+      { t: "Retail or online store", v: "retail" },
+      { t: "Professional & other services", v: "services" }
     ]
   },
   {
-    id:"pain", multi:true, q:"Where does most of your team's time disappear?",
-    opts:[
-      {t:"Booking & scheduling: the back-and-forth, the diary", v:"booking"},
-      {t:"Chasing leads & quotes that go cold", v:"leads"},
-      {t:"Invoicing & getting paid on time", v:"invoicing"},
-      {t:"Data entry, banking & reconciliation", v:"admin"},
-      {t:"Answering the same customer questions", v:"enquiries"}
+    id: "size", q: "How big is the team?",
+    help: "Including you.",
+    opts: [
+      { t: "Just me — sole trader", v: "solo" },
+      { t: "2–10 people", v: "small" },
+      { t: "11–25 people", v: "mid" },
+      { t: "26+ people", v: "large" }
     ]
   },
   {
-    id:"bookings", q:"Do customers book appointments or time with you?",
-    opts:[
-      {t:"Yes, and no-shows / the chase cost us", v:"noshow"},
-      {t:"Yes, it runs fine", v:"fine"},
-      {t:"No, we don't take bookings", v:"none"}
+    id: "pain", multi: true, q: "Where does the week actually go?",
+    help: "Pick the ones that bite. Choose all that apply.",
+    opts: [
+      { t: "Booking, scheduling & the no-show chase", v: "booking" },
+      { t: "Chasing leads & quotes that go cold", v: "leads" },
+      { t: "Invoicing & getting paid on time", v: "invoicing" },
+      { t: "Data entry, banking & reconciliation", v: "admin" },
+      { t: "Answering the same questions over and over", v: "enquiries" }
     ]
   },
   {
-    id:"leads", q:"When a new enquiry comes in, what happens?",
-    opts:[
-      {t:"We chase it manually, when we get to it", v:"manual"},
-      {t:"Honestly, some slip through the cracks", v:"leak"},
-      {t:"It's already handled automatically", v:"auto"}
+    id: "leads", q: "A new enquiry lands at 7pm. What happens?",
+    help: "Be honest — this is where money leaks.",
+    opts: [
+      { t: "They get an instant reply, any hour", v: "auto" },
+      { t: "We answer when we get to it — could be tomorrow", v: "manual" },
+      { t: "Honestly, some slip through the cracks", v: "leak" }
     ]
   },
   {
-    id:"hours", q:"Roughly how many hours a week go on repetitive admin?",
-    opts:[
-      {t:"Under 5", v:"low"},
-      {t:"5–15", v:"med"},
-      {t:"15+, it's a real drain", v:"high"},
-      {t:"No idea, but too many", v:"unknown"}
+    id: "hours", q: "How many hours a week vanish into repetitive admin?",
+    help: "Across the whole team, roughly.",
+    opts: [
+      { t: "Under 5", v: "low" },
+      { t: "5–15", v: "med" },
+      { t: "15+ — it's a real drain", v: "high" },
+      { t: "No idea, but too many", v: "unknown" }
     ]
   },
   {
-    id:"tools", q:"How are you handling it today?",
-    opts:[
-      {t:"Manually / spreadsheets / notebooks", v:"manual"},
-      {t:"A patchwork of apps that don't talk", v:"patchwork"},
-      {t:"Fairly automated already", v:"auto"}
+    id: "tools", q: "How are you handling all this today?",
+    help: "The current setup, warts and all.",
+    opts: [
+      { t: "Manually — spreadsheets, notebooks, memory", v: "manual" },
+      { t: "A patchwork of apps that don't talk to each other", v: "patchwork" },
+      { t: "Pretty automated already", v: "auto" }
+    ]
+  },
+  {
+    id: "urgency", q: "How soon do you want this sorted?",
+    help: "No wrong answer — it just tells me where to start.",
+    opts: [
+      { t: "Yesterday — it's holding us back", v: "now" },
+      { t: "Next month or two", v: "soon" },
+      { t: "Just exploring for now", v: "explore" }
     ]
   }
 ];
 
 /* ---------- Solution library, keyed by the main pain ---------- */
 const SOLUTIONS = {
-  booking:{
-    title:"Booking & no-show automation",
-    desc:"An automated booking flow that fills your diary, confirms and reminds customers, and chases the ones who go quiet, so the back-and-forth stops eating your day and empty slots stop costing you.",
-    bullets:["Online booking that syncs straight to your calendar","Automatic confirmations, reminders & reschedules","No-show follow-ups that recover the revenue","Live in ~2 weeks, on your own accounts"]
+  booking: {
+    title: "Booking & no-show automation",
+    desc: "An automated booking flow that fills your diary, confirms and reminds customers, and chases the ones who go quiet — so the back-and-forth stops eating your day and empty slots stop costing you.",
+    bullets: ["Online booking that syncs straight to your calendar", "Automatic confirmations, reminders & reschedules", "No-show follow-ups that recover the revenue", "Live in ~2 weeks, on your own accounts"]
   },
-  leads:{
-    title:"Lead-to-quote automation",
-    desc:"Every enquiry gets an instant response, gets logged, and gets followed up on a schedule, so the leads you're quietly losing turn into booked, quoted work instead.",
-    bullets:["Instant reply to every new enquiry","Nothing slips: every lead tracked to an outcome","Automated follow-up sequence until they book or decline","Turn website visitors into quotes on autopilot"]
+  leads: {
+    title: "Lead-to-quote automation",
+    desc: "Every enquiry gets an instant response, gets logged, and gets followed up on a schedule — so the leads you're quietly losing turn into booked, quoted work instead.",
+    bullets: ["Instant reply to every new enquiry, any hour", "Nothing slips: every lead tracked to an outcome", "Automated follow-up until they book or decline", "Turn website visitors into quotes on autopilot"]
   },
-  invoicing:{
-    title:"Invoicing & payment-link automation",
-    desc:"Invoices go out the moment a job's done, payment links do the collecting, and reminders chase what's overdue, so you get paid faster without lifting a finger.",
-    bullets:["Invoices raised & sent automatically","One-tap payment links for customers","Polite, automatic reminders on overdue accounts","Fewer late payments, less chasing"]
+  invoicing: {
+    title: "Invoicing & payment-link automation",
+    desc: "Invoices go out the moment a job's done, payment links do the collecting, and reminders chase what's overdue — so you get paid faster without lifting a finger.",
+    bullets: ["Invoices raised & sent automatically", "One-tap payment links for customers", "Polite, automatic reminders on overdue accounts", "Fewer late payments, less chasing"]
   },
-  admin:{
-    title:"Admin & reconciliation automation",
-    desc:"The data entry, the banking, the reconciliation: the invisible work that eats hours, handed to a system that just does it, accurately, in the background.",
-    bullets:["Data entry & record-keeping automated","Bank & transaction reconciliation handled","Fewer errors, no more end-of-week catch-up","Your team back on the work that actually pays"]
+  admin: {
+    title: "Admin & reconciliation automation",
+    desc: "The data entry, the banking, the reconciliation — the invisible work that eats hours, handed to a system that just does it, accurately, in the background.",
+    bullets: ["Data entry & record-keeping automated", "Bank & transaction reconciliation handled", "Fewer errors, no more end-of-week catch-up", "Your team back on the work that actually pays"]
   },
-  enquiries:{
-    title:"Customer enquiry automation",
-    desc:"The same questions, answered instantly and consistently, day or night, so your team stops repeating themselves and customers get a faster response.",
-    bullets:["Instant answers to your most common questions","Consistent, on-brand responses 24/7","Only the real conversations reach a human","Faster replies without adding headcount"]
+  enquiries: {
+    title: "Customer enquiry automation",
+    desc: "The same questions, answered instantly and consistently, day or night — so your team stops repeating themselves and customers get a faster response.",
+    bullets: ["Instant answers to your most common questions", "Consistent, on-brand responses 24/7", "Only the real conversations reach a human", "Faster replies without adding headcount"]
   }
 };
 
-/* ---------- Render questions ---------- */
-const qContainer = document.getElementById("questions");
+/* =========================================================================
+   Step engine — one screen at a time
+   ========================================================================= */
 const answers = {};
-QUESTIONS.forEach((question, qi) => {
-  const block = document.createElement("div");
-  block.className = "qblock";
-  const hint = question.multi ? `<span class="qhint">select all that apply</span>` : "";
-  block.innerHTML = `<div class="q"><span class="n">${String(qi+1).padStart(2,'0')}</span>${question.q}${hint}</div>`;
-  const opts = document.createElement("div");
-  opts.className = "opts";
-  question.opts.forEach(o => {
-    const label = document.createElement("label");
-    label.className = "opt" + (question.multi ? " multi" : "");
-    label.innerHTML = `<span class="dot"></span><span>${o.t}</span>`;
-    label.addEventListener("click", () => {
-      if(question.multi){
-        const arr = answers[question.id] || (answers[question.id] = []);
-        const idx = arr.indexOf(o.v);
-        if(idx >= 0){ arr.splice(idx,1); label.classList.remove("sel"); }
-        else { arr.push(o.v); label.classList.add("sel"); }
-      } else {
-        answers[question.id] = o.v;
-        opts.querySelectorAll(".opt").forEach(el => el.classList.remove("sel"));
-        label.classList.add("sel");
-      }
+const contact = {};
+const STEPS = QUESTIONS.map(q => ({ kind: "q", q })).concat([{ kind: "contact" }]);
+let step = 0;
+let advancing = false;
+
+const stage = document.getElementById("stage");
+const bar = document.getElementById("progressBar");
+const stepCount = document.getElementById("stepCount");
+const backBtn = document.getElementById("backBtn");
+const nextBtn = document.getElementById("nextBtn");
+const err = document.getElementById("err");
+
+function setProgress() {
+  // fill reflects how many steps are behind you
+  const pct = Math.round((step / STEPS.length) * 100);
+  bar.style.width = pct + "%";
+  if (STEPS[step].kind === "contact") {
+    stepCount.textContent = "Last step — where do I send it?";
+  } else {
+    stepCount.textContent = `Question ${step + 1} of ${QUESTIONS.length}`;
+  }
+}
+
+function render() {
+  err.textContent = "";
+  advancing = false;
+  const s = STEPS[step];
+  backBtn.hidden = step === 0;
+  setProgress();
+
+  const card = document.createElement("div");
+  card.className = "qcard";
+
+  if (s.kind === "q") {
+    const question = s.q;
+    const chosen = answers[question.id];
+    const hint = question.multi ? `<span class="qhint">select all that apply</span>` : "";
+    card.innerHTML =
+      `<div class="q">${question.q}${hint}</div>` +
+      (question.help ? `<div class="qsub">${question.help}</div>` : "");
+
+    const opts = document.createElement("div");
+    opts.className = "opts";
+    question.opts.forEach(o => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "opt" + (question.multi ? " multi" : "");
+      const on = question.multi
+        ? Array.isArray(chosen) && chosen.indexOf(o.v) >= 0
+        : chosen === o.v;
+      if (on) b.classList.add("sel");
+      b.innerHTML = `<span class="dot"></span><span>${o.t}</span>`;
+      b.addEventListener("click", () => onPick(question, o, b, opts));
+      opts.appendChild(b);
     });
-    opts.appendChild(label);
+    card.appendChild(opts);
+
+    // single-select auto-advances; multi needs the Continue button
+    nextBtn.hidden = !question.multi;
+    nextBtn.textContent = "Continue";
+  } else {
+    // contact step
+    nextBtn.hidden = false;
+    nextBtn.textContent = "Show my result";
+    card.innerHTML = `
+      <div class="q">Where should I send your result?</div>
+      <div class="qsub">Instant on-screen — plus I'll follow up personally, no pressure.</div>
+      <div class="row2">
+        <div class="field">
+          <label for="name">Your name</label>
+          <input id="name" type="text" placeholder="Jane Smith" autocomplete="name" value="${contact.name || ""}">
+        </div>
+        <div class="field">
+          <label for="business">Business name</label>
+          <input id="business" type="text" placeholder="Smith &amp; Co" autocomplete="organization" value="${contact.business || ""}">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="jane@business.com" autocomplete="email" inputmode="email" value="${contact.email || ""}">
+        </div>
+        <div class="field">
+          <label for="phone">Contact number</label>
+          <input id="phone" type="tel" placeholder="0400 000 000" autocomplete="tel" inputmode="tel" value="${contact.phone || ""}">
+        </div>
+      </div>`;
+  }
+
+  stage.replaceChildren(card);
+  requestAnimationFrame(() => card.classList.add("in"));
+}
+
+function onPick(question, o, btn, opts) {
+  if (question.multi) {
+    const arr = answers[question.id] || (answers[question.id] = []);
+    const i = arr.indexOf(o.v);
+    if (i >= 0) { arr.splice(i, 1); btn.classList.remove("sel"); }
+    else { arr.push(o.v); btn.classList.add("sel"); }
+    return;
+  }
+  // single-select: highlight then auto-advance
+  answers[question.id] = o.v;
+  opts.querySelectorAll(".opt").forEach(el => el.classList.remove("sel"));
+  btn.classList.add("sel");
+  if (advancing) return;
+  advancing = true;
+  setTimeout(next, 260);
+}
+
+function saveContact() {
+  ["name", "business", "email", "phone"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) contact[id] = el.value.trim();
   });
-  block.appendChild(opts);
-  qContainer.appendChild(block);
+}
+
+function next() {
+  const s = STEPS[step];
+  if (s.kind === "q") {
+    const a = answers[s.q.id];
+    const answered = s.q.multi ? (Array.isArray(a) && a.length > 0) : !!a;
+    if (!answered) { err.textContent = "Pick an option to keep going."; return; }
+    step++;
+    render();
+    scrollTop();
+    return;
+  }
+  // contact step -> validate and finish
+  saveContact();
+  if (!contact.name || !contact.email || !contact.phone) {
+    err.textContent = "I just need your name, email and a contact number."; return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+    err.textContent = "That email doesn't look right — mind checking it?"; return;
+  }
+  finish();
+}
+
+function back() {
+  if (STEPS[step].kind === "contact") saveContact();
+  if (step > 0) { step--; render(); scrollTop(); }
+}
+
+function scrollTop() {
+  document.querySelector(".glass").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+nextBtn.addEventListener("click", next);
+backBtn.addEventListener("click", back);
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !document.getElementById("result").classList.contains("show")) {
+    if (!nextBtn.hidden) next();
+  }
 });
 
 /* ---------- Fit + recommendation logic ---------- */
-function computeFit(){
-  let score = 0;
-  if(answers.hours === "high") score += 3;
-  else if(answers.hours === "med" || answers.hours === "unknown") score += 2;
-  else if(answers.hours === "low") score += 1;
-  if(answers.tools === "manual") score += 2;
-  else if(answers.tools === "patchwork") score += 2;
-  if(answers.bookings === "noshow") score += 1;
-  if(answers.leads === "manual" || answers.leads === "leak") score += 1;
-  if(Array.isArray(answers.pain) && answers.pain.length >= 2) score += 1;
-  return score;
+function computeFit() {
+  let s = 0;
+  if (answers.hours === "high") s += 3;
+  else if (answers.hours === "med" || answers.hours === "unknown") s += 2;
+  else if (answers.hours === "low") s += 1;
+  if (answers.tools === "manual" || answers.tools === "patchwork") s += 2;
+  if (answers.leads === "leak") s += 2;
+  else if (answers.leads === "manual") s += 1;
+  if (answers.urgency === "now") s += 2;
+  else if (answers.urgency === "soon") s += 1;
+  const pains = Array.isArray(answers.pain) ? answers.pain.length : 0;
+  if (pains >= 3) s += 2; else if (pains === 2) s += 1;
+  return s;
 }
 
-function pickSolutions(){
+function pickSolutions() {
   let keys = Array.isArray(answers.pain) ? answers.pain.slice() : (answers.pain ? [answers.pain] : []);
-  if(keys.length === 0){
-    if(answers.bookings === "noshow") keys.push("booking");
-    else if(answers.leads === "leak" || answers.leads === "manual") keys.push("leads");
+  if (keys.length === 0) {
+    if (answers.leads === "leak" || answers.leads === "manual") keys.push("leads");
     else keys.push("admin");
   }
   const seen = {};
-  const sols = keys.filter(k => SOLUTIONS[k] && !seen[k] && (seen[k] = 1)).map(k => SOLUTIONS[k]);
-  return sols.length ? sols : [SOLUTIONS.admin];
+  const sols = keys.filter(k => SOLUTIONS[k] && !seen[k] && (seen[k] = 1));
+  return (sols.length ? sols : ["admin"]);
 }
 
-/* ---------- Submit ---------- */
-const err = document.getElementById("err");
-document.getElementById("submitBtn").addEventListener("click", () => {
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const business = document.getElementById("business").value.trim();
-
-  if(!name || !email || !phone){ err.textContent = "Please add your name, email and contact number."; return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ err.textContent = "That email doesn't look right. Mind checking it?"; return; }
-  const answered = QUESTIONS.every(q => {
-    const a = answers[q.id];
-    return q.multi ? (Array.isArray(a) && a.length > 0) : !!a;
-  });
-  if(!answered){ err.textContent = "Please answer all the questions so I can point you to the right fix."; return; }
-  err.textContent = "";
-
+/* ---------- Finish: render result + fire lead to backend ---------- */
+function finish() {
   const score = computeFit();
-  const sols = pickSolutions();
+  const solKeys = pickSolutions();
+  const sols = solKeys.map(k => SOLUTIONS[k]);
+  const first = contact.name.split(" ")[0];
 
   const badge = document.getElementById("verdictBadge");
   const vTitle = document.getElementById("verdictTitle");
   const vText = document.getElementById("verdictText");
-  const first = name.split(" ")[0];
+  let band;
 
-  if(answers.tools === "auto" && score <= 3){
-    badge.textContent = "Worth a chat";
+  if (answers.tools === "auto" && score <= 3) {
+    band = "Worth a chat";
     vTitle.textContent = `You're already ahead, ${first}.`;
-    vText.textContent = "You've automated a fair bit, so the wins here are sharper and more specific. A quick look would tell us if there's a worthwhile layer left to squeeze, or if you're already set.";
-  } else if(score >= 5){
-    badge.textContent = "Strong fit";
+    vText.textContent = "You've automated a fair bit, so the wins here are sharper and more specific. A quick look would tell us whether there's a worthwhile layer left to squeeze, or if you're already set.";
+  } else if (score >= 6) {
+    band = "Strong fit";
     vTitle.textContent = `There's real time to reclaim, ${first}.`;
-    vText.textContent = "Based on your answers, repetitive work is quietly costing you hours and money every week. This is exactly the kind of business I build for, and there's a clear place to start.";
+    vText.textContent = "Based on your answers, repetitive work is quietly costing you hours and money every week. This is exactly the kind of business I build for — and there's a clear place to start.";
   } else {
-    badge.textContent = "Good fit";
+    band = "Good fit";
     vTitle.textContent = `Yes, there's something here for you, ${first}.`;
     vText.textContent = "You've got repetitive work worth removing. It may not be drowning you yet, but there's a straightforward first win that pays for itself.";
   }
+  badge.textContent = band;
 
-  // recommendations (one card per selected pain)
   const wrap = document.getElementById("recoWrap");
   wrap.innerHTML = "";
   sols.forEach((sol, i) => {
-    const card = document.createElement("div");
-    card.className = "reco";
-    card.style.marginTop = i === 0 ? "8px" : "14px";
+    const c = document.createElement("div");
+    c.className = "reco";
+    c.style.marginTop = i === 0 ? "8px" : "14px";
     const lis = sol.bullets.map(b => `<li><svg viewBox="0 0 24 24"><path d="M5 12.5l4 4 10-11"/></svg><span>${b}</span></li>`).join("");
     const label = i === 0 ? "Where I&rsquo;d start" : "Also worth automating";
-    card.innerHTML = `<div class="rl">${label}</div><div class="rt">${sol.title}</div><div class="rd">${sol.desc}</div><ul>${lis}</ul>`;
-    wrap.appendChild(card);
+    c.innerHTML = `<div class="rl">${label}</div><div class="rt">${sol.title}</div><div class="rd">${sol.desc}</div><ul>${lis}</ul>`;
+    wrap.appendChild(c);
   });
 
-  // PLACEHOLDER lead delivery: mailto. Swap for Resend/Formspree POST later.
-  const subject = encodeURIComponent(`Fit check for ${business || name}: ${sols[0].title}`);
+  // mailto fallback (also nice for the prospect to have a thread)
+  const subject = encodeURIComponent(`AI audit — ${contact.business || contact.name}: ${sols[0].title}`);
   const bodyLines = [
-    `Name: ${name}`,
-    `Business: ${business || "-"}`,
-    `Email: ${email}`,
-    `Phone: ${phone}`,
+    `Name: ${contact.name}`,
+    `Business: ${contact.business || "-"}`,
+    `Email: ${contact.email}`,
+    `Phone: ${contact.phone}`,
     ``,
     `Recommended starting points: ${sols.map(s => s.title).join(", ")}`,
     ``,
-    `Answers:`,
-    ...QUESTIONS.map(q => {
-      const a = answers[q.id];
-      const labels = q.multi
-        ? (a || []).map(v => (q.opts.find(o => o.v === v) || {}).t).filter(Boolean).join("; ")
-        : ((q.opts.find(o => o.v === a) || {}).t || "");
-      return `- ${q.q} ${labels}`;
-    }),
-    ``,
     `I'd like a no-pressure walkthrough.`
   ];
-  const body = encodeURIComponent(bodyLines.join("\n"));
-  document.getElementById("bookBtn").setAttribute("href", `mailto:tyler@wiseai.website?subject=${subject}&body=${body}`);
+  document.getElementById("bookBtn").setAttribute(
+    "href",
+    `mailto:tyler@wiseai.website?subject=${subject}&body=${encodeURIComponent(bodyLines.join("\n"))}`
+  );
 
-  // swap views
-  document.getElementById("form").style.display = "none";
+  // build the payload for Supabase + email
+  const payload = {
+    name: contact.name,
+    business: contact.business || null,
+    email: contact.email,
+    phone: contact.phone,
+    fit_band: band,
+    fit_score: score,
+    top_solution: sols[0].title,
+    recommendations: sols.map(s => s.title),
+    answers: readableAnswers(),
+    source: "wiseai.website/quiz",
+    user_agent: navigator.userAgent,
+    referrer: document.referrer || null
+  };
+
+  // show result immediately, submit in the background
+  bar.style.width = "100%";
+  document.getElementById("app").style.display = "none";
   const result = document.getElementById("result");
   result.classList.add("show");
-  result.scrollIntoView({behavior:"smooth", block:"start"});
-});
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
 
+  submitLead(payload);
+}
+
+function readableAnswers() {
+  const out = {};
+  QUESTIONS.forEach(q => {
+    const a = answers[q.id];
+    out[q.q] = q.multi
+      ? (a || []).map(v => (q.opts.find(o => o.v === v) || {}).t).filter(Boolean)
+      : ((q.opts.find(o => o.v === a) || {}).t || null);
+  });
+  return out;
+}
+
+function submitLead(payload) {
+  try {
+    fetch(LEAD_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch(() => {});
+  } catch (e) { /* result already shown; mailto is the fallback */ }
+}
+
+/* ---------- Start over ---------- */
 document.getElementById("againBtn").addEventListener("click", () => {
   Object.keys(answers).forEach(k => delete answers[k]);
-  document.querySelectorAll(".opt.sel").forEach(el => el.classList.remove("sel"));
-  ["name","business","email","phone"].forEach(id => { document.getElementById(id).value = ""; });
-  err.textContent = "";
+  Object.keys(contact).forEach(k => delete contact[k]);
+  step = 0;
   document.getElementById("result").classList.remove("show");
-  document.getElementById("form").style.display = "block";
-  document.getElementById("form").scrollIntoView({behavior:"smooth", block:"start"});
+  document.getElementById("app").style.display = "block";
+  render();
+  scrollTop();
 });
+
+/* ---------- Kick off ---------- */
+render();
