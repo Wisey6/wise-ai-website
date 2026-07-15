@@ -1,0 +1,904 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Free AI Audit · Wise Ai</title>
+  <meta name="description" content="A two-minute mini AI audit. Tell us about your business and get tailored AI recommendations on the spot." />
+  <link rel="icon" href="assets/owl-transparent.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+/* ================================================================
+   WISE Ai — mini AI audit (standalone quiz page)
+   Design tokens mirror index.html so this reads as one site.
+   ================================================================ */
+:root {
+  --snow: #FAFAFA;
+  --snow-2: #F2EEE8;
+  --coil: #1A1A1A;
+  --coil-2: #333333;
+  --fire: #FF4D00;
+  --sand: #C5A474;
+  --ocean: #256AFF;
+
+  --font-display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", Georgia, serif;
+
+  --edge: 40px;
+  --maxw: 820px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--coil);
+  color: var(--snow);
+  font-family: var(--font-display);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+:focus-visible { outline: 2px solid var(--fire); outline-offset: 3px; border-radius: 4px; }
+:focus:not(:focus-visible) { outline: none; }
+::selection { background: var(--fire); color: #fff; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+img { max-width: 100%; display: block; }
+h1, h2, h3, p, li, span, label { overflow-wrap: break-word; }
+
+/* soft ambient glow behind the card */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(255, 77, 0, 0.10), transparent 70%),
+    radial-gradient(50% 40% at 90% 100%, rgba(37, 106, 255, 0.06), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---------------- top bar ---------------- */
+.bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px var(--edge);
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+.bar__brand { display: inline-flex; align-items: center; gap: 12px; }
+.bar__brand img { width: 34px; height: 34px; object-fit: contain; }
+.bar__word {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 19px;
+  letter-spacing: -0.03em;
+}
+.bar__word .ai { color: var(--fire); }
+.bar__back {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.bar__back:hover { opacity: 1; }
+
+/* ---------------- shell ---------------- */
+.shell {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 24px var(--edge) 80px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* progress */
+.progress { margin: 8px 0 40px; }
+.progress__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.progress__bar {
+  height: 3px;
+  background: rgba(250, 250, 250, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  width: 0%;
+  background: var(--fire);
+  border-radius: 999px;
+  transition: width 0.5s var(--ease-out);
+}
+
+/* step */
+.step { display: none; animation: rise 0.5s var(--ease-out) both; }
+.step.is-active { display: block; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.step__kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.step__q {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 14px 0 8px;
+}
+.step__hint {
+  font-size: 16px;
+  line-height: 1.5;
+  opacity: 0.65;
+  max-width: 520px;
+  margin: 0 0 32px;
+}
+
+/* text inputs */
+.fields { display: flex; flex-direction: column; gap: 26px; max-width: 560px; }
+.field { display: flex; flex-direction: column; gap: 9px; }
+.field > span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.field input, .field textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(250, 250, 250, 0.28);
+  padding: 10px 0;
+  color: var(--snow);
+  font-family: var(--font-display);
+  font-size: 18px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.field input::placeholder, .field textarea::placeholder { color: rgba(250, 250, 250, 0.32); }
+.field input:focus, .field textarea:focus { border-color: var(--fire); }
+.field textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+.field.is-error input, .field.is-error textarea { border-color: #ff5a5a; }
+.field__err {
+  display: none;
+  color: #ff8a7a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+.field.is-error .field__err { display: block; }
+
+/* choice chips */
+.choices { display: flex; flex-wrap: wrap; gap: 12px; max-width: 640px; }
+.choice {
+  padding: 14px 22px;
+  border: 1.5px solid rgba(250, 250, 250, 0.24);
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--snow);
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.16s var(--ease-out);
+  will-change: transform;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.choice:active { transform: scale(0.97); }
+.choice:hover { border-color: var(--fire); }
+.choice.is-on { background: var(--fire); border-color: var(--fire); color: #fff; }
+.choice__tick { font-size: 13px; opacity: 0; margin-left: -4px; width: 0; transition: opacity 0.2s, width 0.2s; }
+.choice.is-on .choice__tick { opacity: 1; width: 14px; }
+
+/* nav buttons */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 44px;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 34px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  border-radius: 8px;
+  transition: all 0.35s var(--ease-out);
+  border: 1.5px solid transparent;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+.btn--primary { background: var(--fire); color: #fff; box-shadow: 0 8px 26px rgba(255, 77, 0, 0.22); }
+.btn--primary:hover { background: var(--snow); color: var(--coil); transform: translateY(-2px); }
+.btn--primary[disabled] { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: none; }
+.btn--ghost { background: transparent; border-color: rgba(250, 250, 250, 0.4); color: var(--snow); }
+.btn--ghost:hover { background: var(--snow); color: var(--coil); border-color: var(--snow); }
+.btn__spin { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+.btn.is-loading .btn__spin { display: inline-block; }
+.btn.is-loading .btn__label { opacity: 0.7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.nav__back {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  background: none;
+  padding: 10px 4px;
+}
+.nav__back:hover { opacity: 1; }
+.nav__spacer { flex: 1; }
+
+/* ---------------- results ---------------- */
+.results { display: none; animation: rise 0.6s var(--ease-out) both; }
+.results.is-active { display: block; }
+.results__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fire);
+}
+.results__badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--fire); box-shadow: 0 0 0 4px rgba(255,77,0,0.18); }
+.results__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(30px, 5vw, 52px);
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  margin: 16px 0 10px;
+}
+.results__title .italic { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--fire); }
+.results__sub { font-size: 17px; line-height: 1.55; opacity: 0.72; max-width: 560px; margin: 0 0 8px; }
+
+.snapshot {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(250, 250, 250, 0.14);
+  border: 1px solid rgba(250, 250, 250, 0.14);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 32px 0 40px;
+}
+.snapshot__cell { background: var(--coil); padding: 22px 20px; }
+.snapshot__k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.55; }
+.snapshot__v { font-family: var(--font-display); font-weight: 800; font-size: clamp(24px, 3.4vw, 34px); letter-spacing: -0.02em; margin-top: 8px; line-height: 1; }
+.snapshot__v small { font-size: 14px; font-weight: 500; opacity: 0.6; letter-spacing: 0; }
+
+.recs__head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin: 0 0 18px;
+}
+.rec {
+  border: 1px solid rgba(250, 250, 250, 0.14);
+  border-radius: 14px;
+  padding: 26px;
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px 22px;
+  align-items: start;
+  transition: border-color 0.25s, transform 0.25s var(--ease-out);
+}
+.rec:hover { border-color: rgba(255, 77, 0, 0.5); transform: translateY(-2px); }
+.rec__n { font-family: var(--font-mono); font-size: 13px; color: var(--fire); padding-top: 4px; }
+.rec__title { font-family: var(--font-display); font-weight: 700; font-size: 21px; letter-spacing: -0.02em; margin: 0; }
+.rec__price { font-family: var(--font-mono); font-size: 12px; color: var(--sand); white-space: nowrap; padding-top: 5px; }
+.rec__body { grid-column: 2 / 3; font-size: 15px; line-height: 1.55; opacity: 0.78; margin: 8px 0 0; }
+.rec__why { grid-column: 2 / 3; margin: 12px 0 0; font-size: 13px; line-height: 1.5; }
+.rec__why b { color: var(--fire); font-weight: 600; }
+
+/* CTA block after recommendations */
+.cta {
+  margin-top: 40px;
+  border-top: 1px solid rgba(250, 250, 250, 0.14);
+  padding-top: 36px;
+}
+.cta__lede { font-size: 17px; line-height: 1.55; opacity: 0.8; max-width: 560px; margin: 0 0 24px; }
+.cta__row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.cta__status {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin: 20px 0 0;
+  min-height: 18px;
+}
+.cta__status.ok { color: #6ee7a8; }
+.cta__status.err { color: #ff8a7a; }
+
+/* sent / thank-you */
+.sent { display: none; text-align: center; padding: 48px 0; animation: rise 0.5s var(--ease-out) both; }
+.sent.is-active { display: block; }
+.sent__check {
+  width: 68px; height: 68px; border-radius: 50%;
+  background: var(--fire);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 30px; color: #fff;
+  box-shadow: 0 0 0 8px rgba(255, 77, 0, 0.14);
+  margin-bottom: 24px;
+}
+.sent__title { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 4.5vw, 44px); letter-spacing: -0.03em; margin: 0 0 12px; }
+.sent__title .italic { font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--fire); }
+.sent__body { font-size: 17px; line-height: 1.6; opacity: 0.78; max-width: 480px; margin: 0 auto 28px; }
+
+.foot {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 26px var(--edge) 34px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  opacity: 0.42;
+}
+.foot a { border-bottom: 1px solid rgba(250,250,250,0.3); padding-bottom: 1px; }
+
+@media (max-width: 620px) {
+  :root { --edge: 20px; }
+  .snapshot { grid-template-columns: 1fr; }
+  .rec { grid-template-columns: auto 1fr; }
+  .rec__price { grid-column: 2 / 3; grid-row: 1; justify-self: start; padding-top: 0; margin-top: 4px; }
+  .rec__body, .rec__why { grid-column: 1 / 3; }
+  .btn { flex: 1; }
+  .nav__back { flex: 0 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="bar__brand" href="index.html" aria-label="Wise Ai home">
+      <img src="assets/owl-transparent.png" alt="" />
+      <span class="bar__word">WISE<span class="ai"> AI</span></span>
+    </a>
+    <a class="bar__back" href="index.html">← Back to site</a>
+  </header>
+
+  <main class="shell">
+    <!-- progress -->
+    <div class="progress" id="progress">
+      <div class="progress__row">
+        <span id="progressStep">Question 1 of 6</span>
+        <span>~2 min · no obligation</span>
+      </div>
+      <div class="progress__bar"><div class="progress__fill" id="progressFill"></div></div>
+    </div>
+
+    <form id="quiz" novalidate>
+      <!-- Step 1 — about you -->
+      <section class="step is-active" data-step="0">
+        <span class="step__kicker">Let's start</span>
+        <h1 class="step__q">First, who are we<br>speaking with?</h1>
+        <p class="step__hint">Takes about two minutes. We'll use this to send your tailored recommendations and get in touch.</p>
+        <div class="fields">
+          <label class="field" data-req>
+            <span>Your name</span>
+            <input type="text" name="name" autocomplete="name" placeholder="Jordan Smith" />
+            <em class="field__err">Please enter your name.</em>
+          </label>
+          <label class="field" data-req data-email>
+            <span>Email address</span>
+            <input type="email" name="email" autocomplete="email" placeholder="you@business.com" />
+            <em class="field__err">Please enter a valid email.</em>
+          </label>
+          <label class="field" data-req>
+            <span>Phone number</span>
+            <input type="tel" name="phone" autocomplete="tel" placeholder="+61 4XX XXX XXX" />
+            <em class="field__err">Please enter a contact number.</em>
+          </label>
+          <label class="field">
+            <span>Business name <small style="opacity:.6">(optional)</small></span>
+            <input type="text" name="business" autocomplete="organization" placeholder="Acme Co." />
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 2 — industry -->
+      <section class="step" data-step="1">
+        <span class="step__kicker">Your business</span>
+        <h1 class="step__q">What kind of<br>business is it?</h1>
+        <p class="step__hint">Pick the closest fit — it shapes which AI systems we suggest.</p>
+        <div class="choices" data-single data-name="industry">
+          <button type="button" class="choice" data-value="Trades &amp; construction"><span class="choice__tick">✓</span>Trades &amp; construction</button>
+          <button type="button" class="choice" data-value="Retail &amp; eCommerce"><span class="choice__tick">✓</span>Retail &amp; eCommerce</button>
+          <button type="button" class="choice" data-value="Hospitality"><span class="choice__tick">✓</span>Hospitality</button>
+          <button type="button" class="choice" data-value="Professional services"><span class="choice__tick">✓</span>Professional services</button>
+          <button type="button" class="choice" data-value="Health &amp; wellness"><span class="choice__tick">✓</span>Health &amp; wellness</button>
+          <button type="button" class="choice" data-value="Real estate"><span class="choice__tick">✓</span>Real estate</button>
+          <button type="button" class="choice" data-value="Something else"><span class="choice__tick">✓</span>Something else</button>
+        </div>
+      </section>
+
+      <!-- Step 3 — team size -->
+      <section class="step" data-step="2">
+        <span class="step__kicker">Your business</span>
+        <h1 class="step__q">How big is<br>the team?</h1>
+        <p class="step__hint">This helps us gauge where the hours are going.</p>
+        <div class="choices" data-single data-name="teamSize">
+          <button type="button" class="choice" data-value="Just me"><span class="choice__tick">✓</span>Just me</button>
+          <button type="button" class="choice" data-value="2–5"><span class="choice__tick">✓</span>2–5</button>
+          <button type="button" class="choice" data-value="6–20"><span class="choice__tick">✓</span>6–20</button>
+          <button type="button" class="choice" data-value="21–50"><span class="choice__tick">✓</span>21–50</button>
+          <button type="button" class="choice" data-value="50+"><span class="choice__tick">✓</span>50+</button>
+        </div>
+      </section>
+
+      <!-- Step 4 — time sinks (multi) -->
+      <section class="step" data-step="3">
+        <span class="step__kicker">The problem</span>
+        <h1 class="step__q">What eats the<br>most time?</h1>
+        <p class="step__hint">Choose all that apply — this is where AI usually pays for itself first.</p>
+        <div class="choices" data-multi data-name="timeSinks">
+          <button type="button" class="choice" data-value="Answering enquiries"><span class="choice__tick">✓</span>Answering enquiries</button>
+          <button type="button" class="choice" data-value="Quoting &amp; proposals"><span class="choice__tick">✓</span>Quoting &amp; proposals</button>
+          <button type="button" class="choice" data-value="Bookings &amp; scheduling"><span class="choice__tick">✓</span>Bookings &amp; scheduling</button>
+          <button type="button" class="choice" data-value="Admin &amp; data entry"><span class="choice__tick">✓</span>Admin &amp; data entry</button>
+          <button type="button" class="choice" data-value="Chasing follow-ups"><span class="choice__tick">✓</span>Chasing follow-ups</button>
+          <button type="button" class="choice" data-value="Content &amp; marketing"><span class="choice__tick">✓</span>Content &amp; marketing</button>
+          <button type="button" class="choice" data-value="Reporting &amp; numbers"><span class="choice__tick">✓</span>Reporting &amp; numbers</button>
+        </div>
+      </section>
+
+      <!-- Step 5 — goal -->
+      <section class="step" data-step="4">
+        <span class="step__kicker">The goal</span>
+        <h1 class="step__q">If one thing<br>changed, what?</h1>
+        <p class="step__hint">The outcome that would matter most over the next few months.</p>
+        <div class="choices" data-single data-name="goal">
+          <button type="button" class="choice" data-value="Win more leads"><span class="choice__tick">✓</span>Win more leads</button>
+          <button type="button" class="choice" data-value="Respond faster"><span class="choice__tick">✓</span>Respond faster</button>
+          <button type="button" class="choice" data-value="Cut the admin"><span class="choice__tick">✓</span>Cut the admin</button>
+          <button type="button" class="choice" data-value="Save hours each week"><span class="choice__tick">✓</span>Save hours each week</button>
+          <button type="button" class="choice" data-value="Convert more of what I get"><span class="choice__tick">✓</span>Convert more of what I get</button>
+        </div>
+      </section>
+
+      <!-- Step 6 — context -->
+      <section class="step" data-step="5">
+        <span class="step__kicker">Almost done</span>
+        <h1 class="step__q">Anything you'd<br>add?</h1>
+        <p class="step__hint">Tools you already use, a specific headache, or what a win looks like. Skip it if you like.</p>
+        <div class="fields">
+          <label class="field">
+            <span>In your words <small style="opacity:.6">(optional)</small></span>
+            <textarea name="notes" rows="3" placeholder="e.g. We get 40+ enquiries a week through Instagram and can't keep up. Using Xero and Google Calendar."></textarea>
+          </label>
+        </div>
+      </section>
+
+      <!-- nav -->
+      <div class="nav" id="nav">
+        <button type="button" class="nav__back" id="backBtn" hidden>← Back</button>
+        <span class="nav__spacer"></span>
+        <button type="button" class="btn btn--primary" id="nextBtn">
+          <span class="btn__label">Continue</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13 L13 3 M6 3 H13 V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </form>
+
+    <!-- results -->
+    <section class="results" id="results" aria-live="polite">
+      <span class="results__badge"><span class="dot"></span> Your mini audit</span>
+      <h2 class="results__title">Here's where AI would<br><span class="italic">pay off first.</span></h2>
+      <p class="results__sub" id="resultsSub">Based on what you told us, these are the systems we'd put in front of you — ranked by impact.</p>
+
+      <div class="snapshot" id="snapshot"></div>
+
+      <p class="recs__head">Recommended for you</p>
+      <div id="recs"></div>
+
+      <div class="cta">
+        <p class="cta__lede" id="ctaLede">Like the look of this? Send it through and Tyler will personally review your answers and come back within one business day with a clear plan and fixed pricing.</p>
+        <div class="cta__row">
+          <button type="button" class="btn btn--primary" id="sendBtn">
+            <span class="btn__spin"></span>
+            <span class="btn__label">Send my audit &amp; book a call</span>
+          </button>
+          <a class="btn btn--ghost" href="index.html">Back to site</a>
+        </div>
+        <p class="cta__status" id="sendStatus"></p>
+      </div>
+    </section>
+
+    <!-- thank you -->
+    <section class="sent" id="sent" aria-live="polite">
+      <div class="sent__check">✓</div>
+      <h2 class="sent__title">Thanks — <span class="italic">you're in.</span></h2>
+      <p class="sent__body" id="sentBody">Your audit is on its way to Tyler at tyler@wiseai.website. Keep an eye on your inbox — we'll be in touch shortly with your tailored plan.</p>
+      <a class="btn btn--primary" href="https://calendly.com/tyler6wise/30min" target="_blank" rel="noopener noreferrer">Book a time now →</a>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Wise Ai · Brisbane, QLD · <a href="mailto:tyler@wiseai.website">tyler@wiseai.website</a>
+  </footer>
+
+  <script>
+  /* =================================================================
+     CONFIG
+     Leave AUDIT_ENDPOINT = "" to run with the built-in mailto fallback
+     (opens the visitor's mail app pre-filled to tyler@wiseai.website).
+     Once the Cloudflare Worker /lead endpoint is deployed, paste its
+     URL here to send + auto-reply automatically. See worker/README.md.
+     ================================================================= */
+  const AUDIT_ENDPOINT = "";
+  const OWNER_EMAIL = "tyler@wiseai.website";
+  const CALENDLY = "https://calendly.com/tyler6wise/30min";
+
+  /* ---------------- state ---------------- */
+  const TOTAL = 6;
+  let step = 0;
+  const answers = {
+    name: "", email: "", phone: "", business: "",
+    industry: "", teamSize: "", timeSinks: [], goal: "", notes: "",
+  };
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const steps = $$(".step");
+  const nextBtn = $("#nextBtn");
+  const backBtn = $("#backBtn");
+  const fill = $("#progressFill");
+  const progressStep = $("#progressStep");
+
+  /* ---------------- choice chips ---------------- */
+  $$(".choices").forEach((group) => {
+    const name = group.dataset.name;
+    const multi = group.hasAttribute("data-multi");
+    group.addEventListener("click", (e) => {
+      const btn = e.target.closest(".choice");
+      if (!btn) return;
+      const val = btn.dataset.value;
+      if (multi) {
+        btn.classList.toggle("is-on");
+        answers[name] = $$(".choice.is-on", group).map((b) => b.dataset.value);
+      } else {
+        $$(".choice", group).forEach((b) => b.classList.toggle("is-on", b === btn));
+        answers[name] = val;
+        // single-choice steps auto-advance for a snappy 2-min feel
+        setTimeout(() => { if (step < TOTAL - 1) go(step + 1); }, 260);
+      }
+    });
+  });
+
+  /* ---------------- text fields ---------------- */
+  $$('.field input, .field textarea').forEach((el) => {
+    el.addEventListener("input", () => {
+      answers[el.name] = el.value.trim();
+      el.closest(".field").classList.remove("is-error");
+    });
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && el.tagName !== "TEXTAREA") { e.preventDefault(); nextBtn.click(); }
+    });
+  });
+
+  /* ---------------- validation ---------------- */
+  const emailOk = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  function validateStep(i) {
+    const el = steps[i];
+    let ok = true;
+    $$('.field[data-req]', el).forEach((f) => {
+      const input = $("input, textarea", f);
+      const val = input.value.trim();
+      const bad = !val || (f.hasAttribute("data-email") && !emailOk(val));
+      f.classList.toggle("is-error", bad);
+      if (bad && ok) input.focus();
+      if (bad) ok = false;
+    });
+    // single-select steps require a pick
+    const single = $(".choices[data-single]", el);
+    if (single && !answers[single.dataset.name]) ok = false;
+    return ok;
+  }
+
+  /* ---------------- navigation ---------------- */
+  function go(i) {
+    step = i;
+    steps.forEach((s, idx) => s.classList.toggle("is-active", idx === i));
+    fill.style.width = ((i + 1) / TOTAL) * 100 + "%";
+    progressStep.textContent = "Question " + (i + 1) + " of " + TOTAL;
+    backBtn.hidden = i === 0;
+    const last = i === TOTAL - 1;
+    $(".btn__label", nextBtn).textContent = last ? "See my recommendations" : "Continue";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (!validateStep(step)) return;
+    if (step < TOTAL - 1) { go(step + 1); }
+    else { finish(); }
+  });
+  backBtn.addEventListener("click", () => { if (step > 0) go(step - 1); });
+
+  /* =================================================================
+     RECOMMENDATION ENGINE — maps answers to Wise Ai's solution library
+     ================================================================= */
+  const SOLUTIONS = {
+    leadAgent: {
+      title: "AI Lead-Capture Agent",
+      price: "Custom build",
+      body: "A 24/7 assistant on your site and socials that answers enquiries in seconds, qualifies the lead, and books them straight into your calendar — so nothing slips through overnight or at the weekend.",
+    },
+    quote: {
+      title: "Automatic Quote Generator",
+      price: "$89/mo · 14-day free setup",
+      body: "Turn an enquiry into an accurate, on-brand quote in seconds using your own pricing rules, then email it automatically. What takes half an hour becomes instant.",
+    },
+    booking: {
+      title: "Booking & Scheduling Automation",
+      price: "Custom build",
+      body: "Self-serve booking with reminders and reschedules handled automatically — fewer no-shows, zero phone tag, and your calendar fills itself.",
+    },
+    admin: {
+      title: "Admin & Data-Entry Automation",
+      price: "Custom build",
+      body: "Quietly moves data between your tools, files paperwork, and kills the copy-paste work that swallows afternoons — connected to what you already run.",
+    },
+    followup: {
+      title: "Follow-up & Nurture Sequences",
+      price: "Custom build",
+      body: "Every lead and past client gets the right nudge at the right time, automatically — the follow-ups you keep meaning to send, sent for you.",
+    },
+    content: {
+      title: "Content & Marketing Engine",
+      price: "Custom build",
+      body: "On-brand posts, emails and listings drafted in your voice on a schedule — consistent presence without the blank-page hours.",
+    },
+    website: {
+      title: "Website Creation",
+      price: "Pricing varies",
+      body: "A fast, modern site built to convert — design, build and deploy handled, with the lead capture wired in from day one.",
+    },
+    reporting: {
+      title: "Reporting & Insights Automation",
+      price: "Custom build",
+      body: "Your numbers pulled together into a plain-English dashboard that updates itself — decisions without the spreadsheet wrangling.",
+    },
+  };
+
+  // scoring: each time-sink and the goal push points toward solutions
+  const SINK_MAP = {
+    "Answering enquiries": { leadAgent: 3, followup: 1 },
+    "Quoting &amp; proposals": { quote: 3, leadAgent: 1 },
+    "Quoting & proposals": { quote: 3, leadAgent: 1 },
+    "Bookings &amp; scheduling": { booking: 3 },
+    "Bookings & scheduling": { booking: 3 },
+    "Admin &amp; data entry": { admin: 3 },
+    "Admin & data entry": { admin: 3 },
+    "Chasing follow-ups": { followup: 3, leadAgent: 1 },
+    "Content &amp; marketing": { content: 3, website: 1 },
+    "Content & marketing": { content: 3, website: 1 },
+    "Reporting &amp; numbers": { reporting: 3, admin: 1 },
+    "Reporting & numbers": { reporting: 3, admin: 1 },
+  };
+  const GOAL_MAP = {
+    "Win more leads": { leadAgent: 2, website: 2, content: 1 },
+    "Respond faster": { leadAgent: 2, quote: 2, booking: 1 },
+    "Cut the admin": { admin: 2, booking: 1, reporting: 1 },
+    "Save hours each week": { admin: 1, quote: 1, followup: 1, booking: 1 },
+    "Convert more of what I get": { followup: 2, quote: 1, leadAgent: 1 },
+  };
+  const INDUSTRY_HINT = {
+    "Retail &amp; eCommerce": { website: 1, content: 1 },
+    "Real estate": { leadAgent: 1, followup: 1 },
+    "Trades &amp; construction": { quote: 1, booking: 1 },
+    "Hospitality": { booking: 1 },
+    "Professional services": { admin: 1, followup: 1 },
+    "Health &amp; wellness": { booking: 1 },
+  };
+
+  function decodeE(s) { const t = document.createElement("textarea"); t.innerHTML = s; return t.value; }
+
+  function recommend() {
+    const score = {};
+    const add = (map) => { if (!map) return; for (const k in map) score[k] = (score[k] || 0) + map[k]; };
+    (answers.timeSinks || []).forEach((s) => add(SINK_MAP[s]));
+    add(GOAL_MAP[answers.goal]);
+    add(INDUSTRY_HINT[answers.industry]);
+    // fallback so there's always a sensible answer
+    if (Object.keys(score).length === 0) { score.leadAgent = 2; score.quote = 1; score.admin = 1; }
+    const ranked = Object.keys(score).sort((a, b) => score[b] - score[a]).slice(0, 3);
+    return ranked;
+  }
+
+  // rough, clearly-estimated hours-saved figure to make it feel like an audit
+  function estimateHours() {
+    const teamW = { "Just me": 1, "2–5": 1.6, "6–20": 2.4, "21–50": 3, "50+": 3.6 };
+    const base = 3 + (answers.timeSinks || []).length * 2.5;
+    const hrs = Math.round(base * (teamW[answers.teamSize] || 1.4));
+    return Math.max(4, Math.min(hrs, 40));
+  }
+
+  function whyLine(id) {
+    const g = answers.goal || "the goal you picked";
+    const map = {
+      leadAgent: "You flagged <b>answering enquiries</b> — this catches every one, day or night.",
+      quote: "Quoting is on your list — this turns it into a seconds-long job.",
+      booking: "You're losing time to <b>scheduling</b> — this hands it to the customer.",
+      admin: "Admin came up — this is exactly the busywork it removes.",
+      followup: "Follow-ups slip when you're busy — this makes them automatic.",
+      content: "Content &amp; marketing was a time-sink — this keeps it consistent without the hours.",
+      website: "A stronger site directly serves your goal to <b>" + g.toLowerCase() + "</b>.",
+      reporting: "Reporting is eating time — this keeps your numbers current for you.",
+    };
+    return map[id] || ("Matches your goal to <b>" + g.toLowerCase() + "</b>.");
+  }
+
+  function finish() {
+    const ids = recommend();
+    // snapshot
+    const hrs = estimateHours();
+    const snap = [
+      { k: "Focus area", v: (answers.timeSinks && answers.timeSinks.length ? decodeE(answers.timeSinks[0]).split(" ")[0] : "Growth") },
+      { k: "Est. time back / wk", v: "~" + hrs + "<small> hrs</small>" },
+      { k: "Recommended systems", v: ids.length + "<small> matched</small>" },
+    ];
+    $("#snapshot").innerHTML = snap.map((c) =>
+      '<div class="snapshot__cell"><div class="snapshot__k">' + c.k + '</div><div class="snapshot__v">' + c.v + '</div></div>'
+    ).join("");
+
+    // recs
+    $("#recs").innerHTML = ids.map((id, i) => {
+      const s = SOLUTIONS[id];
+      return '<article class="rec">' +
+        '<span class="rec__n">0' + (i + 1) + '</span>' +
+        '<h3 class="rec__title">' + s.title + '</h3>' +
+        '<span class="rec__price">' + s.price + '</span>' +
+        '<p class="rec__body">' + s.body + '</p>' +
+        '<p class="rec__why">' + whyLine(id) + '</p>' +
+        '</article>';
+    }).join("");
+
+    const first = answers.name ? answers.name.split(" ")[0] : "";
+    $("#resultsSub").innerHTML = (first ? first + ", based" : "Based") +
+      " on what you told us, these are the systems we'd put in front of you — ranked by impact. A full <b style='color:var(--fire);font-weight:600'>AI Audit ($1,347)</b> maps the complete roadmap and ROI.";
+
+    // stash recommendation titles for the email payload
+    answers._recs = ids.map((id) => SOLUTIONS[id].title);
+    answers._hours = hrs;
+
+    $("#progress").style.display = "none";
+    $("#quiz").style.display = "none";
+    $("#results").classList.add("is-active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* =================================================================
+     SUBMIT — POST to Worker /lead if configured, else mailto fallback
+     ================================================================= */
+  function buildSummary() {
+    const L = [];
+    L.push("New AI-audit enquiry from wiseai.website");
+    L.push("");
+    L.push("Name:      " + (answers.name || "—"));
+    L.push("Email:     " + (answers.email || "—"));
+    L.push("Phone:     " + (answers.phone || "—"));
+    L.push("Business:  " + (answers.business || "—"));
+    L.push("");
+    L.push("Industry:  " + decodeE(answers.industry || "—"));
+    L.push("Team size: " + (answers.teamSize || "—"));
+    L.push("Time sinks: " + ((answers.timeSinks || []).map(decodeE).join(", ") || "—"));
+    L.push("Main goal: " + (answers.goal || "—"));
+    L.push("Notes:     " + (answers.notes || "—"));
+    L.push("");
+    L.push("Est. hours back/week: ~" + (answers._hours || "?"));
+    L.push("Recommended systems: " + ((answers._recs || []).join(", ") || "—"));
+    return L.join("\n");
+  }
+
+  const sendBtn = $("#sendBtn");
+  const sendStatus = $("#sendStatus");
+
+  function showSent(viaMail) {
+    $("#results").classList.remove("is-active");
+    const sent = $("#sent");
+    if (viaMail) {
+      $("#sentBody").innerHTML = "We've opened your email app with everything filled in — just hit <b>send</b> and it lands with Tyler at " + OWNER_EMAIL + ". Prefer to talk? Grab a time below.";
+    }
+    sent.classList.add("is-active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function mailtoFallback() {
+    const subject = encodeURIComponent("AI Audit enquiry — " + (answers.name || "new lead"));
+    const body = encodeURIComponent(buildSummary());
+    window.location.href = "mailto:" + OWNER_EMAIL + "?subject=" + subject + "&body=" + body;
+    showSent(true);
+  }
+
+  sendBtn.addEventListener("click", async () => {
+    sendStatus.textContent = "";
+    sendStatus.className = "cta__status";
+
+    if (!AUDIT_ENDPOINT) { mailtoFallback(); return; }
+
+    sendBtn.classList.add("is-loading");
+    sendBtn.disabled = true;
+    try {
+      const payload = {
+        name: answers.name, email: answers.email, phone: answers.phone,
+        business: answers.business, industry: decodeE(answers.industry),
+        teamSize: answers.teamSize, timeSinks: (answers.timeSinks || []).map(decodeE),
+        goal: answers.goal, notes: answers.notes,
+        recommendations: answers._recs || [], hoursEstimate: answers._hours || null,
+        summary: buildSummary(),
+      };
+      const res = await fetch(AUDIT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("bad status " + res.status);
+      showSent(false);
+    } catch (err) {
+      // never lose a lead — fall back to the visitor's mail app
+      sendStatus.textContent = "Opening your email app so nothing gets lost…";
+      sendStatus.className = "cta__status";
+      setTimeout(mailtoFallback, 600);
+    } finally {
+      sendBtn.classList.remove("is-loading");
+      sendBtn.disabled = false;
+    }
+  });
+
+  // init
+  go(0);
+  </script>
+</body>
+</html>

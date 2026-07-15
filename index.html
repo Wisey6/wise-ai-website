@@ -1438,12 +1438,10 @@ function Nav({ onNav }) {
         ))}
         <a
           className="nav-bubble__cta"
-          href="https://calendly.com/tyler6wise/30min"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="audit.html"
           onClick={() => { setOpen(false); setHover(false); }}
         >
-          Book a call →
+          Free AI audit →
         </a>
       </div>
     </nav>
@@ -1969,8 +1967,8 @@ function Hero({ variant = "orange" }) {
             We build and deploy AI automations for Brisbane SMBs — lead capture, quote generators, and custom agents that do real work. Live in weeks, not months.
           </p>
           <div className="hero__actions">
-            <a href="#solutions" className="btn btn--primary btn--lg">
-              <span>See solutions</span>
+            <a href="audit.html" className="btn btn--primary btn--lg">
+              <span>Get your free AI audit</span>
               <Arrow />
             </a>
             <a href="https://calendly.com/tyler6wise/30min" target="_blank" rel="noopener noreferrer" className="btn btn--ghost btn--lg">
@@ -2261,16 +2259,16 @@ function Contact() {
           Fixed fee · Paid on completion · Free training where it makes sense.
         </p>
         <div className="contact__cta-row">
+          <a href="audit.html" className="btn btn--primary btn--lg">
+            Start your free audit <Arrow />
+          </a>
           <a
             href="https://calendly.com/tyler6wise/30min"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn--primary btn--lg"
+            className="btn btn--ghost btn--lg"
           >
-            Book now <Arrow />
-          </a>
-          <a href="mailto:tyler@wiseai.website" className="btn btn--ghost btn--lg">
-            Email instead
+            Book a call
           </a>
         </div>
         <div className="contact__meta">
