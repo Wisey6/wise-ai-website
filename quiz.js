@@ -179,7 +179,7 @@ function render() {
   } else {
     // contact step
     nextBtn.hidden = false;
-    nextBtn.textContent = "Sounds good";
+    nextBtn.textContent = "Continue";
     card.innerHTML = `
       <div class="q">Where should I send your result?</div>
       <div class="qsub">Instant on-screen — plus I'll follow up personally, no pressure.</div>
@@ -403,11 +403,29 @@ function submitLead(payload) {
   } catch (e) { /* result already shown; mailto is the fallback */ }
 }
 
+/* ---------- "Sounds good" acknowledgement on the result page ---------- */
+document.getElementById("ackBtn").addEventListener("click", (e) => {
+  const b = e.currentTarget;
+  b.textContent = "Talk soon 👍";
+  b.disabled = true;
+  b.style.opacity = ".7";
+  b.style.cursor = "default";
+  const note = document.getElementById("ackNote");
+  if (note) note.textContent = "Perfect — keep an eye on your inbox. I'll be in touch within one business day.";
+});
+
 /* ---------- Start over ---------- */
 document.getElementById("againBtn").addEventListener("click", () => {
   Object.keys(answers).forEach(k => delete answers[k]);
   Object.keys(contact).forEach(k => delete contact[k]);
   step = 0;
+  const ack = document.getElementById("ackBtn");
+  ack.textContent = "Sounds good";
+  ack.disabled = false;
+  ack.style.opacity = "";
+  ack.style.cursor = "";
+  const note = document.getElementById("ackNote");
+  if (note) note.textContent = "Prefer to get a head start? You can reach me directly anytime.";
   document.getElementById("result").classList.remove("show");
   document.getElementById("app").style.display = "block";
   render();
