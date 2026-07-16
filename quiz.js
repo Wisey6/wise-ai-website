@@ -352,7 +352,7 @@ function finish() {
   ];
   document.getElementById("bookBtn").setAttribute(
     "href",
-    `mailto:tyler@wiseai.website?subject=${subject}&body=${encodeURIComponent(bodyLines.join("\n"))}`
+    `mailto:tyler@wise-ai.au?subject=${subject}&body=${encodeURIComponent(bodyLines.join("\n"))}`
   );
 
   // build the payload for Supabase + email
@@ -366,7 +366,7 @@ function finish() {
     top_solution: sols[0].title,
     recommendations: sols.map(s => s.title),
     answers: readableAnswers(),
-    source: "wiseai.website/quiz",
+    source: "wise-ai.au/quiz",
     user_agent: navigator.userAgent,
     referrer: document.referrer || null
   };
