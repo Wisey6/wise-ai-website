@@ -179,7 +179,7 @@ function render() {
   } else {
     // contact step
     nextBtn.hidden = false;
-    nextBtn.textContent = "Show my result";
+    nextBtn.textContent = "Sounds good";
     card.innerHTML = `
       <div class="q">Where should I send your result?</div>
       <div class="qsub">Instant on-screen — plus I'll follow up personally, no pressure.</div>
