@@ -50,6 +50,9 @@ nav.stuck{background:rgba(9,12,15,.82);border-bottom-color:rgba(184,189,194,.12)
 .brand{display:flex;align-items:center;transition:opacity .2s}
 .brand:hover{opacity:.82}
 .brand img{height:30px;width:auto;display:block}
+.nav-links{display:flex;align-items:center;gap:16px}
+.nav-link{font-size:13px;font-weight:500;color:var(--platinum);transition:.2s}
+.nav-link:hover{color:var(--white)}
 .nav-cta{border:1px solid var(--graphite);border-radius:999px;padding:9px 18px;font-size:13px;font-weight:500;color:var(--platinum);
   background:linear-gradient(160deg,rgba(31,35,39,.7),rgba(13,17,20,.6));transition:.2s}
 .nav-cta:hover{border-color:var(--chrome);box-shadow:0 0 18px rgba(255,255,255,.06)}
