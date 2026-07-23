@@ -3,795 +3,452 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wise AI Hub - Financial Tracker</title>
-  <meta name="description" content="Wise AI Hub: Track expenses, subscriptions, and business financials.">
+  <title>Wise AI Hub</title>
+  <meta name="description" content="Wise AI Hub — your private business command centre.">
+  <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    :root{
+      --void:#0A0E11;--noir:#0D1114;--onyx:#1F2327;--graphite:#3A3F44;
+      --steel:#53585D;--silver:#989CA0;--chrome:#B8BDC2;--platinum:#E8EBED;--white:#fff;
+      --good:#4ade80;--warn:#fbbf24;--bad:#f87171;--accent:#7dd3fc;
     }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{font-family:'Inter',system-ui,sans-serif;color:var(--platinum);min-height:100dvh;
+      background:radial-gradient(120% 80% at 50% 2%,#12171c 0%,#0d1114 44%,#090c0f 100%) fixed}
+    a{color:inherit;text-decoration:none}
+    ::-webkit-scrollbar{width:8px;height:8px}
+    ::-webkit-scrollbar-thumb{background:var(--graphite);border-radius:8px}
 
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #fafaf9;
-      color: #1f2937;
-      line-height: 1.6;
-    }
+    /* ---------- Login gate ---------- */
+    .gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;
+      background:radial-gradient(120% 80% at 50% 0%,#12171c 0%,#0a0d10 60%,#070a0c 100%)}
+    .gate-card{width:100%;max-width:400px;background:linear-gradient(165deg,rgba(31,35,39,.65),rgba(13,17,20,.7));
+      border:1px solid rgba(184,189,194,.12);border-radius:20px;padding:40px 32px;
+      box-shadow:0 30px 80px rgba(0,0,0,.5);backdrop-filter:blur(14px)}
+    .gate-card img{height:30px;margin-bottom:26px}
+    .gate-card h1{font-family:'Archivo';font-weight:900;font-size:26px;letter-spacing:-.02em;color:var(--white);margin-bottom:8px}
+    .gate-card p{color:var(--silver);font-size:14px;line-height:1.5;margin-bottom:26px}
+    .gate .field{margin-bottom:16px}
+    .gate label{display:block;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--chrome);margin-bottom:8px}
+    .gate input{width:100%;padding:13px 15px;border-radius:11px;border:1px solid var(--graphite);
+      background:rgba(9,12,15,.6);color:var(--platinum);font-family:'Inter';font-size:15px;transition:.2s}
+    .gate input:focus{outline:none;border-color:var(--chrome);box-shadow:0 0 0 3px rgba(184,189,194,.08)}
+    .gate .code-input{letter-spacing:.4em;text-align:center;font-size:20px;font-weight:600}
+    .gate-msg{font-size:13px;margin-bottom:14px;padding:11px 13px;border-radius:10px;display:none}
+    .gate-msg.show{display:block}
+    .gate-msg.err{background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.25)}
+    .gate-msg.ok{background:rgba(74,222,128,.1);color:#86efac;border:1px solid rgba(74,222,128,.22)}
+    .gate .btn-full{width:100%;margin-top:6px}
+    .gate .back-link{display:inline-block;margin-top:16px;font-size:13px;color:var(--silver);cursor:pointer}
+    .gate .back-link:hover{color:var(--platinum)}
 
-    nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.5rem 2rem;
-      background: #fff;
-      border-bottom: 1px solid #e5e7eb;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:13px 24px;
+      font-size:14px;font-weight:600;transition:.2s;cursor:pointer;border:1px solid transparent;font-family:'Inter'}
+    .btn-primary{background:linear-gradient(180deg,#fff,#dfe3e6);color:#0c1013;box-shadow:0 0 30px rgba(255,255,255,.14)}
+    .btn-primary:hover{box-shadow:0 0 42px rgba(255,255,255,.28)}
+    .btn-primary:disabled{opacity:.5;cursor:default;box-shadow:none}
+    .btn-ghost{border-color:var(--graphite);color:var(--platinum);background:linear-gradient(160deg,rgba(31,35,39,.6),rgba(13,17,20,.5))}
+    .btn-ghost:hover{border-color:var(--chrome)}
+    .btn-sm{padding:8px 16px;font-size:13px}
 
-    nav .brand img {
-      height: 32px;
-      width: auto;
-    }
+    /* ---------- App shell ---------- */
+    .app{display:none;min-height:100dvh}
+    .app.on{display:block}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+      padding:16px max(20px,calc(50% - 660px));
+      background:rgba(9,12,15,.72);backdrop-filter:blur(12px);border-bottom:1px solid rgba(184,189,194,.1)}
+    .topbar .brand{display:flex;align-items:center;gap:12px}
+    .topbar .brand img{height:26px}
+    .topbar .who{font-size:12.5px;color:var(--silver)}
+    .topbar .who b{color:var(--platinum);font-weight:600}
+    .wrap{max-width:1320px;margin:0 auto;padding:28px max(20px,calc(50% - 660px))}
 
-    nav a.nav-cta {
-      padding: 0.75rem 1.5rem;
-      background: #0f172a;
-      color: #fff;
-      border-radius: 0.5rem;
-      text-decoration: none;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
+    .greeting{margin-bottom:24px}
+    .greeting .eyebrow{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--silver)}
+    .greeting h1{font-family:'Archivo';font-weight:900;font-size:clamp(28px,4vw,40px);line-height:1.05;letter-spacing:-.025em;color:var(--white);margin-top:8px}
+    .greeting h1 .dim{color:var(--steel)}
 
-    nav a.nav-cta:hover {
-      background: #1e293b;
-    }
+    /* ---------- Stat row ---------- */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px}
+    .stat{background:linear-gradient(165deg,rgba(31,35,39,.5),rgba(13,17,20,.55));
+      border:1px solid rgba(184,189,194,.1);border-radius:16px;padding:20px}
+    .stat .k{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--silver);margin-bottom:10px}
+    .stat .v{font-family:'Archivo';font-weight:700;font-size:30px;letter-spacing:-.02em;color:var(--white);line-height:1}
+    .stat .s{font-size:12.5px;color:var(--steel);margin-top:8px}
+    .stat .v.warn{color:var(--warn)}
+    .stat .v.bad{color:var(--bad)}
+    .stat .v.good{color:var(--good)}
 
-    main {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
+    /* ---------- Cards grid ---------- */
+    .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(165deg,rgba(31,35,39,.45),rgba(13,17,20,.5));
+      border:1px solid rgba(184,189,194,.1);border-radius:18px;padding:22px}
+    .card h2{font-family:'Archivo';font-weight:700;font-size:16px;letter-spacing:-.01em;color:var(--platinum);margin-bottom:16px;
+      display:flex;align-items:center;justify-content:space-between}
+    .card h2 .tag{font-family:'Inter';font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;
+      background:rgba(125,211,252,.12);color:var(--accent);letter-spacing:.02em}
 
-    .page-header {
-      margin-bottom: 2rem;
-    }
+    .chart-box{position:relative;height:250px}
 
-    .page-header h1 {
-      font-family: 'Archivo', sans-serif;
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
+    .list{display:flex;flex-direction:column}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid rgba(184,189,194,.08)}
+    .row:last-child{border-bottom:none}
+    .row .nm{font-size:14px;font-weight:500;color:var(--platinum)}
+    .row .meta{font-size:12px;color:var(--steel);margin-top:2px}
+    .row .amt{font-size:14px;font-weight:600;color:var(--chrome);white-space:nowrap}
+    .row .amt.bad{color:var(--bad)}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;margin-left:8px;
+      background:rgba(184,189,194,.1);color:var(--silver)}
+    .badge.loan{background:rgba(248,113,113,.14);color:#fca5a5}
+    .badge.sub{background:rgba(74,222,128,.12);color:#86efac}
 
-    .page-header p {
-      color: #6b7280;
-      font-size: 1.1rem;
-    }
+    .empty{text-align:center;padding:24px;color:var(--steel);font-size:13.5px}
 
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
+    /* ---------- Add forms ---------- */
+    .addbar{margin-top:16px;padding-top:16px;border-top:1px solid rgba(184,189,194,.1)}
+    .addbar h3{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--silver);margin-bottom:12px}
+    .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
+    .fields input,.fields select{padding:10px 12px;border-radius:10px;border:1px solid var(--graphite);
+      background:rgba(9,12,15,.5);color:var(--platinum);font-family:'Inter';font-size:13.5px}
+    .fields input:focus,.fields select:focus{outline:none;border-color:var(--chrome)}
 
-    .stat-card {
-      background: #fff;
-      padding: 1.5rem;
-      border-radius: 0.75rem;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
+    /* ---------- Briefing (Jarvis) card ---------- */
+    .briefing{background:linear-gradient(160deg,rgba(125,211,252,.06),rgba(13,17,20,.5));
+      border:1px solid rgba(125,211,252,.16)}
+    .briefing .placeholder{display:flex;gap:14px;align-items:flex-start;padding:6px 0}
+    .briefing .pulse{width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:5px;flex-shrink:0;
+      box-shadow:0 0 0 0 rgba(125,211,252,.5);animation:pulse 2.4s infinite}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(125,211,252,.4)}70%{box-shadow:0 0 0 12px rgba(125,211,252,0)}100%{box-shadow:0 0 0 0 rgba(125,211,252,0)}}
+    .briefing p{font-size:13.5px;color:var(--silver);line-height:1.6}
+    .briefing p b{color:var(--platinum);font-weight:600}
 
-    .stat-card .label {
-      font-size: 0.875rem;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-    }
-
-    .stat-card .value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #1f2937;
-      margin-bottom: 0.5rem;
-      font-family: 'Archivo', sans-serif;
-    }
-
-    .stat-card .subtext {
-      font-size: 0.875rem;
-      color: #9ca3af;
-    }
-
-    .stat-card.alert .value {
-      color: #dc2626;
-    }
-
-    .content-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    @media (max-width: 1024px) {
-      .content-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .card {
-      background: #fff;
-      padding: 1.5rem;
-      border-radius: 0.75rem;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .card h2 {
-      font-family: 'Archivo', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-    }
-
-    .chart-container {
-      position: relative;
-      height: 300px;
-      margin-bottom: 1rem;
-    }
-
-    .items-list {
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 0;
-      border-bottom: 1px solid #f3f4f6;
-      font-size: 0.95rem;
-    }
-
-    .item:last-child {
-      border-bottom: none;
-    }
-
-    .item .name {
-      font-weight: 500;
-      color: #1f2937;
-    }
-
-    .item .amount {
-      font-weight: 600;
-      color: #374151;
-    }
-
-    .item .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      background: #f3f4f6;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #6b7280;
-      margin-left: 0.5rem;
-    }
-
-    .item.loan .badge {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .form-section {
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .form-section h3 {
-      font-family: 'Archivo', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .form-group label {
-      font-size: 0.875rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      color: #374151;
-    }
-
-    .form-group input,
-    .form-group select {
-      padding: 0.75rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.95rem;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: #0f172a;
-      box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.1);
-    }
-
-    .btn {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.95rem;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      background: #0f172a;
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      background: #1e293b;
-    }
-
-    .btn-secondary {
-      background: #f3f4f6;
-      color: #1f2937;
-    }
-
-    .btn-secondary:hover {
-      background: #e5e7eb;
-    }
-
-    .btn-sm {
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 2rem;
-      color: #9ca3af;
-    }
-
-    .empty-state p {
-      margin-bottom: 1rem;
-    }
-
-    .expense-type {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      background: #dbeafe;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #1e40af;
-      margin-left: 0.5rem;
-    }
-
-    .expense-type.subscription {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .expense-type.loan {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    footer {
-      text-align: center;
-      padding: 2rem;
-      color: #9ca3af;
-      font-size: 0.875rem;
-      border-top: 1px solid #e5e7eb;
-      margin-top: 2rem;
-    }
-
-    .login-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .login-box {
-      background: #fff;
-      padding: 2.5rem;
-      border-radius: 1rem;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 400px;
-      width: 90%;
-    }
-
-    .login-box h1 {
-      font-family: 'Archivo', sans-serif;
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: #1f2937;
-    }
-
-    .login-box .subtitle {
-      color: #6b7280;
-      margin-bottom: 2rem;
-      font-size: 0.95rem;
-    }
-
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .login-form .form-group input {
-      width: 100%;
-    }
-
-    .login-error {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      margin-bottom: 1rem;
-      display: none;
-    }
-
-    .login-error.show {
-      display: block;
-    }
-
-    .login-form .btn {
-      width: 100%;
-    }
-
-    .content {
-      display: none;
-    }
-
-    .content.authenticated {
-      display: block;
-    }
-
-    .logout-btn {
-      position: absolute;
-      top: 1.5rem;
-      right: 2rem;
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      background: #f3f4f6;
-      color: #374151;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      border: none;
-    }
-
-    .logout-btn:hover {
-      background: #e5e7eb;
-    }
+    footer{text-align:center;padding:30px;color:var(--steel);font-size:12.5px}
+    footer b{color:var(--silver)}
   </style>
 </head>
 <body>
-  <div id="login-screen" class="login-container">
-    <div class="login-box">
-      <h1>Wise AI Hub</h1>
-      <p class="subtitle">Sign in to access your financial tracker</p>
-      <div class="login-error" id="login-error">Invalid email or password</div>
-      <form class="login-form" onsubmit="handleLogin(event)">
-        <div class="form-group">
+
+  <!-- ==================== LOGIN GATE ==================== -->
+  <div class="gate" id="gate">
+    <div class="gate-card">
+      <img src="logo.svg" alt="Wise AI">
+
+      <!-- Step 1: enter email -->
+      <div id="step-email">
+        <h1>Hub access</h1>
+        <p>Private command centre. Enter your email and I'll send you a one-time sign-in code.</p>
+        <div class="gate-msg" id="email-msg"></div>
+        <div class="field">
           <label>Email</label>
-          <input type="email" id="login-email" placeholder="tyler@wise-ai.au" required>
+          <input type="email" id="email" placeholder="you@wise-ai.au" autocomplete="email">
         </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="login-password" placeholder="••••••••••" required>
+        <button class="btn btn-primary btn-full" id="send-code-btn" onclick="sendCode()">Send code</button>
+      </div>
+
+      <!-- Step 2: enter code -->
+      <div id="step-code" style="display:none">
+        <h1>Check your inbox</h1>
+        <p>I sent a 6-digit code to <b id="sent-to"></b>. Enter it below.</p>
+        <div class="gate-msg" id="code-msg"></div>
+        <div class="field">
+          <label>Sign-in code</label>
+          <input type="text" id="code" class="code-input" placeholder="000000" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
         </div>
-        <button type="submit" class="btn btn-primary">Sign In</button>
-      </form>
+        <button class="btn btn-primary btn-full" id="verify-btn" onclick="verifyCode()">Verify &amp; enter</button>
+        <span class="back-link" onclick="backToEmail()">← Use a different email</span>
+      </div>
     </div>
   </div>
 
-  <div id="dashboard-content" class="content">
-    <button class="logout-btn" onclick="logout()">Logout</button>
-    <nav>
-      <a href="/" class="brand" aria-label="Wise AI"><img src="logo.svg" alt="Wise AI"></a>
-      <a href="/" class="nav-cta">Back to Home</a>
-    </nav>
-
-    <main>
-      <div class="page-header">
-      <h1>Wise AI Hub</h1>
-      <p>Track your business finances, subscriptions, and expenses at a glance.</p>
-    </div>
-
-    <div class="dashboard-grid">
-      <div class="stat-card">
-        <div class="label">Monthly Subscriptions</div>
-        <div class="value" id="total-subscriptions">$0.00</div>
-        <div class="subtext">Active subscriptions</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Outstanding Loans</div>
-        <div class="value alert" id="total-loans">$0.00</div>
-        <div class="subtext">Total amount to repay</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Other Expenses</div>
-        <div class="value" id="total-expenses">$0.00</div>
-        <div class="subtext">One-time & variable costs</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Total Monthly Burn</div>
-        <div class="value" id="total-burn">$0.00</div>
-        <div class="subtext">All recurring costs</div>
+  <!-- ==================== APP ==================== -->
+  <div class="app" id="app">
+    <div class="topbar">
+      <a class="brand" href="/"><img src="logo.svg" alt="Wise AI"></a>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span class="who">Signed in as <b id="user-email"></b></span>
+        <button class="btn btn-ghost btn-sm" onclick="signOut()">Sign out</button>
       </div>
     </div>
 
-    <div class="content-grid">
-      <div class="card">
-        <h2>Monthly Breakdown</h2>
-        <div class="chart-container">
-          <canvas id="expenseChart"></canvas>
+    <div class="wrap">
+      <div class="greeting">
+        <span class="eyebrow" id="today-label">Wise AI Hub</span>
+        <h1 id="hello">Good day. <span class="dim">Here's where things stand.</span></h1>
+      </div>
+
+      <!-- Daily briefing / Jarvis -->
+      <div class="card briefing" style="margin-bottom:16px">
+        <h2>Daily briefing <span class="tag">Agent · coming online</span></h2>
+        <div class="placeholder">
+          <div class="pulse"></div>
+          <p>Your AI assistant will post a plain-English briefing here each morning — <b>what needs doing today</b>, money in and out, follow-ups going cold, and a plan you approve with one tap. This is the next build step: connecting me to your live SiteWise data on a daily schedule.</p>
         </div>
-        <div class="form-section">
-          <h3>Add Expense</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Name</label>
-              <input type="text" id="expense-name" placeholder="e.g., Figma Pro">
-            </div>
-            <div class="form-group">
-              <label>Amount ($)</label>
-              <input type="number" id="expense-amount" placeholder="0.00" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-              <label>Type</label>
-              <select id="expense-type">
-                <option value="subscription">Subscription</option>
-                <option value="expense">One-time Expense</option>
+      </div>
+
+      <!-- Stat row -->
+      <div class="stats">
+        <div class="stat">
+          <div class="k">Monthly subscriptions</div>
+          <div class="v" id="s-subs">$0</div>
+          <div class="s">Recurring tools</div>
+        </div>
+        <div class="stat">
+          <div class="k">Outstanding loans</div>
+          <div class="v bad" id="s-loans">$0</div>
+          <div class="s">Total left to repay</div>
+        </div>
+        <div class="stat">
+          <div class="k">One-off expenses</div>
+          <div class="v" id="s-exp">$0</div>
+          <div class="s">Logged this session</div>
+        </div>
+        <div class="stat">
+          <div class="k">Monthly burn</div>
+          <div class="v warn" id="s-burn">$0</div>
+          <div class="s">Subscriptions + loan payments</div>
+        </div>
+      </div>
+
+      <!-- Row 1: chart + subscriptions -->
+      <div class="grid">
+        <div class="card">
+          <h2>Where the money goes</h2>
+          <div class="chart-box"><canvas id="chart"></canvas></div>
+          <div class="addbar">
+            <h3>Add an expense</h3>
+            <div class="fields">
+              <input type="text" id="e-name" placeholder="e.g. Figma Pro">
+              <input type="number" id="e-amount" placeholder="Amount $" min="0" step="0.01">
+              <select id="e-type">
+                <option value="subscription">Subscription (monthly)</option>
+                <option value="expense">One-off expense</option>
               </select>
             </div>
+            <button class="btn btn-ghost btn-sm" onclick="addExpense()">Add</button>
           </div>
-          <button class="btn btn-primary" onclick="addExpense()">Add Expense</button>
+        </div>
+
+        <div class="card">
+          <h2>Active subscriptions</h2>
+          <div class="list" id="subs-list"><div class="empty">Nothing yet.</div></div>
         </div>
       </div>
 
-      <div class="card">
-        <h2>Active Subscriptions</h2>
-        <div class="items-list" id="subscriptions-list">
-          <div class="empty-state">
-            <p>No subscriptions added yet.</p>
+      <!-- Row 2: loans + all expenses -->
+      <div class="grid">
+        <div class="card">
+          <h2>Loans &amp; liabilities</h2>
+          <div class="list" id="loans-list"><div class="empty">Nothing yet.</div></div>
+          <div class="addbar">
+            <h3>Add a loan</h3>
+            <div class="fields">
+              <input type="text" id="l-name" placeholder="e.g. Latitude">
+              <input type="number" id="l-amount" placeholder="Total owed $" min="0" step="0.01">
+              <input type="number" id="l-payment" placeholder="Monthly $" min="0" step="0.01">
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="addLoan()">Add</button>
           </div>
+        </div>
+
+        <div class="card">
+          <h2>All expenses</h2>
+          <div class="list" id="exp-list"><div class="empty">Nothing yet.</div></div>
         </div>
       </div>
     </div>
 
-    <div class="content-grid">
-      <div class="card">
-        <h2>Loans & Liabilities</h2>
-        <div class="items-list" id="loans-list">
-          <div class="empty-state">
-            <p>No loans added yet.</p>
-          </div>
-        </div>
-        <div class="form-section">
-          <h3>Add Loan</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Loan Name</label>
-              <input type="text" id="loan-name" placeholder="e.g., Latitude">
-            </div>
-            <div class="form-group">
-              <label>Amount ($)</label>
-              <input type="number" id="loan-amount" placeholder="0.00" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-              <label>Monthly Payment ($)</label>
-              <input type="number" id="loan-payment" placeholder="0.00" min="0" step="0.01">
-            </div>
-          </div>
-          <button class="btn btn-primary" onclick="addLoan()">Add Loan</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>All Expenses</h2>
-        <div class="items-list" id="all-expenses-list">
-          <div class="empty-state">
-            <p>No expenses added yet.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
-
-      <footer>
-        Wise AI Hub · Brisbane · <b>local, embedded, accountable</b>
-      </footer>
-    </main>
+    <footer>Wise AI Hub · Brisbane · <b>local, embedded, accountable</b></footer>
   </div>
 
-  <script>
-    // Data management
-    const data = {
-      subscriptions: [],
-      loans: [],
-      expenses: []
+  <!-- ==================== LOGIC ==================== -->
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://uyopyiucnklwrddxpgzq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_hlDFty-9GKhlvUkCt_2iKw_BBMt5g89';
+    // Only this email is allowed into the hub.
+    const ALLOWED_EMAIL = 'tyler@wise-ai.au';
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    /* ---------- DOM helpers ---------- */
+    const $ = (id) => document.getElementById(id);
+    const gate = $('gate'), app = $('app');
+    const stepEmail = $('step-email'), stepCode = $('step-code');
+
+    function showMsg(el, text, kind){ el.textContent = text; el.className = 'gate-msg show ' + kind; }
+    function hideMsg(el){ el.className = 'gate-msg'; }
+
+    /* ---------- Auth flow ---------- */
+    window.sendCode = async function(){
+      const email = $('email').value.trim().toLowerCase();
+      const btn = $('send-code-btn');
+      hideMsg($('email-msg'));
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        showMsg($('email-msg'), "That email doesn't look right.", 'err'); return;
+      }
+      if(email !== ALLOWED_EMAIL){
+        showMsg($('email-msg'), "This hub is private. That email isn't on the list.", 'err'); return;
+      }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+      btn.disabled = false; btn.textContent = 'Send code';
+      if(error){ showMsg($('email-msg'), error.message, 'err'); return; }
+      $('sent-to').textContent = email;
+      stepEmail.style.display = 'none';
+      stepCode.style.display = 'block';
+      $('code').focus();
     };
 
-    // Load data from localStorage
-    function loadData() {
-      const saved = localStorage.getItem('wiseai-financials');
-      if (saved) {
-        Object.assign(data, JSON.parse(saved));
-      } else {
-        // Initialize with user's data
+    window.verifyCode = async function(){
+      const email = $('email').value.trim().toLowerCase();
+      const token = $('code').value.trim();
+      const btn = $('verify-btn');
+      hideMsg($('code-msg'));
+      if(token.length < 6){ showMsg($('code-msg'), 'Enter the full 6-digit code.', 'err'); return; }
+      btn.disabled = true; btn.textContent = 'Verifying…';
+      const { error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+      btn.disabled = false; btn.textContent = 'Verify & enter';
+      if(error){ showMsg($('code-msg'), 'That code was wrong or expired. Try again.', 'err'); return; }
+      // onAuthStateChange will take it from here.
+    };
+
+    window.backToEmail = function(){
+      stepCode.style.display = 'none';
+      stepEmail.style.display = 'block';
+      $('code').value = '';
+      hideMsg($('code-msg'));
+    };
+
+    window.signOut = async function(){ await sb.auth.signOut(); location.reload(); };
+
+    /* ---------- Session gating ---------- */
+    async function gateOnSession(session){
+      const email = session?.user?.email?.toLowerCase();
+      if(session && email === ALLOWED_EMAIL){
+        gate.style.display = 'none';
+        app.classList.add('on');
+        $('user-email').textContent = email;
+        setGreeting();
+        renderAll();
+      } else if(session){
+        // Signed in but not the allowed user — kick out.
+        await sb.auth.signOut();
+      }
+    }
+
+    sb.auth.getSession().then(({ data }) => gateOnSession(data.session));
+    sb.auth.onAuthStateChange((_e, session) => gateOnSession(session));
+
+    function setGreeting(){
+      const now = new Date();
+      const opts = { weekday:'long', day:'numeric', month:'long' };
+      $('today-label').textContent = now.toLocaleDateString('en-AU', opts);
+      const h = now.getHours();
+      const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      $('hello').innerHTML = part + ', Tyler. <span class="dim">Here’s where things stand.</span>';
+    }
+
+    /* ================= FINANCE DATA (local for now) ================= */
+    const KEY = 'wiseai-hub-v2';
+    let data = { subscriptions:[], loans:[], expenses:[] };
+
+    function load(){
+      const saved = localStorage.getItem(KEY);
+      if(saved){ data = JSON.parse(saved); }
+      else {
         data.subscriptions = [
-          { id: 1, name: 'Supabase Pro', amount: 50, date: '2026-07-18' },
-          { id: 2, name: 'Claude Max', amount: 20, date: '2026-07-14' }
+          { id:1, name:'Supabase Pro', amount:25, since:'2026-07-18' },
+          { id:2, name:'Claude Max',   amount:150, since:'2026-07-14' }
         ];
-        data.loans = [
-          { id: 1, name: 'Latitude', amount: 1800, payment: 0 }
-        ];
+        data.loans = [ { id:1, name:'Latitude', amount:1800, payment:0 } ];
+        save();
       }
-      saveData();
+    }
+    function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+
+    const money = (n) => '$' + Number(n||0).toLocaleString('en-AU', { minimumFractionDigits:0, maximumFractionDigits:2 });
+
+    window.addExpense = function(){
+      const name = $('e-name').value.trim();
+      const amount = parseFloat($('e-amount').value);
+      const type = $('e-type').value;
+      if(!name || !(amount>0)) return;
+      const item = { id:Date.now(), name, amount, type };
+      data.expenses.push(item);
+      if(type === 'subscription') data.subscriptions.push({ id:item.id, name, amount });
+      $('e-name').value=''; $('e-amount').value='';
+      save(); renderAll();
+    };
+
+    window.addLoan = function(){
+      const name = $('l-name').value.trim();
+      const amount = parseFloat($('l-amount').value);
+      const payment = parseFloat($('l-payment').value) || 0;
+      if(!name || !(amount>0)) return;
+      data.loans.push({ id:Date.now(), name, amount, payment });
+      $('l-name').value=''; $('l-amount').value=''; $('l-payment').value='';
+      save(); renderAll();
+    };
+
+    let chart;
+    function renderAll(){
+      const subsTotal = data.subscriptions.reduce((s,x)=>s+ +x.amount,0);
+      const loansTotal = data.loans.reduce((s,x)=>s+ +x.amount,0);
+      const loanPay = data.loans.reduce((s,x)=>s+ (+x.payment||0),0);
+      const expTotal = data.expenses.filter(e=>e.type==='expense').reduce((s,x)=>s+ +x.amount,0);
+      const burn = subsTotal + loanPay;
+
+      $('s-subs').textContent = money(subsTotal);
+      $('s-loans').textContent = money(loansTotal);
+      $('s-exp').textContent = money(expTotal);
+      $('s-burn').textContent = money(burn);
+
+      // subscriptions list
+      $('subs-list').innerHTML = data.subscriptions.length ? data.subscriptions.map(s=>`
+        <div class="row"><div><div class="nm">${esc(s.name)}<span class="badge sub">sub</span></div></div>
+        <div class="amt">${money(s.amount)}/mo</div></div>`).join('') : '<div class="empty">Nothing yet.</div>';
+
+      // loans list
+      $('loans-list').innerHTML = data.loans.length ? data.loans.map(l=>`
+        <div class="row"><div><div class="nm">${esc(l.name)}<span class="badge loan">loan</span></div>
+        <div class="meta">Repay ${money(l.payment)}/mo</div></div>
+        <div class="amt bad">${money(l.amount)}</div></div>`).join('') : '<div class="empty">Nothing yet.</div>';
+
+      // all expenses
+      $('exp-list').innerHTML = data.expenses.length ? data.expenses.map(e=>`
+        <div class="row"><div><div class="nm">${esc(e.name)}<span class="badge">${e.type}</span></div></div>
+        <div class="amt">${money(e.amount)}</div></div>`).join('') : '<div class="empty">Nothing yet.</div>';
+
+      drawChart(subsTotal, loanPay, expTotal);
     }
 
-    function saveData() {
-      localStorage.setItem('wiseai-financials', JSON.stringify(data));
-      updateDashboard();
-    }
+    function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
-    // Add functions
-    function addExpense() {
-      const name = document.getElementById('expense-name').value;
-      const amount = parseFloat(document.getElementById('expense-amount').value);
-      const type = document.getElementById('expense-type').value;
-
-      if (!name || !amount) {
-        alert('Please fill in all fields');
-        return;
-      }
-
-      const expense = {
-        id: Date.now(),
-        name,
-        amount,
-        type,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      data.expenses.push(expense);
-      if (type === 'subscription') {
-        data.subscriptions.push(expense);
-      }
-
-      document.getElementById('expense-name').value = '';
-      document.getElementById('expense-amount').value = '';
-      saveData();
-    }
-
-    function addLoan() {
-      const name = document.getElementById('loan-name').value;
-      const amount = parseFloat(document.getElementById('loan-amount').value);
-      const payment = parseFloat(document.getElementById('loan-payment').value) || 0;
-
-      if (!name || !amount) {
-        alert('Please fill in all fields');
-        return;
-      }
-
-      const loan = {
-        id: Date.now(),
-        name,
-        amount,
-        payment,
-        date: new Date().toISOString().split('T')[0]
-      };
-
-      data.loans.push(loan);
-      document.getElementById('loan-name').value = '';
-      document.getElementById('loan-amount').value = '';
-      document.getElementById('loan-payment').value = '';
-      saveData();
-    }
-
-    // Update dashboard
-    function updateDashboard() {
-      const subscriptionTotal = data.subscriptions.reduce((sum, s) => sum + s.amount, 0);
-      const loanTotal = data.loans.reduce((sum, l) => sum + l.amount, 0);
-      const expenseTotal = data.expenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
-      const loanPayments = data.loans.reduce((sum, l) => sum + (l.payment || 0), 0);
-      const monthlyBurn = subscriptionTotal + loanPayments;
-
-      document.getElementById('total-subscriptions').textContent = '$' + subscriptionTotal.toFixed(2);
-      document.getElementById('total-loans').textContent = '$' + loanTotal.toFixed(2);
-      document.getElementById('total-expenses').textContent = '$' + expenseTotal.toFixed(2);
-      document.getElementById('total-burn').textContent = '$' + monthlyBurn.toFixed(2);
-
-      renderSubscriptions();
-      renderLoans();
-      renderAllExpenses();
-      updateChart();
-    }
-
-    function renderSubscriptions() {
-      const list = document.getElementById('subscriptions-list');
-      if (data.subscriptions.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No subscriptions added yet.</p></div>';
-        return;
-      }
-
-      list.innerHTML = data.subscriptions.map(sub => `
-        <div class="item">
-          <div>
-            <div class="name">${sub.name}</div>
-          </div>
-          <div class="amount">$${sub.amount.toFixed(2)}/mo</div>
-        </div>
-      `).join('');
-    }
-
-    function renderLoans() {
-      const list = document.getElementById('loans-list');
-      if (data.loans.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No loans added yet.</p></div>';
-        return;
-      }
-
-      list.innerHTML = data.loans.map(loan => `
-        <div class="item loan">
-          <div>
-            <div class="name">${loan.name}<span class="badge">Loan</span></div>
-          </div>
-          <div>
-            <div class="amount">$${loan.amount.toFixed(2)}</div>
-            <div style="font-size: 0.85rem; color: #6b7280;">Payment: $${loan.payment.toFixed(2)}/mo</div>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function renderAllExpenses() {
-      const list = document.getElementById('all-expenses-list');
-      if (data.expenses.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No expenses added yet.</p></div>';
-        return;
-      }
-
-      list.innerHTML = data.expenses.map(exp => `
-        <div class="item">
-          <div>
-            <div class="name">${exp.name}<span class="expense-type ${exp.type}">${exp.type}</span></div>
-          </div>
-          <div class="amount">$${exp.amount.toFixed(2)}</div>
-        </div>
-      `).join('');
-    }
-
-    let expenseChart;
-    function updateChart() {
-      const ctx = document.getElementById('expenseChart').getContext('2d');
-      const subscriptionTotal = data.subscriptions.reduce((sum, s) => sum + s.amount, 0);
-      const loanPayments = data.loans.reduce((sum, l) => sum + (l.payment || 0), 0);
-      const expenseTotal = data.expenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
-
-      const chartData = {
-        labels: ['Subscriptions', 'Loan Payments', 'Other Expenses'],
-        datasets: [{
-          label: 'Monthly Costs ($)',
-          data: [subscriptionTotal, loanPayments, expenseTotal],
-          backgroundColor: [
-            '#dbeafe',
-            '#fee2e2',
-            '#fef3c7'
-          ],
-          borderColor: [
-            '#0284c7',
-            '#dc2626',
-            '#d97706'
-          ],
-          borderWidth: 2
-        }]
-      };
-
-      if (expenseChart) {
-        expenseChart.destroy();
-      }
-
-      expenseChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: chartData,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'bottom'
-            }
-          }
-        }
+    function drawChart(subs, loans, exp){
+      const ctx = $('chart').getContext('2d');
+      if(chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type:'doughnut',
+        data:{ labels:['Subscriptions','Loan payments','One-off'],
+          datasets:[{ data:[subs, loans, exp],
+            backgroundColor:['rgba(125,211,252,.75)','rgba(248,113,113,.75)','rgba(251,191,36,.75)'],
+            borderColor:'#0d1114', borderWidth:3 }] },
+        options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+          plugins:{ legend:{ position:'bottom', labels:{ color:'#B8BDC2', padding:16, font:{ family:'Inter', size:12 } } } } }
       });
     }
 
-    // Initialize
-    loadData();
-
-    // Authentication — temporarily locked. Client-side passwords are visible
-    // in page source, so login is disabled until Supabase Auth is wired up.
-    function handleLogin(event) {
-      event.preventDefault();
-      const errorEl = document.getElementById('login-error');
-      errorEl.textContent = 'Access is temporarily locked while secure sign-in is being set up.';
-      errorEl.classList.add('show');
-      document.getElementById('login-password').value = '';
-    }
-
-    function logout() {
-      sessionStorage.removeItem('hub-authenticated');
-      document.getElementById('login-email').value = '';
-      document.getElementById('login-password').value = '';
-      showLoginScreen();
-    }
-
-    function showDashboard() {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('dashboard-content').classList.add('authenticated');
-    }
-
-    function showLoginScreen() {
-      document.getElementById('login-screen').style.display = 'flex';
-      document.getElementById('dashboard-content').classList.remove('authenticated');
-    }
-
-    function checkAuthentication() {
-      if (sessionStorage.getItem('hub-authenticated') === 'true') {
-        showDashboard();
-      } else {
-        showLoginScreen();
-      }
-    }
-
-    // Check authentication on page load
-    checkAuthentication();
+    load();
   </script>
 </body>
 </html>
