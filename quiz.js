@@ -16,7 +16,7 @@ const QUESTIONS = [
     id: "trade", q: "What kind of business do you run?",
     help: "So I can talk in your language, not jargon.",
     opts: [
-      { t: "On the tools — trades & construction", v: "trades" },
+      { t: "On the tools, trades & construction", v: "trades" },
       { t: "Health, beauty & wellness", v: "wellness" },
       { t: "Hospitality, food & events", v: "hospitality" },
       { t: "Retail or online store", v: "retail" },
@@ -27,7 +27,7 @@ const QUESTIONS = [
     id: "size", q: "How big is the team?",
     help: "Including you.",
     opts: [
-      { t: "Just me — sole trader", v: "solo" },
+      { t: "Just me, sole trader", v: "solo" },
       { t: "2–10 people", v: "small" },
       { t: "11–25 people", v: "mid" },
       { t: "26+ people", v: "large" }
@@ -46,10 +46,10 @@ const QUESTIONS = [
   },
   {
     id: "leads", q: "A new enquiry lands at 7pm. What happens?",
-    help: "Be honest — this is where money leaks.",
+    help: "Be honest, this is where money leaks.",
     opts: [
       { t: "They get an instant reply, any hour", v: "auto" },
-      { t: "We answer when we get to it — could be tomorrow", v: "manual" },
+      { t: "We answer when we get to it, could be tomorrow", v: "manual" },
       { t: "Honestly, some slip through the cracks", v: "leak" }
     ]
   },
@@ -59,7 +59,7 @@ const QUESTIONS = [
     opts: [
       { t: "Under 5", v: "low" },
       { t: "5–15", v: "med" },
-      { t: "15+ — it's a real drain", v: "high" },
+      { t: "15+, it's a real drain", v: "high" },
       { t: "No idea, but too many", v: "unknown" }
     ]
   },
@@ -67,16 +67,16 @@ const QUESTIONS = [
     id: "tools", q: "How are you handling all this today?",
     help: "The current setup, warts and all.",
     opts: [
-      { t: "Manually — spreadsheets, notebooks, memory", v: "manual" },
+      { t: "Manually, spreadsheets, notebooks, memory", v: "manual" },
       { t: "A patchwork of apps that don't talk to each other", v: "patchwork" },
       { t: "Pretty automated already", v: "auto" }
     ]
   },
   {
     id: "urgency", q: "How soon do you want this sorted?",
-    help: "No wrong answer — it just tells me where to start.",
+    help: "No wrong answer, it just tells me where to start.",
     opts: [
-      { t: "Yesterday — it's holding us back", v: "now" },
+      { t: "Yesterday, it's holding us back", v: "now" },
       { t: "Next month or two", v: "soon" },
       { t: "Just exploring for now", v: "explore" }
     ]
@@ -87,33 +87,33 @@ const QUESTIONS = [
 const SOLUTIONS = {
   booking: {
     title: "Booking & no-show automation",
-    desc: "An automated booking flow that fills your diary, confirms and reminds customers, and chases the ones who go quiet — so the back-and-forth stops eating your day and empty slots stop costing you.",
+    desc: "An automated booking flow that fills your diary, confirms and reminds customers, and chases the ones who go quiet, so the back-and-forth stops eating your day and empty slots stop costing you.",
     bullets: ["Online booking that syncs straight to your calendar", "Automatic confirmations, reminders & reschedules", "No-show follow-ups that recover the revenue", "Live in ~2 weeks, on your own accounts"]
   },
   leads: {
     title: "Lead-to-quote automation",
-    desc: "Every enquiry gets an instant response, gets logged, and gets followed up on a schedule — so the leads you're quietly losing turn into booked, quoted work instead.",
+    desc: "Every enquiry gets an instant response, gets logged, and gets followed up on a schedule, so the leads you're quietly losing turn into booked, quoted work instead.",
     bullets: ["Instant reply to every new enquiry, any hour", "Nothing slips: every lead tracked to an outcome", "Automated follow-up until they book or decline", "Turn website visitors into quotes on autopilot"]
   },
   invoicing: {
     title: "Invoicing & payment-link automation",
-    desc: "Invoices go out the moment a job's done, payment links do the collecting, and reminders chase what's overdue — so you get paid faster without lifting a finger.",
+    desc: "Invoices go out the moment a job's done, payment links do the collecting, and reminders chase what's overdue, so you get paid faster without lifting a finger.",
     bullets: ["Invoices raised & sent automatically", "One-tap payment links for customers", "Polite, automatic reminders on overdue accounts", "Fewer late payments, less chasing"]
   },
   admin: {
     title: "Admin & reconciliation automation",
-    desc: "The data entry, the banking, the reconciliation — the invisible work that eats hours, handed to a system that just does it, accurately, in the background.",
+    desc: "The data entry, the banking, the reconciliation, the invisible work that eats hours, handed to a system that just does it, accurately, in the background.",
     bullets: ["Data entry & record-keeping automated", "Bank & transaction reconciliation handled", "Fewer errors, no more end-of-week catch-up", "Your team back on the work that actually pays"]
   },
   enquiries: {
     title: "Customer enquiry automation",
-    desc: "The same questions, answered instantly and consistently, day or night — so your team stops repeating themselves and customers get a faster response.",
+    desc: "The same questions, answered instantly and consistently, day or night, so your team stops repeating themselves and customers get a faster response.",
     bullets: ["Instant answers to your most common questions", "Consistent, on-brand responses 24/7", "Only the real conversations reach a human", "Faster replies without adding headcount"]
   }
 };
 
 /* =========================================================================
-   Step engine — one screen at a time
+   Step engine, one screen at a time
    ========================================================================= */
 const answers = {};
 const contact = {};
@@ -133,7 +133,7 @@ function setProgress() {
   const pct = Math.round((step / STEPS.length) * 100);
   bar.style.width = pct + "%";
   if (STEPS[step].kind === "contact") {
-    stepCount.textContent = "Last step — where do I send it?";
+    stepCount.textContent = "Last step, where do I send it?";
   } else {
     stepCount.textContent = `Question ${step + 1} of ${QUESTIONS.length}`;
   }
@@ -182,7 +182,7 @@ function render() {
     nextBtn.textContent = "Continue";
     card.innerHTML = `
       <div class="q">Where should I send your result?</div>
-      <div class="qsub">Instant on-screen — plus I'll follow up personally, no pressure.</div>
+      <div class="qsub">Instant on-screen, plus I'll follow up personally, no pressure.</div>
       <div class="row2">
         <div class="field">
           <label for="name">Your name</label>
@@ -250,7 +250,7 @@ function next() {
     err.textContent = "I just need your name, email and a contact number."; return;
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
-    err.textContent = "That email doesn't look right — mind checking it?"; return;
+    err.textContent = "That email doesn't look right, mind checking it?"; return;
   }
   finish();
 }
@@ -318,7 +318,7 @@ function finish() {
   } else if (score >= 6) {
     band = "Strong fit";
     vTitle.textContent = `There's real time to reclaim, ${first}.`;
-    vText.textContent = "Based on your answers, repetitive work is quietly costing you hours and money every week. This is exactly the kind of business I build for — and there's a clear place to start.";
+    vText.textContent = "Based on your answers, repetitive work is quietly costing you hours and money every week. This is exactly the kind of business I build for, and there's a clear place to start.";
   } else {
     band = "Good fit";
     vTitle.textContent = `Yes, there's something here for you, ${first}.`;
@@ -339,7 +339,7 @@ function finish() {
   });
 
   // mailto fallback (also nice for the prospect to have a thread)
-  const subject = encodeURIComponent(`AI audit — ${contact.business || contact.name}: ${sols[0].title}`);
+  const subject = encodeURIComponent(`AI audit, ${contact.business || contact.name}: ${sols[0].title}`);
   const bodyLines = [
     `Name: ${contact.name}`,
     `Business: ${contact.business || "-"}`,
@@ -411,7 +411,7 @@ document.getElementById("ackBtn").addEventListener("click", (e) => {
   b.style.opacity = ".7";
   b.style.cursor = "default";
   const note = document.getElementById("ackNote");
-  if (note) note.textContent = "Perfect — keep an eye on your inbox. I'll be in touch within one business day.";
+  if (note) note.textContent = "Perfect, keep an eye on your inbox. I'll be in touch within one business day.";
 });
 
 /* ---------- Start over ---------- */
