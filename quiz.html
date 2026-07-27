@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body class="quiz-page">
   <nav>
@@ -20,8 +20,14 @@
       <a href="agents.html" class="nav-link">AI Agents</a>
       <a href="work.html" class="nav-link">Work</a>
       <a href="/" class="nav-cta">← Back to home</a>
+      <button class="nav-burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </nav>
+  <div class="mobile-menu">
+    <a href="/">Home</a>
+    <a href="agents.html">AI Agents</a>
+    <a href="work.html">Work</a>
+  </div>
 
   <section class="quiz">
     <div class="glass">
@@ -82,5 +88,23 @@
   </footer>
 
 <script src="quiz.js"></script>
+<script>
+(function(){
+  var b=document.querySelector('.nav-burger'),m=document.querySelector('.mobile-menu'),nav=document.querySelector('nav');
+  if(!b||!m)return;
+  b.addEventListener('click',function(){
+    var o=!m.classList.contains('open');
+    m.classList.toggle('open',o);b.classList.toggle('open',o);
+    b.setAttribute('aria-expanded',o?'true':'false');
+    if(o&&nav)nav.classList.add('stuck');
+  });
+  Array.prototype.forEach.call(m.querySelectorAll('a'),function(a){
+    a.addEventListener('click',function(){
+      m.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');
+    });
+  });
+})();
+</script>
 </body>
+
 </html>
