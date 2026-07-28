@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI: Terms of Use</title>
+<meta name="description" content="Terms of use for the Wise AI website, including how the free AI audit results should be treated and how client engagements are governed.">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=6">
+</head>
+<body class="doc">
+  <nav>
+    <a href="/" class="brand" aria-label="Wise AI"><img src="logo.svg" alt="Wise AI"></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Home</a>
+      <a href="agents.html" class="nav-link">AI Agents</a>
+      <a href="work.html" class="nav-link">Work</a>
+      <a href="quiz.html" class="nav-cta">Start your audit</a>
+      <button class="nav-burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+  <div class="mobile-menu">
+    <a href="/">Home</a>
+    <a href="agents.html">AI Agents</a>
+    <a href="work.html">Work</a>
+    <a href="quiz.html" class="menu-cta">Start your free audit</a>
+  </div>
+
+  <div class="doc-main">
+    <section class="sec first">
+      <div class="sec-lead legal">
+        <span class="eyebrow" data-reveal>Terms</span>
+        <h1 data-reveal>Terms of Use</h1>
+        <div class="updated" data-reveal>Last updated 28 July 2026</div>
+
+        <div class="legal-note" data-reveal>
+          <strong>The short version:</strong> this website exists to explain what Wise AI does and let you request an audit. The information on it is general, the audit results are indicative, and the real commitments live in the written agreement I sign with each client.
+        </div>
+
+        <h2 data-reveal>Who you are dealing with</h2>
+        <p data-reveal>This website is operated by Tyler Wise trading as Wise AI (Wise AI Solutions, ABN 74 653 249 265) of Brisbane, Queensland, Australia.</p>
+
+        <h2 data-reveal>Using this site</h2>
+        <p data-reveal>You are welcome to browse this website and use it to learn about Wise AI and get in touch. Please do not attempt to disrupt the site, access it in ways it was not intended to be accessed, or use it for anything unlawful.</p>
+
+        <h2 data-reveal>The free audit</h2>
+        <p data-reveal>The two-minute audit is a starting point, not a formal assessment. The suggestions it returns are generated from a short set of answers and are indicative only. They are general in nature, they cannot account for everything happening in your business, and they are not professional, financial or legal advice. Nothing on this site is an offer, or a guarantee of any particular result.</p>
+
+        <h2 data-reveal>Client engagements</h2>
+        <p data-reveal>Any actual work I do for you is governed by a separate written proposal or agreement covering scope, price, timing and responsibilities. If anything on this website conflicts with that agreement, the agreement takes precedence.</p>
+
+        <h2 data-reveal>Intellectual property</h2>
+        <p data-reveal>The content, design, wording, code and branding on this site belong to Wise AI, except where third-party material is credited. Business names and work shown in my portfolio remain the property of those businesses and appear with their permission. Please do not reproduce substantial parts of this site without asking me first.</p>
+
+        <h2 data-reveal>Links to other sites</h2>
+        <p data-reveal>Where I link to a client site or an external service, I am not responsible for that site's content or for how it handles your information.</p>
+
+        <h2 data-reveal>Availability and liability</h2>
+        <p data-reveal>I take care to keep this site accurate and available, but I cannot promise it will always be error-free or uninterrupted. To the extent the law allows, I am not liable for any loss arising from your use of this website, or from reliance on the general information it contains. Nothing in these terms limits any rights you have under the Australian Consumer Law that cannot be excluded.</p>
+
+        <h2 data-reveal>Changes</h2>
+        <p data-reveal>I may update these terms from time to time. The current version is always the one on this page, with the date shown at the top.</p>
+
+        <h2 data-reveal>Governing law</h2>
+        <p data-reveal>These terms are governed by the laws of Queensland, Australia.</p>
+
+        <h2 data-reveal>Contact</h2>
+        <p data-reveal>Questions about these terms: <a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a></p>
+      </div>
+    </section>
+  </div>
+
+  <footer class="site-footer">
+    <div class="fnav">
+      <a href="/">Home</a>
+      <a href="agents.html">AI Agents</a>
+      <a href="work.html">Work</a>
+      <a href="quiz.html">Free audit</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </div>
+    Wise AI · Brisbane, Australia · <b>local, embedded, accountable</b><br>
+    <a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a>
+    <div class="legal-line">&copy; 2026 Wise AI. All rights reserved. · ABN 74 653 249 265</div>
+  </footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var items = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+  if(reduce){ items.forEach(function(el){ el.classList.add('revealed'); }); }
+  else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(!e.isIntersecting) return;
+        e.target.classList.add('revealed');
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px -4% 0px' });
+    items.forEach(function(el){ io.observe(el); });
+  }
+  var nav = document.querySelector('nav');
+  var onScroll = function(){ nav.classList.toggle('stuck', window.scrollY > 8); };
+  onScroll(); window.addEventListener('scroll', onScroll, { passive:true });
+})();
+(function(){
+  var b=document.querySelector('.nav-burger'),m=document.querySelector('.mobile-menu'),nav=document.querySelector('nav');
+  if(!b||!m)return;
+  b.addEventListener('click',function(){
+    var o=!m.classList.contains('open');
+    m.classList.toggle('open',o);b.classList.toggle('open',o);
+    b.setAttribute('aria-expanded',o?'true':'false');
+    if(o&&nav)nav.classList.add('stuck');
+  });
+  Array.prototype.forEach.call(m.querySelectorAll('a'),function(a){
+    a.addEventListener('click',function(){
+      m.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');
+    });
+  });
+})();
+</script>
+</body>
+</html>
