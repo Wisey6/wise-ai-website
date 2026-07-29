@@ -1,2 +1,5 @@
 .DS_Store
 Thumbs.db
+
+# Written by the WiseAI hub; never commit locally
+.wiseai/status.md
