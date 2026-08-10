@@ -1,0 +1,17 @@
+# wise-ai.au
+#
+# Everything here is public and we want it found — by search engines and by
+# AI assistants alike. Buyers increasingly find suppliers by asking an AI;
+# for an AI-automation consultancy, being absent from that answer is the
+# expensive outcome, not being crawled.
+#
+# NOTE: this file alone does not control AI crawler access to this site.
+# Cloudflare sits in front of the GitHub Pages origin and serves its own
+# generated robots.txt (the origin had no robots.txt at all before this file).
+# Any AI-crawler blocking must be changed in the Cloudflare dashboard.
+# See task T-0072.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://wise-ai.au/sitemap.xml

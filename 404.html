@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI: Page not found</title>
+<meta name="description" content="That page doesn't exist. Head back to the Wise AI home page, or start the free 2-minute business audit.">
+<meta name="robots" content="noindex">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wise AI">
+<meta property="og:locale" content="en_AU">
+<meta property="og:title" content="Wise AI: Page not found">
+<meta property="og:description" content="That page doesn't exist. Head back to the Wise AI home page, or start the free 2-minute business audit.">
+<meta property="og:image" content="https://wise-ai.au/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<!-- Absolute asset paths: GitHub Pages serves this file for any missing path at any
+     depth (e.g. /work/img/gone.png), where relative paths would resolve wrongly. -->
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css?v=6">
+<style>
+  .nf-wrap{min-height:68vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:8vh 6vw 10vh}
+  .nf-inner{max-width:44rem}
+  .nf-code{font-family:Archivo,system-ui,sans-serif;font-weight:900;letter-spacing:-.04em;
+           font-size:clamp(4.5rem,17vw,11rem);line-height:.86;opacity:.13;margin:0 0 -.06em}
+  .nf-wrap h1{margin:0 0 .6rem}
+  .nf-wrap p{opacity:.72;max-width:34rem;margin:0 auto 2rem}
+  .nf-ctas{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center}
+</style>
+</head>
+<body class="doc">
+  <nav>
+    <a href="/" class="brand" aria-label="Wise AI"><img src="/logo.svg" alt="Wise AI"></a>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Home</a>
+      <a href="/agents.html" class="nav-link">AI Agents</a>
+      <a href="/work.html" class="nav-link">Work</a>
+      <a href="/quiz.html" class="nav-cta">Start your audit</a>
+      <button class="nav-burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+  <div class="mobile-menu">
+    <a href="/">Home</a>
+    <a href="/agents.html">AI Agents</a>
+    <a href="/work.html">Work</a>
+    <a href="/quiz.html" class="menu-cta">Start your free audit</a>
+  </div>
+
+  <div class="nf-wrap">
+    <div class="nf-inner">
+      <div class="nf-code" aria-hidden="true">404</div>
+      <span class="eyebrow">Page not found</span>
+      <h1>This one got away.</h1>
+      <p>The page you're after has moved or never existed. Nothing's broken &mdash; you've just hit a dead link.</p>
+      <div class="nf-ctas">
+        <a class="btn btn-primary" href="/quiz.html">Start your free 2-minute audit</a>
+        <a class="btn btn-ghost" href="/">Back to home</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="fnav">
+      <a href="/">Home</a>
+      <a href="/agents.html">AI Agents</a>
+      <a href="/work.html">Work</a>
+      <a href="/quiz.html">Free audit</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </div>
+    Wise AI · Brisbane, Australia · <b>local, embedded, accountable</b><br>
+    <a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a>
+    <div class="legal-line">&copy; 2026 Wise AI. All rights reserved. · ABN 74 653 249 265</div>
+  </footer>
+
+<script>
+(function(){
+  var b=document.querySelector('.nav-burger'),m=document.querySelector('.mobile-menu'),nav=document.querySelector('nav');
+  if(!b||!m)return;
+  b.addEventListener('click',function(){
+    var o=!m.classList.contains('open');
+    m.classList.toggle('open',o);b.classList.toggle('open',o);
+    b.setAttribute('aria-expanded',o?'true':'false');
+    if(o&&nav)nav.classList.add('stuck');
+  });
+  Array.prototype.forEach.call(m.querySelectorAll('a'),function(a){
+    a.addEventListener('click',function(){
+      m.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');
+    });
+  });
+})();
+(function(){
+  var nav=document.querySelector('nav');
+  if(!nav)return;
+  var onScroll=function(){ nav.classList.toggle('stuck', window.scrollY > 8); };
+  onScroll(); window.addEventListener('scroll', onScroll, { passive:true });
+})();
+</script>
+</body>
+</html>
