@@ -14,4 +14,9 @@
 User-agent: *
 Allow: /
 
+# The HQ console at /admin/ is a private internal tool, not public content.
+# It ships with no business data in it, but there is no reason to crawl it.
+User-agent: *
+Disallow: /admin/
+
 Sitemap: https://wise-ai.au/sitemap.xml
