@@ -98,7 +98,7 @@ function taskRow(store, task) {
         task.due ? el('span', { class: overdue ? 'pri-high' : '' }, dueLabel(task.due)) : null,
         task.status && task.status !== 'todo' && !done
           ? badge(TASK_STATES.find((s) => s.id === task.status)?.label || task.status,
-                  task.status === 'blocked' ? 'bad' : 'info')
+                  task.status === 'blocked' ? 'bad' : task.status === 'review' ? 'warn' : 'info')
           : null
       )
     ),
@@ -122,6 +122,8 @@ export function workView(store, filter = 'open') {
 
   const visible = d.tasks.filter((t) => {
     if (filter === 'open') return t.status !== 'done';
+    if (filter === 'review') return t.status === 'review';
+    if (filter === 'blocked') return t.status === 'blocked';
     if (filter === 'done') return t.status === 'done';
     if (filter === 'overdue') return t.status !== 'done' && t.due && daysUntil(t.due) < 0;
     return true;
@@ -174,7 +176,7 @@ export function workView(store, filter = 'open') {
   return el('div', {},
     el('div', { class: 'topbar' },
       el('div', { class: 'seg', role: 'group', 'aria-label': 'Filter tasks' },
-        ['open', 'overdue', 'done', 'all'].map((key) =>
+        ['open', 'review', 'blocked', 'overdue', 'done', 'all'].map((key) =>
           el('button', {
             class: 'seg-btn', type: 'button',
             'aria-pressed': String(filter === key),

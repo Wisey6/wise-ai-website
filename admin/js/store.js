@@ -14,6 +14,7 @@ export const STAGES = [
 export const TASK_STATES = [
   { id: 'todo',    label: 'To do' },
   { id: 'doing',   label: 'In progress' },
+  { id: 'review',  label: 'Needs review' },
   { id: 'blocked', label: 'Blocked' },
   { id: 'done',    label: 'Done' }
 ];
@@ -153,6 +154,8 @@ export function metrics(d) {
       .filter((x) => !['won', 'lost'].includes(x.stage))
       .reduce((t, x) => t + (Number(x.value) || 0) * ((Number(x.probability) || 0) / 100), 0),
     openTasks: d.tasks.filter((t) => t.status !== 'done').length,
+    reviewTasks: d.tasks.filter((t) => t.status === 'review').length,
+    blockedTasks: d.tasks.filter((t) => t.status === 'blocked').length,
     overdueTasks: d.tasks.filter((t) => t.status !== 'done' && t.due && t.due < today()).length
   };
 }

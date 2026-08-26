@@ -506,7 +506,11 @@ tbody tr:hover .row-actions { opacity: 1; }
   display: inline-flex; gap: 2px; padding: 3px;
   background: rgba(10,14,17,.5); border: 1px solid rgba(184,189,194,.16);
   border-radius: 999px;
+  /* Six filters do not fit a phone. Scroll the strip, never the page. */
+  max-width: 100%; overflow-x: auto; scrollbar-width: none;
 }
+.seg::-webkit-scrollbar { display: none; }
+.seg-btn { flex: 0 0 auto; }
 .seg-btn {
   padding: 6px var(--s3); border: none; border-radius: 999px; background: transparent;
   color: var(--silver); font-size: 12.5px; font-weight: 500; cursor: pointer;
