@@ -133,7 +133,12 @@ export function overviewView(store) {
       ),
 
       card('Next up',
-        m.overdueTasks ? badge(`${m.overdueTasks} overdue`, 'bad') : el('span', { class: 'eyebrow' }, `${m.openTasks} open`),
+        el('div', { class: 'topbar-actions' },
+          m.overdueTasks ? badge(`${m.overdueTasks} overdue`, 'bad') : null,
+          m.blockedTasks ? badge(`${m.blockedTasks} blocked`, 'bad') : null,
+          m.reviewTasks ? badge(`${m.reviewTasks} to review`, 'warn') : null,
+          el('span', { class: 'eyebrow' }, `${m.openTasks} open`)
+        ),
         dueTasks.length
           ? el('div', {}, dueTasks.map((t) => {
               const days = daysUntil(t.due);

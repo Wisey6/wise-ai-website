@@ -14,18 +14,54 @@ export const STAGES = [
 export const TASK_STATES = [
   { id: 'todo',    label: 'To do' },
   { id: 'doing',   label: 'In progress' },
+  { id: 'review',  label: 'Needs review' },
   { id: 'blocked', label: 'Blocked' },
   { id: 'done',    label: 'Done' }
 ];
 
 export const PRIORITIES = ['low', 'medium', 'high'];
 
+/** Things WiseAI produced and can point a client at. */
+export const OUTPUT_KINDS = [
+  { id: 'proposal',    label: 'Proposal' },
+  { id: 'contract',    label: 'Contract' },
+  { id: 'deliverable', label: 'Deliverable' },
+  { id: 'demo',        label: 'Demo' },
+  { id: 'runbook',     label: 'Runbook' },
+  { id: 'report',      label: 'Report' },
+  { id: 'invoice',     label: 'Invoice' },
+  { id: 'other',       label: 'Other' }
+];
+
+export const OUTPUT_STATES = [
+  { id: 'draft',      label: 'Draft' },
+  { id: 'ready',      label: 'Ready to send' },
+  { id: 'sent',       label: 'Sent' },
+  { id: 'accepted',   label: 'Accepted' },
+  { id: 'superseded', label: 'Superseded' }
+];
+
+/** Reference material — the things you consult rather than ship. */
+export const LIBRARY_KINDS = [
+  { id: 'playbook',  label: 'Playbook' },
+  { id: 'standard',  label: 'Standard' },
+  { id: 'knowledge', label: 'Knowledge' },
+  { id: 'research',  label: 'Research' },
+  { id: 'brand',     label: 'Brand' },
+  { id: 'template',  label: 'Template' },
+  { id: 'other',     label: 'Other' }
+];
+
+/** Collections that support archiving. */
+export const ARCHIVABLE = ['clients', 'deals', 'projects', 'tasks', 'outputs', 'library'];
+
 export function emptyData() {
   return {
     meta: { version: 1, created: today(), updated: today() },
     settings: { quitLine: 4300, currency: 'AUD', businessName: 'Wise AI' },
     clients: [], deals: [], projects: [], tasks: [],
-    income: [], expenses: [], subscriptions: []
+    income: [], expenses: [], subscriptions: [],
+    outputs: [], library: []
   };
 }
 
@@ -44,7 +80,8 @@ export function hydrate(raw) {
   const merged = { ...base, ...raw };
   merged.meta = { ...base.meta, ...(raw.meta || {}) };
   merged.settings = { ...base.settings, ...(raw.settings || {}) };
-  for (const key of ['clients', 'deals', 'projects', 'tasks', 'income', 'expenses', 'subscriptions']) {
+  for (const key of ['clients', 'deals', 'projects', 'tasks', 'income', 'expenses',
+                     'subscriptions', 'outputs', 'library']) {
     merged[key] = Array.isArray(raw[key]) ? raw[key] : [];
   }
   return merged;
@@ -100,6 +137,18 @@ export class Store {
     }));
   }
 
+  /**
+   * Archiving keeps the record and its history; deleting does not. Everything
+   * that can be archived should be, so the only destructive path is explicit.
+   */
+  archive(collection, id) {
+    return this.patch(collection, id, { archived: true, archivedAt: today() });
+  }
+
+  restore(collection, id) {
+    return this.patch(collection, id, { archived: false, archivedAt: '' });
+  }
+
   replaceAll(data) {
     return this.update(() => hydrate(data));
   }
@@ -109,6 +158,10 @@ export class Store {
 
 const sum = (rows, field = 'amount') =>
   rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
+
+/** Live records only. Archived ones stay readable but stop counting. */
+export const live = (rows = []) => rows.filter((r) => !r.archived);
+export const archived = (rows = []) => rows.filter((r) => r.archived);
 
 /** Monthly-equivalent cost of a recurring line. */
 export function monthlyCost(sub) {
@@ -123,6 +176,11 @@ export function monthlyCost(sub) {
 }
 
 export function metrics(d) {
+  // Archived records stay readable but must not move any number on the dashboard.
+  const clients = live(d.clients);
+  const deals = live(d.deals);
+  const tasks = live(d.tasks);
+
   const paid = d.income.filter((r) => r.status === 'paid');
   const outstanding = d.income.filter((r) => r.status === 'invoiced');
   const unbilled = d.income.filter((r) => r.status === 'unbilled');
@@ -130,10 +188,11 @@ export function metrics(d) {
   const activeSubs = d.subscriptions.filter((s) => (s.status || 'active') === 'active');
   const burn = activeSubs.reduce((total, s) => total + monthlyCost(s), 0);
 
-  const mrr = d.clients
+  const mrr = clients
     .filter((c) => c.status === 'active')
     .reduce((total, c) => total + (Number(c.mrr) || 0), 0);
 
+  const openDeals = deals.filter((x) => !['won', 'lost'].includes(x.stage));
   const quitLine = Number(d.settings.quitLine) || 0;
 
   return {
@@ -146,14 +205,17 @@ export function metrics(d) {
     quitLine,
     gapToQuitLine: Math.max(0, quitLine - (mrr - burn)),
     quitProgress: quitLine > 0 ? Math.min(1, Math.max(0, (mrr - burn) / quitLine)) : 0,
-    activeClients: d.clients.filter((c) => c.status === 'active').length,
-    openDeals: d.deals.filter((x) => !['won', 'lost'].includes(x.stage)).length,
-    pipelineValue: sum(d.deals.filter((x) => !['won', 'lost'].includes(x.stage)), 'value'),
-    weightedPipeline: d.deals
-      .filter((x) => !['won', 'lost'].includes(x.stage))
-      .reduce((t, x) => t + (Number(x.value) || 0) * ((Number(x.probability) || 0) / 100), 0),
-    openTasks: d.tasks.filter((t) => t.status !== 'done').length,
-    overdueTasks: d.tasks.filter((t) => t.status !== 'done' && t.due && t.due < today()).length
+    activeClients: clients.filter((c) => c.status === 'active').length,
+    openDeals: openDeals.length,
+    pipelineValue: sum(openDeals, 'value'),
+    weightedPipeline: openDeals.reduce(
+      (t, x) => t + (Number(x.value) || 0) * ((Number(x.probability) || 0) / 100), 0),
+    openTasks: tasks.filter((t) => t.status !== 'done').length,
+    reviewTasks: tasks.filter((t) => t.status === 'review').length,
+    blockedTasks: tasks.filter((t) => t.status === 'blocked').length,
+    overdueTasks: tasks.filter((t) => t.status !== 'done' && t.due && t.due < today()).length,
+    outputsDraft: live(d.outputs).filter((o) => ['draft', 'ready'].includes(o.status)).length,
+    archivedCount: ARCHIVABLE.reduce((t, k) => t + archived(d[k] || []).length, 0)
   };
 }
 

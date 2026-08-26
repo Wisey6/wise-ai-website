@@ -1,8 +1,8 @@
 // Work — projects and the tasks under them.
 
 import { el, icon, dueLabel, dateLabel, badge, modal, field, input, select, textarea,
-         toast, confirmDialog, emptyState, daysUntil, titleCase } from '../ui.js';
-import { TASK_STATES, PRIORITIES, clientName } from '../store.js';
+         toast, confirmDialog, emptyState, daysUntil, titleCase, recordActions } from '../ui.js';
+import { TASK_STATES, PRIORITIES, clientName, live, archived } from '../store.js';
 
 const PROJECT_STATES = [
   { id: 'active',   label: 'Active' },
@@ -74,7 +74,7 @@ async function openTask(store, task, presetProjectId = '') {
   toast(task ? 'Task updated.' : 'Task added.');
 }
 
-function taskRow(store, task) {
+function taskRow(store, task, { showProject = true } = {}) {
   const d = store.data;
   const done = task.status === 'done';
   const overdue = !done && task.due && daysUntil(task.due) < 0;
@@ -93,25 +93,27 @@ function taskRow(store, task) {
       el('div', { class: 'task-title' }, task.title),
       el('div', { class: 'task-meta' },
         el('span', { class: `pri-${task.priority || 'medium'}` }, `● ${titleCase(task.priority || 'medium')}`),
-        project ? el('span', {}, project.name) : null,
+        showProject && project ? el('span', {}, project.name) : null,
         task.clientId ? el('span', {}, clientName(d, task.clientId)) : null,
         task.due ? el('span', { class: overdue ? 'pri-high' : '' }, dueLabel(task.due)) : null,
         task.status && task.status !== 'todo' && !done
           ? badge(TASK_STATES.find((s) => s.id === task.status)?.label || task.status,
-                  task.status === 'blocked' ? 'bad' : 'info')
+                  task.status === 'blocked' ? 'bad' : task.status === 'review' ? 'warn' : 'info')
           : null
       )
     ),
-    el('div', { class: 'row-actions' },
-      el('button', { class: 'icon-btn', 'aria-label': 'Edit task', onClick: () => openTask(store, task) }, icon('edit')),
-      el('button', {
-        class: 'icon-btn', 'aria-label': 'Delete task',
-        onClick: async () => {
-          const ok = await confirmDialog('Delete task', `Remove "${task.title}"?`);
-          if (ok) { await store.remove('tasks', task.id); toast('Task removed.', 'bad'); }
-        }
-      }, icon('trash'))
-    )
+    recordActions({
+      label: task.title,
+      isArchived: !!task.archived,
+      onEdit: () => openTask(store, task),
+      onArchive: async () => { await store.archive('tasks', task.id); toast('Task archived.'); },
+      onRestore: async () => { await store.restore('tasks', task.id); toast('Task restored.'); },
+      onDelete: async () => {
+        const ok = await confirmDialog('Delete task',
+          `Remove "${task.title}" for good? Archiving keeps it off the board without losing it.`);
+        if (ok) { await store.remove('tasks', task.id); toast('Task deleted.', 'bad'); }
+      }
+    })
   );
 }
 
@@ -120,8 +122,11 @@ function taskRow(store, task) {
 export function workView(store, filter = 'open') {
   const d = store.data;
 
-  const visible = d.tasks.filter((t) => {
+  const visible = (filter === 'archived' ? archived(d.tasks) : live(d.tasks)).filter((t) => {
+    if (filter === 'archived') return true;
     if (filter === 'open') return t.status !== 'done';
+    if (filter === 'review') return t.status === 'review';
+    if (filter === 'blocked') return t.status === 'blocked';
     if (filter === 'done') return t.status === 'done';
     if (filter === 'overdue') return t.status !== 'done' && t.due && daysUntil(t.due) < 0;
     return true;
@@ -143,7 +148,7 @@ export function workView(store, filter = 'open') {
 
   const projectSection = (project) => {
     const tasks = sortTasks(grouped.get(project.id) || []);
-    const total = d.tasks.filter((t) => t.projectId === project.id);
+    const total = live(d.tasks).filter((t) => t.projectId === project.id);
     const complete = total.filter((t) => t.status === 'done').length;
 
     return el('section', { class: 'card section' },
@@ -158,12 +163,16 @@ export function workView(store, filter = 'open') {
           el('span', { class: 'eyebrow' },
             `${complete}/${total.length} done${project.due ? ` · ${dateLabel(project.due)}` : ''}`),
           el('button', { class: 'icon-btn', 'aria-label': 'Add task to project', onClick: () => openTask(store, null, project.id) }, icon('plus')),
-          el('button', { class: 'icon-btn', 'aria-label': 'Edit project', onClick: () => openProject(store, project) }, icon('edit'))
+          el('button', { class: 'icon-btn', 'aria-label': 'Edit project', onClick: () => openProject(store, project) }, icon('edit')),
+          el('button', {
+            class: 'icon-btn', 'aria-label': `Archive ${project.name}`,
+            onClick: async () => { await store.archive('projects', project.id); toast('Project archived.'); }
+          }, icon('archive'))
         )
       ),
       el('div', { class: 'card-body flush' },
         tasks.length
-          ? el('div', {}, tasks.map((t) => taskRow(store, t)))
+          ? el('div', {}, tasks.map((t) => taskRow(store, t, { showProject: false })))
           : el('p', { class: 'muted', style: 'padding:20px 24px;font-size:13px' },
               filter === 'open' ? 'Nothing open here.' : 'No tasks match this filter.'))
     );
@@ -174,7 +183,7 @@ export function workView(store, filter = 'open') {
   return el('div', {},
     el('div', { class: 'topbar' },
       el('div', { class: 'seg', role: 'group', 'aria-label': 'Filter tasks' },
-        ['open', 'overdue', 'done', 'all'].map((key) =>
+        ['open', 'review', 'blocked', 'overdue', 'done', 'all', 'archived'].map((key) =>
           el('button', {
             class: 'seg-btn', type: 'button',
             'aria-pressed': String(filter === key),
@@ -192,7 +201,7 @@ export function workView(store, filter = 'open') {
           emptyState('No projects or tasks yet. Start with a project, then hang tasks off it.',
             'Add a project', () => openProject(store, null)))
       : el('div', {},
-          d.projects
+          live(d.projects)
             .filter((p) => p.status !== 'archived')
             .map((p) => projectSection(p)),
 

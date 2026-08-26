@@ -48,7 +48,8 @@ export function settingsView(store, { onLock } = {}) {
   const counts = {
     clients: d.clients.length, deals: d.deals.length, projects: d.projects.length,
     tasks: d.tasks.length, income: d.income.length,
-    expenses: d.expenses.length, subscriptions: d.subscriptions.length
+    expenses: d.expenses.length, subscriptions: d.subscriptions.length,
+    outputs: d.outputs.length, library: d.library.length
   };
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
