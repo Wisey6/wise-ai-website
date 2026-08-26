@@ -1,10 +1,10 @@
 // Pipeline — drag-and-drop deal board.
 
 import { el, icon, money, dateLabel, badge, modal, field, input, select, textarea, toast, emptyState } from '../ui.js';
-import { STAGES, metrics } from '../store.js';
+import { STAGES, metrics, live, archived } from '../store.js';
 
 function dealForm(d, deal = {}) {
-  const clientOptions = [{ id: '', label: '— none —' }, ...d.clients.map((c) => ({ id: c.id, label: c.name }))];
+  const clientOptions = [{ id: '', label: '— none —' }, ...live(d.clients).map((c) => ({ id: c.id, label: c.name }))];
   return [
     field('Deal', input('name', { value: deal.name, required: true, placeholder: 'Quote calculator build' })),
     el('div', { class: 'field-row' },
@@ -58,7 +58,16 @@ function dealCard(store, deal, d) {
           el('strong', { style: 'color:var(--chrome);font-weight:600' }, 'Next: '),
           deal.nextAction,
           deal.due ? el('span', { class: 'dim' }, ` · ${dateLabel(deal.due)}`) : null)
-      : null
+      : null,
+    el('button', {
+      class: 'deal-archive icon-btn', type: 'button',
+      'aria-label': `Archive ${deal.name}`, title: 'Archive',
+      onClick: async (e) => {
+        e.stopPropagation();
+        await store.archive('deals', deal.id);
+        toast('Deal archived.');
+      }
+    }, icon('archive', 14))
   );
 
   node.addEventListener('dragstart', (e) => {
@@ -80,7 +89,7 @@ export function pipelineView(store) {
 
   const board = el('div', { class: 'kanban' },
     STAGES.map((stage) => {
-      const deals = d.deals.filter((x) => (x.stage || 'lead') === stage.id);
+      const deals = live(d.deals).filter((x) => (x.stage || 'lead') === stage.id);
       const total = deals.reduce((t, x) => t + (Number(x.value) || 0), 0);
 
       const body = el('div', { class: 'col-body' }, deals.map((deal) => dealCard(store, deal, d)));
@@ -102,7 +111,7 @@ export function pipelineView(store) {
         e.preventDefault();
         col.classList.remove('drop-target');
         const id = e.dataTransfer.getData('text/plain');
-        const deal = d.deals.find((x) => x.id === id);
+        const deal = live(d.deals).find((x) => x.id === id);
         if (deal && deal.stage !== stage.id) {
           await store.patch('deals', id, { stage: stage.id });
           toast(`Moved to ${stage.label}.`);
@@ -125,10 +134,10 @@ export function pipelineView(store) {
       el('div', { class: 'stat' },
         el('div', { class: 'stat-label' }, icon('check', 13), 'Won'),
         el('div', { class: 'stat-value' }, el('span', { class: 'num' },
-          money(d.deals.filter((x) => x.stage === 'won').reduce((t, x) => t + (Number(x.value) || 0), 0)))),
-        el('div', { class: 'stat-sub' }, `${d.deals.filter((x) => x.stage === 'won').length} closed`))
+          money(live(d.deals).filter((x) => x.stage === 'won').reduce((t, x) => t + (Number(x.value) || 0), 0)))),
+        el('div', { class: 'stat-sub' }, `${live(d.deals).filter((x) => x.stage === 'won').length} closed`))
     ),
-    d.deals.length
+    live(d.deals).length
       ? board
       : el('section', { class: 'card' },
           emptyState('No deals yet. Add the first one to start tracking the pipeline.',

@@ -1,7 +1,8 @@
 // Clients — the roster, with per-client money and work rolled up.
 
-import { el, icon, money, dateLabel, badge, modal, field, input, select, textarea,
-         toast, confirmDialog, emptyState } from '../ui.js';
+import { el, icon, money, badge, modal, field, input, select, textarea,
+         toast, confirmDialog, emptyState, recordActions } from '../ui.js';
+import { live, archived } from '../store.js';
 
 const STATUSES = [
   { id: 'active',   label: 'Active' },
@@ -63,8 +64,9 @@ function rollup(d, clientId) {
   };
 }
 
-export function clientsView(store) {
+export function clientsView(store, { showArchived = false } = {}) {
   const d = store.data;
+  const pool = showArchived ? archived(d.clients) : live(d.clients);
 
   if (!d.clients.length) {
     return el('section', { class: 'card' },
@@ -72,15 +74,20 @@ export function clientsView(store) {
         'Add a client', () => openClient(store, null)));
   }
 
-  const rows = [...d.clients].sort((a, b) => (Number(b.mrr) || 0) - (Number(a.mrr) || 0));
+  const rows = [...pool].sort((a, b) => (Number(b.mrr) || 0) - (Number(a.mrr) || 0));
 
   return el('section', { class: 'card' },
     el('div', { class: 'card-head' },
       el('div', { class: 'card-head-left' },
-        el('h2', {}, 'Clients'),
-        badge(`${d.clients.length} total`, '')),
-      el('button', { class: 'btn btn-primary btn-sm', onClick: () => openClient(store, null) },
-        icon('plus', 13), 'New client')
+        el('h2', {}, showArchived ? 'Archived clients' : 'Clients'),
+        badge(`${rows.length}`, '')),
+      el('div', { class: 'topbar-actions' },
+        el('button', {
+          class: `btn btn-sm ${showArchived ? 'btn-primary' : 'btn-ghost'}`,
+          onClick: () => store.emitClients?.({ showArchived: !showArchived })
+        }, icon('archive', 13), showArchived ? 'Viewing archive' : `Archive (${archived(d.clients).length})`),
+        el('button', { class: 'btn btn-primary btn-sm', onClick: () => openClient(store, null) },
+          icon('plus', 13), 'New client'))
     ),
     el('div', { class: 'card-body flush' },
       el('div', { class: 'table-scroll' },
@@ -97,7 +104,7 @@ export function clientsView(store) {
           )),
           el('tbody', {}, rows.map((client) => {
             const r = rollup(d, client.id);
-            return el('tr', {},
+            return el('tr', { style: client.archived ? 'opacity:.55' : '' },
               el('td', {},
                 el('div', { style: 'font-weight:600;color:var(--white)' }, client.name),
                 el('div', { class: 'dim', style: 'font-size:11.5px' },
@@ -113,17 +120,18 @@ export function clientsView(store) {
                 r.unbilled ? el('span', { style: 'color:var(--info)' }, money(r.unbilled)) : el('span', { class: 'dim' }, '—')),
               el('td', { class: 't-right t-num' },
                 r.openTasks ? `${r.openTasks} task${r.openTasks === 1 ? '' : 's'}` : el('span', { class: 'dim' }, '—')),
-              el('td', {}, el('div', { class: 'row-actions' },
-                el('button', { class: 'icon-btn', 'aria-label': `Edit ${client.name}`, onClick: () => openClient(store, client) }, icon('edit')),
-                el('button', {
-                  class: 'icon-btn', 'aria-label': `Delete ${client.name}`,
-                  onClick: async () => {
-                    const ok = await confirmDialog('Delete client',
-                      `Remove ${client.name}? Their income, expenses and tasks stay, but lose the link back to this client.`);
-                    if (ok) { await store.remove('clients', client.id); toast('Client removed.', 'bad'); }
-                  }
-                }, icon('trash'))
-              ))
+              el('td', {}, recordActions({
+                label: client.name,
+                isArchived: !!client.archived,
+                onEdit: () => openClient(store, client),
+                onArchive: async () => { await store.archive('clients', client.id); toast('Client archived.'); },
+                onRestore: async () => { await store.restore('clients', client.id); toast('Client restored.'); },
+                onDelete: async () => {
+                  const ok = await confirmDialog('Delete client',
+                    `Remove ${client.name} for good? Archiving keeps the record and its history — deleting does not, and their income, expenses and tasks lose the link back.`);
+                  if (ok) { await store.remove('clients', client.id); toast('Client deleted.', 'bad'); }
+                }
+              }))
             );
           }))
         )

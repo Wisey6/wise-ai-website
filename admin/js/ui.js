@@ -108,7 +108,11 @@ const PATHS = {
   download: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/>',
   upload:   '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/>',
   inbox:    '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>',
-  alert:    '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>'
+  alert:    '<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  archive:  '<rect x="2" y="4" width="20" height="5" rx="1.5"/><path d="M4 9v10a2 2 0 002 2h12a2 2 0 002-2V9"/><path d="M10 13h4"/>',
+  library:  '<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h7"/>',
+  outputs:  '<path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2"/>',
+  search:   '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'
 };
 
 /** Inline SVG icon by name. */
@@ -221,6 +225,21 @@ export function select(name, options, value) {
 
 export function textarea(name, value = '', placeholder = '') {
   return el('textarea', { class: 'textarea', name, placeholder }, value ?? '');
+}
+
+/**
+ * The edit / archive / delete trio every record row carries.
+ * Archive is offered first and deletion is always confirmed, so the
+ * destructive path is the deliberate one.
+ */
+export function recordActions({ label, onEdit, onArchive, onRestore, onDelete, isArchived }) {
+  return el('div', { class: 'row-actions' },
+    onEdit ? el('button', { class: 'icon-btn', 'aria-label': `Edit ${label}`, onClick: onEdit }, icon('edit')) : null,
+    isArchived
+      ? el('button', { class: 'icon-btn', 'aria-label': `Restore ${label}`, onClick: onRestore }, icon('up'))
+      : el('button', { class: 'icon-btn', 'aria-label': `Archive ${label}`, onClick: onArchive }, icon('archive')),
+    onDelete ? el('button', { class: 'icon-btn', 'aria-label': `Delete ${label}`, onClick: onDelete }, icon('trash')) : null
+  );
 }
 
 export function confirmDialog(title, message) {

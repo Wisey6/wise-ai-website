@@ -216,7 +216,10 @@ h3 { font-weight: 700; font-size: 14px; color: var(--platinum); }
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--s4); flex-wrap: wrap; margin-bottom: var(--s5);
 }
-.topbar-actions { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+/* The filter strip yields space; the actions keep their line. Without this a
+   seven-filter strip pushes the primary action onto a row of its own. */
+.topbar > .seg { flex: 0 1 auto; min-width: 0; }
+.topbar-actions { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; flex: 0 0 auto; }
 
 .select, .input, .textarea {
   padding: 8px var(--s3); background: rgba(10,14,17,.55);
@@ -521,4 +524,85 @@ tbody tr:hover .row-actions { opacity: 1; }
 .seg-btn[aria-pressed="true"] {
   color: var(--white); background: rgba(184,189,194,.16);
   box-shadow: inset 0 1px 0 rgba(232,235,237,.2);
+}
+
+/* ==========================================================================
+   Library, Outputs, Archive
+   ========================================================================== */
+
+.lib-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: var(--s3); align-items: start;
+}
+
+.lib-card {
+  display: flex; flex-direction: column; gap: var(--s2);
+  padding: var(--s4); border-radius: var(--r-lg);
+  background: var(--glass); border: var(--bezel); box-shadow: var(--lift);
+  backdrop-filter: blur(13px); -webkit-backdrop-filter: blur(13px);
+  transition: transform .32s var(--ease), border-color .32s, box-shadow .32s;
+}
+.lib-card:hover { transform: translateY(-3px); border-color: rgba(232,235,237,.5); }
+.lib-card.is-archived { opacity: .55; }
+
+.lib-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.lib-title {
+  font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 14.5px;
+  color: var(--white); line-height: 1.3; text-wrap: balance;
+}
+.lib-note { font-size: 12.5px; line-height: 1.55; color: var(--silver); }
+.lib-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: var(--faint);
+  padding: 5px 8px; border-radius: var(--r-sm);
+  background: rgba(10,14,17,.5); border: 1px solid rgba(184,189,194,.1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lib-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag {
+  font-size: 10.5px; font-weight: 500; letter-spacing: .02em;
+  padding: 2px 7px; border-radius: 999px;
+  color: var(--chrome); background: rgba(184,189,194,.09);
+  border: 1px solid rgba(184,189,194,.18);
+}
+.lib-date { font-size: 11px; margin-top: auto; padding-top: var(--s1); }
+
+/* outputs — the kind marker in the first column */
+.kind-dot {
+  display: inline-grid; place-items: center; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: 8px;
+  color: var(--silver);
+  background: rgba(184,189,194,.08); border: 1px solid rgba(184,189,194,.16);
+}
+.kind-dot svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* archive control on a kanban card — quiet until the card is hovered */
+.deal { position: relative; }
+.deal-archive {
+  position: absolute; top: 6px; right: 6px;
+  width: 26px; height: 26px; opacity: 0;
+  transition: opacity .2s var(--ease), color .2s, background .2s;
+}
+.deal:hover .deal-archive,
+.deal:focus-within .deal-archive { opacity: .55; }
+.deal-archive:hover { opacity: 1 !important; }
+
+@media (max-width: 560px) {
+  .lib-grid { grid-template-columns: minmax(0, 1fr); }
+  .deal-archive { opacity: .5; }
+}
+
+/* ==========================================================================
+   Motion — GSAP drives it; these are the resting states it animates from.
+   Nothing here is decorative: entrances orient, the count-up draws the eye to
+   a number that changed. Everything collapses under prefers-reduced-motion.
+   ========================================================================== */
+
+/* Elements GSAP will reveal start hidden ONLY once GSAP has confirmed it can
+   run. `js-motion` is set by motion.js, so a failed CDN load leaves content
+   visible rather than blank. */
+.js-motion .stagger-in > * { will-change: transform, opacity; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lib-card:hover, .stat:hover, .deal:hover { transform: none; }
 }

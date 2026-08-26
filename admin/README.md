@@ -14,12 +14,51 @@ admin/
   admin.css         dark-glass HQ design system
   js/
     vault.js        PBKDF2 -> AES-GCM encrypted storage
-    store.js        data model, persistence, derived metrics
+    store.js        data model, persistence, derived metrics, archiving
     charts.js       inline SVG charts (bar, area, donut, meter)
     ui.js           DOM helpers, icons, formatting, modals, toasts
+    motion.js       GSAP entrances and KPI count-up (optional, see below)
     app.js          gate, hash router, shell, idle auto-lock
-    views/          overview, pipeline, clients, work, money, settings
+    views/          overview, pipeline, clients, work, money,
+                    outputs, library, settings
 ```
+
+## Sections
+
+| Section | Holds |
+|---|---|
+| **Overview** | KPIs, quit-line progress, income and revenue charts, bills due, next up |
+| **Pipeline** | Deals on a drag-and-drop board, with weighted value |
+| **Clients** | The roster, with money and open work rolled up per client |
+| **Work** | Projects and the tasks under them |
+| **Money** | Income, recurring costs, one-off purchases |
+| **Outputs** | What WiseAI produced — proposals, contracts, demos, runbooks, reports |
+| **Library** | What WiseAI consults — playbooks, standards, knowledge, research, brand |
+| **Settings** | Backup, restore, passcode, targets, lock, wipe |
+
+## Archiving
+
+Every record type except money rows can be archived rather than deleted.
+Archived records keep their history, drop out of every list and every derived
+figure, and come back with one click from the per-section **Archive** toggle.
+Deletion still exists, always behind a confirm, and the dialog says plainly
+that archiving is the non-destructive option.
+
+## Motion
+
+`motion.js` lazily imports GSAP from a CDN and adds two things: a staggered
+entrance when you switch section, and a count-up on the KPI figures. Both are
+gated on `prefers-reduced-motion` through `gsap.matchMedia()`.
+
+**The console is fully functional without it.** If the CDN is blocked or slow
+the import fails quietly, no class is set, and every view renders exactly as it
+otherwise would. Nothing in the app waits on it.
+
+One sharp edge worth knowing about: `gsap.from()` with `autoAlpha` sets
+`visibility: hidden` as its *start* state, so an interrupted tween is precisely
+how a dashboard ends up blank. Every reveal therefore carries `clearProps` and
+an `onInterrupt` that restores the resting state, and `motion.test.mjs` proves
+it by interrupting 24 entrances in a row.
 
 ## Security model — read this before putting real numbers in
 

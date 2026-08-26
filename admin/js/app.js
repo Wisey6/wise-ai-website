@@ -8,7 +8,10 @@ import { pipelineView, openDeal } from './views/pipeline.js';
 import { clientsView, openClient } from './views/clients.js';
 import { workView } from './views/work.js';
 import { moneyView } from './views/money.js';
+import { outputsView, openOutput } from './views/outputs.js';
+import { libraryView, openEntry } from './views/library.js';
 import { settingsView } from './views/settings.js';
+import { onRendered, primeMotion } from './motion.js';
 
 const IDLE_LOCK_MS = 20 * 60 * 1000;
 const MIN_PASSCODE = 10;
@@ -19,12 +22,18 @@ const ROUTES = [
   { id: 'clients',  label: 'Clients',  icon: 'clients',  title: 'Clients' },
   { id: 'work',     label: 'Work',     icon: 'work',     title: 'Projects & tasks' },
   { id: 'money',    label: 'Money',    icon: 'money',    title: 'Money' },
+  { id: 'outputs',  label: 'Outputs',  icon: 'outputs',  title: 'Outputs' },
+  { id: 'library',  label: 'Library',  icon: 'library',  title: 'Library' },
   { id: 'settings', label: 'Settings', icon: 'settings', title: 'Settings' }
 ];
 
 let store = null;
 let idleTimer = null;
 let workFilter = 'open';
+let lastRoute = null;
+let outputsFilter = { kind: 'all', showArchived: false };
+let libraryFilter = { kind: 'all', showArchived: false, query: '' };
+let clientsFilter = { showArchived: false };
 
 /* -------------------------------------------------------------------- gate */
 
@@ -97,6 +106,7 @@ function gate() {
 function lock() {
   clearTimeout(idleTimer);
   store = null;
+  lastRoute = null;
   location.hash = '';
   gate();
 }
@@ -135,7 +145,9 @@ function primaryAction(route) {
     pipeline: ['New deal', () => openDeal(store, null)],
     clients:  ['New client', () => openClient(store, null)],
     work:     null,
-    money:    null
+    money:    null,
+    outputs:  null,
+    library:  null
   };
   const action = actions[route.id];
   if (!action) return null;
@@ -150,9 +162,11 @@ function render() {
   const body = {
     overview: () => overviewView(store),
     pipeline: () => pipelineView(store),
-    clients:  () => clientsView(store),
+    clients:  () => clientsView(store, clientsFilter),
     work:     () => workView(store, workFilter),
     money:    () => moneyView(store),
+    outputs:  () => outputsView(store, outputsFilter),
+    library:  () => libraryView(store, libraryFilter),
     settings: () => settingsView(store, { onLock: lock })
   }[route.id]();
 
@@ -178,13 +192,22 @@ function render() {
     )
   );
 
-  clear($('#root')).append(shell);
+  const root = $('#root');
+  clear(root).append(shell);
+
+  // A route change earns the full entrance; a save inside a view does not.
+  const routeChanged = route.id !== lastRoute;
+  lastRoute = route.id;
+  onRendered(root, { full: routeChanged });
 }
 
 function start(session) {
   store = new Store(session);
   store.subscribe(render);
   store.emitFilter = (filter) => { workFilter = filter; render(); };
+  store.emitOutputs = (next) => { outputsFilter = { ...outputsFilter, ...next }; render(); };
+  store.emitLibrary = (next) => { libraryFilter = { ...libraryFilter, ...next }; render(); };
+  store.emitClients = (next) => { clientsFilter = { ...clientsFilter, ...next }; render(); };
 
   window.addEventListener('hashchange', render);
   for (const evt of ['pointerdown', 'keydown']) {
@@ -192,6 +215,7 @@ function start(session) {
   }
   resetIdle();
 
+  primeMotion();
   if (!location.hash) location.hash = '#overview';
   render();
 }
