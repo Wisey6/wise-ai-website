@@ -3,3 +3,13 @@ Thumbs.db
 
 # Written by the WiseAI hub; never commit locally
 .wiseai/status.md
+
+# Test tooling, installed ad hoc per admin/tests/README.md
+node_modules/
+package.json
+package-lock.json
+
+# Screenshots written by the test suites
+shot-*.png
+feat-*.png
+resp-*.png

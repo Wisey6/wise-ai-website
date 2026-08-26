@@ -332,6 +332,31 @@ tbody td {
 tbody tr { transition: background .18s; }
 tbody tr:hover { background: rgba(184,189,194,.045); }
 tbody tr:last-child td { border-bottom: none; }
+/* Month grouping and totals in the income table. The group label is a th with
+   scope="rowgroup" so a screen reader announces it as the heading for the rows
+   beneath it rather than reading it as another data cell. */
+tbody .group-row th,
+tbody .group-row td {
+  padding: var(--s3) var(--s4);
+  background: rgba(10,14,17,.42);
+  border-bottom: 1px solid rgba(184,189,194,.1);
+  font-family: 'Archivo', sans-serif; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--platinum);
+  text-align: left;
+}
+tbody .group-row td { text-align: right; color: var(--white); }
+tbody .group-row:hover { background: transparent; }
+tbody .group-row + tr td { border-top: none; }
+
+tfoot th, tfoot td {
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid rgba(184,189,194,.18);
+  font-family: 'Archivo', sans-serif; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--white);
+  text-align: left;
+}
+tfoot td { text-align: right; }
+
 .t-right { text-align: right; }
 .t-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rank {

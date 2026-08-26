@@ -2,7 +2,7 @@
 
 import { el, icon, money, dateLabel, dueLabel, daysUntil, badge, modal, field, input,
          select, textarea, toast, confirmDialog, emptyState, titleCase } from '../ui.js';
-import { metrics, monthlyCost, clientName, today } from '../store.js';
+import { metrics, monthlyCost, clientName, today, incomeMonths } from '../store.js';
 
 const INCOME_TYPES = ['audit', 'retainer', 'build', 'website', 'consulting', 'other'];
 const INCOME_STATES = [
@@ -36,6 +36,10 @@ async function openIncome(store, row) {
       el('div', { class: 'field-row' },
         field('Date', input('date', { type: 'date', value: row?.date || today() })),
         field('Invoice #', input('invoice', { value: row?.invoice, placeholder: 'INV-004' }))
+      ),
+      el('div', { class: 'field-row' },
+        field('Due date', input('due', { type: 'date', value: row?.due || '' })),
+        field('Paid via', input('paidVia', { value: row?.paidVia, placeholder: 'Stripe / bank transfer' }))
       ),
       field('Notes', textarea('notes', row?.notes, 'What this covered…'))
     ],
@@ -126,17 +130,83 @@ function actions(store, collection, row, onEdit, label) {
   );
 }
 
-function panel(title, count, addLabel, onAdd, body) {
+function panel(title, count, addLabel, onAdd, body, control) {
   return el('section', { class: 'card section' },
     el('div', { class: 'card-head' },
-      el('div', { class: 'card-head-left' }, el('h2', {}, title), badge(count, '')),
+      el('div', { class: 'card-head-left' }, el('h2', {}, title), badge(count, ''), control),
       el('button', { class: 'btn btn-ghost btn-sm', onClick: onAdd }, icon('plus', 13), addLabel)
     ),
     el('div', { class: 'card-body flush' }, body)
   );
 }
 
-export function moneyView(store) {
+/* -------------------------------------------------------- income rendering */
+
+/**
+ * A due date only means something while money is still owed. A paid row is
+ * settled and an unbilled row has no invoice to be due, so both read as blank
+ * rather than pretending to a deadline. An invoiced row with no due date is
+ * called out: that is a term nobody set, and it is why a debt quietly ages.
+ */
+function dueCell(row) {
+  if (row.status !== 'invoiced') return el('span', { class: 'dim' }, '—');
+  if (!row.due) return badge('No terms', 'warn');
+  const days = daysUntil(row.due);
+  return badge(dueLabel(row.due), days < 0 ? 'bad' : days <= 7 ? 'warn' : '');
+}
+
+function incomeRow(store, d, row) {
+  return el('tr', {},
+    el('td', { class: 't-num' }, dateLabel(row.date)),
+    el('td', {}, clientName(d, row.clientId) || el('span', { class: 'dim' }, '—')),
+    el('td', { class: 'muted' }, titleCase(row.type || 'other')),
+    el('td', { class: 'dim', style: 'font-size:12px' }, row.invoice || '—'),
+    el('td', {}, dueCell(row)),
+    el('td', {}, badge(titleCase(row.status || 'paid'), STATUS_TONES[row.status] ?? '')),
+    el('td', { class: 't-right t-num', style: 'font-weight:600' }, money(row.amount, true)),
+    el('td', {}, actions(store, 'income', row, openIncome,
+      `${clientName(d, row.clientId) || 'entry'} ${money(row.amount)}`))
+  );
+}
+
+/**
+ * One table either way. Grouped by month, the rows sit under a header row
+ * carrying that month's gross; flat, they run newest first. Both foot the same
+ * all-time gross, so switching the view never moves the total — only how it
+ * is broken up. Gross counts paid rows; invoiced and unbilled rows still list,
+ * because hiding what you are owed is how it gets forgotten.
+ */
+function incomeTable(store, d, grossAllTime, byMonth) {
+  const groups = byMonth ? incomeMonths(d) : [{
+    key: 'all',
+    label: '',
+    rows: [...d.income].sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+    gross: grossAllTime
+  }];
+
+  return el('div', { class: 'table-scroll' }, el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, 'Date'), el('th', {}, 'Client'), el('th', {}, 'Type'),
+      el('th', {}, 'Invoice'), el('th', {}, 'Due'), el('th', {}, 'Status'),
+      el('th', { class: 't-right' }, 'Amount'), el('th', {}, ''))),
+    el('tbody', {}, groups.flatMap((group) => [
+      byMonth
+        ? el('tr', { class: 'group-row' },
+            el('th', { colspan: '6', scope: 'rowgroup' }, group.label),
+            el('td', { class: 't-right t-num' }, money(group.gross, true)),
+            el('td', {}))
+        : null,
+      ...group.rows.map((row) => incomeRow(store, d, row))
+    ])),
+    el('tfoot', {}, el('tr', {},
+      el('th', { colspan: '6', scope: 'row' }, 'Gross income — all time'),
+      el('td', { class: 't-right t-num' }, money(grossAllTime, true)),
+      el('td', {})
+    ))
+  ));
+}
+
+export function moneyView(store, { incomePeriod = 'all' } = {}) {
   const d = store.data;
   const m = metrics(d);
 
@@ -148,13 +218,18 @@ export function moneyView(store) {
   return el('div', {},
     el('div', { class: 'stat-row' },
       el('div', { class: 'stat' },
-        el('div', { class: 'stat-label' }, icon('wallet', 13), 'Collected'),
+        el('div', { class: 'stat-label' }, icon('wallet', 13), 'Gross income'),
         el('div', { class: 'stat-value' }, el('span', { class: 'num' }, money(m.collected))),
         el('div', { class: 'stat-sub' }, 'Cleared, all time')),
       el('div', { class: 'stat' },
         el('div', { class: 'stat-label' }, icon('invoice', 13), 'Owed to us'),
         el('div', { class: 'stat-value' }, el('span', { class: 'num' }, money(m.outstanding))),
-        el('div', { class: 'stat-sub' }, 'Invoiced, unpaid')),
+        el('div', { class: 'stat-sub' },
+          m.overdueInvoices
+            ? badge(`${m.overdueInvoices} overdue · ${money(m.overdueAmount)}`, 'bad')
+            : m.undatedInvoices
+              ? badge(`${m.undatedInvoices} with no due date`, 'warn')
+              : 'Invoiced, unpaid')),
       el('div', { class: 'stat' },
         el('div', { class: 'stat-label' }, icon('alert', 13), 'Unbilled'),
         el('div', { class: 'stat-value' }, el('span', { class: 'num' }, money(m.unbilled))),
@@ -172,22 +247,17 @@ export function moneyView(store) {
     /* ---- income ---- */
     panel('Income', income.length, 'Record income', () => openIncome(store, null),
       income.length
-        ? el('div', { class: 'table-scroll' }, el('table', {},
-            el('thead', {}, el('tr', {},
-              el('th', {}, 'Date'), el('th', {}, 'Client'), el('th', {}, 'Type'),
-              el('th', {}, 'Invoice'), el('th', {}, 'Status'),
-              el('th', { class: 't-right' }, 'Amount'), el('th', {}, ''))),
-            el('tbody', {}, income.map((row) => el('tr', {},
-              el('td', { class: 't-num' }, dateLabel(row.date)),
-              el('td', {}, clientName(d, row.clientId) || el('span', { class: 'dim' }, '—')),
-              el('td', { class: 'muted' }, titleCase(row.type || 'other')),
-              el('td', { class: 'dim', style: 'font-size:12px' }, row.invoice || '—'),
-              el('td', {}, badge(titleCase(row.status || 'paid'), STATUS_TONES[row.status] ?? '')),
-              el('td', { class: 't-right t-num', style: 'font-weight:600' }, money(row.amount, true)),
-              el('td', {}, actions(store, 'income', row, openIncome, `${clientName(d, row.clientId) || 'entry'} ${money(row.amount)}`))
-            )))
-          ))
-        : emptyState('No income recorded yet.', 'Record the first payment', () => openIncome(store, null))),
+        ? incomeTable(store, d, m.collected, incomePeriod === 'month')
+        : emptyState('No income recorded yet.', 'Record the first payment', () => openIncome(store, null)),
+      income.length
+        ? el('div', { class: 'seg', role: 'group', 'aria-label': 'Income period' },
+            [['all', 'All time'], ['month', 'By month']].map(([key, label]) =>
+              el('button', {
+                class: 'seg-btn', type: 'button',
+                'aria-pressed': String(incomePeriod === key),
+                onClick: () => store.emitMoney?.({ incomePeriod: key })
+              }, label)))
+        : null),
 
     /* ---- recurring ---- */
     panel('Recurring costs', subs.length, 'Add recurring', () => openSub(store, null),

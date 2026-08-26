@@ -34,6 +34,7 @@ let lastRoute = null;
 let outputsFilter = { kind: 'all', showArchived: false };
 let libraryFilter = { kind: 'all', showArchived: false, query: '' };
 let clientsFilter = { showArchived: false };
+let moneyFilter = { incomePeriod: 'all' };
 
 /* -------------------------------------------------------------------- gate */
 
@@ -164,7 +165,7 @@ function render() {
     pipeline: () => pipelineView(store),
     clients:  () => clientsView(store, clientsFilter),
     work:     () => workView(store, workFilter),
-    money:    () => moneyView(store),
+    money:    () => moneyView(store, moneyFilter),
     outputs:  () => outputsView(store, outputsFilter),
     library:  () => libraryView(store, libraryFilter),
     settings: () => settingsView(store, { onLock: lock })
@@ -208,6 +209,7 @@ function start(session) {
   store.emitOutputs = (next) => { outputsFilter = { ...outputsFilter, ...next }; render(); };
   store.emitLibrary = (next) => { libraryFilter = { ...libraryFilter, ...next }; render(); };
   store.emitClients = (next) => { clientsFilter = { ...clientsFilter, ...next }; render(); };
+  store.emitMoney = (next) => { moneyFilter = { ...moneyFilter, ...next }; render(); };
 
   window.addEventListener('hashchange', render);
   for (const evt of ['pointerdown', 'keydown']) {

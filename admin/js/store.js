@@ -193,11 +193,18 @@ export function metrics(d) {
     .reduce((total, c) => total + (Number(c.mrr) || 0), 0);
 
   const openDeals = deals.filter((x) => !['won', 'lost'].includes(x.stage));
+
+  // An invoice with no due date cannot be aged, so it is never counted overdue
+  // — that is a missing term to go and set, not a debt to chase today.
+  const overdue = outstanding.filter((r) => r.due && r.due < today());
   const quitLine = Number(d.settings.quitLine) || 0;
 
   return {
     collected: sum(paid),
     outstanding: sum(outstanding),
+    overdueInvoices: overdue.length,
+    overdueAmount: sum(overdue),
+    undatedInvoices: outstanding.filter((r) => !r.due).length,
     unbilled: sum(unbilled),
     burn,
     mrr,
@@ -245,6 +252,41 @@ export function incomeByMonth(d, months = 12) {
 export function cumulativeIncome(d, months = 12) {
   let running = 0;
   return incomeByMonth(d, months).map((b) => ({ ...b, value: (running += b.value) }));
+}
+
+/** Month label for a `YYYY-MM` key. */
+function monthLabel(key) {
+  const [year, month] = key.split('-');
+  return new Date(Number(year), Number(month) - 1, 1)
+    .toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+}
+
+/**
+ * Every income row grouped by calendar month, newest month first, undated last.
+ * Unlike `incomeByMonth` this keeps the rows themselves and spans the whole
+ * history rather than a fixed window, so the Money table can group by month
+ * without losing an entry. `gross` counts paid rows only, matching `collected`
+ * — an invoiced or unbilled row is money promised, not money earned.
+ */
+export function incomeMonths(d) {
+  const groups = new Map();
+  for (const row of d.income) {
+    const key = row.date ? String(row.date).slice(0, 7) : '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => {
+      if (!a) return 1;          // undated sinks to the bottom, never the top
+      if (!b) return -1;
+      return b.localeCompare(a);
+    })
+    .map(([key, rows]) => ({
+      key,
+      label: key ? monthLabel(key) : 'Undated',
+      rows: [...rows].sort((x, y) => (y.date || '').localeCompare(x.date || '')),
+      gross: sum(rows.filter((r) => r.status === 'paid'))
+    }));
 }
 
 /** Paid revenue per client, largest first. */

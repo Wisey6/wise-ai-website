@@ -32,6 +32,7 @@ admin/
 | **Clients** | The roster, with money and open work rolled up per client |
 | **Work** | Projects and the tasks under them |
 | **Money** | Income, recurring costs, one-off purchases |
+| | Income reads all-time or grouped by month; gross counts paid rows only. Invoices carry a due date, so a receivable can be aged and an overdue one is flagged. |
 | **Outputs** | What WiseAI produced — proposals, contracts, demos, runbooks, reports |
 | **Library** | What WiseAI consults — playbooks, standards, knowledge, research, brand |
 | **Settings** | Backup, restore, passcode, targets, lock, wipe |

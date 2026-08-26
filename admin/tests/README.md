@@ -11,6 +11,7 @@ python3 -m http.server 8099 --bind 127.0.0.1 &
 npm install playwright          # browsers are preinstalled in CI images
 node admin/tests/console.test.mjs        # 15 functional checks
 node admin/tests/features.test.mjs       # outputs, library, archive
+node admin/tests/income.test.mjs         # gross income, month split, due dates
 node admin/tests/responsive.test.mjs     # 5 breakpoints x 8 routes
 node admin/tests/a11y.test.mjs           # names, focus, contrast, Escape
 ```
@@ -51,6 +52,14 @@ through the real modals, the draft-outputs callout, archive and restore round
 trips, library search across title/notes/tags, that archiving a client drops it
 out of MRR, and that an archived task leaves the board but survives in the
 Archived filter.
+
+**income.test.mjs** — the Money section's income table: that gross counts paid
+rows only, that the all-time / by-month toggle groups newest month first with
+undated last and loses no row, that each month's gross sums back to the all-time
+figure, that the chosen period survives navigation, and the receivable due
+dates — an overdue invoice flagged, an invoice with no terms called out as such,
+a paid row carrying no due state at all, and all of it surviving a lock/unlock
+round trip.
 
 **motion.test.mjs** — the animation layer under stress. Runs 24 deliberately
 interrupted view entrances (switching route every 35ms against a 420ms
