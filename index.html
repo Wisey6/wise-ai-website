@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -73,37 +73,91 @@
   <main>
   <!-- Brand marks: Simple Icons (CC0). Trademarks belong to their owners; shown here as the tools in use. -->
   <svg hidden aria-hidden="true" style="display:none"><symbol id="i-claude" viewBox="0 0 24 24"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></symbol><symbol id="i-openai" viewBox="0 0 24 24"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></symbol></svg>
-
-  <!-- HERO -->
+  <!-- HERO: the headline on the left, the roster agent working on the right -->
   <header class="hero" id="top">
     <div class="wrap">
       <div class="hero-grid">
-        <div>
-          <span class="eyebrow" data-reveal>Brisbane · local, embedded, accountable</span>
-          <h1 data-reveal>Your business, running <span class="dim">itself.</span></h1>
+        <div class="hero-copy">
+          <span class="eyebrow" data-reveal>Brisbane · automation &amp; AI agents for small business</span>
+          <h1 class="h-lines" aria-label="Your business, running itself."><span class="l"><span>Your business,</span></span><span class="l"><span>running <em class="dim">itself.</em></span></span></h1>
           <p class="sub" data-reveal>I find the repetitive work eating your week — the bookings, the follow-ups, the roster, the banking — and build the thing that does it for you. On your own accounts. Then I stick around.</p>
           <div class="ctas" data-reveal>
-            <a class="btn btn-primary" href="quiz.html">Start the free 2-minute audit</a>
+            <a class="btn btn-primary" href="quiz.html">Start the free 2-minute audit<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
             <a class="btn btn-ghost" href="#work">See the work</a>
           </div>
+          <aside class="operator" aria-label="Who builds it, and with what" data-reveal>
+            <div class="face">
+              <img src="about-tyler.jpg" alt="Tyler Wise" width="1000" height="1000" decoding="async" fetchpriority="high">
+              <div><b>Tyler Wise</b><span>Founder · builds every one of these himself, with:</span></div>
+            </div>
+            <div class="tool-icons">
+              <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-claude"/></svg></span><small>Claude Code</small></a>
+              <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-claude"/></svg></span><small>Cowork</small></a>
+              <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-openai"/></svg></span><small>ChatGPT</small></a>
+              <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-openai"/></svg></span><small>Codex</small></a>
+              <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-x"/></svg></span><small>Grok</small></a>
+            </div>
+          </aside>
         </div>
-        <aside class="operator" aria-label="Who builds it, and with what" data-reveal>
-          <div class="face">
-            <img src="about-tyler.jpg" alt="Tyler Wise" width="1000" height="1000" decoding="async" fetchpriority="high">
-            <div><b>Tyler Wise</b><span>Founder · Wise AI · Brisbane</span></div>
-          </div>
-          <div class="tool-icons">
-            <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-claude"/></svg></span><small>Claude Code</small></a>
-            <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-claude"/></svg></span><small>Cowork</small></a>
-            <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-openai"/></svg></span><small>ChatGPT</small></a>
-            <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-openai"/></svg></span><small>Codex</small></a>
-            <a href="#tools"><span class="tile"><svg aria-hidden="true"><use href="#i-x"/></svg></span><small>Grok</small></a>
-          </div>
-          <p class="operator-note">Not logos on a slide. These are what I open every morning, and what's running inside the businesses below.</p>
-        </aside>
-      </div>
 
-      <div class="tools" id="tools" data-reveal>
+        <!-- The roster agent one venue runs every week, replayed. Copy mirrors the real build: Claude drafts, the owner decides, pay is never touched. -->
+        <div class="console" id="console" data-reveal role="img" aria-label="Illustration of the roster agent one venue runs every week: the owner asks for next week's roster, the agent reads availability, applies the venue's rules, drafts into the venue's own template and hands it back for review.">
+          <div class="c-bar">
+            <span class="c-live"><i></i>Roster agent · <span id="c-state">working</span></span>
+            <span class="c-tag"><svg aria-hidden="true"><use href="#i-claude"/></svg>Claude Cowork</span>
+          </div>
+          <div class="c-body">
+            <div class="c-prompt"><span class="c-who">Owner</span><span class="c-text" id="c-prompt"></span><span class="c-caret" id="c-caret"></span></div>
+            <ol class="c-steps" id="c-steps">
+              <li><b>Reading availability</b><span>14 staff · this week's replies, from the group chat</span></li>
+              <li><b>Applying the venue's rules</b><span>No doubles · two on the counter Saturday · leagues covered</span></li>
+              <li><b>Drafting into their template</b><span>The same sheet they've always used</span></li>
+              <li><b>Handing it back for review</b><span>Peter checks it and enters it into Deputy himself</span></li>
+            </ol>
+            <div class="c-foot">
+              <div class="c-stat">
+                <small>Owner's time on the roster · per week</small>
+                <b><span id="c-num">300</span> min</b>
+                <em>from 5 hours, on the owners' own estimate</em>
+              </div>
+              <svg class="c-spark" viewBox="0 0 220 64" aria-hidden="true">
+                <polyline id="c-line" points="4,8 34,12 64,22 94,30 124,40 154,50 184,55 214,57" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle id="c-dot" cx="214" cy="57" r="3"/>
+              </svg>
+            </div>
+          </div>
+          <div class="c-note">Claude drafts. Peter decides. The tool never touches pay.</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- THE STACK: what the builds actually run on -->
+  <div class="marquee" aria-label="What these builds run on">
+    <div class="wrap"><span class="m-label">Running inside real businesses on</span></div>
+    <div class="m-track">
+      <div class="m-run">
+        <span>Claude Code</span><span>Claude Cowork</span><span>Codex</span><span>ChatGPT</span><span>Grok</span><span>Supabase</span><span>Vercel</span><span>Stripe</span><span>Deputy</span><span>Google Workspace</span><span>GitHub</span><span>Twilio</span>
+      </div>
+      <div class="m-run" aria-hidden="true">
+        <span>Claude Code</span><span>Claude Cowork</span><span>Codex</span><span>ChatGPT</span><span>Grok</span><span>Supabase</span><span>Vercel</span><span>Stripe</span><span>Deputy</span><span>Google Workspace</span><span>GitHub</span><span>Twilio</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- THE TOOLS: what each is, how I've used it, how you would -->
+  <section class="section tight" id="tools">
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <span class="eyebrow" data-reveal>The tools on the tiles</span>
+          <h2 data-reveal>Five tools. <span class="dim">Used daily, not name-dropped.</span></h2>
+        </div>
+        <div>
+          <p class="sub" data-reveal>Every business I work with gets the same question: which of these should we actually be using? Here's the straight answer for each, and where it's already running.</p>
+        </div>
+      </div>
+      <div class="tools" data-reveal>
         <div class="tool">
           <span class="tile sm"><svg aria-hidden="true"><use href="#i-claude"/></svg></span>
           <h3>Claude Code<small>Anthropic</small></h3>
@@ -118,7 +172,7 @@
           <h3>Claude Cowork<small>Anthropic</small></h3>
           <dl>
             <dt>What it is</dt><dd>Claude on the desktop, working inside your real files, calendar and apps. Not a chat window.</dd>
-            <dt>How I use it</dt><dd>The roster tool one venue runs every week lives in it. The owner opens it, asks for next week's roster, gets a draft in his own template.</dd>
+            <dt>How I use it</dt><dd>The roster tool one venue runs every week lives in it. The owner asks for next week's roster and gets a draft in his own template.</dd>
             <dt>How you'd use it</dt><dd>This is the one you run yourself. Rosters, quotes, reports and follow-ups, drafted from your own files in your own words.</dd>
           </dl>
         </div>
@@ -151,7 +205,112 @@
         </div>
       </div>
     </div>
-  </header>
+  </section>
+
+  <!-- HOW IT WORKS: three steps, each with the thing itself, working -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <span class="eyebrow" data-reveal>How it works</span>
+          <h2 data-reveal>Three steps. <span class="dim">Real ones.</span></h2>
+        </div>
+        <div>
+          <p class="sub" data-reveal>No jargon and no pressure. You'll know within a week whether there's something worth building, what I'd build first, and what it costs. Each step below is shown the way it actually looks.</p>
+        </div>
+      </div>
+
+      <!-- STEP 1 -->
+      <article class="stepb" data-reveal>
+        <div class="step-copy">
+          <span class="eyebrow">Step 1 · Know where the hours go</span>
+          <h3>A two-minute audit ranks every repetitive job in your week.</h3>
+          <p>I look at what you do in hours, not tools, and rank every repetitive job on how much time it eats and how safely it can be automated. You get a short list, ordered, with the first build named.</p>
+          <ul class="ticks">
+            <li>Two minutes, no call needed, no prep</li>
+            <li>Ranked by hours back and by risk, lowest risk first</li>
+            <li>Some jobs stay human on purpose, and I'll say which</li>
+          </ul>
+          <a class="link" href="quiz.html">Start the audit<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="mock audit-mock" aria-label="Example audit ranking">
+          <div class="m-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">wise-ai.au/audit · example ranking for an entertainment venue</span></div>
+          <table class="rank">
+            <thead><tr><th>Repetitive job</th><th>Hrs / week</th><th>Verdict</th></tr></thead>
+            <tbody>
+              <tr><td>Weekly roster</td><td><i style="--w:100%"></i><span data-count="5" data-dec="1">0</span></td><td><em class="v-first">Automate first</em></td></tr>
+              <tr><td>Party bookings</td><td><i style="--w:60%"></i><span data-count="3" data-dec="1">0</span></td><td><em class="v-first">Automate first</em></td></tr>
+              <tr><td>Enquiries after hours</td><td><i style="--w:50%"></i><span data-count="2.5" data-dec="1">0</span></td><td><em>Automate</em></td></tr>
+              <tr><td>Invoice chasing</td><td><i style="--w:40%"></i><span data-count="2" data-dec="1">0</span></td><td><em>Automate</em></td></tr>
+              <tr><td>Re-keying between tools</td><td><i style="--w:30%"></i><span data-count="1.5" data-dec="1">0</span></td><td><em>Automate</em></td></tr>
+              <tr><td>Pay and pricing calls</td><td><i style="--w:20%"></i><span data-count="1" data-dec="1">0</span></td><td><em class="v-human">Stays human</em></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- STEP 2 -->
+      <article class="stepb rev" data-reveal>
+        <div class="step-copy">
+          <span class="eyebrow">Step 2 · Build it on your accounts</span>
+          <h3>From a paper form to a database, a deposit and a roster line, in one build.</h3>
+          <p>Forms that price themselves, a proper SQL backend under them, payments that collect on their own, and small custom apps for the jobs no off-the-shelf tool covers. All of it on accounts you own, so nothing walks out the door with me.</p>
+          <ul class="ticks">
+            <li>Automatic form generation with live pricing</li>
+            <li>SQL backends, so your data is yours and queryable</li>
+            <li>Custom apps: the room timer upstairs, the quote generator, the customizer</li>
+          </ul>
+          <a class="link" href="work.html#case">See the full build<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="mock-stack">
+          <div class="mock pipe-mock" aria-label="The party booking pipeline: web form, database, deposit, roster">
+            <div class="m-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">party booking · one form in, four systems updated</span></div>
+            <div class="pipe">
+              <div class="node was"><small>Was</small><b>Paper form</b><span>30 min, four systems</span></div>
+              <div class="node"><small>Customer</small><b>Web form</b><span>live pricing</span></div>
+              <div class="node"><small>Backend</small><b>Database</b><span>SQL · Supabase</span></div>
+              <div class="node"><small>Money</small><b>$100 deposit</b><span>Stripe, on the spot</span></div>
+              <div class="node"><small>Staffing</small><b>Roster line</b><span>lands automatically</span></div>
+              <svg class="pipe-line" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><path id="pipe-path" d="M0 2 H100" stroke="currentColor" stroke-width=".6" fill="none"/></svg>
+              <span class="pulse" aria-hidden="true"></span>
+            </div>
+          </div>
+          <div class="mock timer-mock" aria-label="The room timer app, in miniature">
+            <div class="m-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">room timer · upstairs, out of sight of the counter</span></div>
+            <div class="rooms">
+              <div class="room" data-secs="2292" data-total="3600"><b>Karaoke 1</b><time>38:12</time><i></i></div>
+              <div class="room" data-secs="465" data-total="3600"><b>Karaoke 2</b><time>07:45</time><i></i></div>
+              <div class="room" data-secs="4320" data-total="7200"><b>Party room</b><time>1:12:00</time><i></i></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- STEP 3 -->
+      <article class="stepb" data-reveal>
+        <div class="step-copy">
+          <span class="eyebrow">Step 3 · Keep it running</span>
+          <h3>I stay on. You get a plain-English note, not a dashboard.</h3>
+          <p>Built lowest risk first, then I stay as the person who keeps it running and keeps finding the next thing. What happened this week and what actually needs your call, in a few lines. Local, embedded, accountable.</p>
+          <ul class="ticks">
+            <li>A human in the loop wherever a wrong answer would cost you</li>
+            <li>The next build sequenced toward the goal you set</li>
+            <li>One person to ring, in your time zone</li>
+          </ul>
+          <a class="link" href="#contact">Talk to me<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="mock note-mock" aria-label="An example of the weekly note">
+          <div class="m-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">monday note · example</span></div>
+          <div class="note">
+            <div class="note-h"><b>Week in review</b><span>Mon 7:02 am · from Wise AI</span></div>
+            <p>Parties booked themselves all week and every deposit landed. The roster went out Sunday evening and was approved in forty minutes.</p>
+            <p><b>Needs you:</b> one Saturday party request is asking for the room already held by the league. Yes or no, and I'll do the rest.</p>
+            <p class="note-foot">Nothing else needs a decision. Next up when you're ready: the follow-up emails after each party.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
 
   <!-- WHAT I ACTUALLY DO -->
   <section class="section" id="what">
@@ -224,9 +383,9 @@
             </div>
           </div>
           <div class="numbers">
-            <div><b>5 hrs → 30 min</b><span>The weekly roster, on the owners' own estimate, once Claude drafts it from their template.</span></div>
-            <div><b>30 min → 0</b><span>Per party booking. A call, a form, a deposit chase and four systems, now one form the customer fills in.</span></div>
-            <div><b>2 days / wk</b><span>The goal the whole engagement is sequenced toward, within three years.</span></div>
+            <div><b><span data-count="5">0</span> hrs → <span data-count="30">0</span> min</b><span>The weekly roster, on the owners' own estimate, once Claude drafts it from their template.</span></div>
+            <div><b><span data-count="30">0</span> min → 0</b><span>Per party booking. A call, a form, a deposit chase and four systems, now one form the customer fills in.</span></div>
+            <div><b><span data-count="2">0</span> days / wk</b><span>The goal the whole engagement is sequenced toward, within three years.</span></div>
           </div>
         </article>
 
@@ -291,35 +450,6 @@
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="section" id="how">
-    <div class="wrap">
-      <div class="head">
-        <div>
-          <span class="eyebrow" data-reveal>How it works</span>
-          <h2 data-reveal>A two-minute audit, then a straight answer.</h2>
-        </div>
-        <div>
-          <p class="sub" data-reveal>No jargon and no pressure. You'll know within a week whether there's something worth building, what I'd build first, and what it costs.</p>
-        </div>
-      </div>
-      <div class="rows" data-reveal>
-        <div class="row">
-          <h3><span class="n">1</span>Take the audit</h3>
-          <p>A few plain questions about your business and where the time goes. Two minutes, no call needed, no prep.</p>
-        </div>
-        <div class="row">
-          <h3><span class="n">2</span>Get a ranked plan</h3>
-          <p>I look at what you do in hours, not tools, and rank every repetitive job on how much time it eats and how safely it can be automated. You get a short list, ordered, with the first build named.</p>
-        </div>
-        <div class="row">
-          <h3><span class="n">3</span>I build it, you step back</h3>
-          <p>Built on your own accounts, lowest risk first. Then I stay on as the person who keeps it running and keeps finding the next thing. Local, embedded, accountable.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- ABOUT -->
   <section class="section about" id="about">
     <div class="wrap">
@@ -346,18 +476,26 @@
   <section class="section contact" id="contact">
     <div class="wrap">
       <div class="rule"></div>
-      <div class="split" style="margin-top:clamp(56px,8vw,96px)">
+      <div class="cta-band">
         <div>
           <span class="eyebrow" data-reveal>Get started</span>
           <h2 data-reveal>Let's find what's worth automating.</h2>
           <p class="sub" data-reveal>Take the free audit for a ranked, tailored answer on the spot, or just email me and we'll talk it through.</p>
           <div class="ctas" data-reveal>
-            <a class="btn btn-primary" href="quiz.html">Take the free AI audit</a>
+            <a class="btn btn-primary" href="quiz.html">Take the free AI audit<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
             <a class="btn btn-ghost" href="mailto:tyler@wise-ai.au?subject=Wise%20AI%20enquiry">Email Tyler</a>
           </div>
           <div class="contact-meta" data-reveal>
             <a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a>
             <span>Brisbane · local, embedded, accountable</span>
+          </div>
+        </div>
+        <div class="mock audit-cta" data-reveal aria-hidden="true">
+          <div class="m-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">wise-ai.au/quiz · the 2-minute audit</span></div>
+          <div class="q-mini">
+            <div class="q-prog"><i></i></div>
+            <div class="q-q">Where does most of your week go?</div>
+            <div class="q-opts"><span class="on">Rosters and admin</span><span>Quotes and invoices</span><span>Chasing bookings</span><span>Re-keying between tools</span></div>
           </div>
         </div>
       </div>
@@ -463,6 +601,97 @@
         a.addEventListener('click', function(){ m.classList.remove('open'); b.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); });
       });
     }
+  })();
+  </script>
+  <script>
+  (function(){
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ---- headline: two lines rising out of a mask, then the rest of the hero reveals
+    var h = document.querySelector('.h-lines');
+    if (h) { requestAnimationFrame(function(){ requestAnimationFrame(function(){ h.classList.add('in'); }); }); }
+
+    // ---- counters: any [data-count] counts up when it scrolls into view
+    var ease = function(t){ return 1 - Math.pow(1 - t, 3); };
+    var fmt = function(v, dec){ return dec ? v.toFixed(dec) : Math.round(v).toLocaleString('en-AU'); };
+    function count(el){
+      var to = parseFloat(el.getAttribute('data-count')), dec = parseInt(el.getAttribute('data-dec') || '0', 10);
+      if (reduce) { el.textContent = fmt(to, dec); return; }
+      var t0 = null, dur = 1400;
+      var tick = function(ts){ if (!t0) t0 = ts; var k = Math.min(1, (ts - t0) / dur); el.textContent = fmt(to * ease(k), dec); if (k < 1) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    }
+    var counters = Array.prototype.slice.call(document.querySelectorAll('[data-count]'));
+    if ('IntersectionObserver' in window) {
+      var cio = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) { count(e.target); cio.unobserve(e.target); } }); }, { threshold: 0.4 });
+      counters.forEach(function(el){ cio.observe(el); });
+    } else { counters.forEach(count); }
+
+    // ---- the roster agent, replayed on a loop
+    var con = document.getElementById('console');
+    if (con) {
+      var promptEl = document.getElementById('c-prompt'), caret = document.getElementById('c-caret'), state = document.getElementById('c-state');
+      var steps = Array.prototype.slice.call(document.querySelectorAll('#c-steps li'));
+      var num = document.getElementById('c-num'), line = document.getElementById('c-line'), dot = document.getElementById('c-dot');
+      var PROMPT = 'Draft next week’s roster';
+      var len = line.getTotalLength ? line.getTotalLength() : 300;
+      line.style.strokeDasharray = len; 
+      var timers = [];
+      var later = function(f, ms){ timers.push(setTimeout(f, ms)); };
+      function reset(){
+        timers.forEach(clearTimeout); timers = [];
+        promptEl.textContent = ''; caret.classList.remove('off');
+        steps.forEach(function(s){ s.className = ''; });
+        state.textContent = 'working'; con.classList.remove('done');
+        num.textContent = '300'; line.style.strokeDashoffset = len; dot.style.opacity = 0;
+      }
+      function finish(){
+        promptEl.textContent = PROMPT; caret.classList.add('off');
+        steps.forEach(function(s){ s.className = 'done'; });
+        state.textContent = 'ready for review'; con.classList.add('done');
+        num.textContent = '30'; line.style.strokeDashoffset = 0; dot.style.opacity = 1;
+      }
+      function play(){
+        reset();
+        var i = 0;
+        var type = function(){ if (i <= PROMPT.length) { promptEl.textContent = PROMPT.slice(0, i++); later(type, 42 + Math.random() * 40); } else { caret.classList.add('off'); later(run, 500); } };
+        var run = function(){
+          steps.forEach(function(s, k){
+            later(function(){ s.className = 'on'; }, k * 950);
+            later(function(){ s.className = 'done'; }, k * 950 + 720);
+          });
+          var end = steps.length * 950 + 300;
+          later(function(){
+            state.textContent = 'ready for review'; con.classList.add('done');
+            line.style.transition = 'stroke-dashoffset 1.6s cubic-bezier(.16,1,.3,1)'; line.style.strokeDashoffset = 0;
+            var t0 = null, dur = 1500;
+            var tick = function(ts){ if (!t0) t0 = ts; var k = Math.min(1, (ts - t0) / dur); num.textContent = Math.round(300 - 270 * ease(k)); if (k < 1) requestAnimationFrame(tick); else dot.style.opacity = 1; };
+            requestAnimationFrame(tick);
+          }, end);
+          later(play, end + 7000);
+        };
+        later(type, 600);
+      }
+      if (reduce) finish(); else play();
+    }
+
+    // ---- the room timers tick for real
+    var rooms = Array.prototype.slice.call(document.querySelectorAll('.room'));
+    if (rooms.length) {
+      var pad = function(n){ return (n < 10 ? '0' : '') + n; };
+      var show = function(r){
+        var s = r._s, total = r._t, t = r.querySelector('time'), bar = r.querySelector('i');
+        var hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+        t.textContent = (hh ? hh + ':' + pad(mm) : mm) + ':' + pad(ss);
+        bar.style.width = (100 * s / total) + '%';
+        r.classList.toggle('low', s <= 300);
+      };
+      rooms.forEach(function(r){ r._s = parseInt(r.getAttribute('data-secs'), 10); r._t = parseInt(r.getAttribute('data-total'), 10); show(r); });
+      if (!reduce) setInterval(function(){ rooms.forEach(function(r){ r._s = r._s > 0 ? r._s - 1 : r._t; show(r); }); }, 1000);
+    }
+
+    // ---- reduced motion: hold the pulse and the marquee still
+    if (reduce) { document.documentElement.classList.add('still'); }
   })();
   </script>
 </body>

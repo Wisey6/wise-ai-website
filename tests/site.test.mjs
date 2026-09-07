@@ -119,6 +119,50 @@ for (const path of PAGES) {
   await p.close();
 }
 
+// the live panels: the roster agent replays, counters count, timers tick, the marquee runs, and nothing overflows the page
+{
+  const p = await b.newPage({ viewport:{width:1440,height:900} });
+  await p.goto(`${BASE}/`,{waitUntil:'load'});
+  await step('home: the roster agent types its prompt and works through every step', async () => {
+    await p.waitForTimeout(9500);
+    const c = await p.evaluate(()=>({ prompt: document.getElementById('c-prompt').textContent, done: document.querySelectorAll('#c-steps li.done').length, state: document.getElementById('c-state').textContent, num: document.getElementById('c-num').textContent }));
+    if (!/roster/.test(c.prompt)) throw new Error('prompt not typed: ' + JSON.stringify(c));
+    if (c.done !== 4) throw new Error('steps done: ' + c.done);
+    if (c.state !== 'ready for review' || c.num !== '30') throw new Error(JSON.stringify(c));
+  });
+  await step('home: the case-study counters land on their real values', async () => {
+    await p.evaluate(()=>document.querySelector('.numbers').scrollIntoView({block:'center'}));
+    await p.waitForTimeout(3200);
+    const t = await p.evaluate(()=>[...document.querySelectorAll('.numbers b')].map(b=>b.textContent.replace(/\s+/g,' ').trim()));
+    if (t[0] !== '5 hrs → 30 min' || t[1] !== '30 min → 0' || t[2] !== '2 days / wk') throw new Error(t.join(' | '));
+  });
+  await step('home: the room timers tick down', async () => {
+    await p.evaluate(()=>document.querySelector('.rooms').scrollIntoView({block:'center'}));
+    const a = await p.evaluate(()=>[...document.querySelectorAll('.room time')].map(t=>t.textContent));
+    await p.waitForTimeout(1300);
+    const c = await p.evaluate(()=>[...document.querySelectorAll('.room time')].map(t=>t.textContent));
+    if (a.join() === c.join()) throw new Error('timers static: ' + a.join());
+  });
+  await step('home: the audit ranking bars grow on reveal', async () => {
+    await p.evaluate(()=>document.querySelector('.audit-mock').scrollIntoView({block:'center'}));
+    await p.waitForTimeout(1800);
+    const w = await p.evaluate(()=>[...document.querySelectorAll('.rank td i')].map(i=>i.getBoundingClientRect().width));
+    if (!(w[0] > 40 && w[0] > w[5])) throw new Error('bars: ' + w.map(Math.round).join(','));
+  });
+  await step('home: the stack marquee moves and is clipped, not scrolling the page', async () => {
+    const m = await p.evaluate(()=>{ const t=document.querySelector('.m-track'); const x1=t.getBoundingClientRect().left; return new Promise(r=>setTimeout(()=>r({ moved: Math.abs(t.getBoundingClientRect().left - x1) > 2, clipped: getComputedStyle(document.querySelector('.marquee')).overflow === 'hidden', items: document.querySelectorAll('.m-run span').length }), 400)); });
+    if (!m.moved || !m.clipped || m.items < 20) throw new Error(JSON.stringify(m));
+  });
+  await step('home: reduced motion shows every panel in its finished state', async () => {
+    const q = await b.newPage({ viewport:{width:1440,height:900}, reducedMotion:'reduce' });
+    await q.goto(`${BASE}/`,{waitUntil:'load'}); await q.waitForTimeout(300);
+    const r = await q.evaluate(()=>({ done: document.querySelectorAll('#c-steps li.done').length, num: document.getElementById('c-num').textContent, still: document.documentElement.classList.contains('still') }));
+    await q.close();
+    if (r.done !== 4 || r.num !== '30' || !r.still) throw new Error(JSON.stringify(r));
+  });
+  await p.close();
+}
+
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join(', ')}` : '\nAll site checks passed.');
 await b.close();
 process.exit(fails.length ? 1 : 0);
