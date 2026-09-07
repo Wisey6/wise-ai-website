@@ -97,6 +97,28 @@ for (const path of PAGES) {
   await p.close();
 }
 
+// the hero: face small, five tool tiles, every glyph painting, the tool strip present, no external images
+{
+  const p = await b.newPage({ viewport:{width:1440,height:900} });
+  await p.goto(`${BASE}/`,{waitUntil:'load'});
+  const h = await p.evaluate(()=>({
+    face: Math.round(document.querySelector('.face img').getBoundingClientRect().width),
+    heroTiles: document.querySelectorAll('.tool-icons .tile').length,
+    tools: document.querySelectorAll('.tools .tool').length,
+    painted: [...document.querySelectorAll('.tile svg')].every(s=>{ try { return s.getBBox().width>0 } catch(e){ return false } }),
+    sprite: ['i-claude','i-openai','i-x'].every(id=>!!document.getElementById(id)),
+    external: document.querySelectorAll('.tile img, .tile [src^=http]').length
+  }));
+  if (h.face > 72 || h.face < 40) fails.push('face photo not small: '+h.face+'px');
+  if (h.heroTiles !== 5) fails.push('expected 5 hero tiles, got '+h.heroTiles);
+  if (h.tools !== 5) fails.push('expected 5 tool entries, got '+h.tools);
+  if (!h.painted) fails.push('a tool glyph did not paint (broken <use>)');
+  if (!h.sprite) fails.push('icon sprite missing');
+  if (h.external) fails.push('a tile loads an external image');
+  console.log('  ok  hero', JSON.stringify(h));
+  await p.close();
+}
+
 console.log(fails.length ? `\n${fails.length} FAILED: ${fails.join(', ')}` : '\nAll site checks passed.');
 await b.close();
 process.exit(fails.length ? 1 : 0);

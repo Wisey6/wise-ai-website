@@ -25,16 +25,22 @@ img{max-width:100%;display:block}
 /* Three soft white pools, blurred into one another and turned very slowly.
    The rotation is what makes it a swirl rather than a static vignette; the
    blur is what keeps it from ever reading as a shape. */
-.ground{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;background:var(--noir)}
+.ground{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% -10%,#171b1f 0%,#0f1316 42%,#090c0e 100%)}
 .ground::before{content:"";position:absolute;left:50%;top:50%;width:160vmax;height:160vmax;
   transform:translate(-50%,-50%);
   background:
-    radial-gradient(28% 24% at 36% 34%,rgba(255,255,255,.17),transparent 68%),
-    radial-gradient(24% 30% at 66% 64%,rgba(255,255,255,.12),transparent 68%),
-    radial-gradient(36% 20% at 54% 22%,rgba(200,208,214,.07),transparent 70%),
-    radial-gradient(22% 22% at 28% 70%,rgba(255,255,255,.05),transparent 70%);
-  filter:blur(38px);will-change:transform;
-  animation:swirl 90s linear infinite}
+    radial-gradient(26% 22% at 38% 32%,rgba(214,222,228,.15),transparent 68%),
+    radial-gradient(22% 28% at 66% 66%,rgba(200,210,218,.10),transparent 68%),
+    radial-gradient(34% 18% at 54% 20%,rgba(190,200,210,.06),transparent 70%);
+  filter:blur(44px);will-change:transform;
+  animation:swirl 140s linear infinite}
+/* Column lines on the layout grid. Faint enough to feel rather than see —
+   the thing that separates "designed" from "decorated". */
+.ground::after{content:"";position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);
+  width:min(var(--max),calc(100% - var(--gutter)*2));
+  background:linear-gradient(90deg,rgba(184,189,194,.055) 1px,transparent 1px) 0 0/25% 100% repeat-x;
+  border-right:1px solid rgba(184,189,194,.055)}
 @keyframes swirl{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
 /* Film grain. Turbulence at a high base frequency, pushed to high contrast so
    most of the field is black with sparse bright specks, then screened on: black
@@ -143,20 +149,42 @@ nav.stuck::before{opacity:1}
 .link svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---- hero ---- */
-.hero{padding:clamp(128px,18vh,184px) 0 clamp(56px,8vw,96px)}
-.hero .split{align-items:end}
+.hero{padding:clamp(120px,16vh,168px) 0 clamp(56px,8vw,96px)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:clamp(28px,5vw,72px);align-items:center}
+@media(max-width:860px){.hero-grid{grid-template-columns:1fr;gap:36px}}
 .hero .eyebrow{display:block;margin-bottom:22px}
 .hero h1{max-width:12ch}
 .hero .sub{margin-top:26px;max-width:52ch}
-.hero-photo{position:relative;justify-self:end;width:100%;max-width:440px}
-.hero-photo img{width:100%;height:auto;aspect-ratio:4/5;object-fit:cover;object-position:center 30%;border-radius:8px}
-.hero-photo figcaption{margin-top:12px;font-size:12.5px;color:var(--silver);letter-spacing:.02em;display:flex;justify-content:space-between;gap:12px}
-.hero-photo figcaption b{color:var(--platinum);font-weight:500}
-@media(max-width:860px){
-  .hero{padding-top:112px}
-  .hero-photo{max-width:100%;justify-self:start}
-  .hero-photo img{aspect-ratio:5/4;object-position:center 25%}
-}
+/* the operator panel: a face, small, and the tools he actually runs */
+.operator{justify-self:end;width:100%;max-width:400px;border-top:1px solid var(--rule);padding-top:22px}
+.face{display:flex;align-items:center;gap:14px}
+.face img{width:60px;height:60px;border-radius:50%;object-fit:cover;object-position:center 26%;flex:none}
+.face b{display:block;font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;color:var(--white);letter-spacing:-.01em}
+.face span{display:block;font-size:13px;color:var(--silver);margin-top:2px}
+.tool-icons{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.tool-icons a{display:flex;flex-direction:column;align-items:center;gap:7px;width:60px;text-decoration:none}
+.tool-icons small{font-size:10.5px;color:var(--silver);letter-spacing:.02em;white-space:nowrap}
+.operator-note{margin-top:18px;font-size:14px;color:var(--chrome);line-height:1.55}
+@media(max-width:860px){.hero{padding-top:108px}.operator{max-width:100%;justify-self:start}}
+
+/* an app-icon tile: flat, monochrome, one hairline, a whisper of top light */
+.tile{width:56px;height:56px;border-radius:15px;border:1px solid var(--rule-strong);display:grid;place-items:center;flex:none;
+  background:linear-gradient(180deg,rgba(232,235,237,.07),rgba(232,235,237,.015));transition:border-color .2s,background .2s}
+a:hover .tile,.tool:hover .tile{border-color:var(--chrome);background:linear-gradient(180deg,rgba(232,235,237,.11),rgba(232,235,237,.03))}
+.tile svg{width:26px;height:26px;fill:var(--white)}
+.tile.sm{width:44px;height:44px;border-radius:12px}
+.tile.sm svg{width:21px;height:21px}
+
+/* the five tools, on a hairline: what it is, how I've used it, how you would */
+.tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(14px,2.2vw,30px);
+  border-top:1px solid var(--rule);margin-top:clamp(40px,6vw,64px);padding-top:clamp(24px,3vw,32px)}
+.tool h3{font-size:15px;margin-top:14px;letter-spacing:-.01em}
+.tool h3 small{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:400;font-size:12px;color:var(--silver);margin-top:2px}
+.tool dl{margin-top:12px}
+.tool dt{font-family:'Archivo',sans-serif;font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--silver);margin-top:10px}
+.tool dd{font-size:13.5px;color:var(--chrome);line-height:1.5;margin-top:3px}
+@media(max-width:1024px){.tools{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.tools{grid-template-columns:1fr;gap:0}.tool{padding:20px 0;border-bottom:1px solid var(--rule)}.tool h3{margin-top:12px}}
 
 /* proof strip under the hero: three facts on a hairline, no boxes */
 .proofline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(18px,3vw,40px);
