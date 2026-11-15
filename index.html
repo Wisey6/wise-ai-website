@@ -464,6 +464,18 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
 .pc:hover .go svg{transform:translate(2px,-2px)}
 .case{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.618fr;gap:var(--s5);align-items:center;padding:var(--s5)}
 .case .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.case.dark{background:#0B0F13;border-color:#1E252C;color:#E8EBED}
+.case.dark h3{color:#fff}
+.case.dark .k,.case.dark .stat span{color:#8A9299}
+.case.dark .status{color:#C9CED3}
+.case.dark .go{color:#fff}
+.case.dark .stat{background:#12181E;border-color:#1E252C}
+.case.dark .stat b{color:#fff}
+.case .go{display:flex;width:max-content}
+.case .shot{grid-column:1/-1;margin:0}
+.case .shot img{display:block;width:100%;height:auto;border-radius:16px;border:1px solid #1E252C;box-shadow:0 30px 80px rgba(0,0,0,.45);transition:transform 1.2s var(--ease)}
+.case.dark:hover .shot img{transform:scale(1.01)}
+.case .shot figcaption{font-size:12px;color:#8A9299;margin-top:var(--s1)}
 .case .stat{border-radius:18px;padding:var(--s3);background:var(--mist);border:1px solid var(--line)}
 .case .stat b{display:block;font-family:'Archivo';font-weight:900;font-size:var(--t-2);color:var(--ink);line-height:1;letter-spacing:-.03em}
 .case .stat span{display:block;font-size:13px;color:var(--muted);margin-top:var(--s1);line-height:1.45}
@@ -583,6 +595,253 @@ footer b{color:var(--ink);font-weight:600}
   .dev[data-s="4"] .btnx .a1{opacity:0}
   .dev[data-s="4"] .btnx .a2,.dev[data-s="4"] .done{opacity:1}
 }
+
+/* ---------- story device: dark "Venue OS" product UI (example data) ---------- */
+.story .wrap{max-width:1320px}
+.dev.vx{max-width:none;aspect-ratio:1.5;background:#0B0F13;border:1px solid #1E252C;border-radius:16px;
+  box-shadow:0 2px 4px rgba(10,14,17,.06),0 40px 100px rgba(10,14,17,.28),0 0 0 6px rgba(10,14,17,.03)}
+.dev-col{top:calc(50vh - 280px)}
+.vx .dbar{background:#11161B;border-bottom:1px solid #1E252C}
+.vx .dbar i{background:#2A3138}
+.vx .dbar .url{background:#0B0F13;border-color:#1E252C;color:#8A9299}
+.vx .dbar .ex{color:#8A9299}
+.vx .area{background:#0B0F13}
+.vx .L{color:#E8EBED;font-family:'Inter',system-ui,sans-serif}
+.vx{--d-blue:#3B82F6;--d-teal:#14B8A6;--d-amber:#F59E0B;--d-violet:#8B5CF6;--d-rose:#F43F5E;--d-up:#22C55E;--d-mut:#8A9299;--d-line:#1E252C;--d-card:#12181E}
+.vx .num{font-family:'Archivo';font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.vx .up{color:var(--d-up)} .vx .dn{color:var(--d-rose)}
+
+/* layer visibility */
+.vx[data-s="0"] .vx-chaos,.vx[data-s="1"] .vx-connect,.vx[data-s="5"] .vx-chat{opacity:1;pointer-events:auto}
+.vx[data-s="2"] .vx-os,.vx[data-s="3"] .vx-os,.vx[data-s="4"] .vx-os{opacity:1}
+.vx[data-s="3"] .vx-os{filter:blur(3px) brightness(.45);transform:scale(.985)}
+.vx[data-s="4"] .vx-os{filter:brightness(.7)}
+.vx[data-s="3"] .vx-ask,.vx[data-s="4"] .vx-act{opacity:1;pointer-events:auto}
+
+/* scene 0: five tabs, three numbers that don't match */
+.vx-chaos{background:radial-gradient(120% 90% at 50% 0%,#1A2027,#0B0F13 70%)}
+.vx .win{position:absolute;width:31%;background:#F4F5F6;color:#2E3338;border-radius:8px;box-shadow:0 14px 30px rgba(0,0,0,.45);overflow:hidden;font-size:11px}
+.vx .win .wt{display:flex;align-items:center;gap:6px;padding:6px 9px;background:#E4E7EA;font-weight:600;font-size:10px;color:#3A3F44;letter-spacing:.02em}
+.vx .win .wt b{margin-left:auto;min-width:16px;height:16px;border-radius:8px;background:var(--d-rose);color:#fff;font-size:9px;display:grid;place-items:center;padding:0 4px}
+.vx .win .wr{display:flex;justify-content:space-between;gap:6px;padding:5px 9px;border-top:1px solid #E4E7EA}
+.vx .win .bad{color:#DC2626;font-weight:700}
+.vx .win .warn{color:#B45309}
+.vx .w1{left:5%;top:7%;transform:rotate(-4deg)}
+.vx .w2{left:36%;top:3%;transform:rotate(3deg);z-index:2}
+.vx .w3{left:66%;top:10%;transform:rotate(-2deg)}
+.vx .w4{left:9%;top:52%;transform:rotate(3deg)}
+.vx .w5{left:58%;top:50%;transform:rotate(-3deg);width:36%}
+.vx .w5 .cells{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#DDE1E4;padding:1px;font-family:ui-monospace,Menlo,monospace;font-size:9px}
+.vx .w5 .cells span{background:#fff;padding:3px 4px;white-space:nowrap;overflow:hidden}
+.vx .w5 .cells .bad{background:#FEE2E2}
+.vx .note{position:absolute;left:38%;top:40%;transform:rotate(-6deg);background:#FDE68A;color:#3A2E05;font-family:'Archivo';font-weight:700;font-size:12px;
+  padding:10px 12px;border-radius:3px;box-shadow:0 10px 22px rgba(0,0,0,.4);z-index:3}
+.vx .tally{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);display:flex;gap:8px;white-space:nowrap;z-index:4}
+.vx .tally span{font-size:11px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#E8EBED}
+.vx .tally .t-bad{background:rgba(244,63,94,.16);border-color:rgba(244,63,94,.4);color:#FDA4AF}
+.vx-chaos.play .win{animation:vxDrop .6s var(--ease) backwards,vxJit 3.4s 1s ease-in-out infinite}
+.vx-chaos.play .w2{animation-delay:.08s,1.4s}.vx-chaos.play .w3{animation-delay:.16s,1.8s}
+.vx-chaos.play .w4{animation-delay:.24s,2.2s}.vx-chaos.play .w5{animation-delay:.32s,2.6s}
+.vx-chaos.play .note{animation:vxDrop .6s .5s var(--ease) backwards}
+.vx-chaos.play .tally span{animation:vxUp .5s .8s var(--ease) backwards}
+.vx-chaos.play .tally .t-bad{animation:vxUp .5s 1s var(--ease) backwards,vxGlow 1.6s 1.6s ease-in-out infinite}
+@keyframes vxDrop{from{opacity:0;translate:0 -18px}}
+@keyframes vxJit{0%,92%,100%{translate:0 0}94%{translate:-2px 1px}96%{translate:2px -1px}98%{translate:-1px 0}}
+@keyframes vxUp{from{opacity:0;translate:0 10px}}
+@keyframes vxGlow{50%{box-shadow:0 0 0 6px rgba(244,63,94,.12)}}
+
+/* scene 1: connect */
+.vx-connect{background:radial-gradient(60% 60% at 50% 50%,#16202A,#0B0F13 75%)}
+.vx-connect svg.vwires{position:absolute;inset:0;width:100%;height:100%}
+.vx-connect .vwire{fill:none;stroke:#2A3540;stroke-width:1.5;vector-effect:non-scaling-stroke}
+.vx-connect .vwire.lit{stroke:url(#vxg);stroke-width:2;stroke-dasharray:100;stroke-dashoffset:100}
+.vx-connect.play .vwire.lit{animation:vxDraw 1.1s var(--ease) forwards}
+.vx-connect.play .vwire.lit:nth-of-type(2n){animation-delay:.15s}
+@keyframes vxDraw{to{stroke-dashoffset:0}}
+.vx .node{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:7px;background:var(--d-card);border:1px solid var(--d-line);
+  border-radius:10px;padding:7px 11px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.vx .node i{width:7px;height:7px;border-radius:50%;background:var(--d-up);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.vx .node em{font-style:normal;color:var(--d-mut);font-weight:500}
+.vx-connect.play .node{animation:vxPop .5s var(--ease) backwards}
+.vx-connect.play .node:nth-child(3){animation-delay:.1s}.vx-connect.play .node:nth-child(4){animation-delay:.2s}
+.vx-connect.play .node:nth-child(5){animation-delay:.3s}.vx-connect.play .node:nth-child(6){animation-delay:.4s}
+@keyframes vxPop{from{opacity:0;scale:.85}}
+.vx .vcore{position:absolute;left:50%;top:50%;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:24px;display:grid;place-items:center;
+  background:linear-gradient(160deg,#1F2731,#0E1318);border:1px solid #2E3944;box-shadow:0 0 0 10px rgba(59,130,246,.06),0 0 60px rgba(59,130,246,.35)}
+.vx .vcore img{height:40px}
+.vx-connect.play .vcore{animation:vxCore 2.4s ease-in-out infinite}
+@keyframes vxCore{50%{box-shadow:0 0 0 18px rgba(59,130,246,.03),0 0 90px rgba(59,130,246,.5)}}
+.vx .sync{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.vx .sync .n{font-size:22px;color:#fff}
+.vx .sync small{display:block;font-size:11px;color:var(--d-mut);margin-top:2px}
+.vx .sync .ok{color:var(--d-up);font-weight:600}
+
+/* scenes 2-4: the OS */
+.vx-os{display:grid;grid-template-columns:52px 1fr;transition:opacity .6s var(--ease),filter .6s var(--ease),transform .6s var(--ease)}
+.vx .rail{border-right:1px solid var(--d-line);display:flex;flex-direction:column;align-items:center;gap:14px;padding:14px 0;background:#0D1216}
+.vx .rail img{height:22px;margin-bottom:8px}
+.vx .rail span{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#5F6870}
+.vx .rail span.on{background:#1B232B;color:#E8EBED}
+.vx .rail svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.vx .main{padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.vx .top{display:flex;align-items:center;gap:10px}
+.vx .top h4{font-family:'Archivo';font-size:16px;font-weight:800;letter-spacing:-.01em;color:#fff}
+.vx .vlive{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--d-mut)}
+.vx .vlive i{width:7px;height:7px;border-radius:50%;background:var(--d-up);animation:vxBlink 1.6s infinite}
+@keyframes vxBlink{50%{opacity:.35}}
+.vx .cmdk{margin-left:auto;font-size:10.5px;color:var(--d-mut);border:1px solid var(--d-line);border-radius:8px;padding:5px 10px;background:#0E1318}
+.vx .cmdk b{color:#C9CED3;font-weight:600;margin-right:6px}
+.vx .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.vx .kpi{background:var(--d-card);border:1px solid var(--d-line);border-radius:12px;padding:10px 12px;position:relative;overflow:hidden}
+.vx .kpi .k{font-family:'Inter';font-size:10px;font-weight:500;color:var(--d-mut);letter-spacing:.02em;text-transform:none}
+.vx .kpi .num{display:block;font-size:22px;color:#fff;margin-top:2px}
+.vx .kpi .num small{font-size:12px;color:var(--d-mut);font-weight:600}
+.vx .kpi .d{font-size:10px;font-weight:600}
+.vx .kpi::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--c,transparent);opacity:.9}
+.vx .kpi.gap .fixed{display:none}
+.vx[data-s="4"] .kpi.gap .open{animation:vxOut .3s 2.3s forwards}
+.vx[data-s="4"] .kpi.gap .fixed{display:inline;animation:vxIn .3s 2.3s backwards}
+.vx[data-s="4"] .kpi.gap .open{display:none}
+.vx[data-s="4"] .kpi.gap{--c:var(--d-up);animation:vxFlash 1s 2.3s}
+@keyframes vxOut{to{opacity:0}}
+@keyframes vxIn{from{opacity:0}}
+@keyframes vxFlash{30%{box-shadow:0 0 0 2px rgba(34,197,94,.5),0 0 30px rgba(34,197,94,.35)}}
+.vx .grid2{display:grid;grid-template-columns:1.618fr 1fr;gap:8px;flex:1;min-height:0}
+.vx .card{background:var(--d-card);border:1px solid var(--d-line);border-radius:12px;padding:10px 12px;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.vx .card .h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--d-mut)}
+.vx .card .h b{color:#E8EBED;font-weight:600;font-size:11px}
+.vx .chart{flex:1;min-height:0;margin-top:6px}
+.vx .chart svg{width:100%;height:100%;display:block;overflow:visible}
+.vx .chart .gl{stroke:#1B232A;stroke-width:1;vector-effect:non-scaling-stroke}
+.vx .chart .ln{fill:none;stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.vx .chart .prev{stroke:#3A444E;stroke-dasharray:4 4}
+.vx .chart .now{stroke:var(--d-blue);stroke-dasharray:100;stroke-dashoffset:0}
+.vx .chart .fill{fill:url(#vxa);opacity:1}
+.vx-os.play .chart .now{animation:vxLine 1.6s .3s var(--ease) backwards}
+.vx-os.play .chart .fill{animation:vxIn 1s 1.2s backwards}
+@keyframes vxLine{from{stroke-dashoffset:100}}
+.vx .vlegend{display:flex;gap:12px;font-size:9.5px;color:var(--d-mut);margin-top:4px}
+.vx .vlegend i{display:inline-block;width:10px;height:2px;margin-right:5px;vertical-align:middle;background:var(--c)}
+.vx .vfeed{display:flex;flex-direction:column;gap:6px;margin-top:8px;overflow:hidden;flex:1}
+.vx .vfeed div{display:flex;align-items:center;gap:8px;font-size:10.5px;color:#C9CED3;white-space:nowrap}
+.vx .vfeed div i{width:6px;height:6px;border-radius:50%;flex:none;background:var(--c)}
+.vx .vfeed div span{overflow:hidden;text-overflow:ellipsis}
+.vx .vfeed div b{margin-left:auto;font-weight:600;color:#fff}
+.vx .vfeed div.new{animation:vxFeed .5s var(--ease)}
+@keyframes vxFeed{from{opacity:0;translate:0 -8px;background:rgba(59,130,246,.12)}}
+.vx .vlanes{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:8px}
+.vx .vlane{height:26px;border-radius:6px;background:#1A2128;position:relative;overflow:hidden;font-size:9px;color:#C9CED3;display:flex;align-items:flex-end;padding:3px 5px}
+.vx .vlane b{position:absolute;inset:auto 0 0 0;height:var(--h);background:var(--c);opacity:.85;transition:height .8s var(--ease)}
+.vx .vlane span{position:relative}
+.vx-os.play .vlane b{animation:vxGrow .9s var(--ease) backwards}
+@keyframes vxGrow{from{height:0}}
+
+/* scene 3: ask (command bar) */
+.vx-ask{display:flex;align-items:flex-start;justify-content:center;padding-top:7%}
+.vx .pal{width:74%;background:#141A20;border:1px solid #2A333C;border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}
+.vx .pal .in{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid #222B33;font-size:14px;color:#fff;min-height:48px}
+.vx .pal .in svg{width:16px;height:16px;stroke:#8A9299;stroke-width:2;fill:none;flex:none}
+.vx .pal .caret{display:inline-block;width:2px;height:16px;background:var(--d-blue);margin-left:2px;vertical-align:-3px;animation:vxBlink 1s steps(1) infinite}
+.vx .pal .out{padding:14px 16px 16px;opacity:0;transition:opacity .4s}
+.vx .pal.answered .out{opacity:1}
+.vx .pal .say{font-size:13px;line-height:1.5;color:#C9CED3}
+.vx .pal .say b{color:#fff}
+.vx .bars{display:flex;align-items:flex-end;gap:14px;height:96px;margin-top:12px;padding-bottom:16px;position:relative}
+.vx .bars .g{flex:1;display:flex;align-items:flex-end;gap:4px;height:100%;position:relative}
+.vx .bars .g i{flex:1;border-radius:4px 4px 0 0;height:var(--h);background:var(--c);transform-origin:bottom;transition:transform .8s var(--ease)}
+.vx .bars .g span{position:absolute;left:0;right:0;bottom:-16px;text-align:center;font-size:9.5px;color:var(--d-mut)}
+.vx .pal:not(.answered) .bars .g i{transform:scaleY(0)}
+.vx .pal .chips{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.vx .pal .chips span{font-size:10.5px;padding:5px 10px;border-radius:999px;border:1px solid #2A333C;color:#C9CED3}
+
+/* scene 4: act (drawer) */
+.vx-act{left:auto;width:46%;background:#10151A;border-left:1px solid #222B33;box-shadow:-30px 0 60px rgba(0,0,0,.45);padding:16px;display:flex;flex-direction:column;gap:10px;
+  transform:translateX(30px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+.vx[data-s="4"] .vx-act{transform:none}
+.vx .alert{border:1px solid rgba(244,63,94,.35);background:rgba(244,63,94,.08);border-radius:12px;padding:10px 12px}
+.vx .alert .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#FDA4AF;font-weight:700}
+.vx .alert p{font-size:13px;color:#fff;margin-top:4px;line-height:1.4}
+.vx .who{display:flex;align-items:center;gap:10px;border:1px solid var(--d-line);background:var(--d-card);border-radius:12px;padding:10px 12px}
+.vx .who .vav{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(140deg,var(--d-violet),var(--d-blue));color:#fff;font-weight:700;font-size:13px;flex:none}
+.vx .who b{display:block;font-size:12.5px;color:#fff}
+.vx .who small{font-size:10.5px;color:var(--d-mut)}
+.vx .who .fit{margin-left:auto;font-size:10px;font-weight:700;color:var(--d-up);background:rgba(34,197,94,.12);border-radius:999px;padding:3px 8px}
+.vx .go{position:relative;height:40px;border-radius:10px;font-weight:700;font-size:12.5px}
+.vx .go span{position:absolute;inset:0;display:grid;place-items:center;border-radius:10px}
+.vx .go .a1{background:#fff;color:#0B0F13;opacity:0}
+.vx .go .a2{background:rgba(34,197,94,.15);color:#86EFAC;border:1px solid rgba(34,197,94,.4)}
+.vx .steps3{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+.vx .steps3 div{display:flex;gap:8px;align-items:center;font-size:11px;color:#C9CED3}
+.vx .steps3 svg{width:14px;height:14px;stroke:var(--d-up);stroke-width:2.6;fill:none;flex:none}
+.vx-act.play .alert{animation:vxUp .5s .2s var(--ease) backwards}
+.vx-act.play .who{animation:vxUp .5s .6s var(--ease) backwards}
+.vx-act.play .go .a1{animation:vxPress 2.2s var(--ease) both}
+.vx-act.play .go .a2{animation:vxIn .4s 2.1s backwards}
+.vx-act.play .steps3 div{animation:vxUp .4s 2.4s var(--ease) backwards}
+.vx-act.play .steps3 div:nth-child(2){animation-delay:2.55s}.vx-act.play .steps3 div:nth-child(3){animation-delay:2.7s}
+@keyframes vxPress{0%{opacity:0}30%,80%{opacity:1;transform:scale(1)}88%{opacity:1;transform:scale(.96)}100%{opacity:0}}
+
+/* scene 5: your AI */
+.vx-chat{display:grid;grid-template-columns:30% 1fr;background:#0F1317}
+.vx .side{border-right:1px solid var(--d-line);padding:14px 12px;display:flex;flex-direction:column;gap:6px}
+.vx .side .vseg{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.vx .side .vseg span{font-size:11px;font-weight:600;padding:6px 9px;border-radius:8px;color:#8A9299;border:1px solid transparent}
+.vx .side .vseg span.on{color:#fff;background:#1B232B;border-color:#2A333C}
+.vx .side .past{font-size:10.5px;color:#5F6870;padding:4px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vx .conv{padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.vx .conv .vconn{align-self:center;font-size:10px;color:var(--d-mut);border:1px solid var(--d-line);border-radius:999px;padding:4px 10px}
+.vx .conv .vconn i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--d-up);margin-right:6px}
+.vx .conv .u{align-self:flex-end;max-width:78%;background:#1F2830;border-radius:14px 14px 4px 14px;padding:9px 12px;font-size:12.5px}
+.vx .conv .vtool{align-self:flex-start;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#93C5FD;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:4px 8px}
+.vx .conv .a{font-size:12.5px;color:#C9CED3;line-height:1.5}
+.vx .conv .a b{color:#fff}
+.vx .vtbl{border:1px solid var(--d-line);border-radius:10px;overflow:hidden}
+.vx .vtbl div{display:grid;grid-template-columns:1fr 1.2fr 42px;align-items:center;gap:10px;padding:7px 10px;font-size:11px;border-top:1px solid var(--d-line)}
+.vx .vtbl div:first-child{border-top:0;color:var(--d-mut);font-size:10px;background:#12181E}
+.vx .vtbl i{display:block;height:6px;border-radius:3px;background:var(--c);width:var(--w);transform-origin:left}
+.vx .vtbl b{text-align:right}
+.vx-chat.play .u{animation:vxUp .4s .2s var(--ease) backwards}
+.vx-chat.play .vtool{animation:vxUp .4s .8s var(--ease) backwards}
+.vx-chat.play .a,.vx-chat.play .vtbl{animation:vxUp .5s 1.4s var(--ease) backwards}
+.vx-chat.play .vtbl i{animation:vxBar .8s 1.7s var(--ease) backwards}
+@keyframes vxBar{from{transform:scaleX(0)}}
+
+/* phone */
+@media(max-width:760px){
+  .dev.vx{aspect-ratio:auto;height:340px}
+  .dev-col{top:60px}
+  .vx-os{grid-template-columns:1fr}
+  .vx .rail,.vx .cmdk,.vx .vlanes,.vx .grid2>.card:last-child{display:none}
+  .vx .main{padding:10px;gap:8px}
+  .vx .kpis{grid-template-columns:repeat(2,1fr);gap:6px}
+  .vx .kpi{padding:7px 9px}
+  .vx .kpi .num{font-size:18px}
+  .vx .grid2{grid-template-columns:1fr}
+  .vx .win{width:44%;font-size:9.5px}
+  .vx .w1{left:2%;top:4%}.vx .w2{left:50%;top:2%}.vx .w3{left:4%;top:33%}.vx .w4{left:52%;top:35%}.vx .w5{left:18%;top:56%;width:64%}
+  .vx .tally span:first-child{display:none}
+  .vx .w3 .wr:last-child,.vx .w1 .wr:last-child{display:none}
+  .vx .note{left:auto;right:4%;top:30%;font-size:10px;padding:7px 9px}
+  .vx .tally{bottom:3%}
+  .vx .tally span{font-size:9.5px;padding:4px 8px}
+  .vx .node{font-size:9.5px;padding:5px 8px}
+  .vx .node em{display:none}
+  .vx .vcore{width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:18px}
+  .vx .vcore img{height:28px}
+  .vx .sync .n{font-size:17px}
+  .vx .pal{width:94%}
+  .vx .pal .in{font-size:12px;padding:10px 12px}
+  .vx .bars{height:70px}
+  .vx-act{width:auto;left:0;border-left:0;padding:12px;gap:8px}
+  .vx-chat{grid-template-columns:1fr}
+  .vx .side{display:none}
+  .vx .conv{padding:12px;gap:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  .vx *,.vx *::before,.vx *::after{animation:none!important;transition:none!important}
+  .vx .pal .out{opacity:1}
+  .vx .pal .bars .g i{transform:none!important}
+}
 </style>
 </head>
 <body>
@@ -627,18 +886,18 @@ footer b{color:var(--ink);font-weight:600}
         <div class="steps">
           <article class="st">
             <div class="ts"><b></b>Before</div>
-            <h3>Five tools. None of them talk.</h3>
-            <p>POS, bookings, accounts, the roster and a league spreadsheet. The same numbers get re-typed between them every day.</p>
+            <h3>Saturday, 2pm. Five tabs. Three different numbers.</h3>
+            <p>POS, bookings, accounts, the roster and a league spreadsheet. The same data, re-typed by hand, and never quite matching.</p>
           </article>
           <article class="st">
             <div class="ts"><b></b>Connect</div>
-            <h3>Connected, without replacing any of them.</h3>
-            <p>Your existing systems stay. They're linked so the data flows on its own.</p>
+            <h3>Connected. Nothing replaced.</h3>
+            <p>Your existing tools stay. Every sale, booking and shift now flows into one place on its own.</p>
           </article>
           <article class="st">
             <div class="ts"><b></b>One screen</div>
             <h3>The whole venue, live, on one screen.</h3>
-            <p>Bookings, lanes, party deposits, café sales, roster gaps and league attendance, updating as it happens.</p>
+            <p>Revenue against last Saturday, lanes, deposits, roster gaps and every transaction, updating as it happens.</p>
           </article>
           <article class="st">
             <div class="ts"><b></b>Ask</div>
@@ -647,8 +906,8 @@ footer b{color:var(--ink);font-weight:600}
           </article>
           <article class="st">
             <div class="ts"><b></b>Act</div>
-            <h3>One click to act on it.</h3>
-            <p>It spots Saturday's roster gap and lines up who can fill it. You approve, and it's done.</p>
+            <h3>Spot it. Fix it. One tap.</h3>
+            <p>It flags Saturday's roster gap, finds who's free and under their hours, and books them in when you approve.</p>
           </article>
           <article class="st">
             <div class="ts"><b></b>Your AI, your choice</div>
@@ -658,79 +917,150 @@ footer b{color:var(--ink);font-weight:600}
         </div>
 
         <div class="dev-col">
-          <div class="dev" id="dev" data-s="0" role="img" aria-label="Example venue system being assembled, matching the current step of the story">
+          <div class="dev vx" id="dev" data-s="0" role="img" aria-label="Example venue operating system, matching the current step of the story">
             <div class="dbar"><i></i><i></i><i></i><span class="url" id="url">5 tabs open</span><span class="ex">Example data</span></div>
             <div class="area">
+              <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+                <linearGradient id="vxa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B82F6" stop-opacity=".35"/><stop offset="1" stop-color="#3B82F6" stop-opacity="0"/></linearGradient>
+                <linearGradient id="vxg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#14B8A6"/><stop offset="1" stop-color="#3B82F6"/></linearGradient>
+              </defs></svg>
 
-              <div class="L L-tools">
-                <svg class="wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M50 52 C 40 40, 25 30, 17 20"/><path class="pulse" pathLength="100" d="M17 20 C 25 30, 40 40, 50 52"/>
-                  <path d="M50 52 L 50 16"/><path class="pulse" pathLength="100" d="M50 16 L 50 52" style="animation-delay:-.6s"/>
-                  <path d="M50 52 C 60 40, 75 30, 83 20"/><path class="pulse" pathLength="100" d="M83 20 C 75 30, 60 40, 50 52" style="animation-delay:-1.2s"/>
-                  <path d="M50 52 C 40 62, 25 70, 17 80"/><path class="pulse" pathLength="100" d="M17 80 C 25 70, 40 62, 50 52" style="animation-delay:-1.8s"/>
-                  <path d="M50 52 C 60 62, 75 70, 83 80"/><path class="pulse" pathLength="100" d="M83 80 C 75 70, 60 62, 50 52" style="animation-delay:-.3s"/>
+              <!-- 1 · before: five tools, numbers that don't match -->
+              <div class="L vx-chaos">
+                <div class="win w1"><div class="wt">POS · till <b>3</b></div><div class="wr">Café today <strong>$1,240</strong></div><div class="wr">Arcade cards <strong>$612</strong></div></div>
+                <div class="win w2"><div class="wt">Accounts <b>!</b></div><div class="wr">Café today <strong class="bad">$980</strong></div><div class="wr warn">$50 deposit · unmatched</div></div>
+                <div class="win w3"><div class="wt">Bookings <b>7</b></div><div class="wr">Lane 3 · 6:00pm</div><div class="wr bad">Lane 3 · 6:00pm · double</div></div>
+                <div class="win w4"><div class="wt">Roster</div><div class="wr">Sat 4–9pm <strong class="bad">1 short?</strong></div></div>
+                <div class="win w5"><div class="wt">League.xlsx</div>
+                  <div class="cells"><span>Team</span><span>Wk 5</span><span>Wk 6</span><span>Wk 7</span><span>Pin Pals</span><span>4</span><span>4</span><span class="bad">#REF!</span><span>Split Ends</span><span>3</span><span class="bad">?</span><span></span></div></div>
+                <div class="note">call Jess re Sat??</div>
+                <div class="tally"><span>5 tabs open</span><span class="t-bad">3 numbers that don't match</span></div>
+              </div>
+
+              <!-- 2 · connect -->
+              <div class="L vx-connect">
+                <svg class="vwires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  <path class="vwire" d="M18 22 C 32 30, 40 42, 50 50"/><path class="vwire lit" pathLength="100" d="M18 22 C 32 30, 40 42, 50 50"/>
+                  <path class="vwire" d="M50 12 L 50 50"/><path class="vwire lit" pathLength="100" d="M50 12 L 50 50"/>
+                  <path class="vwire" d="M82 22 C 68 30, 60 42, 50 50"/><path class="vwire lit" pathLength="100" d="M82 22 C 68 30, 60 42, 50 50"/>
+                  <path class="vwire" d="M18 76 C 32 68, 40 58, 50 50"/><path class="vwire lit" pathLength="100" d="M18 76 C 32 68, 40 58, 50 50"/>
+                  <path class="vwire" d="M82 76 C 68 68, 60 58, 50 50"/><path class="vwire lit" pathLength="100" d="M82 76 C 68 68, 60 58, 50 50"/>
                 </svg>
-                <div class="tool" style="--x0:4%;--y0:8%;--r0:-6deg;--x1:2%;--y1:6%"><div class="tn">POS <em>till</em></div><b>Café $1,240</b><span class="x2"><br>today, 212 sales</span></div>
-                <div class="tool" style="--x0:37%;--y0:3%;--r0:4deg;--x1:35%;--y1:2%"><div class="tn">Bookings <em>web</em></div><b>Lane 3 · 6pm</b><span class="x2"><br>Party of 10</span></div>
-                <div class="tool" style="--x0:67%;--y0:13%;--r0:-3deg;--x1:68%;--y1:6%"><div class="tn">Accounts</div><b>$50 deposit</b><span class="x2"><br>unmatched</span></div>
-                <div class="tool" style="--x0:7%;--y0:58%;--r0:5deg;--x1:2%;--y1:66%"><div class="tn">Roster</div><b>Sat 4–9pm</b><span class="x2"><br>1 short</span></div>
-                <div class="tool" style="--x0:58%;--y0:56%;--r0:-4deg;--x1:68%;--y1:66%"><div class="tn">League.xlsx</div>
-                  <div class="sheet"><span class="t"></span><span class="t"></span><span></span><span class="t"></span><span class="t"></span><span class="t"></span><span></span><span class="t"></span><span class="t"></span><span class="t"></span></div></div>
-                <div class="retype">Re-typed by hand, daily</div>
-                <div class="hub"><img src="sig/owl-white.png" alt=""></div>
+                <div class="node" style="left:18%;top:22%"><i></i>POS <em>till &amp; café</em></div>
+                <div class="node" style="left:50%;top:12%"><i></i>Bookings <em>lanes &amp; parties</em></div>
+                <div class="node" style="left:82%;top:22%"><i></i>Accounts <em>deposits</em></div>
+                <div class="node" style="left:18%;top:76%"><i></i>Roster <em>shifts</em></div>
+                <div class="node" style="left:82%;top:76%"><i></i>League.xlsx <em>attendance</em></div>
+                <div class="vcore"><img src="sig/owl-white.png" alt=""></div>
+                <div class="sync"><span class="num n"><span id="syncN">2,418</span></span> <small>records synced · <span class="ok">5 of 5 tools connected</span> · nothing replaced</small></div>
               </div>
 
-              <div class="L L-dash">
-                <div class="dh"><b>Venue OS</b><span class="live">Live · Sat 2:14pm</span></div>
-                <div class="tiles">
-                  <div class="ti"><span class="k">Bookings today</span><span class="v">38</span><span class="d up">+6 vs last Sat</span>
-                    <svg class="spark viz" viewBox="0 0 100 30" preserveAspectRatio="none"><path stroke="#2563EB" d="M0 24 L14 20 L28 22 L42 14 L57 16 L71 9 L85 11 L100 4"/></svg></div>
-                  <div class="ti"><span class="k">Lanes in use</span><span class="v">6<small> / 8</small></span>
-                    <div class="lanes viz"><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i></i><i></i></div></div>
-                  <div class="ti"><span class="k">Party deposits</span><span class="v">5<small> of 6 paid</small></span>
-                    <div class="prog viz"><i style="width:83%;background:#7C3AED"></i></div></div>
-                  <div class="ti"><span class="k">Café sales</span><span class="v">$1,240</span><span class="d up">+9% vs avg</span>
-                    <div class="cols viz"><i style="height:40%;background:#D97706"></i><i style="height:55%;background:#D97706"></i><i style="height:48%;background:#D97706"></i><i style="height:70%;background:#D97706"></i><i style="height:62%;background:#D97706"></i><i style="height:90%;background:#D97706"></i></div></div>
-                  <div class="ti"><span class="k">Roster gaps</span><span class="v">1</span><span class="d down">Sat 4–9pm · 1 short</span></div>
-                  <div class="ti"><span class="k">League attendance</span><span class="v">86%</span>
-                    <div class="dots viz"><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i></i><i style="background:#0D9488"></i><i style="background:#0D9488"></i><i></i></div></div>
-                </div>
-              </div>
-
-              <div class="L L-ai">
-                <div class="aih"><span class="av"><img src="sig/owl-white.png" alt=""></span>Assistant<small>Your data</small></div>
-                <div class="q">How did parties do this month vs last?</div>
-                <div class="chart-wrap">
-                  <div class="ans"><b>18 parties, up from 14</b> <b class="up">+29%</b>. Saturdays did most of the lifting.</div>
-                  <div class="pair" aria-hidden="true">
-                    <div class="g"><i style="height:50%;background:#D5D9DD"></i><i style="height:66%;background:#2563EB"></i></div>
-                    <div class="g"><i style="height:66%;background:#D5D9DD"></i><i style="height:83%;background:#2563EB"></i></div>
-                    <div class="g"><i style="height:50%;background:#D5D9DD"></i><i style="height:66%;background:#2563EB"></i></div>
-                    <div class="g"><i style="height:66%;background:#D5D9DD"></i><i style="height:100%;background:#2563EB"></i></div>
+              <!-- 3 · one screen -->
+              <div class="L vx-os">
+                <aside class="rail" aria-hidden="true">
+                  <img src="sig/owl-white.png" alt="">
+                  <span class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+                  <span><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></span>
+                  <span><svg viewBox="0 0 24 24"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="7"/><rect x="11" y="7" width="3" height="11"/><rect x="16" y="4" width="3" height="14"/></svg></span>
+                  <span><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M16 4h5M16 8h5"/></svg></span>
+                  <span><svg viewBox="0 0 24 24"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg></span>
+                </aside>
+                <div class="main">
+                  <div class="top"><h4>Venue OS</h4><span class="vlive"><i></i>Live · Sat 2:14pm</span><span class="cmdk"><b>⌘K</b>Ask anything</span></div>
+                  <div class="kpis">
+                    <div class="kpi" style="--c:var(--d-blue)"><span class="k">Revenue today</span><span class="num" data-to="6842" data-pre="$">$6,842</span><span class="d up">▲ 12% vs last Sat</span></div>
+                    <div class="kpi" style="--c:var(--d-teal)"><span class="k">Bookings</span><span class="num" data-to="38">38</span><span class="d up">▲ 6 vs last Sat</span></div>
+                    <div class="kpi" style="--c:var(--d-violet)"><span class="k">Party deposits</span><span class="num"><span data-to="5">5</span><small> / 6 paid</small></span><span class="d" style="color:var(--d-mut)">$250 collected</span></div>
+                    <div class="kpi gap" style="--c:var(--d-rose)"><span class="k">Roster gaps</span><span class="num"><span class="open">1</span><span class="fixed">0</span></span><span class="d"><span class="open dn">Sat 4–9pm</span><span class="fixed up">All covered</span></span></div>
                   </div>
-                  <div class="legend"><span style="--c:#D5D9DD">Last month</span><span style="--c:#2563EB">This month</span><span style="--c:transparent">by week</span></div>
-                </div>
-                <div class="act">
-                  <div class="ans">Saturday 4–9pm is <b class="down">one person short</b>. Jess is free and under her hours this week.</div>
-                  <div class="btnx"><span class="a1">Fill Saturday's roster gap</span><span class="a2">✓ Jess confirmed · roster updated</span></div>
-                  <div class="done">Logged to your rostering system. Nothing re-typed.</div>
+                  <div class="grid2">
+                    <div class="card">
+                      <div class="h"><b>Revenue today</b><span>vs last Saturday</span></div>
+                      <div class="chart"><svg viewBox="0 0 300 110" preserveAspectRatio="none" aria-hidden="true">
+                        <path class="gl" d="M0 27H300M0 55H300M0 83H300"/>
+                        <path class="ln prev" d="M0 100 C 30 96, 50 90, 75 80 S 120 62, 150 58 S 200 44, 225 40 S 270 30, 300 26"/>
+                        <path class="fill" d="M0 100 C 30 94, 50 86, 75 72 S 120 52, 150 46 S 185 34, 200 30 L 200 110 L 0 110 Z"/>
+                        <path class="ln now" pathLength="100" d="M0 100 C 30 94, 50 86, 75 72 S 120 52, 150 46 S 185 34, 200 30"/>
+                        <circle cx="200" cy="30" r="4" fill="#3B82F6"/><circle cx="200" cy="30" r="9" fill="#3B82F6" opacity=".2"/>
+                      </svg></div>
+                      <div class="vlegend"><span style="--c:#3B82F6"><i></i>Today</span><span style="--c:#3A444E"><i></i>Last Saturday</span></div>
+                    </div>
+                    <div class="card">
+                      <div class="h"><b>Live</b><span>all tools</span></div>
+                      <div class="vfeed" id="feed">
+                        <div style="--c:var(--d-violet)"><i></i><span>Party deposit · Lane 5</span><b>$50</b></div>
+                        <div style="--c:var(--d-amber)"><i></i><span>Café · 2 shakes, chips</span><b>$21</b></div>
+                        <div style="--c:var(--d-teal)"><i></i><span>Lane 2 checked in</span><b>6 ppl</b></div>
+                        <div style="--c:var(--d-blue)"><i></i><span>Booking · Sun 11am</span><b>$84</b></div>
+                        <div style="--c:var(--d-amber)"><i></i><span>Arcade card top-up</span><b>$30</b></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card">
+                    <div class="h"><b>Lanes</b><span>6 of 8 in use</span></div>
+                    <div class="vlanes">
+                      <div class="vlane" style="--h:80%;--c:var(--d-teal)"><b></b><span>1</span></div>
+                      <div class="vlane" style="--h:35%;--c:var(--d-teal)"><b></b><span>2</span></div>
+                      <div class="vlane" style="--h:100%;--c:var(--d-violet)"><b></b><span>3</span></div>
+                      <div class="vlane" style="--h:60%;--c:var(--d-teal)"><b></b><span>4</span></div>
+                      <div class="vlane" style="--h:100%;--c:var(--d-violet)"><b></b><span>5</span></div>
+                      <div class="vlane" style="--h:20%;--c:var(--d-teal)"><b></b><span>6</span></div>
+                      <div class="vlane" style="--h:0%;--c:var(--d-teal)"><b></b><span>7</span></div>
+                      <div class="vlane" style="--h:0%;--c:var(--d-teal)"><b></b><span>8</span></div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div class="L L-chat">
-                <div class="seg"><span>ChatGPT</span><span>Claude</span><span>Built in</span></div>
-                <div class="conn">Connected to your venue system</div>
-                <div class="msgs">
-                  <div class="q">Which league night had the best turnout this term?</div>
-                  <div class="ans"><b>Tuesday Social</b>, averaging 92%. Thursday is lowest.</div>
-                  <div class="tbl">
-                    <div><span>League night</span><b>Avg attendance</b></div>
-                    <div><span>Tuesday Social</span><b><i class="m" style="width:46px;background:#16A34A"></i>92%</b></div>
-                    <div><span>Wednesday Mixed</span><b><i class="m" style="width:42px;background:#0D9488"></i>84%</b></div>
-                    <div><span>Thursday Scratch</span><b><i class="m" style="width:36px;background:#D97706"></i>71%</b></div>
+              <!-- 4 · ask -->
+              <div class="L vx-ask">
+                <div class="pal answered" id="pal">
+                  <div class="in"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span id="askTx">How did parties do this month vs last?</span><span class="caret"></span></div>
+                  <div class="out">
+                    <div class="say"><b>18 parties this month, up from 14 (+29%).</b> Saturdays did most of the lifting, and deposits are up $200.</div>
+                    <div class="bars" aria-hidden="true">
+                      <div class="g"><i style="--h:50%;--c:#3A444E"></i><i style="--h:62%;--c:#3B82F6"></i><span>Wk 1</span></div>
+                      <div class="g"><i style="--h:66%;--c:#3A444E"></i><i style="--h:84%;--c:#3B82F6"></i><span>Wk 2</span></div>
+                      <div class="g"><i style="--h:50%;--c:#3A444E"></i><i style="--h:62%;--c:#3B82F6"></i><span>Wk 3</span></div>
+                      <div class="g"><i style="--h:66%;--c:#3A444E"></i><i style="--h:100%;--c:#3B82F6"></i><span>Wk 4</span></div>
+                    </div>
+                    <div class="chips"><span>Send me this every Monday</span><span>Break down by package</span></div>
                   </div>
                 </div>
-                <div class="inp">Ask about your business…</div>
+              </div>
+
+              <!-- 5 · act -->
+              <div class="L vx-act">
+                <div class="alert"><div class="k">Roster gap</div><p>Saturday 4–9pm is one party host short.</p></div>
+                <div class="who"><span class="vav">J</span><div><b>Jess</b><small>Free Saturday · 18 of 38 hrs this week</small></div><span class="fit">Best fit</span></div>
+                <div class="go"><span class="a1">Approve: offer Jess the shift</span><span class="a2">✓ Jess confirmed</span></div>
+                <div class="steps3">
+                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Roster updated in your rostering system</div>
+                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Shift confirmation sent to Jess</div>
+                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Nothing re-typed</div>
+                </div>
+              </div>
+
+              <!-- 6 · your AI -->
+              <div class="L vx-chat">
+                <div class="side">
+                  <div class="vseg" id="aiSeg"><span class="on">ChatGPT</span><span>Claude</span><span>Built in</span></div>
+                  <div class="past">Weekly takings summary</div>
+                  <div class="past">Who's on Friday?</div>
+                  <div class="past">Party packages compared</div>
+                </div>
+                <div class="conv">
+                  <div class="vconn"><i></i>Connected to Venue OS</div>
+                  <div class="u">Which league night had the best turnout this term?</div>
+                  <div class="vtool">venue-os › league_attendance (term 4)</div>
+                  <div class="a"><b>Tuesday Social</b> leads at 92%. Thursday Scratch is lowest, so it might be worth a promo.</div>
+                  <div class="vtbl">
+                    <div><span>League night</span><span>Attendance</span><b>Avg</b></div>
+                    <div><span>Tuesday Social</span><i style="--w:92%;--c:#22C55E"></i><b>92%</b></div>
+                    <div><span>Wednesday Mixed</span><i style="--w:84%;--c:#14B8A6"></i><b>84%</b></div>
+                    <div><span>Thursday Scratch</span><i style="--w:71%;--c:#F59E0B"></i><b>71%</b></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -918,18 +1248,21 @@ footer b{color:var(--ink);font-weight:600}
             <span class="go">See the build <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
           </div>
         </a>
-        <div class="pc case" data-r>
+        <a class="pc case dark" href="work.html" data-r>
           <div>
             <span class="k">Business operating system · family entertainment venue, regional QLD</span>
             <h3>A whole venue, connected into one system.</h3>
             <span class="status done">Completed</span>
+            <span class="go">Read the case study <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
           </div>
           <div class="stats">
             <div class="stat"><b>6+</b><span>repetitive workflows mapped in the audit</span></div>
             <div class="stat"><b>2&nbsp;days</b><span>a week: the owners' three-year goal</span></div>
             <div class="stat"><b>1st</b><span>Wise AI client to go from audit to retainer</span></div>
           </div>
-        </div>
+          <figure class="shot"><img src="work/img/venue-os.jpg" alt="The venue's operating system: revenue by stream, parties, lanes, league attendance and an AI assistant on one screen. Client name, figures and customer details hidden." loading="lazy" width="3200" height="2000">
+            <figcaption>Representative screen of the delivered system · client name, figures and customer details hidden</figcaption></figure>
+        </a>
       </div>
     </div>
   </section>
@@ -1002,15 +1335,73 @@ footer b{color:var(--ink);font-weight:600}
   window.addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(onScroll);}},{passive:true});
   onScroll();
 
+
+  // ---------- story device scenes (example data) ----------
+  var vx=(function(){
+    var dev=document.getElementById('dev'),timers=[],feedT=null,segT=null,last=-1;
+    var LAYER=['.vx-chaos','.vx-connect','.vx-os','.vx-ask','.vx-act','.vx-chat'];
+    function later(fn,ms){timers.push(setTimeout(fn,ms));}
+    function clear(){timers.forEach(clearTimeout);timers=[];}
+    function fmt(n,pre){return (pre||'')+Math.round(n).toLocaleString('en-AU');}
+    function count(el,to,ms,pre){
+      if(reduce){el.textContent=fmt(to,pre);return;}
+      var t0=performance.now();
+      (function f(t){var p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e,pre);if(p<1)requestAnimationFrame(f);})(t0);
+    }
+    function play(sel){
+      var el=dev.querySelector(sel);if(!el)return;
+      el.classList.remove('play');void el.offsetWidth;el.classList.add('play');
+    }
+    var FEED=[['--d-amber','Café · flat white, toastie','$14'],['--d-teal','Lane 7 checked in','4 ppl'],['--d-violet','Party deposit · Sat 11am','$50'],
+              ['--d-blue','Booking · Fri 6pm, 2 lanes','$96'],['--d-amber','Arcade card top-up','$20'],['--d-teal','Lane 1 finished','85 min'],
+              ['--d-violet','Party deposit · Sun 1pm','$50'],['--d-amber','Café · 3 hot chips','$18']],fi=0;
+    function tick(){
+      var feed=document.getElementById('feed');if(!feed)return;
+      var r=FEED[fi++%FEED.length],d=document.createElement('div');
+      d.className='new';d.style.setProperty('--c','var('+r[0]+')');
+      d.innerHTML='<i></i><span>'+r[1]+'</span><b>'+r[2]+'</b>';
+      feed.insertBefore(d,feed.firstChild);
+      while(feed.children.length>6)feed.removeChild(feed.lastChild);
+    }
+    function enter(i){
+      clear();
+      if(i!==2&&i!==3&&i!==4&&feedT){clearInterval(feedT);feedT=null;}
+      if(i!==5&&segT){clearInterval(segT);segT=null;}
+      play(LAYER[i]);
+      if(i===1){count(document.getElementById('syncN'),2418,1700);}
+      if(i===2){
+        if(last<2){[].forEach.call(dev.querySelectorAll('.kpis [data-to]'),function(el){count(el,+el.dataset.to,1100,el.dataset.pre);});}
+        play('.vx-os');
+      }
+      if(i>=2&&i<=4&&!feedT&&!reduce){feedT=setInterval(tick,1700);}
+      if(i===3){
+        var pal=document.getElementById('pal'),tx=document.getElementById('askTx'),q='How did parties do this month vs last?';
+        if(reduce){pal.classList.add('answered');tx.textContent=q;}
+        else{
+          pal.classList.remove('answered');tx.textContent='';
+          q.split('').forEach(function(c,k){later(function(){tx.textContent+=c;},300+k*34);});
+          later(function(){pal.classList.add('answered');},300+q.length*34+350);
+        }
+      }
+      if(i===5&&!reduce){
+        var segs=[].slice.call(document.querySelectorAll('#aiSeg span')),k=0,url=document.getElementById('url'),
+            names=['ChatGPT','Claude','Built-in assistant'];
+        segT=setInterval(function(){k=(k+1)%3;segs.forEach(function(s,j){s.classList.toggle('on',j===k)});url.textContent=names[k]+' · connected to Venue OS';},2200);
+      }
+      last=i;
+    }
+    return {enter:enter};
+  })();
+
   // sticky story
   var steps=[].slice.call(document.querySelectorAll('.st')),dev=document.getElementById('dev'),
       url=document.getElementById('url'),pnum=document.getElementById('pnum'),pbar=document.getElementById('pbar'),
-      urls=['5 tabs open','venue.os · connecting','venue.os/live','venue.os/ask','venue.os/ask','your AI · connected to venue.os'],cur=-1;
+      urls=['5 tabs open · nothing matches','venue.os · connecting your tools','venue.os/live','venue.os/ask','venue.os/roster','ChatGPT · connected to Venue OS'],cur=-1;
   var mobile=window.matchMedia('(max-width:760px)');
   function show(i){
     if(i===cur)return;cur=i;
     steps.forEach(function(s,j){s.classList.toggle('on',j===i)});
-    dev.setAttribute('data-s',String(i));url.textContent=urls[i];
+    dev.setAttribute('data-s',String(i));url.textContent=urls[i];vx.enter(i);
     pnum.innerHTML='0'+(i+1)+'<span> / 06</span>';pbar.style.width=((i+1)/6*100)+'%';
   }
   function pick(){
