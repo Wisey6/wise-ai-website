@@ -21,9 +21,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css?v=6">
+<link rel="stylesheet" href="/styles.css?v=7">
 <style>
-  .nf-wrap{min-height:68vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:8vh 6vw 10vh}
+  .nf-wrap{min-height:76vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:calc(64px + 8vh) 6vw 10vh}
   .nf-inner{max-width:44rem}
   .nf-code{font-family:Archivo,system-ui,sans-serif;font-weight:900;letter-spacing:-.04em;
            font-size:clamp(4.5rem,17vw,11rem);line-height:.86;opacity:.13;margin:0 0 -.06em}
@@ -34,17 +34,20 @@
 </head>
 <body class="doc">
   <nav>
-    <a href="/" class="brand" aria-label="Wise AI"><img src="/logo.svg" alt="Wise AI"></a>
+    <a href="/" class="brand" aria-label="Wise AI home"><img src="/logo.svg" alt="Wise AI"></a>
     <div class="nav-links">
-      <a href="/" class="nav-link">Home</a>
+      <a href="/#console" class="nav-link">The system</a>
+      <a href="/#ladder" class="nav-link">What I build</a>
       <a href="/agents.html" class="nav-link">AI Agents</a>
       <a href="/work.html" class="nav-link">Work</a>
-      <a href="/quiz.html" class="nav-cta">Start your audit</a>
+      <a href="/quiz.html" class="nav-cta">Free audit</a>
       <button class="nav-burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </nav>
   <div class="mobile-menu">
     <a href="/">Home</a>
+    <a href="/#console">The system</a>
+    <a href="/#ladder">What I build</a>
     <a href="/agents.html">AI Agents</a>
     <a href="/work.html">Work</a>
     <a href="/quiz.html" class="menu-cta">Start your free audit</a>
