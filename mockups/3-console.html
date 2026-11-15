@@ -152,9 +152,10 @@ section{padding:var(--s6) 0}
 .tile{position:relative;padding:14px 14px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(10,14,17,.45);
   display:flex;flex-direction:column;min-width:0;min-height:146px;transition:border-color .5s,background .5s}
 .tile.hit{border-color:rgba(232,235,237,.5);background:rgba(232,235,237,.06)}
-.tile .k{font-size:11.5px;color:var(--silver);line-height:1.3;padding-right:52px}
-.tile .from{position:absolute;right:10px;top:11px;font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);
-  border:1px solid var(--line);border-radius:999px;padding:1px 6px;transition:.4s;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .hd{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+.tile .k{font-size:11.5px;color:var(--silver);line-height:1.3;min-width:0}
+.tile .from{flex:none;font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);
+  border:1px solid var(--line);border-radius:999px;padding:1px 6px;transition:.4s;white-space:nowrap}
 .tile.hit .from{color:#0c1013;background:var(--platinum);border-color:var(--platinum)}
 .tile .v{font-family:'Archivo';font-weight:800;font-size:var(--t-xl);color:var(--white);line-height:1.1;margin-top:6px;font-variant-numeric:tabular-nums}
 .tile .s{font-size:11px;color:var(--steel);margin-top:2px;line-height:1.35}
@@ -215,6 +216,14 @@ section{padding:var(--s6) 0}
 .inp .go svg{width:13px;height:13px;stroke:#0c1013;stroke-width:2.4;fill:none}
 .works{padding:12px var(--s2) 14px;font-size:11.5px;color:var(--steel);line-height:1.5}
 .works b{color:var(--chrome);font-weight:600}
+.synclog{flex:1;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px;min-height:0}
+.synclog .colh{padding:0 0 2px}
+.sl{display:grid;grid-template-columns:52px auto 1fr;gap:10px;align-items:center;font-size:12px;color:var(--silver);padding:6px 8px;border-radius:8px;border:1px solid transparent;min-width:0}
+.sl.pop{animation:fin .6s var(--ease);border-color:var(--line);background:rgba(232,235,237,.04)}
+.sl .tm{color:var(--steel);font-variant-numeric:tabular-nums}
+.sl .so{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome);border:1px solid var(--line-2);border-radius:999px;padding:0 7px;white-space:nowrap}
+.sl .tx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--platinum)}
+.sl .tx em{font-style:normal;color:var(--steel)}
 .caption-under{margin-top:var(--s2);font-size:12.5px;color:var(--steel);text-align:center}
 
 @media(max-width:1100px){
@@ -242,7 +251,6 @@ section{padding:var(--s6) 0}
   .mainp{padding:var(--s2)}
   .tiles{gap:8px}
   .tile{padding:12px 10px 10px;min-height:134px}
-  .tile .k{padding-right:0}
   .tile .from{display:none}
   .tile .v{font-size:22px}
   .log{min-height:280px}
@@ -371,7 +379,7 @@ section{padding:var(--s6) 0}
 .tool svg{width:18px;height:18px;stroke:var(--platinum);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .tool b{font-size:14px;font-weight:600;color:var(--platinum)}
 .tool span{margin-left:auto;font-size:11px;color:var(--steel);white-space:nowrap}
-.wires{height:408px;width:100%;display:block;overflow:visible}
+.wires{height:404px;width:100%;display:block;overflow:visible}
 .wires path{fill:none;stroke:rgba(184,189,194,.3);stroke-width:1.2;vector-effect:non-scaling-stroke}
 .wires circle{fill:#fff}
 .sys{border-radius:20px;border:1px solid rgba(232,235,237,.45);background:var(--panel);padding:var(--s3);
@@ -542,6 +550,7 @@ footer b{color:var(--silver);font-weight:600}
             <div class="mainp">
               <div class="mtop"><h3 id="osTitle">Today at the venue</h3><span class="r mono"><span class="pulse" aria-hidden="true"></span><span id="osDay">Sat · live</span></span></div>
               <div class="tiles" id="tiles"></div>
+              <div class="synclog" aria-hidden="true"><div class="colh">Sync log</div><div id="slog" style="display:contents"></div></div>
             </div>
             <div class="ai" aria-label="AI assistant">
               <div class="aih"><b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg>Ask your business</b><span class="ex">Example</span></div>
@@ -648,13 +657,13 @@ footer b{color:var(--silver);font-weight:600}
           <div class="tool"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 4v16M15 4v16"/></svg><b>Spreadsheets</b><span>kept as is</span></div>
           <div class="tool"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg><b>CRM</b><span>kept as is</span></div>
         </div>
-        <svg class="wires" viewBox="0 0 200 408" preserveAspectRatio="none" aria-hidden="true">
-          <path id="p1" d="M0 28 C 110 28, 90 204, 200 204"/>
-          <path id="p2" d="M0 96 C 110 96, 90 204, 200 204"/>
-          <path id="p3" d="M0 164 C 110 164, 90 204, 200 204"/>
-          <path id="p4" d="M0 244 C 110 244, 90 204, 200 204"/>
-          <path id="p5" d="M0 312 C 110 312, 90 204, 200 204"/>
-          <path id="p6" d="M0 380 C 110 380, 90 204, 200 204"/>
+        <svg class="wires" viewBox="0 0 200 404" preserveAspectRatio="none" aria-hidden="true">
+          <path id="p1" d="M0 28 C 110 28, 90 202, 200 202"/>
+          <path id="p2" d="M0 96 C 110 96, 90 202, 200 202"/>
+          <path id="p3" d="M0 164 C 110 164, 90 202, 200 202"/>
+          <path id="p4" d="M0 232 C 110 232, 90 202, 200 202"/>
+          <path id="p5" d="M0 300 C 110 300, 90 202, 200 202"/>
+          <path id="p6" d="M0 368 C 110 368, 90 202, 200 202"/>
           <circle r="3"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#p1"/></animateMotion></circle>
           <circle r="3"><animateMotion dur="2.6s" begin=".4s" repeatCount="indefinite"><mpath href="#p2"/></animateMotion></circle>
           <circle r="3"><animateMotion dur="2.6s" begin="1.1s" repeatCount="indefinite"><mpath href="#p3"/></animateMotion></circle>
@@ -929,6 +938,7 @@ footer b{color:var(--silver);font-weight:600}
     if(t.f==='%') return Math.round(v)+'%';
     return String(Math.max(0,Math.round(v)));
   }
+  var SHORT={'Spreadsheets':'Sheets','Job calendar':'Calendar','Client records':'Records','Timesheets':'Hours'};
   var BARSEED=[.35,.5,.42,.7,.58,.82,.66,.9];
   function vizHTML(t){
     var v=vals[t.id];
@@ -948,7 +958,7 @@ footer b{color:var(--silver);font-weight:600}
     return '';
   }
   function tileHTML(t){
-    return '<div class="tile" id="t-'+t.id+'"><span class="k">'+esc(t.k)+'</span><span class="from">'+esc(t.src)+'</span>'+
+    return '<div class="tile" id="t-'+t.id+'"><div class="hd"><span class="k">'+esc(t.k)+'</span><span class="from">'+esc(SHORT[t.src]||t.src)+'</span></div>'+
       '<div class="v">'+fmt(t,vals[t.id])+'</div><div class="s">'+esc(t.s)+'</div><div class="viz">'+vizHTML(t)+'</div></div>';
   }
   function renderOS(){
@@ -961,6 +971,8 @@ footer b{color:var(--silver);font-weight:600}
     var sp=d.tiles.filter(function(t){return t.viz==='spark';})[0];
     spark=[.55,.6,.58,.66,.7,.68,.76,.8,.78,.86,.9,1].map(function(m){ return sp.v*m; });
     $('tiles').innerHTML=d.tiles.map(tileHTML).join('');
+    slog=[]; clock=0; $('slog').innerHTML='';
+    if(REDUCE||!osOn){ var e=d.events; for(var i=2;i>=0;i--){ logSync(e[i],d.tiles.filter(function(x){return x.id===e[i][2];})[0]); } evIdx=3; }
   }
   function updateTile(t,hit){
     var el=$('t-'+t.id); if(!el) return;
@@ -981,6 +993,7 @@ footer b{color:var(--silver);font-weight:600}
       setTimeout(function(){ s.classList.remove('hit'); sub.textContent=d.sources[si][1]; },1700);
     }
     var t=d.tiles.filter(function(x){return x.id===ev[2];})[0];
+    logSync(ev,t);
     setTimeout(function(){
       if(!t) return;
       vals[t.id]=Math.max(0,vals[t.id]+ev[3]);
@@ -988,6 +1001,15 @@ footer b{color:var(--silver);font-weight:600}
       if(t.viz==='spark'){ spark.push(vals[t.id]); if(spark.length>12) spark.shift(); }
       updateTile(t,true);
     }, REDUCE?0:650);
+  }
+  var slog=[], clock=0;
+  function logSync(ev,t){
+    clock++;
+    var mins=(9*60+12+clock*3), tm=Math.floor(mins/60)+':'+('0'+(mins%60)).slice(-2);
+    slog.unshift([tm,ev[0],ev[1],t?t.k:'']); if(slog.length>4) slog.pop();
+    $('slog').innerHTML=slog.map(function(r,i){
+      return '<div class="sl'+(i===0&&!REDUCE?' pop':'')+'"><span class="tm">'+r[0]+'</span><span class="so">'+esc(SHORT[r[1]]||r[1])+'</span><span class="tx">'+esc(r[2])+' <em>→ '+esc(r[3])+'</em></span></div>';
+    }).join('');
   }
   function startOS(){
     if(REDUCE) return;
@@ -1043,7 +1065,7 @@ footer b{color:var(--silver);font-weight:600}
       log.innerHTML='<div class="msg u">'+esc(qa.q)+'</div><div class="msg a">'+esc(qa.a)+'</div>'+extraHTML(qa).replace(' pop','');
       wireAct(qa); setInput(''); return;
     }
-    log.innerHTML=''; setInput('');
+    setInput('');
     (async function(){
       for(var c=1;c<=qa.q.length;c++){ if(tok!==aiTok) return; setInput(qa.q.slice(0,c)); await wait(24); }
       await wait(380); if(tok!==aiTok) return;
