@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<!--
+  MOCKUP 5 · PLATINUM
+  Direction: a light, airy inversion of the Wise AI brand for trust with traditional
+  business owners. Strictly monochrome (platinum paper, near-black ink, graphite/steel
+  greys). One deep-black "night band" mid-page carries the original dark-glass DNA.
+  Show, don't tell: real-looking artefacts (SMS, quote, calendar, invoice), a 24-hour
+  timeline you can scrub, an overnight activity log and a time-back calculator.
+
+  Ratio system
+  - Golden ratio (φ ≈ 1.618) for every two-column split: 1.618fr / 1fr (61.8 / 38.2).
+  - Type scale = 16 × φⁿ: 16 → 26 → 42 → 68px (clamped down on small screens).
+  - Spacing on an 8px grid using Fibonacci multiples: 8 · 16 · 24 · 40 · 64 · 104.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI: Your business, running itself. (Mockup 5 · Platinum)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* brand monochrome (from styles.css) */
+  --void:#0A0E11;--noir:#0D1114;--onyx:#1F2327;--graphite:#3A3F44;
+  --steel:#53585D;--silver:#989CA0;--chrome:#B8BDC2;--platinum:#E8EBED;--white:#fff;
+  /* light surfaces */
+  --bg:#F4F5F6;--paper:#FFFFFF;--mist:#ECEEF0;
+  --ink:var(--void);--ink-2:var(--graphite);--ink-3:var(--steel);
+  --line:rgba(10,14,17,.10);--line-2:rgba(10,14,17,.16);
+  /* φ type scale */
+  --t-s:13px;--t-0:16px;--t-1:26px;--t-2:42px;--t-3:68px;
+  /* 8px Fibonacci spacing */
+  --s1:8px;--s2:16px;--s3:24px;--s5:40px;--s8:64px;--s13:104px;
+  --phi:1.618;
+  --r-card:16px;--r-lg:24px;
+  --sh-1:0 1px 2px rgba(10,14,17,.06),0 2px 8px rgba(10,14,17,.05);
+  --sh-2:0 1px 2px rgba(10,14,17,.06),0 8px 24px rgba(10,14,17,.08),0 24px 64px rgba(10,14,17,.08);
+  --sh-3:0 2px 4px rgba(10,14,17,.08),0 16px 40px rgba(10,14,17,.14),0 40px 104px rgba(10,14,17,.12);
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,sans-serif;font-size:var(--t-0);line-height:1.618;color:var(--ink);background:var(--bg);overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 var(--s5)}
+@media(max-width:600px){.wrap{padding:0 var(--s2)}}
+
+/* type */
+.eyebrow{font-family:'Archivo';font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3)}
+h1,h2,h3{font-family:'Archivo';color:var(--ink);letter-spacing:-.025em}
+h1{font-weight:900;font-size:clamp(42px,5.6vw,var(--t-3));line-height:1.0}
+h2{font-weight:900;font-size:clamp(30px,3.6vw,var(--t-2));line-height:1.06}
+h3{font-weight:700;font-size:20px;line-height:1.2;letter-spacing:-.01em}
+.dim{color:var(--chrome)}
+.lede{font-size:18px;line-height:1.618;color:var(--ink-2);max-width:34em}
+.sec{padding:var(--s13) 0}
+@media(max-width:600px){.sec{padding:var(--s8) 0}}
+.sec-head{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s8);align-items:end;margin-bottom:var(--s8)}
+.sec-head .eyebrow{display:block;margin-bottom:var(--s2)}
+.sec-head p{color:var(--ink-2);font-size:16px}
+@media(max-width:860px){.sec-head{grid-template-columns:1fr;gap:var(--s2);margin-bottom:var(--s5)}}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:var(--s1);border-radius:999px;padding:14px 24px;font-size:15px;font-weight:600;
+  border:1px solid transparent;cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s,background .25s,border-color .25s;white-space:nowrap}
+.btn-primary{background:var(--ink);color:var(--white);box-shadow:0 8px 24px rgba(10,14,17,.18)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 12px 32px rgba(10,14,17,.26)}
+.btn-ghost{border-color:var(--line-2);background:var(--paper);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink)}
+.btn svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.ctas{display:flex;gap:var(--s2);flex-wrap:wrap}
+
+/* nav */
+nav.top{position:sticky;top:0;z-index:40;background:rgba(244,245,246,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid transparent;transition:border-color .3s}
+nav.top.stuck{border-bottom-color:var(--line)}
+nav.top .wrap{display:flex;align-items:center;justify-content:space-between;height:72px}
+.brand img{height:28px;width:auto;filter:invert(1)}
+.nav-links{display:flex;align-items:center;gap:var(--s5)}
+.nav-links a.l{font-size:14px;font-weight:500;color:var(--ink-2);transition:color .2s}
+.nav-links a.l:hover{color:var(--ink)}
+.nav-links .btn{padding:10px 18px;font-size:13.5px}
+@media(max-width:760px){.nav-links a.l{display:none}}
+
+/* ---------- HERO ---------- */
+.hero{padding:var(--s8) 0 var(--s13)}
+.hero-grid{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s8);align-items:center}
+.hero-copy .eyebrow{display:block;margin-bottom:var(--s3)}
+.hero-copy .lede{margin:var(--s3) 0 var(--s5)}
+.facts{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s3);margin-top:var(--s5);font-size:13.5px;color:var(--ink-2)}
+.facts span{display:inline-flex;align-items:center;gap:var(--s1)}
+.facts span::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink)}
+
+.stack-wrap{position:relative}
+.stack{position:relative;height:540px}
+.art{position:absolute;background:var(--paper);border-radius:var(--r-card);box-shadow:var(--sh-2);border:1px solid var(--line);
+  padding:var(--s2) var(--s3);opacity:0;transform:translateY(24px) rotate(var(--rot,0deg)) scale(.97);
+  transition:opacity .7s var(--ease),transform .7s var(--ease),box-shadow .5s}
+.art.in{opacity:1;transform:translateY(0) rotate(var(--rot,0deg))}
+.art.active{box-shadow:var(--sh-3);transform:translateY(-6px) rotate(0deg);z-index:5}
+.art .ah{display:flex;justify-content:space-between;align-items:center;font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.art .ah b{color:var(--ink);font-weight:700}
+.art-sms{top:0;left:0;width:74%;--rot:-1.6deg}
+.art-quote{top:118px;right:0;width:66%;--rot:1.2deg}
+.art-cal{top:262px;left:2%;width:68%;--rot:-.6deg}
+.art-inv{top:384px;right:3%;width:64%;--rot:1.6deg}
+.bub{margin-top:var(--s1);padding:10px 14px;border-radius:16px;font-size:13.5px;line-height:1.45;max-width:88%}
+.bub.them{background:var(--mist);color:var(--ink);border-bottom-left-radius:4px}
+.bub.us{background:var(--ink);color:var(--white);margin-left:auto;border-bottom-right-radius:4px}
+.qrow{display:flex;justify-content:space-between;gap:var(--s2);font-size:13.5px;color:var(--ink-2);padding:6px 0;border-bottom:1px dashed var(--line-2)}
+.qrow:last-child{border-bottom:0}
+.qtot{display:flex;justify-content:space-between;align-items:baseline;margin-top:var(--s1)}
+.qtot span{font-size:13px;color:var(--ink-3)}
+.qtot b{font-family:'Archivo';font-weight:900;font-size:var(--t-1);letter-spacing:-.02em}
+.cal{display:flex;gap:var(--s2);margin-top:var(--s1);align-items:stretch}
+.cal .day{flex:none;width:56px;border-radius:12px;background:var(--ink);color:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0}
+.cal .day small{font-family:'Archivo';font-size:10px;letter-spacing:.16em;text-transform:uppercase;opacity:.7}
+.cal .day b{font-family:'Archivo';font-weight:900;font-size:24px;line-height:1.1}
+.cal .slot{flex:1;border-left:3px solid var(--ink);padding-left:var(--s2);font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.cal .slot b{display:block;color:var(--ink);font-size:14.5px}
+.inv{position:relative;margin-top:var(--s1)}
+.inv .qrow b{color:var(--ink)}
+.stamp{position:absolute;right:4px;top:-2px;font-family:'Archivo';font-weight:900;font-size:22px;letter-spacing:.12em;color:var(--ink);
+  border:3px solid var(--ink);border-radius:8px;padding:2px 12px;transform:rotate(-12deg) scale(1.8);opacity:0;
+  transition:transform .45s cubic-bezier(.3,1.6,.5,1),opacity .2s}
+.art-inv.stamped .stamp{opacity:.9;transform:rotate(-12deg) scale(1)}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s1);margin-top:var(--s3)}
+.steps li{list-style:none;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.5);
+  font-size:12.5px;line-height:1.35;color:var(--ink-3);transition:background .3s,color .3s,border-color .3s}
+.steps li b{display:block;font-family:'Archivo';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:2px}
+.steps li.on{background:var(--ink);border-color:var(--ink);color:var(--white)}
+.steps li.on b{color:var(--chrome)}
+.example{display:inline-block;margin-top:var(--s2);font-size:12px;color:var(--ink-3);letter-spacing:.02em}
+.example::before{content:"Example";font-family:'Archivo';font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  border:1px solid var(--line-2);border-radius:999px;padding:2px 8px;margin-right:var(--s1);color:var(--ink-2)}
+
+@media(max-width:1100px){.hero-grid{grid-template-columns:1fr 1fr;gap:var(--s5)}}
+@media(max-width:860px){
+  .hero{padding:var(--s5) 0 var(--s8)}
+  .hero-grid{grid-template-columns:1fr;gap:var(--s8)}
+  .stack-wrap{max-width:520px;margin:0 auto;width:100%}
+}
+@media(max-width:600px){
+  .stack{height:560px}
+  .art{padding:14px 16px}
+  .art-sms{width:88%}.art-quote{width:82%;top:150px}.art-cal{width:86%;top:300px}.art-inv{width:82%;top:420px}
+  .steps{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ---------- DAY TIMELINE ---------- */
+.tabs{display:inline-flex;padding:4px;border-radius:999px;background:var(--paper);border:1px solid var(--line);box-shadow:var(--sh-1);flex-wrap:wrap}
+.tab{border:0;background:none;cursor:pointer;padding:9px 18px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink-2);transition:background .25s,color .25s}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--white)}
+.tl-card{margin-top:var(--s5);background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:var(--s5)}
+@media(max-width:600px){.tl-card{padding:var(--s3) var(--s2)}}
+.tl-top{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.tl-tally{display:flex;gap:var(--s3);font-size:13px;color:var(--ink-3)}
+.tl-tally b{font-family:'Archivo';font-weight:900;font-size:18px;color:var(--ink);margin-right:4px}
+.playbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--paper);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.playbtn svg{width:12px;height:12px;fill:currentColor}
+.track-wrap{position:relative;margin:var(--s5) 0 var(--s3);padding:0 6px}
+.track{position:relative;height:72px}
+.track .rail{position:absolute;left:0;right:0;top:35px;height:2px;background:var(--line-2);border-radius:2px}
+.track .night{position:absolute;left:50%;right:0;top:12px;height:48px;border-radius:12px;
+  background:repeating-linear-gradient(135deg,rgba(10,14,17,.035) 0 6px,transparent 6px 12px),rgba(10,14,17,.04)}
+.track .night span{position:absolute;right:10px;top:-22px;font-family:'Archivo';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.track .day-l{position:absolute;left:10px;top:-10px;font-family:'Archivo';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.track .progress{position:absolute;left:0;top:35px;height:2px;background:var(--ink);border-radius:2px;width:0}
+.cursor{position:absolute;top:4px;width:2px;height:64px;background:var(--ink);transform:translateX(-1px);left:0;pointer-events:none}
+.cursor::after{content:attr(data-time);position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-family:'Archivo';font-size:11px;font-weight:700;
+  background:var(--ink);color:var(--white);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.mk{position:absolute;top:24px;width:24px;height:24px;margin-left:-12px;border:0;background:none;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.mk::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);transition:transform .25s var(--ease),background .25s}
+.mk:hover::before{transform:scale(1.25)}
+.mk.past::before{background:var(--ink)}
+.mk[aria-pressed="true"]::before{background:var(--ink);transform:scale(1.5);box-shadow:0 0 0 6px rgba(10,14,17,.08)}
+.mk.need::before{border-style:dashed}
+.ticks{position:relative;height:18px;margin-top:6px}
+.ticks span{position:absolute;transform:translateX(-50%);font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.ticks span.minor{color:var(--silver)}
+@media(max-width:600px){.ticks span.minor{display:none}}
+.ticks span:first-child{transform:none}
+.ticks span:last-child{transform:translateX(-100%)}
+
+.tl-body{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s5);align-items:start;margin-top:var(--s5)}
+@media(max-width:860px){.tl-body{grid-template-columns:1fr;gap:var(--s3)}}
+.doc{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-card);padding:var(--s3);min-height:236px;transition:opacity .3s}
+.doc.swap{opacity:0}
+.doc .ah{display:flex;justify-content:space-between;align-items:center;font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-bottom:12px;border-bottom:1px solid var(--line)}
+.doc .ah b{color:var(--ink)}
+.doc .meta{font-size:12.5px;color:var(--ink-3);margin-top:12px}
+.doc .dt{font-family:'Archivo';font-weight:700;font-size:18px;margin-top:4px;letter-spacing:-.01em}
+.doc .msg{margin-top:12px;font-size:14.5px;line-height:1.6;color:var(--ink-2);white-space:pre-line}
+.doc .bubs{margin-top:4px}
+.doc ul{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.doc li{font-size:14px;color:var(--ink-2);display:flex;gap:10px}
+.doc li::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--ink);margin-top:9px}
+.side .when{font-family:'Archivo';font-weight:900;font-size:var(--t-2);letter-spacing:-.03em;line-height:1}
+.side .what{font-family:'Archivo';font-weight:700;font-size:18px;margin-top:var(--s1)}
+.side .did{color:var(--ink-2);font-size:15px;margin-top:var(--s1)}
+.side .yt{display:flex;gap:var(--s3);margin-top:var(--s3);padding-top:var(--s2);border-top:1px solid var(--line)}
+.side .yt div{font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.12em;font-family:'Archivo';font-weight:600}
+.side .yt b{display:block;font-size:20px;color:var(--ink);letter-spacing:-.01em;text-transform:none;font-weight:900;margin-top:2px}
+.pn{display:flex;gap:var(--s1);margin-top:var(--s3)}
+.pn button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line-2);background:var(--paper);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .2s}
+.pn button:hover{border-color:var(--ink)}
+.pn svg{width:16px;height:16px;stroke:var(--ink);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.needtag{display:inline-block;margin-left:6px;font-family:'Archivo';font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;border:1px dashed var(--ink);border-radius:999px;padding:1px 8px;vertical-align:2px}
+
+/* ---------- NIGHT BAND ---------- */
+.night-band{position:relative;background:radial-gradient(120% 90% at 50% 0%,#141a20 0%,#0d1114 46%,#080b0e 100%);color:var(--platinum);overflow:hidden}
+.night-band::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(40% 50% at 80% 10%,rgba(150,170,190,.12),transparent 70%),radial-gradient(40% 40% at 10% 90%,rgba(110,135,160,.08),transparent 70%)}
+.night-band :focus-visible{outline-color:var(--white)}
+.night-band .eyebrow{color:var(--silver)}
+.night-band h2{color:var(--white)}
+.night-band h2 .dim{color:var(--steel)}
+.night-band .sec-head p{color:var(--silver)}
+.nb-grid{position:relative;display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s5);align-items:stretch}
+@media(max-width:860px){.nb-grid{grid-template-columns:1fr}}
+.glass{border-radius:var(--r-lg);background:linear-gradient(160deg,rgba(31,35,39,.62),rgba(13,17,20,.55));
+  border:1px solid rgba(184,189,194,.28);box-shadow:inset 0 1px 0 rgba(232,235,237,.28),0 22px 48px rgba(0,0,0,.5)}
+.log{padding:var(--s3) var(--s5);list-style:none}
+@media(max-width:600px){.log{padding:var(--s2) var(--s3)}}
+.log li{display:grid;grid-template-columns:72px 1fr;gap:var(--s2);padding:14px 0;border-bottom:1px solid rgba(184,189,194,.12);
+  opacity:.18;transition:opacity .6s var(--ease),transform .6s var(--ease);transform:translateX(-6px)}
+.log li:last-child{border-bottom:0}
+.log li.on{opacity:1;transform:none}
+.log .lt{font-family:'Archivo';font-weight:700;font-size:13px;color:var(--chrome);padding-top:2px}
+.log .lb b{display:block;color:var(--white);font-weight:600;font-size:15px}
+.log .lb span{display:block;color:var(--silver);font-size:14px;margin-top:2px}
+.log li.need .lb span{color:var(--platinum)}
+.tally{display:flex;flex-direction:column;padding:var(--s5)}
+.tally .tn{padding:var(--s3) 0;border-bottom:1px solid rgba(184,189,194,.14)}
+.tally .tn:first-child{padding-top:0}
+.tally .tn:last-of-type{border-bottom:0}
+.tally .tn b{display:block;font-family:'Archivo';font-weight:900;font-size:var(--t-3);line-height:1;color:var(--white);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.tally .tn span{display:block;margin-top:var(--s1);font-family:'Archivo';font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--silver)}
+.tally .ex{margin-top:auto;padding-top:var(--s3);font-size:12px;color:var(--steel)}
+.tally .ex{color:#8a8f94}
+@media(max-width:860px){.tally{flex-direction:row;flex-wrap:wrap;gap:var(--s3);padding:var(--s3)}.tally .tn{border:0;padding:0;flex:1;min-width:84px}.tally .tn b{font-size:var(--t-2)}.tally .ex{flex-basis:100%;padding-top:0}}
+
+/* ---------- CALCULATOR ---------- */
+.calc{display:grid;grid-template-columns:1fr 1.618fr;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-2);overflow:hidden}
+@media(max-width:860px){.calc{grid-template-columns:1fr}}
+.calc-in{padding:var(--s5);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:var(--s5)}
+@media(max-width:860px){.calc-in{border-right:0;border-bottom:1px solid var(--line)}}
+@media(max-width:600px){.calc-in{padding:var(--s3)}}
+.fld label{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:500;color:var(--ink-2);gap:var(--s2)}
+.fld output{font-family:'Archivo';font-weight:900;font-size:var(--t-1);color:var(--ink);letter-spacing:-.02em;white-space:nowrap}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin-top:var(--s1);cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--ink) var(--p,50%),var(--mist) var(--p,50%))}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:var(--mist)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:4px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);margin-top:-10px;box-shadow:var(--sh-1)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--paper);border:2px solid var(--ink)}
+.assume{font-size:13px;color:var(--ink-3);line-height:1.55}
+.calc-out{padding:var(--s5);display:grid;grid-template-columns:1fr 1fr;gap:var(--s5) var(--s3);align-content:center;background:var(--bg)}
+@media(max-width:600px){.calc-out{padding:var(--s3);grid-template-columns:1fr 1fr}}
+.big b{display:block;font-family:'Archivo';font-weight:900;font-size:clamp(42px,5.6vw,var(--t-3));letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums}
+.big span{display:block;margin-top:var(--s1);font-size:13.5px;color:var(--ink-3)}
+.big.wide{grid-column:1/-1}
+.calc-out .btn{justify-self:start;grid-column:1/-1}
+@media(max-width:600px){.calc-out .btn{white-space:normal}}
+
+/* ---------- PROOF ---------- */
+.proof{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3)}
+@media(max-width:960px){.proof{grid-template-columns:1fr 1fr}.proof .pc:last-child{grid-column:1/-1}}
+@media(max-width:600px){.proof{grid-template-columns:1fr}}
+.pc{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);display:flex;flex-direction:column;
+  transition:transform .35s var(--ease),box-shadow .35s}
+.pc:hover{transform:translateY(-4px);box-shadow:var(--sh-2)}
+.pc .shot{aspect-ratio:1.618/1;overflow:hidden;background:var(--mist);border-bottom:1px solid var(--line);position:relative}
+.pc .shot img{width:100%;height:100%;object-fit:cover;object-position:top center}
+.pc .bar{position:absolute;left:0;right:0;top:0;height:24px;background:rgba(255,255,255,.9);display:flex;align-items:center;gap:5px;padding:0 10px;border-bottom:1px solid var(--line);font-size:10.5px;color:var(--ink-3)}
+.pc .bar i{width:7px;height:7px;border-radius:50%;background:var(--chrome)}
+.pc .bar em{font-style:normal;margin-left:6px;font-family:ui-monospace,Menlo,monospace}
+.pc .pb{padding:var(--s3);display:flex;flex-direction:column;flex:1}
+.pc .tag{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.pc h3{margin-top:var(--s1)}
+.pc p{font-size:14.5px;color:var(--ink-2);margin-top:var(--s1);line-height:1.55}
+.pc .go{margin-top:auto;padding-top:var(--s2);font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.pc .go svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
+.board{padding:var(--s2);display:flex;flex-direction:column;justify-content:center;gap:8px;height:100%;background:var(--bg)}
+.board .row{display:flex;justify-content:space-between;align-items:center;gap:var(--s1);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:500;color:var(--ink)}
+.board .row span{flex:none;font-family:'Archivo';font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-radius:999px;padding:2px 8px;border:1px solid var(--ink);color:var(--ink)}
+.board .row span.q{border-style:dashed;color:var(--ink-3);border-color:var(--ink-3)}
+.board .row span.b{background:var(--ink);color:var(--white)}
+.pstats{display:flex;gap:var(--s3);margin-top:var(--s2)}
+.pstats div{font-size:12.5px;color:var(--ink-3);line-height:1.35}
+.pstats b{display:block;font-family:'Archivo';font-weight:900;font-size:22px;color:var(--ink)}
+.more{margin-top:var(--s5);display:flex;justify-content:center}
+
+/* ---------- ABOUT ---------- */
+.about{display:grid;grid-template-columns:1fr 1.618fr;gap:var(--s8);align-items:center}
+@media(max-width:860px){.about{grid-template-columns:1fr;gap:var(--s5)}}
+.about figure img{width:100%;max-width:440px;aspect-ratio:1;object-fit:cover;border-radius:var(--r-lg);box-shadow:var(--sh-2);filter:grayscale(1) contrast(1.04)}
+@media(max-width:860px){.about figure img{max-width:280px}}
+.about .eyebrow{display:block;margin-bottom:var(--s2)}
+.about p{font-size:17px;color:var(--ink-2);margin-top:var(--s3);max-width:32em}
+.about .ctas{margin-top:var(--s5)}
+
+/* ---------- CLOSE + FOOTER ---------- */
+.close{background:var(--paper);border:1px solid var(--line);border-radius:32px;box-shadow:var(--sh-2);padding:var(--s13) var(--s5);text-align:center;position:relative;overflow:hidden}
+.close .owl{width:56px;height:56px;margin:0 auto var(--s3);opacity:.92}
+.close h2{max-width:14em;margin:0 auto}
+.close p{color:var(--ink-2);max-width:30em;margin:var(--s3) auto var(--s5)}
+.close .ctas{justify-content:center}
+.close .meta{margin-top:var(--s5);font-size:13px;color:var(--ink-3)}
+.close .meta a{color:var(--ink);font-weight:600}
+@media(max-width:600px){.close{padding:var(--s8) var(--s3);border-radius:var(--r-lg)}}
+footer.foot{padding:var(--s8) 0 var(--s13);font-size:13px;color:var(--ink-3)}
+footer.foot .wrap{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap}
+footer.foot nav{display:flex;gap:var(--s3);flex-wrap:wrap}
+footer.foot a:hover{color:var(--ink)}
+footer.foot img{height:22px;filter:invert(1);opacity:.85}
+
+.mock-tag{position:fixed;left:16px;bottom:16px;z-index:60;background:var(--ink);color:var(--white);font-family:'Archivo';font-size:11px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;padding:7px 12px;border-radius:999px;box-shadow:0 8px 24px rgba(10,14,17,.25);pointer-events:none}
+
+/* reveal */
+[data-r]{opacity:0;transform:translateY(24px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+[data-r].v{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  [data-r],.art,.log li,.stamp,.doc{opacity:1!important;transform:none!important;transition:none!important}
+  .art.active{box-shadow:var(--sh-2)}
+  .art-inv .stamp{transform:rotate(-12deg)!important;opacity:.9!important}
+  *{animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<nav class="top" aria-label="Main">
+  <div class="wrap">
+    <a href="../" class="brand" aria-label="Wise AI home"><img src="../logo.svg" alt="Wise AI"></a>
+    <div class="nav-links">
+      <a class="l" href="#day">See a day</a>
+      <a class="l" href="../work.html">Work</a>
+      <a class="l" href="#about">About</a>
+      <a class="btn btn-primary" href="../quiz.html">Start your free audit</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow" data-r>Brisbane · local, embedded, accountable</span>
+      <h1 data-r>The admin gets done.<br><span class="dim">You don't do it.</span></h1>
+      <p class="lede" data-r>I build a custom AI agent that answers enquiries, books jobs and chases invoices on your own accounts, day and night. Here's what one evening looks like.</p>
+      <div class="ctas" data-r>
+        <a class="btn btn-primary" href="../quiz.html">Start your free 2-minute audit</a>
+        <a class="btn btn-ghost" href="#day">See a day, handled
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+      </div>
+      <div class="facts" data-r>
+        <span>Runs 24/7 in the cloud</span><span>Built on your own accounts</span><span>A human in the loop where it matters</span>
+      </div>
+    </div>
+
+    <div class="stack-wrap" data-r aria-label="Example: one evening handled by an agent for a plumbing business">
+      <div class="stack" id="stack">
+        <div class="art art-sms" data-i="0">
+          <div class="ah"><span><b>Messages</b> · Sarah</span><span>9:47pm</span></div>
+          <div class="bub them">Hi, hot water's leaking. Anyone free this week? I'm in Ashgrove.</div>
+          <div class="bub us">Hi Sarah, we can do Thu 10am. Is it electric or gas, and roughly how old?</div>
+        </div>
+        <div class="art art-quote" data-i="1">
+          <div class="ah"><span><b>Quote</b> Q-218</span><span>9:48pm</span></div>
+          <div class="qrow"><span>Hot water system, supply + install</span><span>guide</span></div>
+          <div class="qrow"><span>Remove &amp; dispose of old unit</span><span>incl.</span></div>
+          <div class="qtot"><span>Guide price, inc. GST</span><b>$1,850</b></div>
+        </div>
+        <div class="art art-cal" data-i="2">
+          <div class="ah"><span><b>Calendar</b></span><span>9:51pm</span></div>
+          <div class="cal">
+            <div class="day"><small>Thu</small><b>14</b></div>
+            <div class="slot"><b>Thu 10:00 · Ashgrove</b>Hot water replacement, 2 hrs<br>Reminder set for Wed 6pm</div>
+          </div>
+        </div>
+        <div class="art art-inv" data-i="3">
+          <div class="ah"><span><b>Invoice</b> #1042</span><span>6:02am</span></div>
+          <div class="inv">
+            <div class="qrow"><span>Tap service, Paddington</span><b>$640</b></div>
+            <div class="qrow"><span>Matched to bank feed</span><span>auto</span></div>
+            <span class="stamp" aria-hidden="true">PAID</span>
+          </div>
+        </div>
+      </div>
+      <ol class="steps" id="steps">
+        <li><b>9:47pm</b>Enquiry answered</li>
+        <li><b>9:48pm</b>Quote sent</li>
+        <li><b>9:51pm</b>Job booked</li>
+        <li><b>6:02am</b>Invoice paid</li>
+      </ol>
+      <span class="example">One evening for a plumbing business. You did none of it.</span>
+    </div>
+  </div>
+</section>
+
+<!-- A DAY, HANDLED -->
+<section class="sec" id="day" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow" data-r>A day in your business, handled</span>
+        <h2 data-r>24 hours. <span class="dim">None of the admin is yours.</span></h2>
+      </div>
+      <p data-r>Pick a business like yours, then scrub through the day. Every dot is a job your agent did on its own, and what it left behind.</p>
+    </div>
+
+    <div data-r>
+      <div class="tabs" role="tablist" aria-label="Business type">
+        <button class="tab" role="tab" aria-selected="true" data-biz="tradie">Tradie</button>
+        <button class="tab" role="tab" aria-selected="false" data-biz="clinic">Clinic</button>
+        <button class="tab" role="tab" aria-selected="false" data-biz="venue">Venue</button>
+        <button class="tab" role="tab" aria-selected="false" data-biz="salon">Salon</button>
+      </div>
+
+      <div class="tl-card">
+        <div class="tl-top">
+          <div class="tl-tally" aria-live="polite">
+            <span><b id="tHandled">0</b>handled</span>
+            <span><b>0 min</b>of your time</span>
+            <span><b id="tNeed">0</b>needed you</span>
+          </div>
+          <button class="playbtn" id="play" type="button" aria-pressed="true">
+            <svg viewBox="0 0 12 12" aria-hidden="true" id="playIco"><rect x="2" y="1.5" width="2.6" height="9" rx=".6"/><rect x="7.4" y="1.5" width="2.6" height="9" rx=".6"/></svg>
+            <span id="playTxt">Pause</span>
+          </button>
+        </div>
+
+        <div class="track-wrap">
+          <div class="track" id="track">
+            <span class="day-l">Open</span>
+            <div class="night"><span>Closed</span></div>
+            <div class="rail"></div>
+            <div class="progress" id="prog"></div>
+            <div class="cursor" id="cursor" data-time="6:00am" aria-hidden="true"></div>
+          </div>
+          <div class="ticks" aria-hidden="true">
+            <span style="left:0%">6am</span><span class="minor" style="left:12.5%">9am</span><span style="left:25%">12pm</span><span class="minor" style="left:37.5%">3pm</span>
+            <span style="left:50%">6pm</span><span class="minor" style="left:62.5%">9pm</span><span style="left:75%">12am</span><span class="minor" style="left:87.5%">3am</span><span style="left:100%">6am</span>
+          </div>
+        </div>
+
+        <div class="tl-body">
+          <div class="doc" id="doc"></div>
+          <div class="side">
+            <div class="when" id="sWhen">6:30am</div>
+            <div class="what" id="sWhat"></div>
+            <div class="did" id="sDid"></div>
+            <div class="yt">
+              <div>Done by<b>Your agent</b></div>
+              <div>Your time<b id="sYou">0 min</b></div>
+            </div>
+            <div class="pn">
+              <button type="button" id="prev" aria-label="Previous event"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+              <button type="button" id="next" aria-label="Next event"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="example">Simulated day. Your agent is built around your own tools and rules.</span>
+    </div>
+  </div>
+</section>
+
+<!-- NIGHT BAND -->
+<section class="night-band sec" id="night">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow" data-r>While you sleep</span>
+        <h2 data-r>Closed for the night. <span class="dim">Still open for business.</span></h2>
+      </div>
+      <p data-r>Enquiries don't wait for business hours. Your agent picks them up the minute they land, and leaves you a one-page brief by morning.</p>
+    </div>
+    <div class="nb-grid">
+      <ol class="log glass" id="log" data-r>
+        <li><span class="lt">9:47pm</span><span class="lb"><b>New enquiry · hot water leak</b><span>Replied in 38 sec, guide quote sent ($1,850)</span></span></li>
+        <li><span class="lt">9:51pm</span><span class="lb"><b>Booking</b><span>Thu 10am locked in, confirmation sent</span></span></li>
+        <li><span class="lt">11:30pm</span><span class="lb"><b>Invoice #1038 · 7 days overdue</b><span>Polite reminder sent with a pay link</span></span></li>
+        <li><span class="lt">2:14am</span><span class="lb"><b>Website form · gutter clean</b><span>Answered, booked Mon 8am</span></span></li>
+        <li><span class="lt">6:02am</span><span class="lb"><b>Invoice #1042 paid · $640</b><span>Matched to your bank feed</span></span></li>
+        <li class="need"><span class="lt">6:30am</span><span class="lb"><b>Morning brief sent to you</b><span>1 thing needs your call: approve a quote over $5,000</span></span></li>
+      </ol>
+      <div class="tally glass" data-r>
+        <div class="tn"><b id="nHandled">0</b><span>Handled</span></div>
+        <div class="tn"><b>0<small style="font-size:.42em;letter-spacing:0"> min</small></b><span>Your time</span></div>
+        <div class="tn"><b id="nNeed">0</b><span>Needs you</span></div>
+        <div class="ex">Example night for a plumbing business.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR -->
+<section class="sec" id="worth">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow" data-r>What it's worth</span>
+        <h2 data-r>Your hours back, <span class="dim">in numbers.</span></h2>
+      </div>
+      <p data-r>Move the sliders to match your week. We keep the maths conservative on purpose.</p>
+    </div>
+    <div class="calc" data-r>
+      <div class="calc-in">
+        <div class="fld">
+          <label for="hrs">Hours a week on admin <output id="hrsO" for="hrs">10 hrs</output></label>
+          <input type="range" id="hrs" min="1" max="40" step="1" value="10">
+        </div>
+        <div class="fld">
+          <label for="rate">What an hour of your time is worth <output id="rateO" for="rate">$80</output></label>
+          <input type="range" id="rate" min="30" max="250" step="5" value="80">
+        </div>
+        <p class="assume">Assumes an agent takes on just half of that admin, across 48 working weeks a year. The free audit finds your real number.</p>
+      </div>
+      <div class="calc-out" aria-live="polite">
+        <div class="big"><b id="oHrs">240</b><span>hours back a year</span></div>
+        <div class="big"><b id="oWks">6.3</b><span>full working weeks</span></div>
+        <div class="big wide"><b id="oVal">$19,200</b><span>of your time, back every year</span></div>
+        <a class="btn btn-primary" href="../quiz.html">Find your real number, free</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF -->
+<section class="sec" id="proof" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <span class="eyebrow" data-r>Proof</span>
+        <h2 data-r>Already live in <span class="dim">real businesses.</span></h2>
+      </div>
+      <p data-r>Each one built on the client's own accounts and doing real work today.</p>
+    </div>
+    <div class="proof">
+      <a class="pc" href="https://alcp.com.au" target="_blank" rel="noopener" data-r>
+        <div class="shot"><img src="../work/img/alcp.jpg" alt="Abundant Life Clinical Psychology website homepage" loading="lazy"><div class="bar"><i></i><i></i><i></i><em>alcp.com.au</em></div></div>
+        <div class="pb">
+          <span class="tag">Clinical psychology · website</span>
+          <h3>Abundant Life Clinical Psychology</h3>
+          <p>A calm, credible site that helps new clients find the right service and get in touch fast.</p>
+          <span class="go">Visit site <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+        </div>
+      </a>
+      <a class="pc" href="https://neotype.au" target="_blank" rel="noopener" data-r>
+        <div class="shot"><img src="../work/img/neotype-customizer.png" alt="Neotype live sticker customizer with real-time price and preview" loading="lazy"><div class="bar"><i></i><i></i><i></i><em>neotype.au/customizer</em></div></div>
+        <div class="pb">
+          <span class="tag">Sticker studio · live tool</span>
+          <h3>Neotype customizer</h3>
+          <p>Customers pick finish, shape and size, watch price and proof update live, then pay. No back-and-forth emails.</p>
+          <span class="go">Visit site <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+        </div>
+      </a>
+      <a class="pc" href="../work.html" data-r>
+        <div class="shot">
+          <div class="board" aria-label="Venue automation board">
+            <div class="row">League attendance &amp; payments<span class="b">Building</span></div>
+            <div class="row">Party &amp; group bookings<span>In progress</span></div>
+            <div class="row">Assisted roster draft<span>In progress</span></div>
+            <div class="row">Follow-ups, data entry, reporting<span class="q">Queued</span></div>
+          </div>
+        </div>
+        <div class="pb">
+          <span class="tag">Family entertainment venue · automation</span>
+          <h3>A venue that increasingly runs itself</h3>
+          <div class="pstats">
+            <div><b>6+</b>workflows mapped in the audit</div>
+            <div><b>1st</b>audit-to-retainer client</div>
+          </div>
+          <span class="go">Read the case study <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </a>
+    </div>
+    <div class="more"><a class="btn btn-ghost" href="../work.html">See all work</a></div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="sec" id="about" style="padding-top:0">
+  <div class="wrap about">
+    <figure data-r><img src="../about-tyler.jpg" alt="Tyler Wise, founder of Wise AI" width="1000" height="1000" loading="lazy"></figure>
+    <div>
+      <span class="eyebrow" data-r>Who builds it</span>
+      <h2 data-r>Tyler Wise. <span class="dim">Brisbane.</span></h2>
+      <p data-r>I'm the founder of Wise AI. I build automation that's accurate and dependable, on your own accounts, with a human in the loop where it matters.</p>
+      <p data-r>Local, embedded and accountable: I build it, then I stick around to keep it earning its keep.</p>
+      <div class="ctas" data-r>
+        <a class="btn btn-ghost" href="mailto:tyler@wise-ai.au?subject=Wise%20AI%20enquiry">Email Tyler</a>
+        <a class="btn btn-ghost" href="https://www.linkedin.com/in/tyler-wise-9ba521257/" target="_blank" rel="noopener">LinkedIn</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSE -->
+<section class="sec" style="padding-top:0">
+  <div class="wrap">
+    <div class="close" data-r>
+      <svg class="owl" viewBox="183 372 40 50" aria-hidden="true"><image href="../logo.svg" x="158" y="367" width="256" height="60" style="filter:invert(1)"/></svg>
+      <h2>See it running in <span class="dim">your</span> business.</h2>
+      <p>Take the free 2-minute audit. You'll get tailored suggestions on where an agent pays off first, on the spot.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="../quiz.html">Start your free audit</a>
+        <a class="btn btn-ghost" href="mailto:tyler@wise-ai.au?subject=Wise%20AI%20enquiry">Email Tyler</a>
+      </div>
+      <div class="meta"><a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a> · Brisbane · local, embedded, accountable</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <img src="../logo.svg" alt="Wise AI">
+    <nav aria-label="Footer">
+      <a href="../agents.html">AI Agents</a><a href="../work.html">Work</a><a href="../quiz.html">Free audit</a><a href="../privacy.html">Privacy</a><a href="../terms.html">Terms</a>
+    </nav>
+    <span>&copy; 2026 Wise AI · ABN 74 653 249 265</span>
+  </div>
+</footer>
+
+<div class="mock-tag">Mockup 5 · Platinum</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function(s,c){return (c||document).querySelector(s)}, $$ = function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))};
+
+  /* nav border */
+  var nav = $('nav.top');
+  var onS = function(){ nav.classList.toggle('stuck', scrollY > 8); }; onS(); addEventListener('scroll', onS, {passive:true});
+
+  /* reveal */
+  var rv = $$('[data-r]');
+  if(reduce || !('IntersectionObserver' in window)){ rv.forEach(function(e){e.classList.add('v')}); }
+  else {
+    var io = new IntersectionObserver(function(es){ es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var sib = $$('[data-r]', e.target.parentNode).filter(function(x){return x.parentNode===e.target.parentNode});
+      e.target.style.transitionDelay = (Math.max(0,sib.indexOf(e.target))*0.08)+'s';
+      e.target.classList.add('v'); io.unobserve(e.target);
+    }); }, {threshold:.12, rootMargin:'0px 0px -6% 0px'});
+    rv.forEach(function(e){ io.observe(e); });
+  }
+
+  /* when-visible helper */
+  function whenVisible(el, cb, th){
+    if(!('IntersectionObserver' in window)){ cb(true); return; }
+    new IntersectionObserver(function(es){ es.forEach(function(e){ cb(e.isIntersecting); }); }, {threshold:th||.25}).observe(el);
+  }
+
+  /* ---------- HERO artefact stack ---------- */
+  var arts = $$('#stack .art'), steps = $$('#steps li'), inv = $('.art-inv');
+  function setActive(i){
+    arts.forEach(function(a,k){ a.classList.toggle('active', k===i); });
+    steps.forEach(function(s,k){ s.classList.toggle('on', k===i); });
+    if(i===3) inv.classList.add('stamped');
+  }
+  if(reduce){ arts.forEach(function(a){a.classList.add('in')}); inv.classList.add('stamped'); setActive(3); }
+  else {
+    var hi = 0, heroVis = true, heroT;
+    function heroTick(){
+      if(heroVis){
+        if(hi < arts.length){ arts[hi].classList.add('in'); setActive(hi); }
+        else { setActive(hi % arts.length); }
+        hi++;
+        if(hi === arts.length*3){ // reset and replay
+          hi = 0; inv.classList.remove('stamped');
+          arts.forEach(function(a){a.classList.remove('in','active')});
+          steps.forEach(function(s){s.classList.remove('on')});
+          heroT = setTimeout(heroTick, 900); return;
+        }
+      }
+      heroT = setTimeout(heroTick, hi <= arts.length ? 1300 : 2400);
+    }
+    heroT = setTimeout(heroTick, 700);
+    whenVisible($('#stack'), function(v){ heroVis = v; }, .1);
+  }
+
+  /* ---------- DAY TIMELINE ---------- */
+  // t = hours after 6am (0..24)
+  var DAYS = {
+    tradie: [
+      {t:.5, time:'6:30am', what:'Today\'s customers reminded', did:'4 reminders sent, 3 confirmed by reply.', kind:'SMS', to:'To: today\'s 4 customers', title:'Arrival reminder', msg:'Hi Mark, just a reminder your plumber arrives today between 8 and 10am. Reply C to confirm or R to reschedule.'},
+      {t:3.25, time:'9:15am', what:'Missed call, texted back', did:'You were on the tools. It replied before they rang someone else.', kind:'SMS', to:'To: 0412 *** 381', title:'Missed-call text back', msg:'Sorry we missed your call, we\'re on a job right now. What can we help with? I can book you in or get you a quote.'},
+      {t:6.5, time:'12:30pm', what:'Quote followed up', did:'Last week\'s unanswered quote chased, in your voice.', kind:'Email', to:'To: James P. · Re: Quote Q-211', title:'Following up your quote', msg:'Hi James, just checking you got the quote for the bathroom re-pipe. Happy to answer any questions, or I can lock in a start date.'},
+      {t:9.33, time:'3:20pm', what:'Invoice sent', did:'Job marked done on site, invoice out within a minute.', kind:'Invoice', to:'#1043 · Kelvin Grove', title:'Invoice $480, pay link included', list:['Leaking mixer tap, replace cartridge','Call-out + 1 hr labour','Due in 7 days · card or bank transfer']},
+      {t:13, time:'7:00pm', what:'Review requested', did:'Sent to today\'s happy customers only.', kind:'SMS', to:'To: 3 customers from today', title:'Review request', msg:'Thanks for having us today! If you were happy with the job, a quick Google review helps a small local business a lot.'},
+      {t:15.78, time:'9:47pm', what:'Enquiry answered, quoted, booked', did:'Replied in 38 sec. Guide quote sent, Thu 10am booked.', kind:'Calendar', to:'Ashgrove · Sarah', title:'Thu 10:00 · Hot water replacement', list:['Guide quote Q-218: $1,850','2 hrs blocked, van stock checked','Reminder set for Wed 6pm']},
+      {t:17.5, time:'11:30pm', what:'Overdue invoice chased', did:'Polite, firm, and never forgotten.', kind:'Email', to:'To: R. Chen · Invoice #1038', title:'A friendly reminder', msg:'Hi Rob, a quick reminder that invoice #1038 for $920 is now 7 days overdue. You can pay in one tap here. Thanks!'},
+      {t:23.75, time:'5:45am', what:'Morning brief sent to you', did:'One page. One decision for you.', kind:'Brief', need:true, to:'To: you', title:'Good morning. Here\'s overnight.', list:['2 enquiries answered, 1 booked ($1,850)','Invoice #1042 paid · $640','Needs you: approve a quote over $5,000']}
+    ],
+    clinic: [
+      {t:1, time:'7:00am', what:'Cancellation refilled', did:'9am slot offered to the waitlist, taken in 6 minutes.', kind:'SMS', to:'To: waitlist (3 people)', title:'Earlier appointment available', msg:'Hi Priya, a 9am appointment with Sam just opened up today. Reply YES to take it.'},
+      {t:2.5, time:'8:30am', what:'Intake forms sent', did:'New clients get forms before they arrive, auto-filed to their record.', kind:'Email', to:'To: 2 new clients today', title:'Your intake form (3 minutes)', msg:'Welcome! Please fill in this short form before your visit so we can make the most of your first session.'},
+      {t:5, time:'11:00am', what:'Rebook nudge', did:'Clients due for a follow-up get a time, not a "call us".', kind:'SMS', to:'To: Hannah K.', title:'Time for your next session?', msg:'Hi Hannah, it\'s been 4 weeks. Sam has Wed 5:15pm or Fri 8am free. Want either?'},
+      {t:7.5, time:'1:30pm', what:'Invoices and receipts', did:'Sent after each session, health fund receipt attached.', kind:'Invoice', to:'Morning sessions · 6 clients', title:'6 invoices sent, 5 paid on the spot', list:['Receipts formatted for health fund claims','1 unpaid: reminder scheduled for Friday']},
+      {t:10, time:'4:00pm', what:'Tomorrow reminded', did:'Fewer no-shows, zero phone tag.', kind:'SMS', to:'To: tomorrow\'s 18 clients', title:'Appointment reminder', msg:'Reminder: you\'re booked tomorrow at 10:30am with Sam. Reply C to confirm or R to reschedule.'},
+      {t:14.33, time:'8:20pm', what:'New client booked', did:'Enquiry after close, booked before bed.', kind:'Calendar', to:'Wed · Sam', title:'Wed 5:15pm · Initial consult', list:['Intake form sent automatically','Health fund noted on file','Reminder set for Tue 5pm']},
+      {t:16.67, time:'10:40pm', what:'Reschedule handled', did:'Client moved, freed slot back on the waitlist.', kind:'SMS', to:'To: Daniel M.', title:'You\'re rescheduled', msg:'No problem, Daniel. You\'re moved to Thu 2pm with Sam. See you then.'},
+      {t:23.75, time:'5:45am', what:'Morning brief sent to you', did:'One page. One decision for you.', kind:'Brief', need:true, to:'To: you', title:'Good morning. Here\'s overnight.', list:['1 new client booked, 1 reschedule handled','Today: 19 booked, 0 gaps','Needs you: a client asked about a report for their GP']}
+    ],
+    venue: [
+      {t:1.5, time:'7:30am', what:'League payments matched', did:'Last night\'s attendance reconciled against payments.', kind:'Report', to:'Tuesday league · 12 teams', title:'Attendance & payments', list:['46 bowlers attended','44 paid · 2 reminders queued','Nothing re-typed by hand']},
+      {t:4, time:'10:00am', what:'Deposit reminder', did:'Unpaid party holds chased before they lapse.', kind:'SMS', to:'To: Jess · Party Sat 22nd', title:'Hold your party lane', msg:'Hi Jess, just a reminder to pay the $50 deposit today to hold Lane 3 for Saturday. Here\'s the link.'},
+      {t:6.25, time:'12:15pm', what:'Group enquiry answered', did:'Corporate group of 20, options and pricing sent.', kind:'Email', to:'To: events@ (corporate)', title:'Team night for 20 people', msg:'Thanks for reaching out! For 20 people we can do bowling, arcade cards and a food platter. Here are two packages and our open dates.'},
+      {t:9.75, time:'3:45pm', what:'Weekend roster drafted', did:'A draft for you to check. Your rostering system stays the record.', kind:'Report', need:true, to:'Draft · Sat & Sun', title:'Roster draft from party bookings', list:['5 parties Saturday, 2 Sunday','Suggests 2 party hosts each day','Awaiting your OK']},
+      {t:12.5, time:'6:30pm', what:'Final numbers requested', did:'Parents confirm head count, kitchen knows by Thursday.', kind:'SMS', to:'To: Saturday\'s 5 parties', title:'Final numbers please', msg:'Hi! Your party is this Saturday. How many kids are coming? Just reply with a number.'},
+      {t:15.17, time:'9:10pm', what:'Birthday party booked', did:'Booked, deposit paid, invite template sent.', kind:'Calendar', to:'Sat 22nd · Lane 3', title:'Sat 11:00 · Birthday party, 10 kids', list:['$50 deposit received','Food for 10 queued for kitchen','Final numbers request Thursday']},
+      {t:17.92, time:'11:55pm', what:'Kitchen list prepared', did:'Tomorrow\'s party food in one list.', kind:'Report', to:'Kitchen · Wednesday', title:'3 parties · food prep', list:['30 kids\' meal boxes','3 birthday platters','1 gluten-free noted']},
+      {t:23.75, time:'5:45am', what:'Morning brief sent to you', did:'One page. One decision for you.', kind:'Brief', need:true, to:'To: you', title:'Good morning. Here\'s overnight.', list:['1 party booked ($280 + deposit)','League payments: 2 outstanding','Needs you: OK the weekend roster draft']}
+    ],
+    salon: [
+      {t:1, time:'7:00am', what:'Today reminded', did:'Every client gets a reminder, the diary stays full.', kind:'SMS', to:'To: today\'s 11 clients', title:'See you today', msg:'Hi Chloe, see you at 11am with Mia for your cut & colour. Reply R if you need to reschedule.'},
+      {t:3.67, time:'9:40am', what:'Late cancellation refilled', did:'Slot offered to the waitlist, filled in 12 minutes.', kind:'SMS', to:'To: waitlist', title:'Spot just opened', msg:'A 2pm spot with Mia just opened today. Want it? Reply YES.'},
+      {t:6.5, time:'12:30pm', what:'Stock reorder drafted', did:'Low on toner, order drafted for your OK.', kind:'Report', need:true, to:'Supplier order · draft', title:'Reorder: toner & developer', list:['6.1 toner: 2 left','Developer 20 vol: 1 left','Awaiting your OK to send']},
+      {t:8.25, time:'2:15pm', what:'Rebook nudges', did:'Regulars due back get a time with their stylist.', kind:'SMS', to:'To: 7 clients at 6 weeks', title:'Time for a refresh?', msg:'Hi Tess, it\'s been 6 weeks! Mia has Thu 4pm or Sat 10am. Want me to book one?'},
+      {t:11.5, time:'5:30pm', what:'Review requests', did:'Sent after today\'s appointments.', kind:'SMS', to:'To: today\'s clients', title:'Thanks for coming in', msg:'Thanks for visiting today! If you love your hair, a quick review would mean a lot to us.'},
+      {t:14.83, time:'8:50pm', what:'DM enquiry booked', did:'Instagram message turned into a booking.', kind:'Calendar', to:'Fri · Mia', title:'Fri 1:00pm · Cut & colour, 2.5 hrs', list:['From $210, deposit link sent','Last visit\'s 6.1 toner added to notes','Reminder set for Thu']},
+      {t:17.17, time:'11:10pm', what:'Deposit received', did:'Colour correction locked in.', kind:'Invoice', to:'Deposit · Sat booking', title:'$60 deposit received', list:['Colour correction, Sat 9am','Matched to booking automatically']},
+      {t:23.75, time:'5:45am', what:'Morning brief sent to you', did:'One page. One decision for you.', kind:'Brief', need:true, to:'To: you', title:'Good morning. Here\'s overnight.', list:['1 booking, 1 deposit ($60)','Today: fully booked','Needs you: OK the toner reorder']}
+    ]
+  };
+
+  var track = $('#track'), cursor = $('#cursor'), prog = $('#prog'), doc = $('#doc');
+  var biz = 'tradie', evs = [], sel = -1, cur = 0, playing = !reduce, visible = false, last = 0;
+  var DUR = 32000; // ms for 24h
+  function fmt(h){ var m = Math.round((h*60 + 360)) % 1440, hh = Math.floor(m/60), mm = m%60, ap = hh<12?'am':'pm', h12 = hh%12||12; return h12+':'+(mm<10?'0':'')+mm+ap; }
+
+  function render(){
+    $$('.mk', track).forEach(function(m){ m.remove(); });
+    evs = DAYS[biz];
+    evs.forEach(function(e,i){
+      var b = document.createElement('button');
+      b.type='button'; b.className='mk'+(e.need?' need':''); b.style.left=(e.t/24*100)+'%';
+      b.setAttribute('aria-label', e.time+': '+e.what); b.setAttribute('aria-pressed','false');
+      b.addEventListener('click', function(){ setPlaying(false); cur = e.t; select(i); paint(); });
+      track.appendChild(b);
+    });
+    sel = -1;
+  }
+  function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]}); }
+  function docHTML(e){
+    var h = '<div class="ah"><span><b>'+esc(e.kind)+'</b></span><span>'+esc(e.time)+'</span></div>';
+    h += '<div class="meta">'+esc(e.to)+'</div><div class="dt">'+esc(e.title)+(e.need?'<span class="needtag">Needs you</span>':'')+'</div>';
+    if(e.msg) h += e.kind==='SMS' ? '<div class="bubs"><div class="bub us">'+esc(e.msg)+'</div></div>' : '<div class="msg">'+esc(e.msg)+'</div>';
+    if(e.list) h += '<ul>'+e.list.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ul>';
+    return h;
+  }
+  function select(i){
+    if(i === sel) return;
+    sel = i; var e = evs[i];
+    $$('.mk', track).forEach(function(m,k){ m.setAttribute('aria-pressed', k===i?'true':'false'); });
+    $('#sWhen').textContent = e.time; $('#sWhat').textContent = e.what; $('#sDid').textContent = e.did;
+    if(reduce){ doc.innerHTML = docHTML(e); }
+    else { doc.classList.add('swap'); setTimeout(function(){ doc.innerHTML = docHTML(e); doc.classList.remove('swap'); }, 180); }
+  }
+  function paint(){
+    var p = cur/24*100;
+    cursor.style.left = p+'%'; prog.style.width = p+'%'; cursor.setAttribute('data-time', fmt(cur));
+    var done = 0, need = 0;
+    $$('.mk', track).forEach(function(m,k){ var past = evs[k].t <= cur + 1e-6; m.classList.toggle('past', past); if(past){ done++; if(evs[k].need) need++; } });
+    $('#tHandled').textContent = done; $('#tNeed').textContent = need;
+  }
+  function loop(ts){
+    if(playing && visible){
+      var dt = last ? ts - last : 0; cur += dt/DUR*24;
+      if(cur >= 24.4){ cur = 0; }
+      var c = Math.min(cur,24);
+      for(var i=evs.length-1;i>=0;i--){ if(evs[i].t <= c){ select(i); break; } }
+      if(c < evs[0].t && sel !== 0) select(0);
+      paint();
+    }
+    last = ts; requestAnimationFrame(loop);
+  }
+  function setPlaying(p){
+    playing = p; $('#play').setAttribute('aria-pressed', p?'true':'false');
+    $('#playTxt').textContent = p ? 'Pause' : 'Play';
+    $('#playIco').innerHTML = p ? '<rect x="2" y="1.5" width="2.6" height="9" rx=".6"/><rect x="7.4" y="1.5" width="2.6" height="9" rx=".6"/>' : '<path d="M3 1.5l7.5 4.5L3 10.5z"/>';
+    if(p && cur >= 24) cur = 0;
+  }
+  $('#play').addEventListener('click', function(){ setPlaying(!playing); });
+  $('#prev').addEventListener('click', function(){ setPlaying(false); var i = Math.max(0, sel-1); cur = evs[i].t; select(i); paint(); });
+  $('#next').addEventListener('click', function(){ setPlaying(false); var i = Math.min(evs.length-1, sel+1); cur = evs[i].t; select(i); paint(); });
+  $$('.tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      $$('.tab').forEach(function(x){ x.setAttribute('aria-selected', x===t?'true':'false'); });
+      biz = t.dataset.biz; render(); cur = 0; select(0); paint();
+    });
+  });
+  // keyboard: arrow keys between tabs
+  $('.tabs').addEventListener('keydown', function(ev){
+    var tabs = $$('.tab'), i = tabs.indexOf(document.activeElement);
+    if(i < 0) return;
+    if(ev.key==='ArrowRight'||ev.key==='ArrowLeft'){ ev.preventDefault(); var n = tabs[(i + (ev.key==='ArrowRight'?1:-1) + tabs.length) % tabs.length]; n.focus(); n.click(); }
+  });
+  render();
+  if(reduce){ cur = 24; select(evs.length-1); paint(); setPlaying(false); }
+  else { select(0); paint(); }
+  whenVisible($('.tl-card'), function(v){ visible = v; }, .3);
+  requestAnimationFrame(loop);
+
+  /* ---------- NIGHT LOG ---------- */
+  var logs = $$('#log li'), nH = $('#nHandled'), nN = $('#nNeed'), started = false;
+  function showLog(n){
+    var h=0, need=0;
+    logs.forEach(function(li,k){ var on = k < n; li.classList.toggle('on', on); if(on){ h++; if(li.classList.contains('need')) need++; } });
+    nH.textContent = h; nN.textContent = need;
+  }
+  if(reduce){ showLog(logs.length); }
+  else {
+    showLog(0);
+    whenVisible($('#log'), function(v){
+      if(!v || started) return; started = true;
+      var n = 0; (function step(){ n++; showLog(n); if(n < logs.length) setTimeout(step, 900); })();
+    }, .35);
+  }
+
+  /* ---------- CALCULATOR ---------- */
+  var hrs = $('#hrs'), rate = $('#rate');
+  function fill(r){ r.style.setProperty('--p', ((r.value-r.min)/(r.max-r.min)*100)+'%'); }
+  function calc(){
+    var h = +hrs.value, r = +rate.value, back = h*0.5*48, val = back*r;
+    $('#hrsO').textContent = h+' hrs'; $('#rateO').textContent = '$'+r;
+    $('#oHrs').textContent = Math.round(back).toLocaleString('en-AU');
+    $('#oWks').textContent = (back/38).toFixed(1);
+    $('#oVal').textContent = '$'+Math.round(val).toLocaleString('en-AU');
+    fill(hrs); fill(rate);
+  }
+  hrs.addEventListener('input', calc); rate.addEventListener('input', calc); calc();
+})();
+</script>
+</body>
+</html>
