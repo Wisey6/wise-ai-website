@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<!--
+  WISE AI · MOCKUP 4 · "CINEMATIC"
+  Direction: Apple-style scroll storytelling. The owl render is the hero; one sticky phone
+  tells a single night of a plumbing business while the story scrolls past it. Every section
+  shows the agent working: no feature lists.
+
+  Ratio system
+  - Golden ratio (φ = 1.618) for every split: 61.8 / 38.2 columns (story, proof, about).
+  - Type scale = 16px × φⁿ: 16 · 26 · 42 · 68 · 110 (+ 10 for micro labels).
+  - Spacing on an 8px grid, stepping through Fibonacci multiples: 8 · 16 · 24 · 40 · 64 · 104 · 168.
+  - Palette, fonts, glass and pill buttons are the existing Wise AI tokens from styles.css.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI · Mockup 4 · Cinematic</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Wise AI tokens */
+  --void:#0A0E11;--noir:#0D1114;--onyx:#1F2327;--graphite:#3A3F44;
+  --steel:#53585D;--silver:#989CA0;--chrome:#B8BDC2;--platinum:#E8EBED;--white:#fff;
+  --ok:#8fe3a8;
+  /* φ type scale */
+  --t-xs:10px;--t-s:13px;--t-0:16px;--t-1:26px;--t-2:42px;--t-3:68px;--t-4:110px;
+  /* 8px / Fibonacci spacing */
+  --s1:8px;--s2:16px;--s3:24px;--s5:40px;--s8:64px;--s13:104px;--s21:168px;
+  --phi-a:61.8%;--phi-b:38.2%;
+  --glass:linear-gradient(160deg,rgba(31,35,39,.6),rgba(13,17,20,.5));
+  --edge:1px solid rgba(184,189,194,.28);
+  --edge-hi:inset 0 1px 0 rgba(232,235,237,.35),inset 0 -1px 0 rgba(83,88,93,.5);
+  --ease:cubic-bezier(.16,1,.3,1);
+  --gutter:clamp(16px,4vw,40px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:#090c0f}
+body{font-family:'Inter',system-ui,sans-serif;color:var(--platinum);font-size:var(--t-0);line-height:1.6;
+  background:radial-gradient(120% 60% at 50% 0%,#12171c 0%,#0d1114 40%,#090c0f 100%);overflow-x:hidden;
+  -webkit-font-smoothing:antialiased}
+body::after{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.04;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+:focus-visible{outline:2px solid var(--white);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 var(--gutter)}
+.eyebrow{font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.26em;text-transform:uppercase;color:var(--silver)}
+.h-xl,.h-l,.h-m{font-family:'Archivo';font-weight:900;color:var(--white);letter-spacing:-.03em}
+.h-xl{font-size:clamp(42px,7.4vw,var(--t-4));line-height:.98}
+.h-l{font-size:clamp(34px,4.8vw,var(--t-3));line-height:1.02}
+.h-m{font-size:clamp(26px,3vw,var(--t-2));line-height:1.08;letter-spacing:-.02em}
+.dim{color:var(--steel)}
+.lede{color:var(--silver);font-size:clamp(16px,1.5vw,18px);line-height:1.62;max-width:34em}
+.btn{display:inline-flex;align-items:center;gap:var(--s1);border-radius:999px;padding:14px 26px;font-size:15px;font-weight:600;
+  border:1px solid transparent;transition:box-shadow .25s,border-color .25s,transform .25s var(--ease)}
+.btn-primary{background:linear-gradient(180deg,#fff,#dfe3e6);color:#0c1013;box-shadow:0 0 30px rgba(255,255,255,.16)}
+.btn-primary:hover{box-shadow:0 0 44px rgba(255,255,255,.32);transform:translateY(-1px)}
+.btn-ghost{border-color:var(--graphite);color:var(--platinum);background:var(--glass)}
+.btn-ghost:hover{border-color:var(--chrome)}
+.ctas{display:flex;gap:var(--s2);flex-wrap:wrap}
+.tag-example{display:inline-flex;align-items:center;gap:6px;font-family:'Archivo';font-size:var(--t-xs);font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--steel);border:1px solid rgba(184,189,194,.18);border-radius:999px;padding:4px 10px}
+
+/* reveal */
+[data-r]{opacity:0;transform:translateY(24px);transition:opacity 1s var(--ease),transform 1s var(--ease)}
+[data-r].in{opacity:1;transform:none}
+
+/* ---------- nav ---------- */
+nav{position:fixed;inset:0 0 auto;z-index:60;display:flex;align-items:center;justify-content:space-between;
+  padding:var(--s2) max(var(--gutter),calc(50% - 560px));transition:background .3s,border-color .3s;border-bottom:1px solid transparent}
+nav.stuck{background:rgba(9,12,15,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:rgba(184,189,194,.1)}
+nav .brand img{height:28px;width:auto}
+nav .links{display:flex;align-items:center;gap:var(--s3)}
+nav .links a.l{font-size:14px;color:var(--silver);transition:color .2s}
+nav .links a.l:hover{color:var(--white)}
+nav .cta{border:1px solid var(--graphite);border-radius:999px;padding:8px 18px;font-size:13px;font-weight:500;background:var(--glass);transition:border-color .2s}
+nav .cta:hover{border-color:var(--chrome)}
+@media(max-width:640px){nav .links a.l{display:none}}
+
+/* ---------- hero ---------- */
+.hero{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  padding:var(--s13) var(--gutter) var(--s8);position:relative;overflow:hidden}
+.hero .eyebrow{margin-bottom:var(--s3)}
+.owl-stage{position:relative;width:min(52vh,520px,86vw);aspect-ratio:1;margin:calc(var(--s5) * -1) auto calc(var(--s8) * -1);z-index:0}
+.owl-stage::before{content:"";position:absolute;inset:14%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(190,210,230,.20),rgba(140,165,190,.06) 60%,transparent);filter:blur(10px);
+  animation:breathe 7s ease-in-out infinite}
+.owl{width:100%;height:100%;object-fit:contain;mix-blend-mode:lighten;
+  -webkit-mask-image:radial-gradient(closest-side,#000 62%,transparent 98%);mask-image:radial-gradient(closest-side,#000 62%,transparent 98%);
+  animation:float 9s ease-in-out infinite;will-change:transform}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes breathe{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+.hero-copy{position:relative;z-index:1}
+.hero h1{max-width:12ch;margin:0 auto}
+.hero .lede{margin:var(--s3) auto 0;text-align:center}
+.hero .ctas{justify-content:center;margin-top:var(--s5)}
+.cue{margin-top:var(--s8);display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--steel);font-family:'Archivo';
+  font-size:var(--t-xs);letter-spacing:.26em;text-transform:uppercase}
+.cue i{width:1px;height:40px;background:linear-gradient(var(--steel),transparent);animation:drip 2.2s ease-in-out infinite}
+@keyframes drip{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* ---------- story (sticky phone) ---------- */
+.story{position:relative;padding:var(--s13) 0 var(--s8)}
+.story-head{text-align:center;max-width:760px;margin:0 auto var(--s8)}
+.story-head .h-l{margin-top:var(--s2)}
+.story-head .lede{margin:var(--s2) auto 0}
+.story-grid{display:grid;grid-template-columns:var(--phi-a) var(--phi-b);align-items:start}
+.steps{padding-right:var(--s8)}
+.st{min-height:78vh;display:flex;flex-direction:column;justify-content:center;opacity:.22;transition:opacity .6s var(--ease)}
+.st.on{opacity:1}
+.st .ts{font-family:'Archivo';font-weight:600;font-size:var(--t-s);letter-spacing:.14em;text-transform:uppercase;color:var(--chrome);
+  display:flex;align-items:center;gap:var(--s1)}
+.st .ts b{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--white);box-shadow:0 0 10px rgba(255,255,255,.7)}
+.st h3{font-family:'Archivo';font-weight:900;font-size:clamp(26px,3.4vw,var(--t-2));line-height:1.08;letter-spacing:-.02em;color:var(--white);margin-top:var(--s2);max-width:15ch}
+.st p{color:var(--silver);margin-top:var(--s2);max-width:30em}
+.st:first-child{min-height:60vh;justify-content:flex-start;padding-top:12vh}
+.st:last-child{min-height:90vh}
+
+.phone-col{position:sticky;top:calc(50vh - 300px);height:600px;display:flex;justify-content:center;gap:var(--s3)}
+.progress{display:flex;flex-direction:column;align-items:center;gap:var(--s1);padding-top:var(--s5)}
+.progress .num{font-family:'Archivo';font-weight:700;font-size:var(--t-s);color:var(--white);letter-spacing:.06em}
+.progress .num span{color:var(--steel)}
+.progress .bar{width:2px;height:180px;border-radius:2px;background:rgba(184,189,194,.14);position:relative;overflow:hidden}
+.progress .bar i{position:absolute;inset:0 0 auto;height:16.66%;background:linear-gradient(var(--white),var(--chrome));box-shadow:0 0 12px rgba(255,255,255,.6);transition:height .7s var(--ease)}
+
+.phone{position:relative;width:296px;height:600px;border-radius:46px;padding:12px;flex:none;
+  background:linear-gradient(160deg,#2a2f34,#101418 50%,#1b1f23);border:1px solid rgba(184,189,194,.32);
+  box-shadow:inset 0 1px 0 rgba(232,235,237,.4),0 40px 80px rgba(0,0,0,.6),0 0 80px rgba(150,175,200,.08)}
+.screen{position:relative;width:100%;height:100%;border-radius:36px;overflow:hidden;background:#0b0f12;isolation:isolate}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:26px;border-radius:20px;background:#000;z-index:5}
+.sbar{position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;
+  font-size:12px;font-weight:600;color:var(--platinum);z-index:4}
+.scr{position:absolute;inset:0;padding:56px 14px 16px;display:flex;flex-direction:column;opacity:0;transform:translateY(12px) scale(.985);
+  transition:opacity .55s var(--ease),transform .55s var(--ease);pointer-events:none}
+.scr.on{opacity:1;transform:none}
+.app{display:flex;align-items:center;gap:10px;padding:6px 4px 12px;border-bottom:1px solid rgba(184,189,194,.1)}
+.app .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,#fff,#cfd4d8);color:#0c1013;font-family:'Archivo';font-weight:900;font-size:12px}
+.app .nm{font-size:13px;font-weight:600;color:var(--white);line-height:1.2}
+.app .nm small{display:block;font-size:10.5px;font-weight:500;color:var(--ok)}
+.thread{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding-top:10px;overflow:hidden}
+.b{max-width:84%;font-size:12.5px;line-height:1.45;padding:9px 12px;border-radius:16px}
+.b.c{align-self:flex-start;background:#1c2125;color:var(--platinum);border-bottom-left-radius:5px}
+.b.a{align-self:flex-end;background:linear-gradient(180deg,#f4f6f7,#dde2e5);color:#0c1013;border-bottom-right-radius:5px}
+.meta{font-size:10px;color:var(--steel);text-align:center;letter-spacing:.06em}
+.chip{align-self:flex-end;font-size:10px;font-weight:600;color:var(--ok);display:flex;align-items:center;gap:4px}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.card{align-self:flex-end;width:84%;border-radius:14px;padding:12px;background:#141a1e;border:1px solid rgba(184,189,194,.2);font-size:11.5px;color:var(--silver)}
+.card .k{font-family:'Archivo';font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--steel)}
+.card .v{font-family:'Archivo';font-weight:900;font-size:22px;color:var(--white);margin-top:2px;letter-spacing:-.01em}
+.card .row{display:flex;justify-content:space-between;margin-top:6px;gap:8px}
+.card .row b{color:var(--platinum);font-weight:600}
+/* lock screen notification */
+.lock{justify-content:flex-start;align-items:center;text-align:center;
+  background:radial-gradient(90% 60% at 50% 20%,rgba(150,170,190,.16),transparent 70%)}
+.lock .clock{font-family:'Archivo';font-weight:700;font-size:62px;color:var(--white);letter-spacing:-.02em;margin-top:22px;line-height:1}
+.lock .date{font-size:12px;color:var(--silver);margin-top:6px}
+.notif{margin-top:auto;width:100%;text-align:left;border-radius:18px;padding:12px;background:rgba(40,46,52,.72);backdrop-filter:blur(10px);
+  border:1px solid rgba(184,189,194,.18);font-size:12px;color:var(--platinum)}
+.notif + .notif{margin-top:8px}
+.notif .top{display:flex;justify-content:space-between;font-size:10.5px;color:var(--silver);margin-bottom:4px}
+.notif .top b{color:var(--white);font-weight:600}
+/* calendar */
+.cal-h{display:flex;justify-content:space-between;align-items:baseline;padding:4px 4px 10px}
+.cal-h b{font-family:'Archivo';font-size:20px;color:var(--white)}
+.cal-h span{font-size:11px;color:var(--silver)}
+.cal{flex:1;position:relative;border-top:1px solid rgba(184,189,194,.1)}
+.slot{display:flex;gap:10px;height:38px;border-bottom:1px solid rgba(184,189,194,.07);font-size:10px;color:var(--steel);padding-top:3px}
+.ev{position:absolute;left:44px;right:4px;border-radius:10px;padding:7px 10px;font-size:11px;line-height:1.35}
+.ev.old{background:#1a1f23;color:var(--silver);border:1px solid rgba(184,189,194,.12)}
+.ev.new{background:linear-gradient(180deg,#f4f6f7,#dde2e5);color:#0c1013;box-shadow:0 0 24px rgba(255,255,255,.18);font-weight:600}
+.scr.on .ev.new{animation:pop .7s .25s var(--ease) both}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.ev.new small{display:block;font-weight:500;color:#3a3f44}
+.done{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.done div{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--platinum)}
+.done svg{width:14px;height:14px;stroke:var(--ok);stroke-width:2.4;fill:none;flex:none}
+/* ledger */
+.led{flex:1;display:flex;flex-direction:column;gap:8px;padding-top:10px}
+.li{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:#12171b;border:1px solid rgba(184,189,194,.1);font-size:11.5px}
+.li .l b{display:block;color:var(--white);font-weight:600;font-size:12px}
+.li .l span{color:var(--steel);font-size:10.5px}
+.li .r{text-align:right;font-family:'Archivo';font-weight:700;color:var(--white)}
+.li .r small{display:block;font-family:'Inter';font-weight:600;font-size:10px;color:var(--ok)}
+.li.hit{border-color:rgba(143,227,168,.45);box-shadow:0 0 0 1px rgba(143,227,168,.15),0 0 24px rgba(143,227,168,.08)}
+.match{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--ok);font-weight:600}
+/* brief */
+.brief{flex:1;display:flex;flex-direction:column;gap:10px;padding-top:6px}
+.brief .hi{font-family:'Archivo';font-weight:900;font-size:20px;color:var(--white);line-height:1.15;letter-spacing:-.01em}
+.stats4{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.stats4 div{border-radius:12px;background:#12171b;border:1px solid rgba(184,189,194,.1);padding:8px 10px}
+.stats4 b{display:block;font-family:'Archivo';font-weight:900;font-size:20px;color:var(--white);line-height:1.1}
+.stats4 span{font-size:10px;color:var(--silver)}
+.need{margin-top:auto;border-radius:14px;padding:12px;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(232,235,237,.4);font-size:11.5px;color:var(--platinum)}
+.need .k{font-family:'Archivo';font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--white)}
+.need p{margin-top:4px;line-height:1.45}
+.need .bt{display:flex;gap:6px;margin-top:10px}
+.need .bt span{flex:1;text-align:center;padding:7px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--graphite)}
+.need .bt span:first-child{background:#fff;color:#0c1013;border-color:#fff}
+
+/* ---------- verticals ---------- */
+.sec{padding:var(--s13) 0}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s5);flex-wrap:wrap;margin-bottom:var(--s8)}
+.sec-head .h-l{margin-top:var(--s2);max-width:13ch}
+.sec-head .lede{max-width:26em}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
+.vc{border-radius:28px;padding:var(--s5);background:var(--glass);border:var(--edge);box-shadow:var(--edge-hi),0 18px 40px rgba(0,0,0,.45);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;gap:var(--s3);transition:transform .45s var(--ease),border-color .45s}
+.vc:hover{transform:translateY(-4px);border-color:rgba(232,235,237,.45)}
+.vc .who{display:flex;justify-content:space-between;align-items:center}
+.vc .who .eyebrow{color:var(--chrome)}
+.vc .who .task{font-size:var(--t-s);color:var(--silver)}
+.vc h3{font-family:'Archivo';font-weight:900;font-size:var(--t-1);line-height:1.15;color:var(--white);letter-spacing:-.015em}
+.ba{display:grid;gap:var(--s2)}
+.ba .lbl{display:flex;justify-content:space-between;font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);margin-bottom:6px}
+.ba .lbl b{color:var(--silver);font-weight:600;letter-spacing:.06em}
+.ba .after .lbl,.ba .after .lbl b{color:var(--white)}
+.track{height:8px;border-radius:8px;background:rgba(184,189,194,.08);overflow:hidden}
+.track i{display:block;height:100%;border-radius:8px;width:0;transition:width 1.4s var(--ease)}
+.before .track i{background:repeating-linear-gradient(90deg,var(--graphite) 0 14px,#2b3035 14px 18px)}
+.after .track i{background:linear-gradient(90deg,#fff,var(--chrome));box-shadow:0 0 14px rgba(255,255,255,.5)}
+.ba p{font-size:14px;color:var(--silver);margin-top:8px;line-height:1.5}
+.before p{text-decoration:line-through;text-decoration-color:rgba(152,156,160,.5)}
+.after p{color:var(--platinum)}
+.vfoot{text-align:center;margin-top:var(--s5);color:var(--steel);font-size:var(--t-s)}
+
+/* ---------- numbers ---------- */
+.numbers{position:relative;padding:var(--s21) 0;text-align:center;overflow:hidden;
+  border-top:1px solid rgba(184,189,194,.08);border-bottom:1px solid rgba(184,189,194,.08);
+  background:radial-gradient(60% 70% at 50% 50%,rgba(150,170,190,.10),transparent 70%),#080b0d}
+.numbers .h-m{margin-top:var(--s2)}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:var(--s5);margin:var(--s8) auto var(--s5);max-width:1040px}
+.big .n{font-family:'Archivo';font-weight:900;font-size:clamp(64px,11vw,var(--s21));line-height:.9;letter-spacing:-.05em;color:var(--white);
+  font-variant-numeric:tabular-nums;text-shadow:0 0 60px rgba(255,255,255,.12)}
+.big .u{font-family:'Archivo';font-size:var(--t-s);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver);margin-top:var(--s2)}
+.sliders{display:grid;grid-template-columns:1fr 1fr;gap:var(--s5);max-width:720px;margin:0 auto;text-align:left}
+.sl label{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--silver);margin-bottom:var(--s1)}
+.sl label output{font-family:'Archivo';font-weight:700;font-size:var(--t-0);color:var(--white)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--white) var(--p,30%),rgba(184,189,194,.18) var(--p,30%))}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--white) var(--p,30%),rgba(184,189,194,.18) var(--p,30%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;margin-top:-9px;background:#fff;box-shadow:0 0 18px rgba(255,255,255,.5)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 18px rgba(255,255,255,.5)}
+.assume{margin-top:var(--s5);font-size:var(--t-s);color:var(--steel)}
+.numbers .ctas{justify-content:center;margin-top:var(--s5)}
+
+/* ---------- proof ---------- */
+.proof-grid{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s3)}
+.pc{border-radius:28px;overflow:hidden;background:var(--glass);border:var(--edge);box-shadow:var(--edge-hi),0 18px 40px rgba(0,0,0,.45);
+  display:flex;flex-direction:column;transition:transform .45s var(--ease),border-color .45s}
+.pc:hover{transform:translateY(-4px);border-color:rgba(232,235,237,.45)}
+.pc .media{position:relative;aspect-ratio:1.618;overflow:hidden;background:#0b0f12;border-bottom:1px solid rgba(184,189,194,.12)}
+.pc .media img{width:100%;height:100%;object-fit:cover;object-position:top center;transition:transform 1.2s var(--ease)}
+.pc:hover .media img{transform:scale(1.03)}
+.pc .body{padding:var(--s3) var(--s5) var(--s5)}
+.pc .k{font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver)}
+.pc h3{font-family:'Archivo';font-weight:900;font-size:var(--t-1);color:var(--white);letter-spacing:-.015em;line-height:1.15;margin-top:var(--s1)}
+.pc p{color:var(--silver);font-size:15px;margin-top:var(--s1)}
+.pc .go{display:inline-flex;align-items:center;gap:6px;margin-top:var(--s2);font-size:14px;font-weight:600;color:var(--platinum)}
+.pc .go svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;transition:transform .3s var(--ease)}
+.pc:hover .go svg{transform:translate(2px,-2px)}
+.case{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.618fr;gap:var(--s5);align-items:center;padding:var(--s5)}
+.case .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.case .stat{border-radius:18px;padding:var(--s3);background:rgba(10,14,17,.5);border:1px solid rgba(184,189,194,.16)}
+.case .stat b{display:block;font-family:'Archivo';font-weight:900;font-size:var(--t-2);color:var(--white);line-height:1;letter-spacing:-.03em}
+.case .stat span{display:block;font-size:13px;color:var(--silver);margin-top:var(--s1);line-height:1.45}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--chrome);margin-top:var(--s2)}
+.status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--white);box-shadow:0 0 8px rgba(255,255,255,.7)}
+
+/* ---------- about ---------- */
+.about{display:grid;grid-template-columns:var(--phi-b) var(--phi-a);gap:0;align-items:center}
+.about figure{padding-right:var(--s8)}
+.about img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:28px;border:1px solid rgba(184,189,194,.3);
+  box-shadow:0 24px 50px rgba(0,0,0,.55),0 0 40px rgba(150,175,200,.08);filter:grayscale(.15)}
+.about .h-l{margin-top:var(--s2)}
+.about p{color:var(--silver);font-size:17px;margin-top:var(--s3);max-width:32em}
+.about p b{color:var(--platinum);font-weight:600}
+.facts{display:flex;gap:var(--s1);flex-wrap:wrap;margin-top:var(--s3)}
+.facts span{font-family:'Archivo';font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--chrome);border:1px solid rgba(184,189,194,.22);border-radius:999px;padding:6px 14px;background:var(--glass)}
+
+/* ---------- close ---------- */
+.close{text-align:center;padding:var(--s21) var(--gutter) var(--s13);position:relative}
+.close::before{content:"";position:absolute;left:50%;top:var(--s13);width:min(680px,90vw);aspect-ratio:1.618;transform:translateX(-50%);
+  background:radial-gradient(closest-side,rgba(170,190,210,.12),transparent);pointer-events:none;z-index:-1}
+.close .h-xl{max-width:14ch;margin:var(--s2) auto 0;font-size:clamp(40px,6.4vw,92px)}
+.close .lede{margin:var(--s3) auto 0}
+.close .ctas{justify-content:center;margin-top:var(--s5)}
+.close .mail{margin-top:var(--s3);font-size:14px;color:var(--steel)}
+.close .mail a{color:var(--silver);font-weight:600}
+.close .mail a:hover{color:var(--white)}
+footer{border-top:1px solid rgba(184,189,194,.08);padding:var(--s5) var(--gutter) var(--s8);text-align:center;color:var(--steel);font-size:12.5px;letter-spacing:.03em}
+footer .fl{display:flex;gap:var(--s3);justify-content:center;flex-wrap:wrap;margin-bottom:var(--s2)}
+footer .fl a{color:var(--silver)}
+footer .fl a:hover{color:var(--white)}
+footer b{color:var(--silver);font-weight:600}
+
+.mock-tag{position:fixed;left:16px;bottom:16px;z-index:90;font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:#0c1013;background:rgba(255,255,255,.9);border-radius:999px;padding:6px 12px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+
+/* ---------- responsive ---------- */
+@media(max-width:1080px){
+  .phone-col .progress{display:none}
+  .steps{padding-right:var(--s5)}
+}
+@media(max-width:860px){
+  .vgrid{grid-template-columns:1fr}
+  .proof-grid{grid-template-columns:1fr}
+  .case{grid-template-columns:1fr;gap:var(--s3)}
+  .about{grid-template-columns:1fr;text-align:center}
+  .about figure{padding:0;max-width:280px;margin:0 auto var(--s5)}
+  .about p{margin-left:auto;margin-right:auto}
+  .facts{justify-content:center}
+  .sec-head{flex-direction:column;align-items:flex-start;gap:var(--s2)}
+}
+@media(max-width:760px){
+  /* story: phone sticks to the top, steps scroll underneath */
+  .story{padding-top:var(--s8)}
+  .story-head{margin-bottom:var(--s5);text-align:left;padding:0 var(--gutter)}
+  .story-head .lede{margin-left:0}
+  .story-grid{display:flex;flex-direction:column-reverse}
+  .phone-col{top:56px;height:auto;z-index:3;padding:var(--s1) 0 var(--s3);
+    background:linear-gradient(#0b0f12 82%,rgba(11,15,18,0));}
+  .phone{width:232px;height:400px;border-radius:38px;padding:9px}
+  .screen{border-radius:30px}
+  .lock .clock{font-size:46px;margin-top:6px}
+  .scr{padding:48px 12px 12px}
+  .sbar{height:40px;font-size:11px;padding:0 20px}
+  .notch{width:74px;height:22px;top:8px}
+  .steps{padding:0}
+  .st,.st:first-child{min-height:62vh;justify-content:flex-start;padding-top:var(--s3);text-align:left}
+  .st:last-child{min-height:72vh}
+  .slot{height:30px}
+  .brief .hi{font-size:16px}
+  .stats4 b{font-size:16px}
+  .b{font-size:11.5px;padding:7px 10px}
+  .card .v{font-size:18px}
+  .card{padding:9px}
+  .need{padding:9px}
+  .need .bt{margin-top:6px}
+}
+@media(max-width:600px){
+  .big{grid-template-columns:1fr;gap:var(--s5)}
+  .sliders{grid-template-columns:1fr;gap:var(--s3)}
+  .vc{padding:var(--s3)}
+  .case{padding:var(--s3)}
+  .case .stats{grid-template-columns:1fr}
+  .pc .body{padding:var(--s3)}
+  .numbers{padding:var(--s13) 0}
+  .owl-stage{margin-bottom:calc(var(--s5) * -1)}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  [data-r]{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="../index.html" class="brand" aria-label="Wise AI home"><img src="../logo.svg" alt="Wise AI"></a>
+  <div class="links">
+    <a class="l" href="#story">See it work</a>
+    <a class="l" href="../agents.html">AI Agents</a>
+    <a class="l" href="../work.html">Work</a>
+    <a class="cta" href="../quiz.html">Free audit</a>
+  </div>
+</nav>
+
+<main>
+  <!-- ===== HERO ===== -->
+  <section class="hero" id="top">
+    <span class="eyebrow" data-r>Brisbane · local, embedded, accountable</span>
+    <div class="owl-stage" data-r aria-hidden="true">
+      <img class="owl" id="owl" src="../hero-owl.png" alt="" width="1024" height="1024" decoding="async">
+    </div>
+    <div class="hero-copy">
+      <h1 class="h-xl" data-r>It's 9:47pm. <span class="dim">Your business is still working.</span></h1>
+      <p class="lede" data-r>A custom AI agent, on your own accounts, that answers, quotes, books and chases while you're off the clock. Scroll to watch one night.</p>
+      <div class="ctas" data-r>
+        <a class="btn btn-primary" href="../quiz.html">Start your free 2-minute audit</a>
+        <a class="btn btn-ghost" href="#story">Watch it work</a>
+      </div>
+    </div>
+    <a class="cue" href="#story" aria-label="Scroll to the story"><span>Scroll</span><i></i></a>
+  </section>
+
+  <!-- ===== STORY ===== -->
+  <section class="story" id="story" aria-labelledby="story-h">
+    <div class="story-head wrap" data-r>
+      <span class="tag-example">Example · a plumbing business</span>
+      <h2 class="h-l" id="story-h">One night. <span class="dim">Zero minutes of yours.</span></h2>
+    </div>
+    <div class="wrap">
+      <div class="story-grid">
+        <div class="steps" id="steps">
+          <article class="st" data-step="0">
+            <div class="ts"><b></b>9:47 pm</div>
+            <h3>A customer needs help. You're on the couch.</h3>
+            <p>Their hot water system is leaking. They message your website, expecting to wait until morning.</p>
+          </article>
+          <article class="st" data-step="1">
+            <div class="ts"><b></b>9:47 pm · 38 seconds later</div>
+            <h3>Your agent replies, and asks the right questions.</h3>
+            <p>Gas or electric? How old? The details you'd need, captured before you'd have seen the message.</p>
+          </article>
+          <article class="st" data-step="2">
+            <div class="ts"><b></b>9:49 pm</div>
+            <h3>A guide quote goes out: $1,850, supplied and installed.</h3>
+            <p>Built from your price list and your rules, in your voice. Anything unusual waits for you.</p>
+          </article>
+          <article class="st" data-step="3">
+            <div class="ts"><b></b>9:51 pm</div>
+            <h3>Booked for Thursday 10am. Your calendar already knows.</h3>
+            <p>Confirmation sent, reminder scheduled, job details on the booking. No double entry.</p>
+          </article>
+          <article class="st" data-step="4">
+            <div class="ts"><b></b>6:02 am</div>
+            <h3>Last week's invoice is paid, and matched in your accounts.</h3>
+            <p>The payment lands and gets reconciled against the right invoice before you've had coffee.</p>
+          </article>
+          <article class="st" data-step="5">
+            <div class="ts"><b></b>7:00 am</div>
+            <h3>You wake up to one brief, and one decision.</h3>
+            <p>Everything routine is done. The one call that genuinely needs a human is waiting for you.</p>
+          </article>
+        </div>
+
+        <div class="phone-col">
+          <div class="phone" role="img" aria-label="Phone showing the agent handling the current step of the story">
+            <div class="screen">
+              <div class="notch"></div>
+              <div class="sbar"><span id="clk">9:47</span><span>●●● 5G</span></div>
+
+              <!-- 0 · lock screen enquiry -->
+              <div class="scr lock on" data-scr="0">
+                <div class="clock">9:47</div>
+                <div class="date">Tuesday · Brisbane</div>
+                <div class="notif">
+                  <div class="top"><b>Website chat</b><span>now</span></div>
+                  New enquiry: "Hi, my hot water system's leaking. Can someone come this week? I'm in Ashgrove."
+                </div>
+              </div>
+
+              <!-- 1 · chat reply -->
+              <div class="scr" data-scr="1">
+                <div class="app"><div class="av">W</div><div class="nm">Your business<small>Agent · replying 24/7</small></div></div>
+                <div class="thread">
+                  <div class="meta">9:47 pm</div>
+                  <div class="b c">Hi, my hot water system's leaking. Can someone come this week? I'm in Ashgrove.</div>
+                  <div class="b a">Sorry to hear that! We can get someone to you this week. Is it gas or electric, and roughly how old?</div>
+                  <div class="chip">Replied in 38 sec</div>
+                  <div class="b c">Electric, about 12 years old.</div>
+                </div>
+              </div>
+
+              <!-- 2 · quote -->
+              <div class="scr" data-scr="2">
+                <div class="app"><div class="av">W</div><div class="nm">Your business<small>Agent · replying 24/7</small></div></div>
+                <div class="thread">
+                  <div class="b c">Electric, about 12 years old.</div>
+                  <div class="b a">At that age a replacement is likely. Here's a guide price:</div>
+                  <div class="card">
+                    <div class="k">Guide quote · Q-218</div>
+                    <div class="v">$1,850</div>
+                    <div class="row"><span>250L electric, supply + install</span></div>
+                    <div class="row"><span>Old unit removal</span><b>Included</b></div>
+                  </div>
+                  <div class="b a">I've got Thu 10am or Fri 2pm. Which suits?</div>
+                  <div class="b c">Thursday works.</div>
+                </div>
+              </div>
+
+              <!-- 3 · calendar -->
+              <div class="scr" data-scr="3">
+                <div class="cal-h"><b>Thursday</b><span>Calendar</span></div>
+                <div class="cal">
+                  <div class="slot">7am</div><div class="slot">8am</div><div class="slot">9am</div><div class="slot">10am</div>
+                  <div class="slot">11am</div><div class="slot">12pm</div><div class="slot">1pm</div>
+                  <div class="ev old" style="top:4px;height:56px">Blocked drain<br><span style="font-size:10px">Paddington</span></div>
+                  <div class="ev new" id="evNew" style="top:118px;height:70px">10:00 · HWS replacement<small>Ashgrove · Q-218 · $1,850</small></div>
+                </div>
+                <div class="done">
+                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Confirmation sent to customer</div>
+                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Reminder set for Wed 6pm</div>
+                </div>
+              </div>
+
+              <!-- 4 · accounts -->
+              <div class="scr" data-scr="4">
+                <div class="cal-h"><b>Accounts</b><span>Bank feed</span></div>
+                <div class="led">
+                  <div class="li hit"><div class="l"><b>Invoice #1042</b><span>Kitchen tap & mixer · last Tue</span></div><div class="r">$640<small>Paid 6:02 am</small></div></div>
+                  <div class="match"><svg viewBox="0 0 24 24" width="12" height="12" stroke="#8fe3a8" stroke-width="2.4" fill="none"><path d="M5 13l4 4L19 7"/></svg>Matched to bank deposit · reconciled</div>
+                  <div class="li"><div class="l"><b>Invoice #1039</b><span>Reminder sent yesterday</span></div><div class="r">$410<small style="color:var(--silver)">Due Fri</small></div></div>
+                  <div class="li"><div class="l"><b>Quote Q-218</b><span>HWS replacement · Ashgrove</span></div><div class="r">$1,850<small>Booked</small></div></div>
+                </div>
+              </div>
+
+              <!-- 5 · brief -->
+              <div class="scr" data-scr="5">
+                <div class="app"><div class="av">W</div><div class="nm">Morning brief<small>7:00 am · for you</small></div></div>
+                <div class="brief">
+                  <div class="hi">Morning. Here's last night.</div>
+                  <div class="stats4">
+                    <div><b>4</b><span>enquiries answered</span></div>
+                    <div><b>2</b><span>jobs booked</span></div>
+                    <div><b>$640</b><span>paid & matched</span></div>
+                    <div><b>0</b><span>minutes of yours</span></div>
+                  </div>
+                  <div class="need">
+                    <div class="k">1 thing needs your call</div>
+                    <p>Quote Q-221 is $6,400, over your auto-send limit. Approve?</p>
+                    <div class="bt"><span>Approve</span><span>Review</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="progress" aria-hidden="true">
+            <div class="num" id="pnum">01<span> / 06</span></div>
+            <div class="bar"><i id="pbar"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== VERTICALS ===== -->
+  <section class="sec" id="yours">
+    <div class="wrap">
+      <div class="sec-head">
+        <div data-r>
+          <span class="eyebrow">Same agent, your business</span>
+          <h2 class="h-l">Your slowest job, <span class="dim">made instant.</span></h2>
+        </div>
+        <p class="lede" data-r>Whatever you run, there's a job that eats the week. Here's what that one job looks like before and after.</p>
+      </div>
+      <div class="vgrid">
+        <article class="vc" data-r>
+          <div class="who"><span class="eyebrow">Tradie</span><span class="task">Quote follow-up</span></div>
+          <h3>Every quote chased, without you remembering.</h3>
+          <div class="ba">
+            <div class="before"><div class="lbl">Before <b>~3 days</b></div><div class="track"><i data-w="100"></i></div><p>Quotes written at 10pm, chased when you remember.</p></div>
+            <div class="after"><div class="lbl">After <b>2 min</b></div><div class="track"><i data-w="6"></i></div><p>Out the same night, followed up on day 3 and day 7 automatically.</p></div>
+          </div>
+        </article>
+        <article class="vc" data-r>
+          <div class="who"><span class="eyebrow">Clinic</span><span class="task">New-client booking</span></div>
+          <h3>Booked and intake done before they arrive.</h3>
+          <div class="ba">
+            <div class="before"><div class="lbl">Before <b>~2 days</b></div><div class="track"><i data-w="88"></i></div><p>Phone tag, then a paper form at the front desk.</p></div>
+            <div class="after"><div class="lbl">After <b>3 min</b></div><div class="track"><i data-w="7"></i></div><p>Booked online, intake form filed straight to their record.</p></div>
+          </div>
+        </article>
+        <article class="vc" data-r>
+          <div class="who"><span class="eyebrow">Venue</span><span class="task">Party booking</span></div>
+          <h3>Party booked and deposit paid in one go.</h3>
+          <div class="ba">
+            <div class="before"><div class="lbl">Before <b>3 calls</b></div><div class="track"><i data-w="72"></i></div><p>Back-and-forth on the phone, deposit chased by hand.</p></div>
+            <div class="after"><div class="lbl">After <b>2 min</b></div><div class="track"><i data-w="5"></i></div><p>Time picked, lane held, deposit paid, reminder scheduled.</p></div>
+          </div>
+        </article>
+        <article class="vc" data-r>
+          <div class="who"><span class="eyebrow">Salon</span><span class="task">Rebooking regulars</span></div>
+          <h3>Regulars rebooked before they drift.</h3>
+          <div class="ba">
+            <div class="before"><div class="lbl">Before <b>never</b></div><div class="track"><i data-w="100"></i></div><p>Nobody has time to nudge, so regulars quietly lapse.</p></div>
+            <div class="after"><div class="lbl">After <b>automatic</b></div><div class="track"><i data-w="9"></i></div><p>A personal nudge six weeks after every visit, booked in-chat.</p></div>
+          </div>
+        </article>
+      </div>
+      <p class="vfoot">Examples of typical jobs. Your audit finds the real one in your business.</p>
+    </div>
+  </section>
+
+  <!-- ===== NUMBERS ===== -->
+  <section class="numbers" id="numbers" aria-labelledby="num-h">
+    <div class="wrap">
+      <span class="eyebrow" data-r>What it's worth</span>
+      <h2 class="h-m" id="num-h" data-r>Move the sliders. <span class="dim">Watch the year change.</span></h2>
+      <div class="big" data-r aria-live="polite">
+        <div><div class="n" id="outH">240</div><div class="u">hours back a year</div></div>
+        <div><div class="n" id="outD">$19,200</div><div class="u">of your time, a year</div></div>
+      </div>
+      <div class="sliders" data-r>
+        <div class="sl">
+          <label for="hrs">Admin hours a week <output id="hrsO" for="hrs">10 hrs</output></label>
+          <input type="range" id="hrs" min="1" max="40" value="10">
+        </div>
+        <div class="sl">
+          <label for="rate">What an hour of yours is worth <output id="rateO" for="rate">$80</output></label>
+          <input type="range" id="rate" min="30" max="250" step="5" value="80">
+        </div>
+      </div>
+      <p class="assume" data-r>Conservative: assumes an agent takes half your admin, across 48 working weeks.</p>
+      <div class="ctas" data-r><a class="btn btn-primary" href="../quiz.html">Find your real number, free</a></div>
+    </div>
+  </section>
+
+  <!-- ===== PROOF ===== -->
+  <section class="sec" id="proof">
+    <div class="wrap">
+      <div class="sec-head">
+        <div data-r>
+          <span class="eyebrow">Already running</span>
+          <h2 class="h-l">Real builds. <span class="dim">Real businesses.</span></h2>
+        </div>
+        <a class="btn btn-ghost" href="../work.html" data-r>See all work</a>
+      </div>
+      <div class="proof-grid">
+        <a class="pc" href="https://alcp.com.au" target="_blank" rel="noopener" data-r>
+          <div class="media"><img src="../work/img/alcp.jpg" alt="Abundant Life Clinical Psychology website" loading="lazy"></div>
+          <div class="body">
+            <span class="k">Website · design &amp; build</span>
+            <h3>Abundant Life Clinical Psychology</h3>
+            <p>A calm, credible site that helps new clients find the right service and enquire.</p>
+            <span class="go">alcp.com.au <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+          </div>
+        </a>
+        <a class="pc" href="https://neotype.au" target="_blank" rel="noopener" data-r>
+          <div class="media"><img src="../work/img/neotype-customizer.png" alt="Neotype live sticker customizer" loading="lazy"></div>
+          <div class="body">
+            <span class="k">Live product tool</span>
+            <h3>Neotype sticker studio</h3>
+            <p>Live pricing and proof preview on every change, then real checkout.</p>
+            <span class="go">neotype.au <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+          </div>
+        </a>
+        <div class="pc case" data-r>
+          <div>
+            <span class="k" style="font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver)">Automation · family entertainment venue, QLD</span>
+            <h3 style="font-family:'Archivo';font-weight:900;font-size:var(--t-1);color:var(--white);line-height:1.15;margin-top:var(--s1);letter-spacing:-.015em">From hands-on owners to a venue that increasingly runs itself.</h3>
+            <span class="status">Audit done · automations rolling out</span>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>6+</b><span>repetitive workflows mapped as automatable</span></div>
+            <div class="stat"><b>2&nbsp;days</b><span>a week: the owners' three-year goal</span></div>
+            <div class="stat"><b>1st</b><span>Wise AI client to go from audit to retainer</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ABOUT ===== -->
+  <section class="sec" id="about" style="padding-top:var(--s8)">
+    <div class="wrap about">
+      <figure data-r><img src="../about-tyler.jpg" alt="Tyler Wise, founder of Wise AI" loading="lazy" width="1000" height="1000"></figure>
+      <div>
+        <span class="eyebrow" data-r>Who builds it</span>
+        <h2 class="h-l" data-r>Tyler Wise. <span class="dim">Brisbane.</span></h2>
+        <p data-r>I build every agent myself, <b>on your own accounts</b>, and stay accountable for it after it's live. Accurate by design, with a human in the loop where it matters.</p>
+        <p data-r>You keep running the business. I make the technology earn its keep.</p>
+        <div class="facts" data-r><span>Local</span><span>Embedded</span><span>Accountable</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CLOSE ===== -->
+  <section class="close" id="contact">
+    <span class="eyebrow" data-r>Get started</span>
+    <h2 class="h-xl" data-r>Tonight could be <span class="dim">handled.</span></h2>
+    <p class="lede" data-r>Take the free 2-minute audit. You'll see where an agent pays off first in your business, and what I'd build.</p>
+    <div class="ctas" data-r>
+      <a class="btn btn-primary" href="../quiz.html">Start your free audit</a>
+      <a class="btn btn-ghost" href="mailto:tyler@wise-ai.au?subject=Wise%20AI%20enquiry">Email Tyler</a>
+    </div>
+    <p class="mail" data-r><a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a> · Brisbane, QLD</p>
+  </section>
+</main>
+
+<footer>
+  <div class="fl"><a href="../index.html">Home</a><a href="../agents.html">AI Agents</a><a href="../work.html">Work</a><a href="../quiz.html">Free audit</a><a href="../privacy.html">Privacy</a><a href="../terms.html">Terms</a></div>
+  Wise AI · Brisbane, Australia · <b>local, embedded, accountable</b><br>
+  &copy; 2026 Wise AI · ABN 74 653 249 265
+</footer>
+
+<div class="mock-tag">Mockup 4 · Cinematic</div>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // reveals
+  var rs = [].slice.call(document.querySelectorAll('[data-r]'));
+  if(reduce || !('IntersectionObserver' in window)){ rs.forEach(function(e){e.classList.add('in')}); }
+  else{
+    var ro = new IntersectionObserver(function(es){ es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var sib=[].filter.call(e.target.parentNode.children,function(c){return c.hasAttribute('data-r')});
+      e.target.style.transitionDelay = Math.max(0,sib.indexOf(e.target))*0.08+'s';
+      e.target.classList.add('in'); ro.unobserve(e.target);
+    })},{threshold:.15,rootMargin:'0px 0px -6% 0px'});
+    rs.forEach(function(e){ro.observe(e)});
+  }
+
+  // nav + owl parallax
+  var nav=document.getElementById('nav'), owl=document.querySelector('.owl-stage'), ticking=false;
+  function onScroll(){
+    nav.classList.toggle('stuck', window.scrollY>8);
+    if(!reduce && owl){
+      var y=Math.min(window.scrollY, window.innerHeight);
+      owl.style.transform='translateY('+(y*0.28)+'px) scale('+(1-y/window.innerHeight*0.12)+')';
+      owl.style.opacity = String(1 - y/window.innerHeight*0.9);
+    }
+    ticking=false;
+  }
+  window.addEventListener('scroll',function(){ if(!ticking){ticking=true;requestAnimationFrame(onScroll);} },{passive:true});
+  onScroll();
+
+  // sticky story
+  var steps=[].slice.call(document.querySelectorAll('.st')),
+      scrs=[].slice.call(document.querySelectorAll('.scr')),
+      clk=document.getElementById('clk'), pnum=document.getElementById('pnum'), pbar=document.getElementById('pbar'),
+      times=['9:47','9:47','9:49','9:51','6:02','7:00'], cur=-1;
+  function show(i){
+    if(i===cur) return; cur=i;
+    steps.forEach(function(s,j){s.classList.toggle('on',j===i)});
+    scrs.forEach(function(s,j){s.classList.toggle('on',j===i)});
+    clk.textContent=times[i];
+    pnum.innerHTML='0'+(i+1)+'<span> / 06</span>';
+    pbar.style.height=((i+1)/6*100)+'%';
+  }
+  show(0);
+  var mobile=window.matchMedia('(max-width:760px)');
+  function pick(){
+    // the active step is the last one whose top has crossed the focus line
+    var line = mobile.matches ? window.innerHeight*0.78 : window.innerHeight*0.55, idx=0;
+    steps.forEach(function(s,j){ if(s.getBoundingClientRect().top < line) idx=j; });
+    show(idx);
+  }
+  window.addEventListener('scroll',function(){requestAnimationFrame(pick)},{passive:true});
+  window.addEventListener('resize',pick); pick();
+
+  // before/after bars
+  var bars=[].slice.call(document.querySelectorAll('.track i'));
+  function fill(b){b.style.width=b.getAttribute('data-w')+'%'}
+  if(reduce || !('IntersectionObserver' in window)) bars.forEach(fill);
+  else{
+    var bo=new IntersectionObserver(function(es){es.forEach(function(e){
+      if(!e.isIntersecting) return; setTimeout(function(){fill(e.target)},250); bo.unobserve(e.target);
+    })},{threshold:.6});
+    bars.forEach(function(b){bo.observe(b)});
+  }
+
+  // calculator
+  var hrs=document.getElementById('hrs'), rate=document.getElementById('rate'),
+      oH=document.getElementById('outH'), oD=document.getElementById('outD'),
+      hO=document.getElementById('hrsO'), rO=document.getElementById('rateO');
+  function pct(el){return ((el.value-el.min)/(el.max-el.min)*100)+'%'}
+  function calc(){
+    var h=+hrs.value, r=+rate.value, back=Math.round(h*0.5*48), val=back*r;
+    hO.textContent=h+(h===1?' hr':' hrs'); rO.textContent='$'+r;
+    oH.textContent=back.toLocaleString('en-AU');
+    oD.textContent='$'+val.toLocaleString('en-AU');
+    hrs.style.setProperty('--p',pct(hrs)); rate.style.setProperty('--p',pct(rate));
+  }
+  hrs.addEventListener('input',calc); rate.addEventListener('input',calc); calc();
+})();
+</script>
+</body>
+</html>
