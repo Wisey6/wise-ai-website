@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <!--
-  WISE AI · MOCKUP 4 · "CINEMATIC"
-  Direction: Apple-style scroll storytelling. The owl render is the hero; one sticky phone
-  tells a single night of a plumbing business while the story scrolls past it. Every section
-  shows the agent working: no feature lists.
+  WISE AI · MOCKUP 4 · "CINEMATIC"  (v2: business-operating-system positioning)
+  Direction: Apple-style scroll storytelling. The owl render is the hero: the hub that connects
+  everything. One sticky browser frame assembles a venue's operating system while the story scrolls
+  past it: scattered tools, then connected, then one live screen, then ask, then act, then any AI.
 
   Ratio system
-  - Golden ratio (φ = 1.618) for every split: 61.8 / 38.2 columns (story, proof, about).
-  - Type scale = 16px × φⁿ: 16 · 26 · 42 · 68 · 110 (+ 10 for micro labels).
+  - Golden ratio (φ = 1.618) for splits: 38.2 / 61.8 story columns, device frame 1.618 : 1,
+    the ladder tiers rise 1 : 1.272 : 1.618 (√φ steps).
+  - Type scale = 16px × φⁿ: 16 · 26 · 42 · 68 · 110 (+ 10/13 micro labels).
   - Spacing on an 8px grid, stepping through Fibonacci multiples: 8 · 16 · 24 · 40 · 64 · 104 · 168.
   - Palette, fonts, glass and pill buttons are the existing Wise AI tokens from styles.css.
 -->
@@ -23,15 +24,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  /* Wise AI tokens */
   --void:#0A0E11;--noir:#0D1114;--onyx:#1F2327;--graphite:#3A3F44;
   --steel:#53585D;--silver:#989CA0;--chrome:#B8BDC2;--platinum:#E8EBED;--white:#fff;
   --ok:#8fe3a8;
-  /* φ type scale */
   --t-xs:10px;--t-s:13px;--t-0:16px;--t-1:26px;--t-2:42px;--t-3:68px;--t-4:110px;
-  /* 8px / Fibonacci spacing */
   --s1:8px;--s2:16px;--s3:24px;--s5:40px;--s8:64px;--s13:104px;--s21:168px;
-  --phi-a:61.8%;--phi-b:38.2%;
   --glass:linear-gradient(160deg,rgba(31,35,39,.6),rgba(13,17,20,.5));
   --edge:1px solid rgba(184,189,194,.28);
   --edge-hi:inset 0 1px 0 rgba(232,235,237,.35),inset 0 -1px 0 rgba(83,88,93,.5);
@@ -41,8 +38,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;background:#090c0f}
 body{font-family:'Inter',system-ui,sans-serif;color:var(--platinum);font-size:var(--t-0);line-height:1.6;
-  background:radial-gradient(120% 60% at 50% 0%,#12171c 0%,#0d1114 40%,#090c0f 100%);overflow-x:hidden;
-  -webkit-font-smoothing:antialiased}
+  background:radial-gradient(120% 60% at 50% 0%,#12171c 0%,#0d1114 40%,#090c0f 100%);overflow-x:hidden;-webkit-font-smoothing:antialiased}
 body::after{content:"";position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.04;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 a{color:inherit;text-decoration:none}
@@ -51,7 +47,7 @@ img{display:block;max-width:100%}
 .wrap{max-width:1180px;margin:0 auto;padding:0 var(--gutter)}
 .eyebrow{font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.26em;text-transform:uppercase;color:var(--silver)}
 .h-xl,.h-l,.h-m{font-family:'Archivo';font-weight:900;color:var(--white);letter-spacing:-.03em}
-.h-xl{font-size:clamp(42px,7.4vw,var(--t-4));line-height:.98}
+.h-xl{font-size:clamp(42px,6.4vw,92px);line-height:.98}
 .h-l{font-size:clamp(34px,4.8vw,var(--t-3));line-height:1.02}
 .h-m{font-size:clamp(26px,3vw,var(--t-2));line-height:1.08;letter-spacing:-.02em}
 .dim{color:var(--steel)}
@@ -65,15 +61,13 @@ img{display:block;max-width:100%}
 .ctas{display:flex;gap:var(--s2);flex-wrap:wrap}
 .tag-example{display:inline-flex;align-items:center;gap:6px;font-family:'Archivo';font-size:var(--t-xs);font-weight:600;
   letter-spacing:.18em;text-transform:uppercase;color:var(--steel);border:1px solid rgba(184,189,194,.18);border-radius:999px;padding:4px 10px}
-
-/* reveal */
 [data-r]{opacity:0;transform:translateY(24px);transition:opacity 1s var(--ease),transform 1s var(--ease)}
 [data-r].in{opacity:1;transform:none}
 
 /* ---------- nav ---------- */
 nav{position:fixed;inset:0 0 auto;z-index:60;display:flex;align-items:center;justify-content:space-between;
   padding:var(--s2) max(var(--gutter),calc(50% - 560px));transition:background .3s,border-color .3s;border-bottom:1px solid transparent}
-nav.stuck{background:rgba(9,12,15,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:rgba(184,189,194,.1)}
+nav.stuck{background:rgba(9,12,15,.8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:rgba(184,189,194,.1)}
 nav .brand img{height:28px;width:auto}
 nav .links{display:flex;align-items:center;gap:var(--s3)}
 nav .links a.l{font-size:14px;color:var(--silver);transition:color .2s}
@@ -85,162 +79,242 @@ nav .cta:hover{border-color:var(--chrome)}
 /* ---------- hero ---------- */
 .hero{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
   padding:var(--s13) var(--gutter) var(--s8);position:relative;overflow:hidden}
-.hero .eyebrow{margin-bottom:var(--s3)}
-.owl-stage{position:relative;width:min(42vh,460px,86vw);aspect-ratio:1;margin:calc(var(--s5) * -1) auto calc(var(--s8) * -1);z-index:0}
+.hero .eyebrow{margin-bottom:var(--s2)}
+.owl-stage{position:relative;width:min(44vh,470px,86vw);aspect-ratio:1;margin:calc(var(--s3) * -1) auto calc(var(--s8) * -1);z-index:0}
 .owl-stage::before{content:"";position:absolute;inset:14%;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(190,210,230,.20),rgba(140,165,190,.06) 60%,transparent);filter:blur(10px);
-  animation:breathe 7s ease-in-out infinite}
+  background:radial-gradient(closest-side,rgba(190,210,230,.20),rgba(140,165,190,.06) 60%,transparent);filter:blur(10px);animation:breathe 7s ease-in-out infinite}
 .owl{width:100%;height:100%;object-fit:contain;mix-blend-mode:lighten;
   -webkit-mask-image:radial-gradient(closest-side,#000 62%,transparent 98%);mask-image:radial-gradient(closest-side,#000 62%,transparent 98%);
   animation:float 9s ease-in-out infinite;will-change:transform}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
 @keyframes breathe{0%,100%{opacity:.75;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
 .hero-copy{position:relative;z-index:1}
-.hero h1{max-width:17ch;margin:0 auto;font-size:clamp(40px,5vw,76px)}
-.hero .lede{margin:var(--s3) auto 0;text-align:center}
+.hero h1{max-width:14ch;margin:0 auto}
+.hero .lede{margin:var(--s3) auto 0}
 .hero .ctas{justify-content:center;margin-top:var(--s5)}
-.cue{margin-top:var(--s8);display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--steel);font-family:'Archivo';
+.cue{margin-top:var(--s5);display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--steel);font-family:'Archivo';
   font-size:var(--t-xs);letter-spacing:.26em;text-transform:uppercase}
 .cue i{width:1px;height:40px;background:linear-gradient(var(--steel),transparent);animation:drip 2.2s ease-in-out infinite}
 @keyframes drip{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
 
-/* ---------- story (sticky phone) ---------- */
+/* ---------- story ---------- */
 .story{position:relative;padding:var(--s13) 0 var(--s8)}
-.story-head{text-align:center;max-width:760px;margin:0 auto var(--s8)}
+.story-head{text-align:center;max-width:760px;margin:0 auto var(--s5)}
 .story-head .h-l{margin-top:var(--s2)}
-.story-head .lede{margin:var(--s2) auto 0}
-.story-grid{display:grid;grid-template-columns:var(--phi-a) var(--phi-b);align-items:start}
-.steps{padding-right:var(--s8)}
-.st{min-height:78vh;display:flex;flex-direction:column;justify-content:center;opacity:.22;transition:opacity .6s var(--ease)}
+.story-grid{display:grid;grid-template-columns:38.2% 61.8%;align-items:start}
+.steps{padding-right:var(--s5)}
+.st{min-height:72vh;display:flex;flex-direction:column;justify-content:center;opacity:.22;transition:opacity .6s var(--ease)}
 .st.on{opacity:1}
-.st .ts{font-family:'Archivo';font-weight:600;font-size:var(--t-s);letter-spacing:.14em;text-transform:uppercase;color:var(--chrome);
-  display:flex;align-items:center;gap:var(--s1)}
+.st .ts{font-family:'Archivo';font-weight:600;font-size:var(--t-s);letter-spacing:.14em;text-transform:uppercase;color:var(--chrome);display:flex;align-items:center;gap:var(--s1)}
 .st .ts b{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--white);box-shadow:0 0 10px rgba(255,255,255,.7)}
-.st h3{font-family:'Archivo';font-weight:900;font-size:clamp(26px,3.4vw,var(--t-2));line-height:1.08;letter-spacing:-.02em;color:var(--white);margin-top:var(--s2);max-width:15ch}
-.st p{color:var(--silver);margin-top:var(--s2);max-width:30em}
-.st:first-child{min-height:60vh;justify-content:flex-start;padding-top:12vh}
-.st:last-child{min-height:70vh}
+.st h3{font-family:'Archivo';font-weight:900;font-size:clamp(26px,2.9vw,var(--t-2));line-height:1.08;letter-spacing:-.02em;color:var(--white);margin-top:var(--s2);max-width:14ch}
+.st p{color:var(--silver);margin-top:var(--s2);max-width:26em}
+.st .ais{display:flex;gap:var(--s1);flex-wrap:wrap;margin-top:var(--s2)}
+.st .ais span{font-family:'Archivo';font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--platinum);border:1px solid rgba(184,189,194,.28);border-radius:999px;padding:5px 12px;background:var(--glass)}
+.st:last-child{min-height:64vh}
 
-.phone-col{position:sticky;top:calc(50vh - 300px);height:600px;display:flex;justify-content:center;gap:var(--s3)}
-.progress{display:flex;flex-direction:column;align-items:center;gap:var(--s1);padding-top:var(--s5)}
-.progress .num{font-family:'Archivo';font-weight:700;font-size:var(--t-s);color:var(--white);letter-spacing:.06em}
+.dev-col{position:sticky;top:calc(50vh - 236px);display:flex;flex-direction:column;align-items:center;gap:var(--s2)}
+.dev{position:relative;width:100%;max-width:700px;aspect-ratio:1.618;border-radius:14px;overflow:hidden;
+  background:#0b0f12;border:1px solid rgba(184,189,194,.3);
+  box-shadow:inset 0 1px 0 rgba(232,235,237,.25),0 40px 80px rgba(0,0,0,.6),0 0 90px rgba(150,175,200,.08);display:flex;flex-direction:column}
+.dbar{flex:none;height:30px;display:flex;align-items:center;gap:6px;padding:0 12px;background:linear-gradient(180deg,#1d2226,#15191d);border-bottom:1px solid rgba(184,189,194,.12)}
+.dbar i{width:9px;height:9px;border-radius:50%;background:var(--graphite)}
+.dbar .url{margin-left:10px;flex:1;max-width:320px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--silver);
+  background:rgba(10,14,17,.6);border:1px solid rgba(184,189,194,.12);border-radius:6px;padding:3px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbar .ex{margin-left:auto;font-family:'Archivo';font-size:9px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--steel)}
+.area{position:relative;flex:1;overflow:hidden;
+  background:radial-gradient(70% 60% at 50% 50%,rgba(150,170,190,.07),transparent 70%),#0b0f12}
+.L{position:absolute;inset:0;transition:opacity .6s var(--ease),transform .6s var(--ease),filter .6s var(--ease);opacity:0;pointer-events:none}
+
+/* tools layer (steps 0–1) */
+.dev[data-s="0"] .L-tools,.dev[data-s="1"] .L-tools{opacity:1}
+.tool{position:absolute;width:30%;border-radius:10px;padding:9px 11px;background:#151a1e;border:1px solid rgba(184,189,194,.2);
+  box-shadow:0 10px 24px rgba(0,0,0,.5);font-size:11px;color:var(--silver);line-height:1.4;
+  left:var(--x0);top:var(--y0);transform:rotate(var(--r0));transition:left .9s var(--ease),top .9s var(--ease),transform .9s var(--ease),border-color .6s}
+.dev[data-s="1"] .tool{left:var(--x1);top:var(--y1);transform:none;border-color:rgba(232,235,237,.4)}
+.tool .tn{display:flex;align-items:center;justify-content:space-between;font-family:'Archivo';font-size:9.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--chrome);margin-bottom:4px}
+.tool .tn em{font-style:normal;font-family:'Inter';letter-spacing:0;text-transform:none;font-size:9.5px;color:var(--steel)}
+.tool b{color:var(--white);font-weight:600}
+.sheet{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;margin-top:3px}
+.sheet span{height:7px;border-radius:2px;background:#232a2f}
+.sheet span.t{background:var(--chrome)}
+.retype{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-family:'Archivo';font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--silver);border:1px dashed rgba(184,189,194,.35);border-radius:999px;padding:5px 12px;background:#0b0f12;white-space:nowrap;transition:opacity .5s}
+.dev[data-s="1"] .retype{opacity:0}
+.wires{position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity .6s .3s}
+.dev[data-s="1"] .wires{opacity:1}
+.wires path{fill:none;stroke:rgba(232,235,237,.35);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.wires path.pulse{stroke:#fff;stroke-width:2;stroke-dasharray:4 96;animation:flow 2.4s linear infinite;filter:drop-shadow(0 0 3px #fff)}
+@keyframes flow{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.hub{position:absolute;left:50%;top:52%;width:62px;height:62px;border-radius:50%;transform:translate(-50%,-50%) scale(.6);opacity:0;
+  display:grid;place-items:center;background:radial-gradient(circle,#2a3036,#12171b);border:1px solid rgba(232,235,237,.55);
+  box-shadow:0 0 40px rgba(255,255,255,.22),inset 0 1px 0 rgba(255,255,255,.3);transition:opacity .6s .35s var(--ease),transform .8s .35s var(--ease)}
+.hub img{height:30px;width:auto}
+.dev[data-s="1"] .hub{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* dashboard layer (steps 2–4) */
+.dev[data-s="2"] .L-dash,.dev[data-s="3"] .L-dash,.dev[data-s="4"] .L-dash{opacity:1}
+.dev[data-s="3"] .L-dash,.dev[data-s="4"] .L-dash{opacity:.32;filter:blur(1.5px);transform:scale(.985)}
+.L-dash{padding:14px;display:flex;flex-direction:column;gap:10px}
+.dh{display:flex;justify-content:space-between;align-items:center}
+.dh b{font-family:'Archivo';font-weight:900;font-size:17px;color:var(--white);letter-spacing:-.01em}
+.dh span{font-size:10.5px;color:var(--silver);display:flex;align-items:center;gap:6px}
+.dh span::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:blink 2s infinite}
+@keyframes blink{50%{opacity:.35}}
+.tiles{flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:8px}
+.ti{border-radius:10px;padding:10px 12px;background:#12171b;border:1px solid rgba(184,189,194,.12);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.ti .k{font-family:'Archivo';font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--steel)}
+.ti .v{font-family:'Archivo';font-weight:900;font-size:24px;color:var(--white);line-height:1.1;margin-top:2px;letter-spacing:-.02em}
+.ti .v small{font-size:12px;color:var(--silver);font-weight:600;letter-spacing:0}
+.ti .viz{margin-top:auto}
+.ti.alert{border-color:rgba(232,235,237,.5);box-shadow:0 0 18px rgba(255,255,255,.07)}
+.ti .note{font-size:10px;color:var(--chrome)}
+.spark{width:100%;height:26px}
+.spark path{fill:none;stroke:var(--chrome);stroke-width:1.6;vector-effect:non-scaling-stroke}
+.lanes{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
+.lanes i{height:16px;border-radius:3px;background:#232a2f}
+.lanes i.u{background:linear-gradient(180deg,#fff,#cfd4d8)}
+.pbar{height:6px;border-radius:6px;background:#232a2f;overflow:hidden}
+.pbar i{display:block;height:100%;width:83%;background:linear-gradient(90deg,#fff,var(--chrome))}
+.cols{display:flex;align-items:flex-end;gap:3px;height:26px}
+.cols i{flex:1;border-radius:2px;background:var(--graphite)}
+.cols i:last-child{background:var(--white)}
+.dots{display:flex;gap:3px;flex-wrap:wrap}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--chrome)}
+.dots i.n{background:#232a2f}
+
+/* AI panel (steps 3–4) */
+.dev[data-s="3"] .L-ai,.dev[data-s="4"] .L-ai{opacity:1;pointer-events:auto}
+.L-ai{left:auto;width:54%;inset:12px 12px 12px auto;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;
+  background:rgba(16,21,25,.96);border:1px solid rgba(232,235,237,.3);box-shadow:0 20px 50px rgba(0,0,0,.6);transform:translateX(14px)}
+.dev[data-s="3"] .L-ai,.dev[data-s="4"] .L-ai{transform:none}
+.aih{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:var(--white)}
+.aih .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,#fff,#cfd4d8)}
+.aih .av img{height:12px;filter:invert(1)}
+.aih small{margin-left:auto;font-weight:500;color:var(--steel);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+.q{align-self:flex-end;max-width:88%;background:#232a2f;color:var(--platinum);border-radius:12px 12px 4px 12px;padding:7px 10px;font-size:11.5px}
+.ans{font-size:11.5px;color:var(--platinum);line-height:1.45}
+.ans b{color:var(--white)}
+.chart{display:flex;align-items:flex-end;gap:10px;height:76px;padding:6px 4px 0;border-bottom:1px solid rgba(184,189,194,.15)}
+.chart .g{flex:1;display:flex;align-items:flex-end;gap:3px;height:100%}
+.chart .g i{flex:1;border-radius:3px 3px 0 0;transform-origin:bottom;transform:scaleY(0);transition:transform .9s var(--ease)}
+.chart .g i.l{background:var(--graphite)}
+.chart .g i.t{background:linear-gradient(180deg,#fff,#cfd4d8)}
+.dev[data-s="3"] .chart .g i,.dev[data-s="4"] .chart .g i{transform:scaleY(1)}
+.chart .g i:nth-child(2){transition-delay:.12s}
+.legend{display:flex;justify-content:space-between;font-size:9.5px;color:var(--steel)}
+.legend span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;background:var(--graphite);vertical-align:0}
+.legend span.t::before{background:#fff}
+.act{display:none;flex-direction:column;gap:8px}
+.dev[data-s="4"] .act{display:flex}
+.dev[data-s="4"] .chart-wrap{display:none}
+.act .ans{animation:fadeup .5s var(--ease) both}
+.btnx{position:relative;height:32px;border-radius:999px;overflow:hidden;font-size:11.5px;font-weight:600}
+.btnx span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:999px}
+.btnx .a1{background:linear-gradient(180deg,#fff,#dfe3e6);color:#0c1013;box-shadow:0 0 22px rgba(255,255,255,.2)}
+.btnx .a2{background:rgba(143,227,168,.12);color:var(--ok);border:1px solid rgba(143,227,168,.4);opacity:0}
+.dev[data-s="4"] .btnx .a1{animation:press 1.6s .9s var(--ease) forwards}
+.dev[data-s="4"] .btnx .a2{animation:appear .5s 1.9s var(--ease) forwards}
+.done{font-size:10.5px;color:var(--silver);opacity:0}
+.dev[data-s="4"] .done{animation:appear .5s 2.2s var(--ease) forwards}
+@keyframes press{0%{transform:scale(1)}20%{transform:scale(.94)}45%{transform:scale(1)}70%{opacity:1}100%{opacity:0}}
+@keyframes appear{to{opacity:1}}
+@keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* external AI chat (step 5) */
+.dev[data-s="5"] .L-chat{opacity:1}
+.L-chat{display:flex;flex-direction:column;padding:14px 18%;gap:10px;transform:translateY(10px)}
+.dev[data-s="5"] .L-chat{transform:none}
+.seg{align-self:center;display:flex;gap:4px;padding:3px;border-radius:999px;border:1px solid rgba(184,189,194,.2);background:#12171b}
+.seg span{font-size:10.5px;font-weight:600;color:var(--silver);padding:4px 12px;border-radius:999px}
+.seg span.on{background:#232a2f;color:var(--white)}
+.conn{align-self:center;font-size:9.5px;color:var(--ok);display:flex;gap:5px;align-items:center;letter-spacing:.04em}
+.conn::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.L-chat .msgs{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:8px}
+.tbl{border-radius:10px;border:1px solid rgba(184,189,194,.15);overflow:hidden;font-size:11px}
+.tbl div{display:flex;justify-content:space-between;padding:6px 10px;border-bottom:1px solid rgba(184,189,194,.08);color:var(--silver)}
+.tbl div:last-child{border-bottom:0}
+.tbl div b{color:var(--white);font-weight:600}
+.tbl div:first-child{background:rgba(255,255,255,.05)}
+.inp{border-radius:999px;border:1px solid rgba(184,189,194,.2);padding:7px 14px;font-size:11px;color:var(--steel);background:#12171b}
+
+.progress{display:flex;align-items:center;gap:var(--s2);width:100%;max-width:700px}
+.progress .num{font-family:'Archivo';font-weight:700;font-size:var(--t-s);color:var(--white);letter-spacing:.06em;white-space:nowrap}
 .progress .num span{color:var(--steel)}
-.progress .bar{width:2px;height:180px;border-radius:2px;background:rgba(184,189,194,.14);position:relative;overflow:hidden}
-.progress .bar i{position:absolute;inset:0 0 auto;height:16.66%;background:linear-gradient(var(--white),var(--chrome));box-shadow:0 0 12px rgba(255,255,255,.6);transition:height .7s var(--ease)}
+.progress .bar{flex:1;height:2px;border-radius:2px;background:rgba(184,189,194,.14);position:relative;overflow:hidden}
+.progress .bar i{position:absolute;inset:0 auto 0 0;width:16.66%;background:linear-gradient(90deg,var(--chrome),var(--white));box-shadow:0 0 12px rgba(255,255,255,.6);transition:width .7s var(--ease)}
 
-.phone{position:relative;width:296px;height:600px;border-radius:46px;padding:12px;flex:none;
-  background:linear-gradient(160deg,#2a2f34,#101418 50%,#1b1f23);border:1px solid rgba(184,189,194,.32);
-  box-shadow:inset 0 1px 0 rgba(232,235,237,.4),0 40px 80px rgba(0,0,0,.6),0 0 80px rgba(150,175,200,.08)}
-.screen{position:relative;width:100%;height:100%;border-radius:36px;overflow:hidden;background:#0b0f12;isolation:isolate}
-.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:26px;border-radius:20px;background:#000;z-index:5}
-.sbar{position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;
-  font-size:12px;font-weight:600;color:var(--platinum);z-index:4}
-.scr{position:absolute;inset:0;padding:56px 14px 16px;display:flex;flex-direction:column;opacity:0;transform:translateY(12px) scale(.985);
-  transition:opacity .55s var(--ease),transform .55s var(--ease);pointer-events:none}
-.scr.on{opacity:1;transform:none}
-.app{display:flex;align-items:center;gap:10px;padding:6px 4px 12px;border-bottom:1px solid rgba(184,189,194,.1)}
-.app .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(180deg,#fff,#cfd4d8);color:#0c1013;font-family:'Archivo';font-weight:900;font-size:12px}
-.app .nm{font-size:13px;font-weight:600;color:var(--white);line-height:1.2}
-.app .nm small{display:block;font-size:10.5px;font-weight:500;color:var(--ok)}
-.thread{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding-top:10px;overflow:hidden}
-.b{max-width:84%;font-size:12.5px;line-height:1.45;padding:9px 12px;border-radius:16px}
-.b.c{align-self:flex-start;background:#1c2125;color:var(--platinum);border-bottom-left-radius:5px}
-.b.a{align-self:flex-end;background:linear-gradient(180deg,#f4f6f7,#dde2e5);color:#0c1013;border-bottom-right-radius:5px}
-.meta{font-size:10px;color:var(--steel);text-align:center;letter-spacing:.06em}
-.chip{align-self:flex-end;font-size:10px;font-weight:600;color:var(--ok);display:flex;align-items:center;gap:4px}
-.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
-.card{align-self:flex-end;width:84%;border-radius:14px;padding:12px;background:#141a1e;border:1px solid rgba(184,189,194,.2);font-size:11.5px;color:var(--silver)}
-.card .k{font-family:'Archivo';font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--steel)}
-.card .v{font-family:'Archivo';font-weight:900;font-size:22px;color:var(--white);margin-top:2px;letter-spacing:-.01em}
-.card .row{display:flex;justify-content:space-between;margin-top:6px;gap:8px}
-.card .row b{color:var(--platinum);font-weight:600}
-/* lock screen notification */
-.lock{justify-content:flex-start;align-items:center;text-align:center;
-  background:radial-gradient(90% 60% at 50% 20%,rgba(150,170,190,.16),transparent 70%)}
-.lock .clock{font-family:'Archivo';font-weight:700;font-size:62px;color:var(--white);letter-spacing:-.02em;margin-top:22px;line-height:1}
-.lock .date{font-size:12px;color:var(--silver);margin-top:6px}
-.notif{margin-top:auto;width:100%;text-align:left;border-radius:18px;padding:12px;background:rgba(40,46,52,.72);backdrop-filter:blur(10px);
-  border:1px solid rgba(184,189,194,.18);font-size:12px;color:var(--platinum)}
-.notif + .notif{margin-top:8px}
-.notif .top{display:flex;justify-content:space-between;font-size:10.5px;color:var(--silver);margin-bottom:4px}
-.notif .top b{color:var(--white);font-weight:600}
-/* calendar */
-.cal-h{display:flex;justify-content:space-between;align-items:baseline;padding:4px 4px 10px}
-.cal-h b{font-family:'Archivo';font-size:20px;color:var(--white)}
-.cal-h span{font-size:11px;color:var(--silver)}
-.cal{flex:1;position:relative;border-top:1px solid rgba(184,189,194,.1)}
-.cal{--slot:38px}
-.slot{display:flex;gap:10px;height:var(--slot);border-bottom:1px solid rgba(184,189,194,.07);font-size:10px;color:var(--steel);padding-top:3px}
-.ev{position:absolute;left:44px;right:4px;border-radius:10px;padding:7px 10px;font-size:11px;line-height:1.35}
-.ev.old{background:#1a1f23;color:var(--silver);border:1px solid rgba(184,189,194,.12)}
-.ev.new{background:linear-gradient(180deg,#f4f6f7,#dde2e5);color:#0c1013;box-shadow:0 0 24px rgba(255,255,255,.18);font-weight:600}
-.scr.on .ev.new{animation:pop .7s .25s var(--ease) both}
-@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
-.ev.new small{display:block;font-weight:500;color:#3a3f44}
-.done{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.done div{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--platinum)}
-.done svg{width:14px;height:14px;stroke:var(--ok);stroke-width:2.4;fill:none;flex:none}
-/* ledger */
-.led{flex:1;display:flex;flex-direction:column;gap:8px;padding-top:10px}
-.li{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:#12171b;border:1px solid rgba(184,189,194,.1);font-size:11.5px}
-.li .l b{display:block;color:var(--white);font-weight:600;font-size:12px}
-.li .l span{color:var(--steel);font-size:10.5px}
-.li .r{text-align:right;font-family:'Archivo';font-weight:700;color:var(--white)}
-.li .r small{display:block;font-family:'Inter';font-weight:600;font-size:10px;color:var(--ok)}
-.li.hit{border-color:rgba(143,227,168,.45);box-shadow:0 0 0 1px rgba(143,227,168,.15),0 0 24px rgba(143,227,168,.08)}
-.match{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--ok);font-weight:600}
-/* brief */
-.brief{flex:1;display:flex;flex-direction:column;gap:10px;padding-top:6px}
-.brief .hi{font-family:'Archivo';font-weight:900;font-size:20px;color:var(--white);line-height:1.15;letter-spacing:-.01em}
-.stats4{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.stats4 div{border-radius:12px;background:#12171b;border:1px solid rgba(184,189,194,.1);padding:8px 10px}
-.stats4 b{display:block;font-family:'Archivo';font-weight:900;font-size:20px;color:var(--white);line-height:1.1}
-.stats4 span{font-size:10px;color:var(--silver)}
-.need{margin-top:auto;border-radius:14px;padding:12px;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));border:1px solid rgba(232,235,237,.4);font-size:11.5px;color:var(--platinum)}
-.need .k{font-family:'Archivo';font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--white)}
-.need p{margin-top:4px;line-height:1.45}
-.need .bt{display:flex;gap:6px;margin-top:10px}
-.need .bt span{flex:1;text-align:center;padding:7px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--graphite)}
-.need .bt span:first-child{background:#fff;color:#0c1013;border-color:#fff}
-
-/* ---------- verticals ---------- */
+/* ---------- sections ---------- */
 .sec{padding:var(--s13) 0}
-.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s5);flex-wrap:wrap;margin-bottom:var(--s8)}
-.sec-head .h-l{margin-top:var(--s2);max-width:13ch}
-.sec-head .lede{max-width:26em}
-.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)}
-.vc{border-radius:28px;padding:var(--s5);background:var(--glass);border:var(--edge);box-shadow:var(--edge-hi),0 18px 40px rgba(0,0,0,.45);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;gap:var(--s3);transition:transform .45s var(--ease),border-color .45s}
-.vc:hover{transform:translateY(-4px);border-color:rgba(232,235,237,.45)}
-.vc .who{display:flex;justify-content:space-between;align-items:center}
-.vc .who .eyebrow{color:var(--chrome)}
-.vc .who .task{font-size:var(--t-s);color:var(--silver)}
-.vc h3{font-family:'Archivo';font-weight:900;font-size:var(--t-1);line-height:1.15;color:var(--white);letter-spacing:-.015em}
-.ba{display:grid;gap:var(--s2)}
-.ba .lbl{display:flex;justify-content:space-between;font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);margin-bottom:6px}
-.ba .lbl b{color:var(--silver);font-weight:600;letter-spacing:.06em}
-.ba .after .lbl,.ba .after .lbl b{color:var(--white)}
-.track{height:8px;border-radius:8px;background:rgba(184,189,194,.08);overflow:hidden}
-.track i{display:block;height:100%;border-radius:8px;width:0;transition:width 1.4s var(--ease)}
-.before .track i{background:repeating-linear-gradient(90deg,var(--graphite) 0 14px,#2b3035 14px 18px)}
-.after .track i{background:linear-gradient(90deg,#fff,var(--chrome));box-shadow:0 0 14px rgba(255,255,255,.5)}
-.ba p{font-size:14px;color:var(--silver);margin-top:8px;line-height:1.5}
-.before p{text-decoration:line-through;text-decoration-color:rgba(152,156,160,.5)}
-.after p{color:var(--platinum)}
-.vfoot{text-align:center;margin-top:var(--s5);color:var(--steel);font-size:var(--t-s)}
+.sec-head{text-align:center;max-width:760px;margin:0 auto var(--s8)}
+.sec-head .h-l{margin-top:var(--s2)}
+.sec-head .lede{margin:var(--s2) auto 0}
 
-/* ---------- numbers ---------- */
-.numbers{position:relative;padding:var(--s21) 0;text-align:center;overflow:hidden;
+/* ladder */
+.ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3);align-items:end}
+.tier{position:relative;border-radius:28px;padding:var(--s5) var(--s3) var(--s3);background:var(--glass);border:var(--edge);box-shadow:var(--edge-hi),0 18px 40px rgba(0,0,0,.45);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;gap:var(--s1);transition:transform .45s var(--ease),border-color .45s}
+.tier:hover{transform:translateY(-4px);border-color:rgba(232,235,237,.45)}
+.tier:nth-child(1){min-height:320px}
+.tier:nth-child(2){min-height:407px}
+.tier:nth-child(3){min-height:518px;border-color:rgba(232,235,237,.5);box-shadow:var(--edge-hi),0 24px 60px rgba(0,0,0,.5),0 0 60px rgba(255,255,255,.06)}
+.tier .no{font-family:'Archivo';font-weight:900;font-size:var(--t-s);color:var(--steel);letter-spacing:.1em}
+.tier h3{font-family:'Archivo';font-weight:900;font-size:var(--t-1);color:var(--white);letter-spacing:-.015em;line-height:1.1}
+.tier .ex{font-size:14px;color:var(--silver)}
+.tier .flag{position:absolute;top:var(--s3);right:var(--s3);font-family:'Archivo';font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:#0c1013;background:linear-gradient(180deg,#fff,#dfe3e6);border-radius:999px;padding:4px 10px;box-shadow:0 0 18px rgba(255,255,255,.2)}
+.tv{margin-top:auto;padding-top:var(--s3)}
+.flow{display:flex;align-items:center;gap:8px}
+.flow .n{flex:1;border-radius:12px;padding:10px;background:#12171b;border:1px solid rgba(184,189,194,.14);font-size:11.5px;color:var(--silver);line-height:1.35}
+.flow .n b{display:block;color:var(--white);font-weight:600}
+.flow .n.ok{border-color:rgba(143,227,168,.35)}
+.flow .n.ok b{color:var(--ok)}
+.flow svg{width:16px;height:16px;flex:none;stroke:var(--chrome);stroke-width:2;fill:none}
+.mini-chat{display:flex;flex-direction:column;gap:6px}
+.mini-chat .b{max-width:82%;font-size:11.5px;padding:7px 10px;border-radius:12px;line-height:1.35}
+.mini-chat .c{align-self:flex-start;background:#1c2125;color:var(--platinum);border-bottom-left-radius:4px}
+.mini-chat .a{align-self:flex-end;background:linear-gradient(180deg,#f4f6f7,#dde2e5);color:#0c1013;border-bottom-right-radius:4px}
+.mini-chat .meta{display:flex;justify-content:space-between;font-size:10px;color:var(--steel);margin-top:4px}
+.mini-chat .meta b{color:var(--ok);font-weight:600}
+.minidash{border-radius:14px;padding:10px;background:#0f1417;border:1px solid rgba(184,189,194,.16)}
+.minidash .row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.minidash .row+.row{margin-top:5px}
+.minidash .c{height:38px;border-radius:7px;background:#171d21;border:1px solid rgba(184,189,194,.08);padding:5px 6px;display:flex;flex-direction:column;justify-content:space-between}
+.minidash .c i{display:block;height:4px;width:60%;border-radius:2px;background:var(--graphite)}
+.minidash .c u{display:block;height:9px;width:70%;border-radius:2px;background:var(--chrome);text-decoration:none}
+.minidash .ask{margin-top:8px;display:flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;border:1px solid rgba(232,235,237,.3);font-size:11px;color:var(--platinum)}
+.minidash .ask::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+
+/* built on what you use */
+.feed{display:grid;grid-template-columns:1fr 1fr auto 1fr 1fr;align-items:stretch;max-width:1040px;margin:0 auto}
+.ins,.outs{display:flex;flex-direction:column}
+.ins span,.outs span{flex:1;display:flex;align-items:center}
+.ins span{justify-content:flex-end}
+.chipx{font-family:'Archivo';font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--platinum);border:1px solid rgba(184,189,194,.26);border-radius:999px;padding:8px 16px;background:var(--glass);white-space:nowrap}
+.outs .chipx{color:#0c1013;background:linear-gradient(180deg,#fff,#dfe3e6);border-color:#fff;box-shadow:0 0 22px rgba(255,255,255,.14)}
+.feed svg{width:100%;height:100%;min-height:340px}
+.feed svg path{fill:none;stroke:rgba(184,189,194,.35);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.feed svg path.p{stroke:#fff;stroke-width:2;stroke-dasharray:3 97;animation:flow 3s linear infinite}
+.core{align-self:center;width:200px;border-radius:28px;padding:var(--s3);text-align:center;background:var(--glass);border:1px solid rgba(232,235,237,.5);
+  box-shadow:var(--edge-hi),0 0 60px rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.5)}
+.core img{height:44px;margin:0 auto var(--s2)}
+.core b{display:block;font-family:'Archivo';font-weight:900;font-size:18px;color:var(--white);line-height:1.2}
+.core span{display:block;font-size:12px;color:var(--silver);margin-top:6px}
+.norip{text-align:center;margin-top:var(--s5);font-size:15px;color:var(--silver)}
+.norip b{color:var(--white);font-weight:600}
+.arrow-d{display:none}
+
+/* numbers */
+.numbers{position:relative;padding:var(--s13) 0;text-align:center;overflow:hidden;
   border-top:1px solid rgba(184,189,194,.08);border-bottom:1px solid rgba(184,189,194,.08);
   background:radial-gradient(60% 70% at 50% 50%,rgba(150,170,190,.10),transparent 70%),#080b0d}
 .numbers .h-m{margin-top:var(--s2)}
 .big{display:grid;grid-template-columns:1fr 1fr;gap:var(--s5);margin:var(--s8) auto var(--s5);max-width:1040px}
-.big .n{font-family:'Archivo';font-weight:900;font-size:clamp(64px,11vw,var(--s21));line-height:.9;letter-spacing:-.05em;color:var(--white);
-  font-variant-numeric:tabular-nums;text-shadow:0 0 60px rgba(255,255,255,.12)}
+.big .n{font-family:'Archivo';font-weight:900;font-size:clamp(64px,10vw,144px);line-height:.9;letter-spacing:-.05em;color:var(--white);font-variant-numeric:tabular-nums;text-shadow:0 0 60px rgba(255,255,255,.12)}
 .big .u{font-family:'Archivo';font-size:var(--t-s);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver);margin-top:var(--s2)}
 .sliders{display:grid;grid-template-columns:1fr 1fr;gap:var(--s5);max-width:720px;margin:0 auto;text-align:left}
-.sl label{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--silver);margin-bottom:var(--s1)}
-.sl label output{font-family:'Archivo';font-weight:700;font-size:var(--t-0);color:var(--white)}
+.sl label{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--silver);margin-bottom:var(--s1);gap:var(--s1)}
+.sl label output{font-family:'Archivo';font-weight:700;font-size:var(--t-0);color:var(--white);white-space:nowrap}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;cursor:pointer}
 input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--white) var(--p,30%),rgba(184,189,194,.18) var(--p,30%))}
 input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--white) var(--p,30%),rgba(184,189,194,.18) var(--p,30%))}
@@ -249,23 +323,24 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border:0;border-radiu
 .assume{margin-top:var(--s5);font-size:var(--t-s);color:var(--steel)}
 .numbers .ctas{justify-content:center;margin-top:var(--s5)}
 
-/* ---------- proof ---------- */
+/* proof */
+.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:var(--s3);flex-wrap:wrap;margin-bottom:var(--s8)}
+.ph .h-l{margin-top:var(--s2)}
 .proof-grid{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s3)}
 .pc{border-radius:28px;overflow:hidden;background:var(--glass);border:var(--edge);box-shadow:var(--edge-hi),0 18px 40px rgba(0,0,0,.45);
   display:flex;flex-direction:column;transition:transform .45s var(--ease),border-color .45s}
 .pc:hover{transform:translateY(-4px);border-color:rgba(232,235,237,.45)}
 .pc .media{position:relative;aspect-ratio:1.618;flex:none;overflow:hidden;background:#0b0f12;border-bottom:1px solid rgba(184,189,194,.12)}
+.proof-grid > .pc:nth-child(2) .media{flex:1;aspect-ratio:auto;min-height:200px}
 .pc .media img{width:100%;height:100%;object-fit:cover;object-position:top center;transition:transform 1.2s var(--ease)}
 .pc:hover .media img{transform:scale(1.03)}
 .pc .body{padding:var(--s3) var(--s5) var(--s5)}
-.pc .k{font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver)}
+.k{font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver)}
 .pc h3{font-family:'Archivo';font-weight:900;font-size:var(--t-1);color:var(--white);letter-spacing:-.015em;line-height:1.15;margin-top:var(--s1)}
 .pc p{color:var(--silver);font-size:15px;margin-top:var(--s1)}
 .pc .go{display:inline-flex;align-items:center;gap:6px;margin-top:var(--s2);font-size:14px;font-weight:600;color:var(--platinum)}
 .pc .go svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;transition:transform .3s var(--ease)}
 .pc:hover .go svg{transform:translate(2px,-2px)}
-.proof-grid > .pc:nth-child(2) .media{flex:1;aspect-ratio:auto;min-height:200px}
-@media(max-width:860px){.proof-grid > .pc:nth-child(2) .media{flex:none;aspect-ratio:1.618}}
 .case{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.618fr;gap:var(--s5);align-items:center;padding:var(--s5)}
 .case .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
 .case .stat{border-radius:18px;padding:var(--s3);background:rgba(10,14,17,.5);border:1px solid rgba(184,189,194,.16)}
@@ -274,22 +349,21 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border:0;border-radiu
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--chrome);margin-top:var(--s2)}
 .status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--white);box-shadow:0 0 8px rgba(255,255,255,.7)}
 
-/* ---------- about ---------- */
-.about{display:grid;grid-template-columns:var(--phi-b) var(--phi-a);gap:0;align-items:center}
+/* about */
+.about{display:grid;grid-template-columns:38.2% 61.8%;align-items:center}
 .about figure{padding-right:var(--s8)}
-.about img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:28px;border:1px solid rgba(184,189,194,.3);
-  box-shadow:0 24px 50px rgba(0,0,0,.55),0 0 40px rgba(150,175,200,.08);filter:grayscale(.15)}
+.about img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:28px;border:1px solid rgba(184,189,194,.3);box-shadow:0 24px 50px rgba(0,0,0,.55),0 0 40px rgba(150,175,200,.08)}
 .about .h-l{margin-top:var(--s2)}
 .about p{color:var(--silver);font-size:17px;margin-top:var(--s3);max-width:32em}
 .about p b{color:var(--platinum);font-weight:600}
 .facts{display:flex;gap:var(--s1);flex-wrap:wrap;margin-top:var(--s3)}
 .facts span{font-family:'Archivo';font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--chrome);border:1px solid rgba(184,189,194,.22);border-radius:999px;padding:6px 14px;background:var(--glass)}
 
-/* ---------- close ---------- */
+/* close */
 .close{text-align:center;padding:var(--s21) var(--gutter) var(--s13);position:relative}
 .close::before{content:"";position:absolute;left:50%;top:var(--s13);width:min(680px,90vw);aspect-ratio:1.618;transform:translateX(-50%);
   background:radial-gradient(closest-side,rgba(170,190,210,.12),transparent);pointer-events:none;z-index:-1}
-.close .h-xl{max-width:14ch;margin:var(--s2) auto 0;font-size:clamp(40px,6.4vw,92px)}
+.close .h-xl{max-width:14ch;margin:var(--s2) auto 0;font-size:clamp(40px,6vw,88px)}
 .close .lede{margin:var(--s3) auto 0}
 .close .ctas{justify-content:center;margin-top:var(--s5)}
 .close .mail{margin-top:var(--s3);font-size:14px;color:var(--steel)}
@@ -300,68 +374,95 @@ footer .fl{display:flex;gap:var(--s3);justify-content:center;flex-wrap:wrap;marg
 footer .fl a{color:var(--silver)}
 footer .fl a:hover{color:var(--white)}
 footer b{color:var(--silver);font-weight:600}
-
 .mock-tag{position:fixed;left:16px;bottom:16px;z-index:90;font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
   color:#0c1013;background:rgba(255,255,255,.9);border-radius:999px;padding:6px 12px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 
 /* ---------- responsive ---------- */
 @media(max-width:1080px){
-  .phone-col .progress{display:none}
-  .steps{padding-right:var(--s5)}
+  .L-chat{padding:14px 10%}
+  .tool{font-size:10px}
+  .tool .tn em{display:none}
+}
+@media(max-width:960px){
+  .feed{grid-template-columns:1fr .6fr auto .6fr 1fr}
 }
 @media(max-width:860px){
-  .vgrid{grid-template-columns:1fr}
+  .ladder{grid-template-columns:1fr;max-width:480px;margin:0 auto}
+  .tier:nth-child(n){min-height:0}
   .proof-grid{grid-template-columns:1fr}
+  .proof-grid > .pc:nth-child(2) .media{flex:none;aspect-ratio:1.618}
   .case{grid-template-columns:1fr;gap:var(--s3)}
   .about{grid-template-columns:1fr;text-align:center}
-  .about figure{padding:0;max-width:280px;margin:0 auto var(--s5)}
+  .about figure{padding:0;max-width:260px;margin:0 auto var(--s5)}
   .about p{margin-left:auto;margin-right:auto}
   .facts{justify-content:center}
-  .sec-head{flex-direction:column;align-items:flex-start;gap:var(--s2)}
+  /* feed becomes vertical */
+  .feed{display:flex;flex-direction:column;align-items:center;gap:var(--s2)}
+  .feed svg{display:none}
+  .ins,.outs{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:var(--s1)}
+  .ins span,.outs span{flex:none}
+  .arrow-d{display:block;width:1px;height:40px;background:linear-gradient(rgba(184,189,194,.5),rgba(255,255,255,.9));position:relative}
+  .arrow-d::after{content:"";position:absolute;bottom:-1px;left:-4px;border:4.5px solid transparent;border-top:6px solid #fff;border-bottom:0}
 }
 @media(max-width:760px){
-  /* story: phone sticks to the top, steps scroll underneath */
+  /* story: browser frame pins under the nav, steps scroll beneath */
   .story{padding-top:var(--s8)}
-  .story-head{margin-bottom:var(--s5);text-align:left;padding:0 var(--gutter)}
-  .story-head .lede{margin-left:0}
+  .story-head{margin-bottom:var(--s3);text-align:left;padding:0 var(--gutter)}
   .story-grid{display:flex;flex-direction:column-reverse;align-items:stretch}
-  .phone-col{top:56px;height:auto;z-index:3;padding:var(--s1) 0 var(--s3);
-    background:linear-gradient(#0b0f12 82%,rgba(11,15,18,0));}
-  .phone{width:220px;height:372px;border-radius:36px;padding:9px}
-  .screen{border-radius:30px}
-  .lock .clock{font-size:46px;margin-top:6px}
-  .scr{padding:48px 12px 12px}
-  .sbar{height:40px;font-size:11px;padding:0 20px}
-  .notch{width:74px;height:22px;top:8px}
+  .dev-col{top:60px;z-index:3;padding:var(--s1) 0 var(--s2);gap:var(--s1);
+    background:linear-gradient(#0b0f12 88%,rgba(11,15,18,0))}
+  .dev{aspect-ratio:auto;height:300px;border-radius:12px}
+  .dbar{height:24px}
+  .dbar .url{font-size:9.5px;max-width:none}
+  .dbar .ex{display:none}
   .steps{padding:0}
-  .st,.st:first-child{min-height:62vh;justify-content:flex-start;padding-top:var(--s3);text-align:left}
-  .st:last-child{min-height:72vh}
-  .cal{--slot:28px}
-  .slot:nth-child(n+6){display:none}
-  .ev{font-size:10.5px;padding:5px 8px}
-  #evNew{height:calc(var(--slot) * 2.2)!important}
-  .done div{font-size:10.5px}
-  .brief .hi{font-size:16px}
-  .stats4 b{font-size:16px}
-  .b{font-size:11.5px;padding:7px 10px}
-  .card .v{font-size:18px}
-  .card{padding:9px}
-  .need{padding:9px}
-  .need .bt{margin-top:6px}
+  .st{min-height:46vh;justify-content:flex-start;padding-top:var(--s2)}
+  .st:last-child{min-height:58vh}
+  .st h3{font-size:24px}
+  .st p{font-size:15px;margin-top:var(--s1)}
+  .progress .num{font-size:11px}
+  /* compact device content */
+  .tool{width:31%;padding:6px 7px;font-size:9.5px;border-radius:8px}
+  .tool .tn{font-size:8px;margin-bottom:2px}
+  .tool .x2{display:none}
+  .retype{font-size:8.5px;top:46%}
+  .hub{width:48px;height:48px}
+  .hub img{height:24px}
+  .L-dash{padding:10px;gap:8px}
+  .dh b{font-size:14px}
+  .tiles{gap:6px}
+  .ti{padding:7px 8px;border-radius:8px}
+  .ti .k{font-size:7.5px;letter-spacing:.1em}
+  .ti .v{font-size:17px}
+  .ti .v small{font-size:9px}
+  .ti .note{font-size:8.5px}
+  .lanes i{height:10px}
+  .spark{height:18px}
+  .cols{height:18px}
+  .L-ai{width:auto;inset:8px;padding:10px;gap:6px}
+  .chart{height:60px}
+  .q,.ans{font-size:11px}
+  .L-chat{padding:10px 12px;gap:8px}
+  .seg span{font-size:9.5px;padding:3px 9px}
+  .tbl{font-size:10px}
+  .tbl div{padding:4px 8px}
+  .inp{display:none}
 }
 @media(max-width:600px){
   .big{grid-template-columns:1fr;gap:var(--s5)}
   .sliders{grid-template-columns:1fr;gap:var(--s3)}
-  .vc{padding:var(--s3)}
   .case{padding:var(--s3)}
   .case .stats{grid-template-columns:1fr}
   .pc .body{padding:var(--s3)}
-  .numbers{padding:var(--s13) 0}
   .owl-stage{margin-bottom:calc(var(--s5) * -1)}
+  .sec{padding:var(--s8) 0}
+  .sec-head{margin-bottom:var(--s5)}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
   [data-r]{opacity:1;transform:none}
+  .dev[data-s="4"] .btnx .a1{opacity:0}
+  .dev[data-s="4"] .btnx .a2,.dev[data-s="4"] .done{opacity:1}
 }
 </style>
 </head>
@@ -371,7 +472,7 @@ footer b{color:var(--silver);font-weight:600}
   <a href="../index.html" class="brand" aria-label="Wise AI home"><img src="../logo.svg" alt="Wise AI"></a>
   <div class="links">
     <a class="l" href="#story">See it work</a>
-    <a class="l" href="../agents.html">AI Agents</a>
+    <a class="l" href="#ladder">What I build</a>
     <a class="l" href="../work.html">Work</a>
     <a class="cta" href="../quiz.html">Free audit</a>
   </div>
@@ -382,14 +483,14 @@ footer b{color:var(--silver);font-weight:600}
   <section class="hero" id="top">
     <span class="eyebrow" data-r>Brisbane · local, embedded, accountable</span>
     <div class="owl-stage" data-r aria-hidden="true">
-      <img class="owl" id="owl" src="../hero-owl.png" alt="" width="1024" height="1024" decoding="async">
+      <img class="owl" src="../hero-owl.png" alt="" width="1024" height="1024" decoding="async">
     </div>
     <div class="hero-copy">
-      <h1 class="h-xl" data-r>It's 9:47pm. <span class="dim">Your business is still working.</span></h1>
-      <p class="lede" data-r>A custom AI agent, on your own accounts, that answers, quotes, books and chases while you're off the clock. Scroll to watch one night.</p>
+      <h1 class="h-xl" data-r>Your whole business. <span class="dim">One screen.</span></h1>
+      <p class="lede" data-r>I connect the tools you already run on (POS, bookings, accounts, rostering) into one live system, tailored to your business. Then you run it by asking.</p>
       <div class="ctas" data-r>
         <a class="btn btn-primary" href="../quiz.html">Start your free 2-minute audit</a>
-        <a class="btn btn-ghost" href="#story">Watch it work</a>
+        <a class="btn btn-ghost" href="#story">Watch one come together</a>
       </div>
     </div>
     <a class="cue" href="#story" aria-label="Scroll to the story"><span>Scroll</span><i></i></a>
@@ -398,132 +499,132 @@ footer b{color:var(--silver);font-weight:600}
   <!-- ===== STORY ===== -->
   <section class="story" id="story" aria-labelledby="story-h">
     <div class="story-head wrap" data-r>
-      <span class="tag-example">Example · a plumbing business</span>
-      <h2 class="h-l" id="story-h">One night. <span class="dim">Zero minutes of yours.</span></h2>
+      <span class="tag-example">Example · a family entertainment venue</span>
+      <h2 class="h-l" id="story-h">Five tools. <span class="dim">One system.</span></h2>
     </div>
     <div class="wrap">
       <div class="story-grid">
         <div class="steps" id="steps">
-          <article class="st" data-step="0">
-            <div class="ts"><b></b>9:47 pm</div>
-            <h3>A customer needs help. You're on the couch.</h3>
-            <p>Their hot water system is leaking. They message your website, expecting to wait until morning.</p>
+          <article class="st">
+            <div class="ts"><b></b>Before</div>
+            <h3>Five tools. None of them talk.</h3>
+            <p>POS, bookings, accounts, the roster and a league spreadsheet. The same numbers get re-typed between them every day.</p>
           </article>
-          <article class="st" data-step="1">
-            <div class="ts"><b></b>9:47 pm · 38 seconds later</div>
-            <h3>Your agent replies, and asks the right questions.</h3>
-            <p>Gas or electric? How old? The details you'd need, captured before you'd have seen the message.</p>
+          <article class="st">
+            <div class="ts"><b></b>Connect</div>
+            <h3>Connected, without replacing any of them.</h3>
+            <p>Your existing systems stay. They're linked so the data flows on its own.</p>
           </article>
-          <article class="st" data-step="2">
-            <div class="ts"><b></b>9:49 pm</div>
-            <h3>A guide quote goes out: $1,850, supplied and installed.</h3>
-            <p>Built from your price list and your rules, in your voice. Anything unusual waits for you.</p>
+          <article class="st">
+            <div class="ts"><b></b>One screen</div>
+            <h3>The whole venue, live, on one screen.</h3>
+            <p>Bookings, lanes, party deposits, café sales, roster gaps and league attendance, updating as it happens.</p>
           </article>
-          <article class="st" data-step="3">
-            <div class="ts"><b></b>9:51 pm</div>
-            <h3>Booked for Thursday 10am. Your calendar already knows.</h3>
-            <p>Confirmation sent, reminder scheduled, job details on the booking. No double entry.</p>
+          <article class="st">
+            <div class="ts"><b></b>Ask</div>
+            <h3>Ask it like you'd ask a manager.</h3>
+            <p>"How did parties do this month vs last?" Answered from your own data, with the chart.</p>
           </article>
-          <article class="st" data-step="4">
-            <div class="ts"><b></b>6:02 am</div>
-            <h3>Last week's invoice is paid, and matched in your accounts.</h3>
-            <p>The payment lands and gets reconciled against the right invoice before you've had coffee.</p>
+          <article class="st">
+            <div class="ts"><b></b>Act</div>
+            <h3>One click to act on it.</h3>
+            <p>It spots Saturday's roster gap and lines up who can fill it. You approve, and it's done.</p>
           </article>
-          <article class="st" data-step="5">
-            <div class="ts"><b></b>7:00 am</div>
-            <h3>You wake up to one brief, and one decision.</h3>
-            <p>Everything routine is done. The one call that genuinely needs a human is waiting for you.</p>
+          <article class="st">
+            <div class="ts"><b></b>Your AI, your choice</div>
+            <h3>Works with the AI you already use.</h3>
+            <div class="ais"><span>ChatGPT</span><span>Claude</span><span>or built right in</span></div>
           </article>
         </div>
 
-        <div class="phone-col">
-          <div class="phone" role="img" aria-label="Phone showing the agent handling the current step of the story">
-            <div class="screen">
-              <div class="notch"></div>
-              <div class="sbar"><span id="clk">9:47</span><span>●●● 5G</span></div>
+        <div class="dev-col">
+          <div class="dev" id="dev" data-s="0" role="img" aria-label="Example venue system being assembled, matching the current step of the story">
+            <div class="dbar"><i></i><i></i><i></i><span class="url" id="url">5 tabs open</span><span class="ex">Example data</span></div>
+            <div class="area">
 
-              <!-- 0 · lock screen enquiry -->
-              <div class="scr lock on" data-scr="0">
-                <div class="clock">9:47</div>
-                <div class="date">Tuesday · Brisbane</div>
-                <div class="notif">
-                  <div class="top"><b>Website chat</b><span>now</span></div>
-                  New enquiry: "Hi, my hot water system's leaking. Can someone come this week? I'm in Ashgrove."
+              <!-- tools: scattered (0) → connected (1) -->
+              <div class="L L-tools">
+                <svg class="wires" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M50 52 C 40 40, 25 30, 17 20"/><path class="pulse" pathLength="100" d="M17 20 C 25 30, 40 40, 50 52"/>
+                  <path d="M50 52 L 50 16"/><path class="pulse" pathLength="100" d="M50 16 L 50 52" style="animation-delay:-.6s"/>
+                  <path d="M50 52 C 60 40, 75 30, 83 20"/><path class="pulse" pathLength="100" d="M83 20 C 75 30, 60 40, 50 52" style="animation-delay:-1.2s"/>
+                  <path d="M50 52 C 40 62, 25 70, 17 80"/><path class="pulse" pathLength="100" d="M17 80 C 25 70, 40 62, 50 52" style="animation-delay:-1.8s"/>
+                  <path d="M50 52 C 60 62, 75 70, 83 80"/><path class="pulse" pathLength="100" d="M83 80 C 75 70, 60 62, 50 52" style="animation-delay:-.3s"/>
+                </svg>
+                <div class="tool" style="--x0:4%;--y0:8%;--r0:-6deg;--x1:2%;--y1:6%">
+                  <div class="tn">POS <em>till</em></div><b>Café $1,240</b><span class="x2"><br>today, 212 sales</span>
+                </div>
+                <div class="tool" style="--x0:37%;--y0:3%;--r0:4deg;--x1:35%;--y1:2%">
+                  <div class="tn">Bookings <em>web</em></div><b>Lane 3 · 6pm</b><span class="x2"><br>Party of 10</span>
+                </div>
+                <div class="tool" style="--x0:67%;--y0:13%;--r0:-3deg;--x1:68%;--y1:6%">
+                  <div class="tn">Accounts</div><b>$50 deposit</b><span class="x2"><br>unmatched</span>
+                </div>
+                <div class="tool" style="--x0:7%;--y0:58%;--r0:5deg;--x1:2%;--y1:66%">
+                  <div class="tn">Roster</div><b>Sat 4–9pm</b><span class="x2"><br>1 short</span>
+                </div>
+                <div class="tool" style="--x0:58%;--y0:56%;--r0:-4deg;--x1:68%;--y1:66%">
+                  <div class="tn">League.xlsx</div>
+                  <div class="sheet"><span class="t"></span><span class="t"></span><span></span><span class="t"></span><span class="t"></span><span class="t"></span><span></span><span class="t"></span><span class="t"></span><span class="t"></span></div>
+                </div>
+                <div class="retype">Re-typed by hand, daily</div>
+                <div class="hub"><img src="../sig/owl-white.png" alt=""></div>
+              </div>
+
+              <!-- dashboard (2–4) -->
+              <div class="L L-dash">
+                <div class="dh"><b>Venue OS</b><span>Live · Sat 2:14pm</span></div>
+                <div class="tiles">
+                  <div class="ti"><span class="k">Bookings today</span><span class="v">38</span>
+                    <svg class="spark viz" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M0 24 L14 20 L28 22 L42 14 L57 16 L71 9 L85 11 L100 4"/></svg></div>
+                  <div class="ti"><span class="k">Lanes in use</span><span class="v">6<small> / 8</small></span>
+                    <div class="lanes viz"><i class="u"></i><i class="u"></i><i class="u"></i><i class="u"></i><i class="u"></i><i class="u"></i><i></i><i></i></div></div>
+                  <div class="ti"><span class="k">Party deposits</span><span class="v">5<small> of 6 paid</small></span>
+                    <div class="pbar viz"><i></i></div></div>
+                  <div class="ti"><span class="k">Café sales</span><span class="v">$1,240</span>
+                    <div class="cols viz"><i style="height:40%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:62%"></i><i style="height:90%"></i></div></div>
+                  <div class="ti alert"><span class="k">Roster gaps</span><span class="v">1</span><span class="note viz">Sat 4–9pm · 1 short</span></div>
+                  <div class="ti"><span class="k">League attendance</span><span class="v">86%</span>
+                    <div class="dots viz"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="n"></i><i></i><i></i><i class="n"></i></div></div>
                 </div>
               </div>
 
-              <!-- 1 · chat reply -->
-              <div class="scr" data-scr="1">
-                <div class="app"><div class="av">W</div><div class="nm">Your business<small>Agent · replying 24/7</small></div></div>
-                <div class="thread">
-                  <div class="meta">9:47 pm</div>
-                  <div class="b c">Hi, my hot water system's leaking. Can someone come this week? I'm in Ashgrove.</div>
-                  <div class="b a">Sorry to hear that! We can get someone to you this week. Is it gas or electric, and roughly how old?</div>
-                  <div class="chip">Replied in 38 sec</div>
-                  <div class="b c">Electric, about 12 years old.</div>
-                </div>
-              </div>
-
-              <!-- 2 · quote -->
-              <div class="scr" data-scr="2">
-                <div class="app"><div class="av">W</div><div class="nm">Your business<small>Agent · replying 24/7</small></div></div>
-                <div class="thread">
-                  <div class="b c">Electric, about 12 years old.</div>
-                  <div class="b a">At that age a replacement is likely. Here's a guide price:</div>
-                  <div class="card">
-                    <div class="k">Guide quote · Q-218</div>
-                    <div class="v">$1,850</div>
-                    <div class="row"><span>250L electric, supply + install</span></div>
-                    <div class="row"><span>Old unit removal</span><b>Included</b></div>
+              <!-- built-in AI (3–4) -->
+              <div class="L L-ai">
+                <div class="aih"><span class="av"><img src="../sig/owl-white.png" alt=""></span>Assistant<small>Your data</small></div>
+                <div class="q">How did parties do this month vs last?</div>
+                <div class="chart-wrap">
+                  <div class="ans"><b>18 parties, up from 14 (+29%).</b> Saturdays did most of the lifting.</div>
+                  <div class="chart" aria-hidden="true">
+                    <div class="g"><i class="l" style="height:50%"></i><i class="t" style="height:66%"></i></div>
+                    <div class="g"><i class="l" style="height:66%"></i><i class="t" style="height:83%"></i></div>
+                    <div class="g"><i class="l" style="height:50%"></i><i class="t" style="height:66%"></i></div>
+                    <div class="g"><i class="l" style="height:66%"></i><i class="t" style="height:100%"></i></div>
                   </div>
-                  <div class="b a">I've got Thu 10am or Fri 2pm. Which suits?</div>
-                  <div class="b c">Thursday works.</div>
+                  <div class="legend"><span>Last month</span><span class="t">This month</span><span>by week</span></div>
+                </div>
+                <div class="act">
+                  <div class="ans">Saturday 4–9pm is <b>one person short</b>. Jess is free and under her hours this week.</div>
+                  <div class="btnx"><span class="a1">Fill Saturday's roster gap</span><span class="a2">✓ Jess confirmed · roster updated</span></div>
+                  <div class="done">Logged to your rostering system. Nothing re-typed.</div>
                 </div>
               </div>
 
-              <!-- 3 · calendar -->
-              <div class="scr" data-scr="3">
-                <div class="cal-h"><b>Thursday</b><span>Calendar</span></div>
-                <div class="cal">
-                  <div class="slot">7am</div><div class="slot">8am</div><div class="slot">9am</div><div class="slot">10am</div>
-                  <div class="slot">11am</div><div class="slot">12pm</div><div class="slot">1pm</div><div class="slot">2pm</div><div class="slot">3pm</div>
-                  <div class="ev old" style="top:4px;height:calc(var(--slot) * 1.5)">Blocked drain<br><span style="font-size:10px">Paddington</span></div>
-                  <div class="ev new" id="evNew" style="top:calc(var(--slot) * 3 + 4px);height:calc(var(--slot) * 1.8)">10:00 · HWS replacement<small>Ashgrove · Q-218 · $1,850</small></div>
-                </div>
-                <div class="done">
-                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Confirmation sent to customer</div>
-                  <div><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Reminder set for Wed 6pm</div>
-                </div>
-              </div>
-
-              <!-- 4 · accounts -->
-              <div class="scr" data-scr="4">
-                <div class="cal-h"><b>Accounts</b><span>Bank feed</span></div>
-                <div class="led">
-                  <div class="li hit"><div class="l"><b>Invoice #1042</b><span>Kitchen tap & mixer · last Tue</span></div><div class="r">$640<small>Paid 6:02 am</small></div></div>
-                  <div class="match"><svg viewBox="0 0 24 24" width="12" height="12" stroke="#8fe3a8" stroke-width="2.4" fill="none"><path d="M5 13l4 4L19 7"/></svg>Matched to bank deposit · reconciled</div>
-                  <div class="li"><div class="l"><b>Invoice #1039</b><span>Reminder sent yesterday</span></div><div class="r">$410<small style="color:var(--silver)">Due Fri</small></div></div>
-                  <div class="li"><div class="l"><b>Quote Q-218</b><span>HWS replacement · Ashgrove</span></div><div class="r">$1,850<small>Booked</small></div></div>
-                </div>
-              </div>
-
-              <!-- 5 · brief -->
-              <div class="scr" data-scr="5">
-                <div class="app"><div class="av">W</div><div class="nm">Morning brief<small>7:00 am · for you</small></div></div>
-                <div class="brief">
-                  <div class="hi">Morning. Here's last night.</div>
-                  <div class="stats4">
-                    <div><b>4</b><span>enquiries answered</span></div>
-                    <div><b>2</b><span>jobs booked</span></div>
-                    <div><b>$640</b><span>paid & matched</span></div>
-                    <div><b>0</b><span>minutes of yours</span></div>
-                  </div>
-                  <div class="need">
-                    <div class="k">1 thing needs your call</div>
-                    <p>Quote Q-221 is $6,400, over your auto-send limit. Approve?</p>
-                    <div class="bt"><span>Approve</span><span>Review</span></div>
+              <!-- external AI (5) -->
+              <div class="L L-chat">
+                <div class="seg"><span>ChatGPT</span><span class="on">Claude</span><span>Built in</span></div>
+                <div class="conn">Connected to your venue system</div>
+                <div class="msgs">
+                  <div class="q">Which league night had the best turnout this term?</div>
+                  <div class="ans"><b>Tuesday Social</b>, averaging 92%. Thursday is lowest.</div>
+                  <div class="tbl">
+                    <div><span>League night</span><b>Avg attendance</b></div>
+                    <div><span>Tuesday Social</span><b>92%</b></div>
+                    <div><span>Wednesday Mixed</span><b>84%</b></div>
+                    <div><span>Thursday Scratch</span><b>71%</b></div>
                   </div>
                 </div>
+                <div class="inp">Ask about your business…</div>
               </div>
             </div>
           </div>
@@ -536,58 +637,96 @@ footer b{color:var(--silver);font-weight:600}
     </div>
   </section>
 
-  <!-- ===== VERTICALS ===== -->
-  <section class="sec" id="yours">
+  <!-- ===== LADDER ===== -->
+  <section class="sec" id="ladder">
     <div class="wrap">
-      <div class="sec-head">
-        <div data-r>
-          <span class="eyebrow">Same agent, your business</span>
-          <h2 class="h-l">Your slowest job, <span class="dim">made instant.</span></h2>
+      <div class="sec-head" data-r>
+        <span class="eyebrow">What I build</span>
+        <h2 class="h-l">From one task to <span class="dim">your whole operation.</span></h2>
+      </div>
+      <div class="ladder">
+        <article class="tier" data-r>
+          <span class="no">01</span>
+          <h3>Automations</h3>
+          <p class="ex">Invoice chasing · reminders · data entry</p>
+          <div class="tv">
+            <div class="flow">
+              <div class="n"><b>Invoice #1039</b>7 days overdue</div>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              <div class="n ok"><b>Reminder sent</b>automatically</div>
+            </div>
+          </div>
+        </article>
+        <article class="tier" data-r>
+          <span class="no">02</span>
+          <h3>AI agents</h3>
+          <p class="ex">Enquiries · bookings · follow-ups, 24/7</p>
+          <div class="tv">
+            <div class="mini-chat">
+              <div class="b c">Any lanes free Friday night for 6?</div>
+              <div class="b a">Yes, 7pm on lane 4. Booked and confirmed.</div>
+              <div class="meta"><span>Trades · clinics · venues · salons</span><b>9:47pm</b></div>
+            </div>
+          </div>
+        </article>
+        <article class="tier" data-r>
+          <span class="flag">Flagship</span>
+          <span class="no">03</span>
+          <h3>Business operating system</h3>
+          <p class="ex">Everything connected · live · one screen · AI on top</p>
+          <div class="tv">
+            <div class="minidash">
+              <div class="row"><div class="c"><i></i><u></u></div><div class="c"><i></i><u></u></div><div class="c"><i></i><u></u></div></div>
+              <div class="row"><div class="c"><i></i><u></u></div><div class="c"><i></i><u></u></div><div class="c"><i></i><u></u></div></div>
+              <div class="ask">Ask anything about your business</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== BUILT ON WHAT YOU USE ===== -->
+  <section class="sec" id="built" style="padding-top:var(--s5)">
+    <div class="wrap">
+      <div class="sec-head" data-r>
+        <span class="eyebrow">No rip-and-replace</span>
+        <h2 class="h-l">Built on what <span class="dim">you already use.</span></h2>
+      </div>
+      <div class="feed" data-r>
+        <div class="ins">
+          <span><b class="chipx">POS</b></span><span><b class="chipx">Bookings</b></span><span><b class="chipx">Accounting</b></span>
+          <span><b class="chipx">Rostering</b></span><span><b class="chipx">CRM</b></span><span><b class="chipx">Spreadsheets</b></span>
         </div>
-        <p class="lede" data-r>Whatever you run, there's a job that eats the week. Here's what that one job looks like before and after.</p>
+        <svg viewBox="0 0 100 600" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 50 C 60 50, 40 300, 100 300"/><path d="M0 150 C 60 150, 40 300, 100 300"/><path d="M0 250 C 60 250, 40 300, 100 300"/>
+          <path d="M0 350 C 60 350, 40 300, 100 300"/><path d="M0 450 C 60 450, 40 300, 100 300"/><path d="M0 550 C 60 550, 40 300, 100 300"/>
+          <path class="p" pathLength="100" d="M0 50 C 60 50, 40 300, 100 300"/><path class="p" pathLength="100" style="animation-delay:-1s" d="M0 250 C 60 250, 40 300, 100 300"/>
+          <path class="p" pathLength="100" style="animation-delay:-2s" d="M0 450 C 60 450, 40 300, 100 300"/><path class="p" pathLength="100" style="animation-delay:-1.5s" d="M0 550 C 60 550, 40 300, 100 300"/>
+        </svg>
+        <i class="arrow-d" aria-hidden="true"></i>
+        <div class="core">
+          <img src="../sig/owl-white.png" alt="">
+          <b>Your system</b>
+          <span>Tailored around how your business runs</span>
+        </div>
+        <i class="arrow-d" aria-hidden="true"></i>
+        <svg viewBox="0 0 100 600" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 300 C 60 300, 40 100, 100 100"/><path d="M0 300 L 100 300"/><path d="M0 300 C 60 300, 40 500, 100 500"/>
+          <path class="p" pathLength="100" d="M0 300 C 60 300, 40 100, 100 100"/><path class="p" pathLength="100" style="animation-delay:-1s" d="M0 300 L 100 300"/><path class="p" pathLength="100" style="animation-delay:-2s" d="M0 300 C 60 300, 40 500, 100 500"/>
+        </svg>
+        <div class="outs">
+          <span><b class="chipx">Live dashboard</b></span><span><b class="chipx">AI assistant</b></span><span><b class="chipx">Automations</b></span>
+        </div>
       </div>
-      <div class="vgrid">
-        <article class="vc" data-r>
-          <div class="who"><span class="eyebrow">Tradie</span><span class="task">Quote follow-up</span></div>
-          <h3>Every quote chased, without you remembering.</h3>
-          <div class="ba">
-            <div class="before"><div class="lbl">Before <b>~3 days</b></div><div class="track"><i data-w="100"></i></div><p>Quotes written at 10pm, chased when you remember.</p></div>
-            <div class="after"><div class="lbl">After <b>2 min</b></div><div class="track"><i data-w="6"></i></div><p>Out the same night, followed up on day 3 and day 7 automatically.</p></div>
-          </div>
-        </article>
-        <article class="vc" data-r>
-          <div class="who"><span class="eyebrow">Clinic</span><span class="task">New-client booking</span></div>
-          <h3>Booked and intake done before they arrive.</h3>
-          <div class="ba">
-            <div class="before"><div class="lbl">Before <b>~2 days</b></div><div class="track"><i data-w="88"></i></div><p>Phone tag, then a paper form at the front desk.</p></div>
-            <div class="after"><div class="lbl">After <b>3 min</b></div><div class="track"><i data-w="7"></i></div><p>Booked online, intake form filed straight to their record.</p></div>
-          </div>
-        </article>
-        <article class="vc" data-r>
-          <div class="who"><span class="eyebrow">Venue</span><span class="task">Party booking</span></div>
-          <h3>Party booked and deposit paid in one go.</h3>
-          <div class="ba">
-            <div class="before"><div class="lbl">Before <b>3 calls</b></div><div class="track"><i data-w="72"></i></div><p>Back-and-forth on the phone, deposit chased by hand.</p></div>
-            <div class="after"><div class="lbl">After <b>2 min</b></div><div class="track"><i data-w="5"></i></div><p>Time picked, lane held, deposit paid, reminder scheduled.</p></div>
-          </div>
-        </article>
-        <article class="vc" data-r>
-          <div class="who"><span class="eyebrow">Salon</span><span class="task">Rebooking regulars</span></div>
-          <h3>Regulars rebooked before they drift.</h3>
-          <div class="ba">
-            <div class="before"><div class="lbl">Before <b>never</b></div><div class="track"><i data-w="100"></i></div><p>Nobody has time to nudge, so regulars quietly lapse.</p></div>
-            <div class="after"><div class="lbl">After <b>automatic</b></div><div class="track"><i data-w="9"></i></div><p>A personal nudge six weeks after every visit, booked in-chat.</p></div>
-          </div>
-        </article>
-      </div>
-      <p class="vfoot">Examples of typical jobs. Your audit finds the real one in your business.</p>
+      <p class="norip" data-r><b>Your tools stay.</b> They finally work together.</p>
     </div>
   </section>
 
   <!-- ===== NUMBERS ===== -->
   <section class="numbers" id="numbers" aria-labelledby="num-h">
     <div class="wrap">
-      <span class="eyebrow" data-r>What it's worth</span>
+      <span class="eyebrow" data-r>What the re-typing costs</span>
       <h2 class="h-m" id="num-h" data-r>Move the sliders. <span class="dim">Watch the year change.</span></h2>
       <div class="big" data-r aria-live="polite">
         <div><div class="n" id="outH">240</div><div class="u">hours back a year</div></div>
@@ -595,7 +734,7 @@ footer b{color:var(--silver);font-weight:600}
       </div>
       <div class="sliders" data-r>
         <div class="sl">
-          <label for="hrs">Admin hours a week <output id="hrsO" for="hrs">10 hrs</output></label>
+          <label for="hrs">Admin &amp; re-typing, hours a week <output id="hrsO" for="hrs">10 hrs</output></label>
           <input type="range" id="hrs" min="1" max="40" value="10">
         </div>
         <div class="sl">
@@ -603,7 +742,7 @@ footer b{color:var(--silver);font-weight:600}
           <input type="range" id="rate" min="30" max="250" step="5" value="80">
         </div>
       </div>
-      <p class="assume" data-r>Conservative: assumes an agent takes half your admin, across 48 working weeks.</p>
+      <p class="assume" data-r>Conservative: assumes half of it goes away, across 48 working weeks.</p>
       <div class="ctas" data-r><a class="btn btn-primary" href="../quiz.html">Find your real number, free</a></div>
     </div>
   </section>
@@ -611,7 +750,7 @@ footer b{color:var(--silver);font-weight:600}
   <!-- ===== PROOF ===== -->
   <section class="sec" id="proof">
     <div class="wrap">
-      <div class="sec-head">
+      <div class="ph">
         <div data-r>
           <span class="eyebrow">Already running</span>
           <h2 class="h-l">Real builds. <span class="dim">Real businesses.</span></h2>
@@ -639,12 +778,12 @@ footer b{color:var(--silver);font-weight:600}
         </a>
         <div class="pc case" data-r>
           <div>
-            <span class="k" style="font-family:'Archivo';font-size:var(--t-xs);font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--silver)">Automation · family entertainment venue, QLD</span>
-            <h3 style="font-family:'Archivo';font-weight:900;font-size:var(--t-1);color:var(--white);line-height:1.15;margin-top:var(--s1);letter-spacing:-.015em">From hands-on owners to a venue that increasingly runs itself.</h3>
-            <span class="status">Audit done · automations rolling out</span>
+            <span class="k">Business operating system · family entertainment venue, regional QLD</span>
+            <h3>A whole venue, being connected into one system.</h3>
+            <span class="status">In progress</span>
           </div>
           <div class="stats">
-            <div class="stat"><b>6+</b><span>repetitive workflows mapped as automatable</span></div>
+            <div class="stat"><b>6+</b><span>repetitive workflows mapped in the audit</span></div>
             <div class="stat"><b>2&nbsp;days</b><span>a week: the owners' three-year goal</span></div>
             <div class="stat"><b>1st</b><span>Wise AI client to go from audit to retainer</span></div>
           </div>
@@ -654,13 +793,13 @@ footer b{color:var(--silver);font-weight:600}
   </section>
 
   <!-- ===== ABOUT ===== -->
-  <section class="sec" id="about" style="padding-top:var(--s8)">
+  <section class="sec" id="about" style="padding-top:var(--s5)">
     <div class="wrap about">
       <figure data-r><img src="../about-tyler.jpg" alt="Tyler Wise, founder of Wise AI" loading="lazy" width="1000" height="1000"></figure>
       <div>
         <span class="eyebrow" data-r>Who builds it</span>
         <h2 class="h-l" data-r>Tyler Wise. <span class="dim">Brisbane.</span></h2>
-        <p data-r>I build every agent myself, <b>on your own accounts</b>, and stay accountable for it after it's live. Accurate by design, with a human in the loop where it matters.</p>
+        <p data-r>I build every system myself, <b>on your existing tools and accounts</b>, and stay accountable for it after it's live. Accurate by design, with a human in the loop where it matters.</p>
         <p data-r>You keep running the business. I make the technology earn its keep.</p>
         <div class="facts" data-r><span>Local</span><span>Embedded</span><span>Accountable</span></div>
       </div>
@@ -670,8 +809,8 @@ footer b{color:var(--silver);font-weight:600}
   <!-- ===== CLOSE ===== -->
   <section class="close" id="contact">
     <span class="eyebrow" data-r>Get started</span>
-    <h2 class="h-xl" data-r>Tonight could be <span class="dim">handled.</span></h2>
-    <p class="lede" data-r>Take the free 2-minute audit. You'll see where an agent pays off first in your business, and what I'd build.</p>
+    <h2 class="h-xl" data-r>Let's put yours <span class="dim">on one screen.</span></h2>
+    <p class="lede" data-r>Take the free 2-minute audit. You'll see what to connect first, from one automation to the whole operation.</p>
     <div class="ctas" data-r>
       <a class="btn btn-primary" href="../quiz.html">Start your free audit</a>
       <a class="btn btn-ghost" href="mailto:tyler@wise-ai.au?subject=Wise%20AI%20enquiry">Email Tyler</a>
@@ -693,13 +832,13 @@ footer b{color:var(--silver);font-weight:600}
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // reveals
-  var rs = [].slice.call(document.querySelectorAll('[data-r]'));
+  var rs=[].slice.call(document.querySelectorAll('[data-r]'));
   if(reduce || !('IntersectionObserver' in window)){ rs.forEach(function(e){e.classList.add('in')}); }
   else{
-    var ro = new IntersectionObserver(function(es){ es.forEach(function(e){
+    var ro=new IntersectionObserver(function(es){es.forEach(function(e){
       if(!e.isIntersecting) return;
       var sib=[].filter.call(e.target.parentNode.children,function(c){return c.hasAttribute('data-r')});
-      e.target.style.transitionDelay = Math.max(0,sib.indexOf(e.target))*0.08+'s';
+      e.target.style.transitionDelay=Math.max(0,sib.indexOf(e.target))*0.08+'s';
       e.target.classList.add('in'); ro.unobserve(e.target);
     })},{threshold:.15,rootMargin:'0px 0px -6% 0px'});
     rs.forEach(function(e){ro.observe(e)});
@@ -712,7 +851,7 @@ footer b{color:var(--silver);font-weight:600}
     if(!reduce && owl){
       var y=Math.min(window.scrollY, window.innerHeight);
       owl.style.transform='translateY('+(y*0.28)+'px) scale('+(1-y/window.innerHeight*0.12)+')';
-      owl.style.opacity = String(1 - y/window.innerHeight*0.9);
+      owl.style.opacity=String(1-y/window.innerHeight*0.9);
     }
     ticking=false;
   }
@@ -720,27 +859,24 @@ footer b{color:var(--silver);font-weight:600}
   onScroll();
 
   // sticky story
-  var steps=[].slice.call(document.querySelectorAll('.st')),
-      scrs=[].slice.call(document.querySelectorAll('.scr')),
-      clk=document.getElementById('clk'), pnum=document.getElementById('pnum'), pbar=document.getElementById('pbar'),
-      times=['9:47','9:47','9:49','9:51','6:02','7:00'], cur=-1;
+  var steps=[].slice.call(document.querySelectorAll('.st')), dev=document.getElementById('dev'),
+      url=document.getElementById('url'), pnum=document.getElementById('pnum'), pbar=document.getElementById('pbar'),
+      urls=['5 tabs open','venue.os · connecting','venue.os/live','venue.os/ask','venue.os/ask','your AI · connected to venue.os'], cur=-1;
+  var mobile=window.matchMedia('(max-width:760px)');
   function show(i){
     if(i===cur) return; cur=i;
     steps.forEach(function(s,j){s.classList.toggle('on',j===i)});
-    scrs.forEach(function(s,j){s.classList.toggle('on',j===i)});
-    clk.textContent=times[i];
+    dev.setAttribute('data-s',String(i));
+    url.textContent=urls[i];
     pnum.innerHTML='0'+(i+1)+'<span> / 06</span>';
-    pbar.style.height=((i+1)/6*100)+'%';
+    pbar.style.width=((i+1)/6*100)+'%';
   }
-  show(0);
-  var mobile=window.matchMedia('(max-width:760px)');
   function pick(){
-    // the active step is the last one whose top has crossed the focus line
-    // desktop: step whose centre is nearest the viewport centre; mobile: text must sit below the sticky phone
     var idx=0;
     if(mobile.matches){
-      var line=window.innerHeight*0.66;
-      steps.forEach(function(s,j){ if(s.getBoundingClientRect().top < line) idx=j; });
+      // text sits below the pinned frame, so the focus line is low
+      var line=window.innerHeight*0.68;
+      steps.forEach(function(s,j){ if(s.getBoundingClientRect().top<line) idx=j; });
     } else {
       var mid=window.innerHeight/2, best=1e9;
       steps.forEach(function(s,j){ var r=s.getBoundingClientRect(), d=Math.abs(r.top+r.height/2-mid); if(d<best){best=d;idx=j;} });
@@ -749,17 +885,6 @@ footer b{color:var(--silver);font-weight:600}
   }
   window.addEventListener('scroll',function(){requestAnimationFrame(pick)},{passive:true});
   window.addEventListener('resize',pick); pick();
-
-  // before/after bars
-  var bars=[].slice.call(document.querySelectorAll('.track i'));
-  function fill(b){b.style.width=b.getAttribute('data-w')+'%'}
-  if(reduce || !('IntersectionObserver' in window)) bars.forEach(fill);
-  else{
-    var bo=new IntersectionObserver(function(es){es.forEach(function(e){
-      if(!e.isIntersecting) return; setTimeout(function(){fill(e.target)},250); bo.unobserve(e.target);
-    })},{threshold:.6});
-    bars.forEach(function(b){bo.observe(b)});
-  }
 
   // calculator
   var hrs=document.getElementById('hrs'), rate=document.getElementById('rate'),

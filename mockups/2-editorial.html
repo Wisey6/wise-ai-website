@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <!--
-  MOCKUP 2 · EDITORIAL
+  MOCKUP 2 · EDITORIAL  (v2: business operating system positioning)
   Swiss / editorial minimalism, the most restrained of the five directions.
   Flat near-black, one hairline 12-column grid, numbered sections, very few elements.
-  Show-don't-tell: a live example ticker, a drag-to-compare inbox, one enquiry traced
-  start to finish with the real artefacts, a calculator, and real work only.
+  Show-don't-tell: an example live feed, a drag-to-compare "six apps vs one screen",
+  a three-rung ladder (automations → agents → operating system), a typographic
+  diagram of existing tools feeding one tailored system, and real work only.
 
   Ratio system
   - Type scale on the golden ratio φ = 1.618: 16 → 26 → 42 → 68 → 110px
     (12.5px = 16/√φ for small caps labels). Fluid with clamp() below 1280px.
   - Spacing on an 8px grid using Fibonacci multiples: 8 · 16 · 24 · 40 · 64 · 104 · 168.
-  - Splits are 1.618 : 1 (≈ 61.8% / 38.2%) everywhere two things sit side by side.
+  - Splits are 1.618 : 1 (61.8% / 38.2%). The compare slider rests at 38.2%.
+  - Ladder rungs rise by Fibonacci steps (104 → 64 → 0).
   - 12-column grid, 24px gutters, 1280px max width.
 -->
 <html lang="en">
@@ -18,7 +20,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wise AI · Mockup 2 · Editorial</title>
-<meta name="description" content="Wise AI builds AI agents that answer enquiries, book jobs, send quotes and chase invoices for Brisbane small businesses, on your own accounts.">
+<meta name="description" content="Wise AI connects the tools your business already runs on into one live system, tailored to you, with AI on top. From single automations to a full business operating system.">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,12 +30,12 @@
   /* Wise AI palette (from styles.css) */
   --void:#0A0E11;--noir:#0D1114;--onyx:#1F2327;--graphite:#3A3F44;
   --steel:#53585D;--silver:#989CA0;--chrome:#B8BDC2;--platinum:#E8EBED;--white:#fff;
-  --warn:#d9a3a3;            /* desaturated "unread / overdue" tone */
+  --warn:#d9a3a3;
   --hair:rgba(184,189,194,.14);
   --hair-strong:rgba(184,189,194,.28);
 
   /* golden-ratio type scale */
-  --t-xs:12.5px;             /* 16 / √φ */
+  --t-xs:12.5px;
   --t-1:16px;
   --t-2:clamp(20px,2.03vw,26px);
   --t-3:clamp(30px,3.28vw,42px);
@@ -71,6 +73,7 @@ button{font:inherit;color:inherit}
 .label b{color:var(--white);font-weight:600}
 h1,h2,h3{font-family:'Archivo';font-weight:900;color:var(--white);letter-spacing:-.03em}
 .dim{color:var(--steel)}
+.example{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--steel)}
 
 /* ---- buttons ---- */
 .pill{display:inline-flex;align-items:center;gap:var(--s1);border-radius:999px;padding:var(--s2) var(--s3);font-weight:600;font-size:15px;
@@ -121,115 +124,210 @@ h1,h2,h3{font-family:'Archivo';font-weight:900;color:var(--white);letter-spacing
 .sec-body{margin-top:var(--s8)}
 @media(max-width:860px){.sec{padding-top:var(--s13)}.sec-head{grid-template-columns:1fr;gap:var(--s2)}.sec-body{margin-top:var(--s5)}}
 
-.example{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--steel)}
+/* =========================================================
+   01 · six apps vs one screen (drag to compare)
+   ========================================================= */
+.compare{position:relative;--pos:38.2%;height:560px;border:1px solid var(--hair-strong);border-radius:6px;overflow:hidden;user-select:none;-webkit-user-select:none;
+  font-size:12.5px;line-height:1.4}
+.cmp-layer{position:absolute;inset:0}
+.cmp-before{z-index:0;isolation:isolate}
+.cmp-after{z-index:1;isolation:isolate}
+.cmp-tag{position:absolute;top:var(--s2);z-index:3;font-family:'Archivo';font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  padding:5px 12px;border-radius:999px;white-space:nowrap}
 
-/* ---- 01 · compare inbox ---- */
-.compare{position:relative;--pos:50%;border:1px solid var(--hair-strong);border-radius:4px;overflow:hidden;user-select:none;-webkit-user-select:none}
-.cmp-layer{background:var(--void)}
-.cmp-with{position:absolute;inset:0;background:#0f1418;clip-path:inset(0 0 0 var(--pos))}
-.cmp-bar{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-bottom:1px solid var(--hair)}
-.cmp-with .cmp-bar{flex-direction:row-reverse}
-.cmp-tag{font-family:'Archivo';font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1px solid var(--graphite);color:var(--silver);white-space:nowrap}
-.cmp-with .cmp-tag{background:var(--white);color:var(--noir);border-color:var(--white)}
-.cmp-count{font-size:13px;color:var(--silver);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cmp-count b{color:var(--warn);font-weight:600}
-.cmp-with .cmp-count b{color:var(--white)}
-.inbox{list-style:none}
-.inbox li{display:grid;grid-template-columns:152px 1.618fr 1fr;gap:var(--s3);align-items:center;height:64px;padding:0 var(--s3);border-bottom:1px solid var(--hair)}
-.inbox li:last-child{border-bottom:0}
-.inbox .who{font-weight:600;color:var(--white);display:flex;align-items:center;gap:var(--s1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
-.inbox .who i{flex:none;width:7px;height:7px;border-radius:50%}
-.cmp-without .who i{background:var(--white)}
-.cmp-with .who i{background:transparent;border:1px solid var(--steel)}
-.inbox .what{color:var(--silver);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cmp-with .what{color:var(--steel)}
-.inbox .st{font-size:13.5px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.cmp-without .st{color:var(--warn)}
-.cmp-with .st{color:var(--platinum)}
-.cmp-with .st::before{content:"\2713\00a0";color:var(--white);font-weight:700}
-.cmp-handle{position:absolute;top:0;bottom:0;left:var(--pos);width:1px;background:var(--white);box-shadow:0 0 18px rgba(255,255,255,.5);pointer-events:none;transform:translateX(-.5px)}
+/* before: the scattered desktop */
+.cmp-before{background:
+  radial-gradient(60% 50% at 30% 60%,rgba(83,88,93,.10),transparent 70%),
+  repeating-linear-gradient(0deg,rgba(184,189,194,.025) 0 1px,transparent 1px 24px),var(--void)}
+.cmp-before .cmp-tag{left:var(--s2);border:1px solid var(--graphite);color:var(--silver);background:rgba(10,14,17,.85)}
+.tabs{position:absolute;left:0;right:0;top:0;height:56px;display:flex;align-items:flex-end;gap:2px;padding:0 var(--s2) 0 168px;border-bottom:1px solid var(--hair);overflow:hidden;background:rgba(13,17,20,.9)}
+.tabs span{flex:0 1 150px;min-width:0;height:32px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:6px 6px 0 0;background:var(--noir);
+  border:1px solid var(--hair);border-bottom:0;color:var(--silver);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs span::after{content:"\00d7";margin-left:auto;color:var(--steel)}
+.tabs span.cur{background:var(--onyx);color:var(--platinum)}
+.win{position:absolute;background:#12171b;border:1px solid var(--hair-strong);border-radius:6px;box-shadow:0 18px 40px rgba(0,0,0,.55);overflow:hidden;color:var(--silver)}
+.win .wh{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--hair);background:rgba(31,35,39,.8);color:var(--chrome);font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden}
+.win .wh i{width:6px;height:6px;border-radius:50%;background:var(--graphite);flex:none}
+.win .wb{padding:8px 10px}
+.win .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed rgba(184,189,194,.08);white-space:nowrap;overflow:hidden}
+.win .r:last-child{border-bottom:0}
+.win .r b{color:var(--platinum);font-weight:500}
+.win .q{color:var(--warn)}
+.win .mute{color:var(--steel)}
+.cells{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--hair);border-left:1px solid var(--hair);font-family:var(--mono);font-size:10.5px}
+.cells span{border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:3px 5px;white-space:nowrap;overflow:hidden;color:var(--silver)}
+.cells span.h{color:var(--steel)}
+.cells span.e{color:var(--warn)}
+.postit{position:absolute;background:#e8e4d8;color:#22262a;font-family:'Archivo';font-weight:600;font-size:12.5px;line-height:1.3;padding:12px 14px;width:150px;
+  box-shadow:0 12px 24px rgba(0,0,0,.5);transform:rotate(4deg)}
+.w1{left:2.5%;top:15%;width:30%;transform:rotate(-1.4deg)}
+.w2{left:9%;top:43%;width:27%;transform:rotate(1.2deg);z-index:2}
+.w3{left:4%;top:66%;width:31%;transform:rotate(.8deg)}
+.w4{left:52%;top:16%;width:27%;transform:rotate(-1deg)}
+.w5{left:70%;top:46%;width:27%;transform:rotate(1.8deg)}
+.w6{left:40%;top:63%;width:29%;transform:rotate(-1.8deg)}
+.postit.p1{left:24%;top:11%;z-index:3}
+
+/* after: one screen */
+.cmp-after{background:#0e1317;clip-path:inset(0 0 0 var(--pos));display:flex;flex-direction:column}
+.cmp-after .cmp-tag{right:var(--s2);background:var(--white);color:var(--noir)}
+.os-bar{height:56px;flex:none;display:flex;align-items:center;gap:var(--s2);padding:0 168px 0 var(--s3);border-bottom:1px solid var(--hair)}
+.os-bar b{font-family:'Archivo';font-weight:900;font-size:15px;color:var(--white);letter-spacing:-.01em}
+.os-bar .lv{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--silver)}
+.os-bar .lv i{width:6px;height:6px;border-radius:50%;background:#8fe3a8;box-shadow:0 0 8px rgba(143,227,168,.8)}
+.os{flex:1;min-height:0;display:grid;grid-template-columns:1.618fr 1fr;gap:var(--s2);padding:var(--s2)}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:var(--s2);min-height:0}
+.tile{border:1px solid var(--hair-strong);border-radius:6px;padding:var(--s2);display:flex;flex-direction:column;background:rgba(31,35,39,.32);min-width:0;overflow:hidden}
+.tile .tl{font-family:'Archivo';font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--silver)}
+.tile .tn{font-family:'Archivo';font-weight:900;font-size:var(--t-3);line-height:1;color:var(--white);letter-spacing:-.03em;margin-top:var(--s1)}
+.tile .tn small{font-size:.5em;color:var(--silver);letter-spacing:0}
+.tile .ts{color:var(--silver);font-size:12px;margin-top:auto;padding-top:var(--s1)}
+.tv{margin-top:var(--s2)}
+.tv-list{font-family:var(--mono);font-size:11px;color:var(--chrome);display:flex;flex-direction:column;gap:3px}
+.tv-list span{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dashed rgba(184,189,194,.1);padding-bottom:3px;white-space:nowrap;overflow:hidden}
+.dots{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:180px}
+.dots i{aspect-ratio:1;border-radius:50%;background:var(--white)}
+.dots i.o{background:transparent;border:1px solid var(--steel)}
+.dots.w7{grid-template-columns:repeat(7,1fr);max-width:140px}
+.shift{position:relative;height:14px;border-radius:3px;background:var(--graphite);overflow:hidden}
+.shift i{position:absolute;top:0;bottom:0;left:0;width:55%;background:var(--white)}
+.shift b{position:absolute;top:0;bottom:0;left:55%;width:45%;background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(217,163,163,.55) 4px 6px);border-left:1px solid var(--warn)}
+.shift-x{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--steel);margin-top:4px}
+.tile .ts b{color:var(--platinum);font-weight:500}
+.lanes{display:flex;align-items:flex-end;gap:4px;height:34px;margin-top:var(--s1)}
+.lanes i{flex:1;background:var(--white);border-radius:2px 2px 0 0;opacity:.85}
+.lanes i.off{background:var(--graphite)}
+.spark{width:100%;height:34px;margin-top:var(--s1)}
+.ai{border:1px solid var(--hair-strong);border-radius:6px;display:flex;flex-direction:column;padding:var(--s2);background:rgba(31,35,39,.32);min-height:0;min-width:0}
+.ai-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ai-h .tl{font-family:'Archivo';font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--white)}
+.ai-h span:last-child{font-size:11px;color:var(--steel)}
+.ask{align-self:flex-end;margin-top:var(--s2);background:var(--onyx);color:var(--platinum);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:90%;font-size:13px}
+.ans{margin-top:var(--s2);color:var(--chrome);font-size:13px;line-height:1.5}
+.ans b{color:var(--white);font-weight:600}
+.chart{margin-top:var(--s2);flex:1;min-height:96px;display:flex;flex-direction:column}
+.bars{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2);align-items:end;border-bottom:1px solid var(--hair-strong);padding:0 4px}
+.bars .wk{display:flex;align-items:flex-end;gap:3px;height:100%}
+.bars .wk i{flex:1;border-radius:2px 2px 0 0;height:var(--h);transform-origin:bottom;transition:transform .9s cubic-bezier(.16,1,.3,1)}
+.bars .wk i.l{background:var(--graphite)}
+.bars .wk i.t{background:var(--white)}
+.compare:not(.grown) .bars .wk i{transform:scaleY(.04)}
+.bars-x{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2);padding:4px 4px 0;font-size:10.5px;color:var(--steel);text-align:center}
+.legend{display:flex;gap:var(--s2);margin-top:var(--s1);font-size:11px;color:var(--silver)}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.ai-in{margin-top:var(--s2);border:1px solid var(--hair-strong);border-radius:999px;padding:7px 14px;color:var(--steel);font-size:12.5px;white-space:nowrap;overflow:hidden}
+
+.cmp-handle{position:absolute;top:0;bottom:0;left:var(--pos);width:1px;background:var(--white);box-shadow:0 0 18px rgba(255,255,255,.5);pointer-events:none;transform:translateX(-.5px);z-index:4}
 .cmp-knob{position:absolute;top:50%;left:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:var(--white);color:var(--noir);
   display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(10,14,17,.6),0 8px 24px rgba(0,0,0,.5)}
 .cmp-knob svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .compare:has(.cmp-range:focus-visible) .cmp-knob{outline:2px solid var(--white);outline-offset:4px}
-.cmp-range{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;-webkit-appearance:none;appearance:none;touch-action:pan-y}
-.cmp-foot{display:flex;justify-content:space-between;gap:var(--s2);margin-top:var(--s2);flex-wrap:wrap}
+.cmp-range{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;-webkit-appearance:none;appearance:none;touch-action:pan-y;z-index:5}
+.cmp-foot{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--gut);margin-top:var(--s3);align-items:baseline}
+.cmp-foot .works{font-size:var(--t-2);color:var(--platinum);letter-spacing:-.01em;line-height:1.3}
+.cmp-foot .works span{color:var(--steel)}
+.cmp-foot .meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
 .cmp-foot .hint{font-size:13px;color:var(--silver)}
-.compare.animating{transition:none}
+
+@media(max-width:1080px){
+  .compare{height:640px}
+  .os{grid-template-columns:1fr 1fr}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}
+  .tile .tn{font-size:30px}
+  .w1{width:38%}.w2{width:34%;left:6%}.w3{width:40%}.w4{width:36%;left:50%}.w5{width:34%;left:62%}.w6{width:38%;left:38%}
+}
 @media(max-width:720px){
-  .inbox li{grid-template-columns:1.618fr 1fr;grid-template-rows:auto auto;column-gap:var(--s2);row-gap:2px;height:76px;padding:0 var(--s2);align-content:center}
-  .inbox .who{grid-column:1;grid-row:1;font-size:14px}
-  .inbox .what{grid-column:1;grid-row:2;font-size:13px}
-  .inbox .st{grid-column:2;grid-row:1/3;font-size:12.5px}
-  .cmp-bar{padding:var(--s2)}
-  .cmp-count{display:none}
+  .compare{height:820px;font-size:11.5px}
+  .tabs{padding-left:var(--s2);height:48px;top:44px}
+  .tabs span{flex-basis:96px}
+  .os-bar{height:auto;padding:52px var(--s2) var(--s2);flex-wrap:wrap;gap:4px var(--s2)}
+  .os{grid-template-columns:1fr;grid-template-rows:auto 1fr;padding:var(--s1);gap:var(--s1)}
+  .tiles{gap:var(--s1);grid-template-rows:repeat(3,96px)}
+  .tile{padding:10px}
+  .tile .tn{font-size:24px}
+  .tile .ts{font-size:11px}
+  .tv{display:none}
+  .lanes,.spark{height:22px}
+  .ai{padding:12px}
+  .chart{min-height:110px}
+  .w1{left:3%;top:15%;width:62%}.w2{left:30%;top:31%;width:62%}.w3{left:4%;top:47%;width:66%}
+  .w4{left:34%;top:59%;width:60%}.w5{left:6%;top:72%;width:60%}.w6{left:30%;top:84%;width:64%}
+  .postit.p1{left:58%;top:12%;width:120px;font-size:11.5px}
+  .cmp-foot{grid-template-columns:1fr;gap:var(--s2)}
+  .cmp-foot .meta{align-items:flex-start;text-align:left}
 }
 
-/* ---- 02 · one enquiry, start to finish ---- */
-.switch{display:inline-flex;border:1px solid var(--hair-strong);border-radius:999px;padding:4px;gap:4px;flex-wrap:wrap}
-.switch button{background:none;border:0;border-radius:999px;padding:var(--s1) var(--s2);font-size:14px;font-weight:500;color:var(--silver);cursor:pointer;transition:color .2s,background .2s}
-.switch button:hover{color:var(--white)}
-.switch button[aria-selected="true"]{background:var(--white);color:var(--noir)}
-.flow-top{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);flex-wrap:wrap}
-.flow{list-style:none;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:var(--gut);margin-top:var(--s5)}
-.fstep{position:relative;border-top:1px solid var(--hair-strong);padding-top:var(--s3);
-  opacity:0;transform:translateY(8px);transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1)}
-.fstep.on{opacity:1;transform:none}
-.fstep::before{content:"";position:absolute;top:-4px;left:0;width:7px;height:7px;border-radius:50%;background:var(--white);box-shadow:0 0 10px rgba(255,255,255,.6)}
-.fs-top{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s1)}
-.fs-l{font-family:'Archivo';font-size:var(--t-xs);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--white)}
-.fs-t{font-family:var(--mono);font-size:12px;color:var(--silver);white-space:nowrap}
-.fs-art{margin-top:var(--s2);min-height:168px}
-.a-bubble{font-size:13.5px;line-height:1.45;padding:10px 14px;border-radius:16px;max-width:100%}
-.a-bubble.c{background:var(--onyx);color:var(--platinum);border-bottom-left-radius:4px}
-.a-bubble.a{background:var(--white);color:var(--noir);border-bottom-right-radius:4px}
-.a-meta{font-size:11.5px;color:var(--steel);margin-top:var(--s1)}
-.a-doc{border:1px solid var(--hair-strong);border-radius:6px;padding:12px 14px;background:rgba(31,35,39,.35);font-size:12.5px}
-.a-doc-h{font-family:'Archivo';font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--silver);margin-bottom:var(--s1)}
-.a-line{display:flex;justify-content:space-between;gap:var(--s1);color:var(--chrome);padding:3px 0}
-.a-line b{color:var(--white);font-weight:600;white-space:nowrap}
-.a-line.t{border-top:1px solid var(--hair);margin-top:4px;padding-top:6px}
-.a-cal{display:grid;grid-template-columns:56px 1fr;border:1px solid var(--hair-strong);border-radius:6px;overflow:hidden}
-.a-cal-d{background:var(--white);color:var(--noir);text-align:center;padding:10px 4px;font-family:'Archivo';font-size:11px;font-weight:700;letter-spacing:.14em}
-.a-cal-d b{display:block;font-size:26px;letter-spacing:-.02em;line-height:1.05;font-weight:900}
-.a-cal-s{padding:10px 12px;font-size:12.5px;color:var(--silver);line-height:1.4}
-.a-cal-s b{display:block;color:var(--white);font-size:14px;font-weight:600}
-.a-paid{position:relative;border:1px solid var(--hair-strong);border-radius:6px;padding:14px;font-size:12.5px;color:var(--silver);min-height:104px}
-.a-paid .stamp{display:inline-block;font-family:'Archivo';font-weight:900;font-size:22px;letter-spacing:.12em;color:var(--white);
-  border:2px solid var(--white);border-radius:6px;padding:2px 10px;transform:rotate(-6deg);margin:4px 0 12px}
-.flow-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--gut);margin-top:var(--s8);border-top:1px solid var(--hair);padding-top:var(--s3)}
-.flow-sum div{display:flex;flex-direction:column}
-.flow-sum b{font-family:'Archivo';font-weight:900;font-size:var(--t-4);line-height:1;color:var(--white);letter-spacing:-.03em}
-.flow-sum span{color:var(--silver);font-size:14px;margin-top:var(--s1)}
-@media(max-width:1080px){.flow{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:var(--s5)}}
-@media(max-width:620px){.flow{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:var(--s5);column-gap:var(--s2)}.fs-art{min-height:0}
-  .flow-sum{grid-template-columns:1fr;row-gap:var(--s3)}.fs-top{flex-direction:column;gap:2px}}
+/* =========================================================
+   02 · ladder
+   ========================================================= */
+.ladder{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--gut);align-items:start}
+.rung{border-top:1px solid var(--hair-strong);padding-top:var(--s3);position:relative}
+.rung::before{content:"";position:absolute;top:-4px;left:0;width:7px;height:7px;border-radius:50%;background:var(--white);box-shadow:0 0 10px rgba(255,255,255,.6)}
+.rung:nth-child(1){margin-top:var(--s13)}
+.rung:nth-child(2){margin-top:var(--s8)}
+.rung .rn{display:flex;justify-content:space-between;align-items:baseline}
+.rung .rn span{font-family:var(--mono);font-size:12.5px;color:var(--steel)}
+.rung .flag{font-family:'Archivo';font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:var(--white);color:var(--noir);padding:3px 9px;border-radius:999px}
+.rung h3{font-size:var(--t-2);line-height:1.15;margin-top:var(--s2)}
+.rung ul{list-style:none;margin-top:var(--s2);display:flex;flex-direction:column}
+.rung li{color:var(--silver);font-size:14.5px;padding:6px 0;border-bottom:1px solid var(--hair)}
+.rung li:last-child{border-bottom:0}
+.viz{margin-top:var(--s3);height:136px;border:1px solid var(--hair-strong);border-radius:6px;padding:var(--s2);display:flex;flex-direction:column;justify-content:center;gap:var(--s1);background:rgba(31,35,39,.25);overflow:hidden}
+.v-auto{display:flex;align-items:center;gap:var(--s1);font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+.v-auto .c{border:1px solid var(--hair-strong);border-radius:999px;padding:4px 10px;color:var(--warn)}
+.v-auto .c.ok{color:var(--white);border-color:var(--white)}
+.v-auto .ar{color:var(--steel)}
+.v-b{font-size:12px;line-height:1.4;padding:7px 11px;border-radius:12px;max-width:86%}
+.v-b.c{background:var(--onyx);color:var(--platinum);border-bottom-left-radius:3px}
+.v-b.a{background:var(--white);color:var(--noir);align-self:flex-end;border-bottom-right-radius:3px}
+.v-os{display:grid;grid-template-columns:1.618fr 1fr;gap:6px;height:100%}
+.v-os .g{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:6px}
+.v-os .g i{border:1px solid var(--hair-strong);border-radius:3px;position:relative;background:rgba(31,35,39,.5)}
+.v-os .g i::after{content:"";position:absolute;left:6px;bottom:6px;width:42%;height:5px;border-radius:2px;background:var(--chrome);opacity:.7}
+.v-os .g i:nth-child(2)::after{width:60%}.v-os .g i:nth-child(4)::after{width:30%}.v-os .g i:nth-child(6)::after{width:52%}
+.v-os .a{border:1px solid var(--white);border-radius:3px;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:6px}
+.v-os .a i{display:block;height:4px;border-radius:2px;background:var(--steel)}
+.v-os .a i:last-child{width:62%;background:var(--white)}
+@media(max-width:860px){
+  .ladder{grid-template-columns:1fr;row-gap:var(--s8)}
+  .rung:nth-child(1),.rung:nth-child(2){margin-top:0}
+  .viz{height:112px}
+}
 
-/* ---- 03 · the maths ---- */
-.calc{display:grid;grid-template-columns:1fr 1.618fr;gap:var(--gut);align-items:start}
-.field + .field{margin-top:var(--s5)}
-.field .fl{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s2)}
-.field label{font-size:15px;color:var(--platinum)}
-.field output{font-family:'Archivo';font-weight:700;font-size:var(--t-2);color:var(--white);white-space:nowrap}
-input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin-top:var(--s1);cursor:pointer}
-.rng::-webkit-slider-runnable-track{height:1px;background:linear-gradient(90deg,var(--white) var(--fill,50%),var(--graphite) var(--fill,50%))}
-.rng::-moz-range-track{height:1px;background:var(--graphite)}
-.rng::-moz-range-progress{height:1px;background:var(--white)}
-.rng::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--white);margin-top:-8.5px;box-shadow:0 0 0 5px rgba(255,255,255,.08)}
-.rng::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:50%;background:var(--white)}
-.rng:focus-visible{outline:none}
-.rng:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--void),0 0 0 5px var(--white)}
-.rng:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--void),0 0 0 5px var(--white)}
-.assume{margin-top:var(--s5);font-size:13.5px;color:var(--steel);line-height:1.55;max-width:30em}
-.results{display:grid;grid-template-columns:1fr 1fr;column-gap:var(--gut);border-left:1px solid var(--hair);padding-left:var(--s5)}
-.results .big{font-family:'Archivo';font-weight:900;font-size:var(--t-5);line-height:.92;color:var(--white);letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap}
-.results .cap{color:var(--silver);margin-top:var(--s2);font-size:15px}
-.results .note{grid-column:1/-1;margin-top:var(--s5);padding-top:var(--s3);border-top:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;gap:var(--s3);flex-wrap:wrap}
-.results .note p{font-size:var(--t-2);color:var(--platinum);letter-spacing:-.01em;line-height:1.3}
-@media(max-width:960px){.calc{grid-template-columns:1fr;row-gap:var(--s8)}.results{border-left:0;padding-left:0;border-top:1px solid var(--hair);padding-top:var(--s5)}}
-@media(max-width:560px){.results{grid-template-columns:1fr;row-gap:var(--s5)}.results .big{font-size:clamp(56px,18vw,80px)}}
+/* =========================================================
+   03 · built on what you already use
+   ========================================================= */
+.feed{display:grid;grid-template-columns:1fr 1fr 1.618fr;align-items:center}
+.tools{list-style:none}
+.tools li{height:48px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2);border-bottom:1px solid var(--hair);font-family:var(--mono);font-size:13.5px;color:var(--chrome)}
+.tools li:first-child{border-top:1px solid var(--hair)}
+.tools li span{font-family:'Archivo';font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--steel)}
+.wires{width:100%;height:337px;display:block}
+.wires path{fill:none;stroke:rgba(184,189,194,.32);stroke-width:1;vector-effect:non-scaling-stroke}
+.wires path.p{stroke:var(--white);stroke-dasharray:2 18;animation:flow 2.4s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-40}}
+.core{border:1px solid var(--white);border-radius:6px;padding:var(--s5);box-shadow:0 0 40px rgba(255,255,255,.06)}
+.core .label{display:block}
+.core h3{font-size:var(--t-3);line-height:1.05;margin-top:var(--s2)}
+.core ul{list-style:none;margin-top:var(--s3);display:flex;flex-wrap:wrap;gap:var(--s1)}
+.core li{border:1px solid var(--hair-strong);border-radius:999px;padding:5px 14px;font-size:13.5px;color:var(--platinum)}
+.feed-note{margin-top:var(--s5);font-size:var(--t-2);color:var(--platinum);letter-spacing:-.01em;line-height:1.3;max-width:24em}
+.feed-note span{color:var(--steel)}
+.down{display:none}
+@media(max-width:860px){
+  .feed{grid-template-columns:1fr}
+  .wires{display:none}
+  .tools{display:flex;flex-wrap:wrap;gap:var(--s1)}
+  .tools li,.tools li:first-child{height:auto;border:1px solid var(--hair-strong);border-radius:999px;padding:6px 14px;font-size:12.5px}
+  .tools li span{display:none}
+  .down{display:block;width:1px;height:64px;margin:var(--s2) 0 var(--s2) var(--s3);background:linear-gradient(var(--hair-strong),var(--white));position:relative}
+  .down::after{content:"";position:absolute;left:-4px;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--white);border-bottom:0}
+  .core{padding:var(--s3)}
+}
 
-/* ---- 04 · work ---- */
+/* =========================================================
+   04 · work
+   ========================================================= */
 .work{display:grid;grid-template-columns:1.618fr 1fr;gap:var(--gut);align-items:start}
 .wlist{list-style:none;border-top:1px solid var(--hair-strong)}
 .wlist li{border-bottom:1px solid var(--hair-strong)}
@@ -244,12 +342,13 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
 .wthumb{display:none}
 .wprev{position:sticky;top:var(--s5)}
 .wprev .frame{aspect-ratio:1.618/1;border:1px solid var(--hair-strong);border-radius:6px;overflow:hidden;background:var(--noir);position:relative}
-.wprev .frame img{width:100%;height:100%;object-fit:cover;object-position:top center;transition:opacity .3s}
+.wprev .frame img{width:100%;height:100%;object-fit:cover;object-position:top center}
 .wprev .venue{position:absolute;inset:0;display:none;flex-direction:column;justify-content:space-between;padding:var(--s3);background:radial-gradient(80% 70% at 30% 20%,rgba(150,170,190,.12),transparent 70%),var(--noir)}
-.wprev .venue b{font-family:'Archivo';font-weight:900;font-size:var(--t-4);line-height:1;color:var(--white);letter-spacing:-.03em}
-.wprev .venue span{color:var(--silver);font-size:14px}
+.wprev .venue b{display:block;font-family:'Archivo';font-weight:900;font-size:var(--t-3);line-height:1.05;color:var(--white);letter-spacing:-.03em}
+.wprev .venue span{display:block;color:var(--silver);font-size:13.5px;margin-top:var(--s1);font-family:var(--mono)}
 .wprev.is-venue .venue{display:flex}
 .wprev .pcap{margin-top:var(--s2);font-size:13.5px;color:var(--silver);min-height:3.2em}
+.sbadge{display:inline-block;font-family:'Archivo';font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:2px 9px;border-radius:999px;border:1px solid var(--hair-strong);color:var(--chrome);vertical-align:3px;margin-left:6px}
 .work-more{margin-top:var(--s5)}
 @media(max-width:860px){
   .work{grid-template-columns:1fr}
@@ -258,8 +357,11 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
   .wlist .wn{display:none}
   .wthumb{display:block;width:96px;aspect-ratio:1.618/1;border-radius:4px;overflow:hidden;border:1px solid var(--hair-strong);background:var(--noir)}
   .wthumb img{width:100%;height:100%;object-fit:cover;object-position:top center}
-  .wthumb.v{display:flex;align-items:center;justify-content:center;font-family:'Archivo';font-weight:900;font-size:20px;color:var(--white)}
+  .wthumb.v{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:6px}
+  .wthumb.v i{border:1px solid var(--hair-strong);border-radius:2px}
+  .wthumb.v i:nth-child(3){border-color:var(--white)}
   .wlist a:hover,.wlist a:focus-visible,.wlist li.cur a{padding-left:0}
+  .sbadge{margin-left:0;margin-top:6px;vertical-align:0}
 }
 
 /* ---- 05 · who ---- */
@@ -268,7 +370,7 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
 .who p{font-size:var(--t-2);line-height:1.38;color:var(--silver);letter-spacing:-.01em}
 .who p + p{margin-top:var(--s2)}
 .who p b{color:var(--white);font-weight:500}
-.who .facts{margin-top:var(--s3);display:flex;gap:var(--s3);flex-wrap:wrap}
+.who .facts{margin-top:var(--s3)}
 @media(max-width:620px){.who{grid-template-columns:1fr;gap:var(--s3)}.who img{width:104px;height:104px}}
 
 .close{padding:var(--s21) 0 var(--s13)}
@@ -288,13 +390,12 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
 .foot nav a:hover{color:var(--white)}
 @media(max-width:720px){.foot{grid-template-columns:1fr;row-gap:var(--s3)}.foot nav{justify-content:flex-start}}
 
-/* mockup tag */
 .mock-tag{position:fixed;left:16px;bottom:16px;z-index:60;font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
   color:var(--noir);background:var(--white);padding:6px 12px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
-  .fstep{opacity:1;transform:none}
+  .compare:not(.grown) .bars .wk i{transform:none}
 }
 </style>
 </head>
@@ -315,118 +416,182 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
     <!-- HERO -->
     <section class="hero g12" aria-labelledby="h1">
       <span class="label">Wise AI · Brisbane · <b>local, embedded, accountable</b></span>
-      <h1 id="h1">Your admin, done.<br><span class="dim">Without you.</span></h1>
+      <h1 id="h1">Your whole business.<br><span class="dim">One screen.</span></h1>
       <div class="hero-foot">
-        <p>I build AI agents that <b>answer enquiries, book jobs, send quotes and chase invoices</b> for small businesses, on your own accounts, around the clock.</p>
+        <p>I connect the tools you already run on, <b>your POS, bookings, accounts and rosters</b>, into one live system built around your business, with AI on top.</p>
         <div class="hero-cta">
-          <a class="tlink" href="#s01">See it work ↓</a>
+          <a class="tlink" href="#s01">See it ↓</a>
           <a class="pill" href="../quiz.html">Start the free 2-minute audit</a>
         </div>
       </div>
     </section>
 
-    <div class="ticker" aria-label="Example of an agent's activity feed">
+    <div class="ticker" aria-label="Example of a live business system's activity feed">
       <span class="live"><i></i>Example feed</span>
       <span class="line" aria-live="off"><span id="tick"></span><span class="caret" aria-hidden="true"></span></span>
     </div>
 
-    <!-- 01 · INBOX -->
+    <!-- 01 · SIX APPS VS ONE SCREEN -->
     <section class="sec" id="s01" aria-labelledby="h01">
       <div class="sec-head">
-        <span class="num"><b>01</b> The proof is in the inbox</span>
+        <span class="num"><b>01</b> The operating system</span>
         <div>
-          <h2 id="h01">Same Monday morning. <span class="dim">Two inboxes.</span></h2>
-          <p>Drag the line. Left is the weekend you have now. Right is the weekend your agent already worked.</p>
+          <h2 id="h01">Six apps that don't talk. <span class="dim">Or one screen that does.</span></h2>
+          <p>Drag the line. Left is a venue owner's Saturday morning today. Right is the same morning on one system.</p>
         </div>
       </div>
       <div class="sec-body">
         <div class="compare" id="compare">
-          <div class="cmp-layer cmp-without">
-            <h3 class="sr">Without an agent</h3>
-            <div class="cmp-bar"><span class="cmp-tag">Without</span><span class="cmp-count"><b>9 unread</b> · $1,820 overdue</span></div>
-            <ul class="inbox">
-              <li><span class="who"><i></i>Sarah M.</span><span class="what">Hot water's leaking, can someone come this week?</span><span class="st">Unread · 2 days</span></li>
-              <li><span class="who"><i></i>Invoice #1042</span><span class="what">$640 · Pearce Rd job</span><span class="st">Overdue · 9 days</span></li>
-              <li><span class="who"><i></i>Jordan P.</span><span class="what">Rough price for a bathroom reno?</span><span class="st">Unread · 3 days</span></li>
-              <li><span class="who"><i></i>Tomorrow</span><span class="what">5 jobs booked</span><span class="st">Reminders not sent</span></li>
-              <li><span class="who"><i></i>Invoice #1039</span><span class="what">$1,180 · Kedron job</span><span class="st">Overdue · 16 days</span></li>
-              <li><span class="who"><i></i>Mia K.</span><span class="what">Can you come Saturday instead?</span><span class="st">Missed call + text</span></li>
-              <li><span class="who"><i></i>Reviews</span><span class="what">Last week's 4 customers</span><span class="st">Still on the to-do list</span></li>
-            </ul>
+          <!-- BEFORE -->
+          <div class="cmp-layer cmp-before">
+            <h3 class="sr">Before: six separate apps</h3>
+            <span class="cmp-tag">Before · 6 apps</span>
+            <div class="tabs" aria-hidden="true"><span class="cur">POS · Sales</span><span>Bookings</span><span>Accounts</span><span>Roster v3 FINAL.xlsx</span><span>League sheet</span><span>Inbox (23)</span></div>
+            <div class="win w1"><div class="wh"><i></i><i></i>POS · Sales today</div><div class="wb">
+              <div class="r"><span>11:02 Café</span><b>$8.50</b></div>
+              <div class="r"><span>11:04 Arcade card</span><b>$20.00</b></div>
+              <div class="r"><span>11:09 Lane hire</span><b>$42.00</b></div>
+              <div class="r mute"><span>Totals: export CSV to view</span><span>↓</span></div></div></div>
+            <div class="win w2"><div class="wh"><i></i><i></i>Bookings · Sat 22</div><div class="wb">
+              <div class="r"><span>11:00 Party · 10 kids</span><span class="q">deposit?</span></div>
+              <div class="r"><span>14:00 Party · 12 kids</span><span class="q">deposit?</span></div>
+              <div class="r"><span>15:30 Lane 3</span><span class="q">double booked?</span></div></div></div>
+            <div class="win w3"><div class="wh"><i></i><i></i>League attendance.xlsx</div><div class="cells">
+              <span class="h">Team</span><span class="h">Wk 5</span><span class="h">Wk 6</span><span class="h">Wk 7</span>
+              <span>Pin Pals</span><span>4</span><span>4</span><span class="e"></span>
+              <span>Split Ends</span><span>3</span><span>4</span><span class="e"></span>
+              <span>Gutter Gang</span><span>4</span><span class="e">?</span><span class="e"></span></div></div>
+            <div class="win w4"><div class="wh"><i></i><i></i>Roster v3 FINAL.xlsx</div><div class="cells">
+              <span class="h">Sat</span><span class="h">Front</span><span class="h">Café</span><span class="h">Party</span>
+              <span>9–2</span><span>Sam</span><span>Jo</span><span>Lee</span>
+              <span>2–6</span><span>Kai</span><span class="e">?</span><span class="e">?</span></div></div>
+            <div class="win w5"><div class="wh"><i></i><i></i>Accounts</div><div class="wb">
+              <div class="r"><span>To reconcile</span><span class="q">12</span></div>
+              <div class="r"><span>$50.00 deposit</span><span class="q">which party?</span></div>
+              <div class="r"><span>$50.00 deposit</span><span class="q">which party?</span></div></div></div>
+            <div class="win w6"><div class="wh"><i></i><i></i>Inbox · 23 unread</div><div class="wb">
+              <div class="r"><b>Party for 10, Sat?</b><span class="mute">Fri</span></div>
+              <div class="r"><b>Re: deposit receipt</b><span class="mute">Fri</span></div>
+              <div class="r"><b>League fees for term?</b><span class="mute">Thu</span></div></div></div>
+            <div class="postit p1" aria-hidden="true">Ask Sam who's free Sat arvo!!</div>
           </div>
-          <div class="cmp-layer cmp-with">
-            <h3 class="sr">With a Wise AI agent</h3>
-            <div class="cmp-bar"><span class="cmp-tag">With Wise AI</span><span class="cmp-count"><b>0 waiting</b> · 1 quote for your OK</span></div>
-            <ul class="inbox">
-              <li><span class="who"><i></i>Sarah M.</span><span class="what">Hot water's leaking, can someone come this week?</span><span class="st">Replied in 38s · booked Thu 10:00</span></li>
-              <li><span class="who"><i></i>Invoice #1042</span><span class="what">$640 · Pearce Rd job</span><span class="st">Reminder Mon · paid Tue 06:02</span></li>
-              <li><span class="who"><i></i>Jordan P.</span><span class="what">Rough price for a bathroom reno?</span><span class="st">Quote drafted · waiting on your OK</span></li>
-              <li><span class="who"><i></i>Tomorrow</span><span class="what">5 jobs booked</span><span class="st">5 SMS reminders sent 18:00</span></li>
-              <li><span class="who"><i></i>Invoice #1039</span><span class="what">$1,180 · Kedron job</span><span class="st">Paid Fri · matched in accounts</span></li>
-              <li><span class="who"><i></i>Mia K.</span><span class="what">Can you come Saturday instead?</span><span class="st">Moved to Sat 9:00 · calendar updated</span></li>
-              <li><span class="who"><i></i>Reviews</span><span class="what">Last week's 4 customers</span><span class="st">4 review requests sent</span></li>
-            </ul>
+
+          <!-- AFTER -->
+          <div class="cmp-layer cmp-after">
+            <h3 class="sr">After: one live screen</h3>
+            <span class="cmp-tag">After · one screen</span>
+            <div class="os-bar"><b>Venue OS</b><span class="lv"><i></i>Live · Sat 22 · 11:42</span></div>
+            <div class="os">
+              <div class="tiles">
+                <div class="tile"><span class="tl">Today's bookings</span><span class="tn">14</span><span class="tv tv-list"><span>11:00 Party · 10</span><span>14:00 Party · 12</span><span>15:30 Group · 8</span></span><span class="ts"><b>3 parties</b> · 9 lanes · 2 groups</span></div>
+                <div class="tile"><span class="tl">Lane occupancy</span><span class="tn">72<small>%</small></span>
+                  <span class="lanes" aria-hidden="true"><i style="height:90%"></i><i style="height:100%"></i><i style="height:70%"></i><i style="height:100%"></i><i class="off" style="height:20%"></i><i style="height:80%"></i><i class="off" style="height:20%"></i><i style="height:60%"></i></span></div>
+                <div class="tile"><span class="tl">Party deposits</span><span class="tn">$650</span><span class="tv dots w7" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i></span><span class="ts"><b>13 of 14 paid</b> · 1 chased</span></div>
+                <div class="tile"><span class="tl">Café sales</span><span class="tn">$1,284</span>
+                  <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 27 L12 25 L24 22 L36 23 L48 17 L60 14 L72 15 L84 8 L100 4" fill="none" stroke="#fff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></div>
+                <div class="tile"><span class="tl">Roster gaps</span><span class="tn">1</span><span class="tv" aria-hidden="true"><span class="shift" style="display:block"><i></i><b></b></span><span class="shift-x"><span>9am</span><span>2pm</span><span>6pm</span></span></span><span class="ts"><b>Sat 2–6pm café</b> · 2 staff free</span></div>
+                <div class="tile"><span class="tl">League attendance</span><span class="tn">38<small>/40</small></span><span class="tv dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="o"></i><i class="o"></i></span><span class="ts"><b>Tue night</b> · 2 subs logged</span></div>
+              </div>
+              <div class="ai">
+                <div class="ai-h"><span class="tl">Ask your business</span><span>AI</span></div>
+                <div class="ask">How did parties do this month vs last?</div>
+                <p class="ans">Up 35%. <b>23 parties vs 17</b>, $6,440 vs $4,760. Saturdays drove most of it.</p>
+                <div class="chart" role="img" aria-label="Parties per week. Last month 3, 4, 5, 5. This month 5, 6, 5, 7.">
+                  <div class="bars">
+                    <div class="wk"><i class="l" style="--h:42%"></i><i class="t" style="--h:71%"></i></div>
+                    <div class="wk"><i class="l" style="--h:57%"></i><i class="t" style="--h:86%"></i></div>
+                    <div class="wk"><i class="l" style="--h:71%"></i><i class="t" style="--h:71%"></i></div>
+                    <div class="wk"><i class="l" style="--h:71%"></i><i class="t" style="--h:100%"></i></div>
+                  </div>
+                  <div class="bars-x"><span>Wk 1</span><span>Wk 2</span><span>Wk 3</span><span>Wk 4</span></div>
+                  <div class="legend"><span><i style="background:var(--graphite)"></i>Last month</span><span><i style="background:var(--white)"></i>This month</span></div>
+                </div>
+                <div class="ai-in">Ask anything about your venue…</div>
+              </div>
+            </div>
           </div>
+
           <div class="cmp-handle" aria-hidden="true"><span class="cmp-knob"><svg viewBox="0 0 24 24"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg></span></div>
-          <input class="cmp-range" id="cmpRange" type="range" min="0" max="100" value="50" aria-label="Compare the inbox without and with a Wise AI agent. Lower shows more of the agent's version.">
+          <input class="cmp-range" id="cmpRange" type="range" min="0" max="100" step="0.1" value="38.2" aria-label="Compare six separate apps with one live screen. Lower values show more of the one-screen system.">
         </div>
         <div class="cmp-foot">
-          <span class="hint">← Drag, or use the arrow keys →</span>
-          <span class="example">Example · plumbing business</span>
+          <p class="works">Works with the AI you already use: ChatGPT · Claude · <span>or built right in.</span></p>
+          <div class="meta"><span class="hint">← Drag, or use the arrow keys →</span><span class="example">Example data · family entertainment venue</span></div>
         </div>
       </div>
     </section>
 
-    <!-- 02 · FLOW -->
+    <!-- 02 · LADDER -->
     <section class="sec" id="s02" aria-labelledby="h02">
       <div class="sec-head">
-        <span class="num"><b>02</b> One enquiry, start to finish</span>
+        <span class="num"><b>02</b> Where to start</span>
         <div>
-          <h2 id="h02">From first message to paid. <span class="dim">Nobody touched it.</span></h2>
-          <p>Every step below is something your agent produces, in your tools, under your name.</p>
+          <h2 id="h02">From one task <span class="dim">to your whole operation.</span></h2>
+          <p>Start with one job. Grow into the whole system when you're ready.</p>
         </div>
       </div>
       <div class="sec-body">
-        <div class="flow-top">
-          <div class="switch" role="tablist" aria-label="Business type">
-            <button role="tab" aria-selected="true" data-k="tradie">Tradie</button>
-            <button role="tab" aria-selected="false" data-k="clinic">Clinic</button>
-            <button role="tab" aria-selected="false" data-k="venue">Venue</button>
-            <button role="tab" aria-selected="false" data-k="salon">Salon</button>
-          </div>
-          <span class="example" id="flowEx">Example · plumbing business</span>
-        </div>
-        <ol class="flow" id="flow" role="tabpanel" aria-live="polite"></ol>
-        <div class="flow-sum" id="flowSum"></div>
+        <ol class="ladder">
+          <li class="rung">
+            <div class="rn"><span>01</span></div>
+            <h3>Automations</h3>
+            <div class="viz" aria-hidden="true">
+              <div class="v-auto"><span class="c">INV-1039 · 9 days overdue</span></div>
+              <div class="v-auto"><span class="ar">↳</span><span class="c ok">✓ Reminder sent 09:00</span></div>
+            </div>
+            <ul><li>Invoice chasing</li><li>Reminders</li><li>Data entry</li></ul>
+          </li>
+          <li class="rung">
+            <div class="rn"><span>02</span></div>
+            <h3>AI agents</h3>
+            <div class="viz" aria-hidden="true">
+              <div class="v-b c">Party for 10 on Saturday?</div>
+              <div class="v-b a">11am or 2pm are free. Which suits?</div>
+            </div>
+            <ul><li>Enquiries</li><li>Bookings</li><li>Follow-ups, 24/7</li></ul>
+          </li>
+          <li class="rung">
+            <div class="rn"><span>03</span><span class="flag">Flagship</span></div>
+            <h3>Business operating system</h3>
+            <div class="viz" aria-hidden="true">
+              <div class="v-os"><div class="g"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="a"><i></i><i></i><i></i></div></div>
+            </div>
+            <ul><li>Everything connected</li><li>Live data</li><li>One screen</li><li>AI on top</li></ul>
+          </li>
+        </ol>
       </div>
     </section>
 
-    <!-- 03 · MATHS -->
+    <!-- 03 · BUILT ON WHAT YOU USE -->
     <section class="sec" id="s03" aria-labelledby="h03">
       <div class="sec-head">
-        <span class="num"><b>03</b> The maths</span>
+        <span class="num"><b>03</b> Built on what you already use</span>
         <div>
-          <h2 id="h03">What your admin is <span class="dim">actually costing.</span></h2>
-          <p>Two numbers you already know. Move them.</p>
+          <h2 id="h03">Your tools stay. <span class="dim">They start talking.</span></h2>
         </div>
       </div>
-      <div class="sec-body calc">
-        <div>
-          <div class="field">
-            <div class="fl"><label for="hrs">Hours a week on admin</label><output id="hrsOut" for="hrs">10 hrs</output></div>
-            <input class="rng" id="hrs" type="range" min="1" max="40" value="10">
+      <div class="sec-body">
+        <div class="feed">
+          <ul class="tools" aria-label="Tools you already use">
+            <li>POS<span>existing</span></li>
+            <li>Bookings<span>existing</span></li>
+            <li>Accounts<span>existing</span></li>
+            <li>Rostering<span>existing</span></li>
+            <li>CRM<span>existing</span></li>
+            <li>Spreadsheets<span>existing</span></li>
+            <li>Inbox<span>existing</span></li>
+          </ul>
+          <svg class="wires" viewBox="0 0 100 336" preserveAspectRatio="none" aria-hidden="true">
+            <g id="wires"></g>
+          </svg>
+          <span class="down" aria-hidden="true"></span>
+          <div class="core">
+            <span class="label">Tailored to how you run</span>
+            <h3>Your business system</h3>
+            <ul><li>One screen</li><li>Live data</li><li>Analytics</li><li>AI on top</li></ul>
           </div>
-          <div class="field">
-            <div class="fl"><label for="rate">What an hour of your time is worth</label><output id="rateOut" for="rate">$80</output></div>
-            <input class="rng" id="rate" type="range" min="30" max="250" step="5" value="80">
-          </div>
-          <p class="assume">Assumes an agent takes half of it, over 48 working weeks. Your audit gives you the real figure.</p>
         </div>
-        <div class="results" aria-live="polite">
-          <div><div class="big" id="outHrs">240</div><div class="cap">hours back a year</div></div>
-          <div><div class="big" id="outVal">$19.2k</div><div class="cap">of your time, a year</div></div>
-          <div class="note"><p id="outWk">That's 6.3 working weeks.</p><a class="pill" href="../quiz.html">Get my real number</a></div>
-        </div>
+        <p class="feed-note">No rip-and-replace. <span>Nothing to migrate, nobody to retrain.</span></p>
       </div>
     </section>
 
@@ -434,34 +599,33 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
     <section class="sec" id="work" aria-labelledby="h04">
       <div class="sec-head">
         <span class="num"><b>04</b> Work</span>
-        <div>
-          <h2 id="h04">Live, on real businesses' <span class="dim">own accounts.</span></h2>
-        </div>
+        <div><h2 id="h04">Live, on real businesses' <span class="dim">own accounts.</span></h2></div>
       </div>
       <div class="sec-body work">
         <div>
           <ol class="wlist" id="wlist">
-            <li class="cur"><a href="https://alcp.com.au" target="_blank" rel="noopener" data-img="../work/img/alcp.jpg" data-cap="A calm, credible site that helps new clients find the right service quickly.">
-              <span class="wn">01</span><span class="wthumb"><img src="../work/img/alcp.jpg" alt="" loading="lazy"></span>
+            <li class="cur"><a href="../work.html" data-venue="1" data-cap="POS, bookings, rostering and league data, joined into one live system. Being built now, lowest-risk pieces first.">
+              <span class="wn">01</span><span class="wthumb v" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+              <span class="wt">Family entertainment venue<span class="sbadge">In progress</span><span class="wk">Business operating system · regional Queensland</span></span><span class="wa" aria-hidden="true">→</span></a></li>
+            <li><a href="https://alcp.com.au" target="_blank" rel="noopener" data-img="../work/img/alcp.jpg" data-cap="A calm, credible site that helps new clients find the right service quickly.">
+              <span class="wn">02</span><span class="wthumb"><img src="../work/img/alcp.jpg" alt="" loading="lazy"></span>
               <span class="wt">Abundant Life Clinical Psychology<span class="wk">Website · design, build &amp; deploy · alcp.com.au</span></span><span class="wa" aria-hidden="true">↗</span></a></li>
             <li><a href="https://neotype.au" target="_blank" rel="noopener" data-img="../work/img/neotype-customizer.png" data-cap="Customers set finish, shape and size, and watch price and proof update live, then check out.">
-              <span class="wn">02</span><span class="wthumb"><img src="../work/img/neotype-customizer.png" alt="" loading="lazy"></span>
+              <span class="wn">03</span><span class="wthumb"><img src="../work/img/neotype-customizer.png" alt="" loading="lazy"></span>
               <span class="wt">Neotype live sticker customizer<span class="wk">Website + live product tool · neotype.au</span></span><span class="wa" aria-hidden="true">↗</span></a></li>
             <li><a href="../work.html" data-img="../work/img/quote-demo.png" data-cap="Instant itemised estimates that capture the visitor as a priced lead, recomputed server-side.">
-              <span class="wn">03</span><span class="wthumb"><img src="../work/img/quote-demo.png" alt="" loading="lazy"></span>
+              <span class="wn">04</span><span class="wthumb"><img src="../work/img/quote-demo.png" alt="" loading="lazy"></span>
               <span class="wt">Automatic quote generator<span class="wk">Embeddable live-estimate tool</span></span><span class="wa" aria-hidden="true">→</span></a></li>
-            <li><a href="../work.html" data-venue="1" data-cap="On-site audit, every workflow scored, lowest-risk automations rolling out first.">
-              <span class="wn">04</span><span class="wthumb v" aria-hidden="true">6+</span>
-              <span class="wt">Family entertainment venue<span class="wk">Automation · audit to ongoing retainer</span></span><span class="wa" aria-hidden="true">→</span></a></li>
           </ol>
-          <div class="work-more"><a class="tlink" href="../work.html">All work and the full case study →</a></div>
+          <div class="work-more"><a class="tlink" href="../work.html">All work and the venue case study →</a></div>
         </div>
-        <aside class="wprev" id="wprev" aria-hidden="true">
+        <aside class="wprev is-venue" id="wprev" aria-hidden="true">
           <div class="frame">
             <img id="wprevImg" src="../work/img/alcp.jpg" alt="">
-            <div class="venue"><span class="label">Regional Queensland</span><div><b>6+</b><span><br>repetitive workflows mapped in the audit. Wise AI's first audit-to-retainer client.</span></div></div>
+            <div class="venue"><span class="label">Regional Queensland · in progress</span>
+              <div><b>Bowling, arcade, café, parties, leagues.</b><span>POS + bookings + roster + leagues → one screen</span></div></div>
           </div>
-          <p class="pcap" id="wprevCap">A calm, credible site that helps new clients find the right service quickly.</p>
+          <p class="pcap" id="wprevCap">POS, bookings, rostering and league data, joined into one live system. Being built now, lowest-risk pieces first.</p>
         </aside>
       </div>
     </section>
@@ -475,7 +639,7 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
       <div class="sec-body who">
         <img src="../about-tyler.jpg" alt="Tyler Wise, founder of Wise AI" width="168" height="168" loading="lazy">
         <div>
-          <p><b>I'm Tyler Wise.</b> I build every agent myself, on your own accounts, with a human in the loop where it matters.</p>
+          <p><b>I'm Tyler Wise.</b> I design every system around how your business already runs, on your own accounts, with a human in the loop where it matters.</p>
           <p>Based in Brisbane, so I'm close by when something needs a look, and I stay on after it's live.</p>
           <div class="facts"><a class="tlink" href="https://www.linkedin.com/in/tyler-wise-9ba521257/" target="_blank" rel="noopener">LinkedIn ↗</a></div>
         </div>
@@ -487,7 +651,7 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
       <a class="mail" href="mailto:tyler@wise-ai.au?subject=Wise%20AI%20enquiry">tyler@wise-ai.au</a>
       <div class="close-cta">
         <a class="pill" href="../quiz.html">Take the free 2-minute audit</a>
-        <span style="color:var(--silver);font-size:14px">Tailored suggestions on the spot. No call needed.</span>
+        <span style="color:var(--silver);font-size:14px">Find your first automation, or map the whole system.</span>
       </div>
     </section>
   </main>
@@ -510,144 +674,72 @@ input[type=range].rng{-webkit-appearance:none;appearance:none;width:100%;height:
 (function(){
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- live ticker (example) ---------- */
+  /* ---------- live ticker (example data) ---------- */
   var lines = [
-    ['21:47','enquiry answered in 38s · quote sent $1,850'],
-    ['22:12','booking request · Thu 10:00 locked in · confirmation sent'],
-    ['23:30','invoice #1042 overdue 7 days · polite reminder sent'],
-    ['06:02','invoice #1042 paid $640 · matched in accounts'],
-    ['06:30','tomorrow\'s 5 customers · reminders sent'],
-    ['07:00','morning brief sent to you · 1 thing needs your call']
+    ['09:02','POS synced · café $412 so far · arcade $968'],
+    ['09:15','party booked Sat 11:00 · 10 kids · $50 deposit in'],
+    ['10:40','roster gap flagged Sat 2–6pm · 2 staff available'],
+    ['11:05','league night logged · 38 of 40 bowlers · 2 subs'],
+    ['11:20','you asked "parties this month vs last?" · answered with a chart'],
+    ['11:21','deposits matched in accounts · 1 pending · reminder sent']
   ];
   var tick = document.getElementById('tick'), li = 0;
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
   function render(i, n){
-    var t = lines[i][0], s = t + '  —  ' + lines[i][1];
-    var shown = s.slice(0, n);
-    var head = shown.slice(0, Math.min(shown.length, t.length));
-    tick.innerHTML = '<span class="tm">' + head + '</span>' + escapeHtml(shown.slice(head.length));
+    var t = lines[i][0], s = (t + '  —  ' + lines[i][1]).slice(0, n);
+    var head = s.slice(0, Math.min(s.length, t.length));
+    tick.innerHTML = '<span class="tm">' + head + '</span>' + esc(s.slice(head.length));
   }
-  function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;')}
   if(reduce){
     render(0, 999);
-    setInterval(function(){ li=(li+1)%lines.length; render(li,999); }, 4000);
+    setInterval(function(){ li = (li + 1) % lines.length; render(li, 999); }, 4000);
   } else {
     (function type(){
       var full = (lines[li][0] + '  —  ' + lines[li][1]).length, n = 0;
       (function step(){
         render(li, ++n);
-        if(n < full){ setTimeout(step, 22 + Math.random()*26); }
-        else setTimeout(function(){ li=(li+1)%lines.length; type(); }, 2400);
+        if(n < full) setTimeout(step, 22 + Math.random()*26);
+        else setTimeout(function(){ li = (li + 1) % lines.length; type(); }, 2400);
       })();
     })();
   }
 
-  /* ---------- 01 compare ---------- */
+  /* ---------- 01 compare (rests at 38.2%) ---------- */
   var cmp = document.getElementById('compare'), rng = document.getElementById('cmpRange');
+  var REST = 38.2;
   function setPos(v){ cmp.style.setProperty('--pos', v + '%'); }
   rng.addEventListener('input', function(){ setPos(rng.value); });
   if(!reduce && 'IntersectionObserver' in window){
-    setPos(96); rng.value = 96;
+    var dragged = false;
+    rng.addEventListener('pointerdown', function(){ dragged = true; }, { once:true });
+    rng.addEventListener('keydown', function(){ dragged = true; }, { once:true });
+    setPos(97); rng.value = 97;
     var io = new IntersectionObserver(function(es){
       if(!es[0].isIntersecting) return; io.disconnect();
-      var from = 96, to = 50, t0 = null, dur = 1400;
+      var from = 97, t0 = null, dur = 1500;
       function ease(x){ return 1 - Math.pow(1 - x, 4); }
-      var dragged = false;
-      rng.addEventListener('pointerdown', function(){ dragged = true; }, { once:true });
-      rng.addEventListener('keydown', function(){ dragged = true; }, { once:true });
       function f(ts){
-        if(dragged) return;
-        if(t0 === null) t0 = ts; var p = Math.min(1, (ts - t0) / dur), v = from + (to - from) * ease(p);
-        setPos(v); rng.value = Math.round(v);
-        if(p < 1) requestAnimationFrame(f);
+        if(dragged){ cmp.classList.add('grown'); return; }
+        if(t0 === null) t0 = ts;
+        var p = Math.min(1, (ts - t0) / dur), v = from + (REST - from) * ease(p);
+        setPos(v); rng.value = v;
+        if(p < 1) requestAnimationFrame(f); else cmp.classList.add('grown');
       }
-      setTimeout(function(){ requestAnimationFrame(f); }, 350);
-    }, { threshold: .45 });
+      setTimeout(function(){ requestAnimationFrame(f); }, 400);
+    }, { threshold: .4 });
     io.observe(cmp);
+  } else {
+    cmp.classList.add('grown');
   }
 
-  /* ---------- 02 flow ---------- */
-  var F = {
-    tradie:{ ex:'Example · plumbing business', steps:[
-      ['Enquiry','21:47','<div class="a-bubble c">Hot water\'s leaking. Can someone come this week? I\'m in Ashgrove.</div><div class="a-meta">Website chat</div>'],
-      ['Reply','+38s','<div class="a-bubble a">On it. Electric or gas, and roughly how old? Thu 10am or Fri 2pm are free.</div><div class="a-meta">Your agent</div>'],
-      ['Quote','+2 min','<div class="a-doc"><div class="a-doc-h">Quote Q-218</div><div class="a-line"><span>250L electric, supply + install</span><b>$1,850</b></div><div class="a-line"><span>Remove old unit</span><b>incl.</b></div><div class="a-line t"><span>Total inc GST</span><b>$1,850</b></div></div>'],
-      ['Booking','+4 min','<div class="a-cal"><div class="a-cal-d">THU<b>14</b></div><div class="a-cal-s"><b>10:00 – 12:00</b>Ashgrove · HWS swap<br>Reminder set Wed 6pm</div></div>'],
-      ['Invoice','Thu 12:10','<div class="a-doc"><div class="a-doc-h">Invoice INV-1043</div><div class="a-line"><span>Hot water replacement</span><b>$1,850</b></div><div class="a-line t"><span>Sent · due 7 days</span><b>Pay link</b></div></div>'],
-      ['Paid','Thu 12:41','<div class="a-paid"><span class="stamp">PAID</span><br>$1,850 received. Matched in your accounts. Review request queued.</div>']
-    ], sum:[['4 min','enquiry to booked job'],['0 min','of your time'],['21:47','long after you knocked off']] },
-    clinic:{ ex:'Example · physio clinic', steps:[
-      ['Enquiry','20:15','<div class="a-bubble c">Sore knee after running. Any physio appointments next week?</div><div class="a-meta">Instagram DM</div>'],
-      ['Reply','+41s','<div class="a-bubble a">Sorry to hear it. Mon 7:30am or Wed 5:15pm with Sam. Do you have private health?</div><div class="a-meta">Your agent</div>'],
-      ['Price','+1 min','<div class="a-doc"><div class="a-doc-h">Initial consult</div><div class="a-line"><span>60 min assessment</span><b>$120</b></div><div class="a-line t"><span>Health fund claim on the spot</span><b>Yes</b></div></div>'],
-      ['Booking','+3 min','<div class="a-cal"><div class="a-cal-d">WED<b>19</b></div><div class="a-cal-s"><b>17:15 with Sam</b>Intake form sent<br>SMS reminder 24 hrs before</div></div>'],
-      ['Invoice','Wed 18:20','<div class="a-doc"><div class="a-doc-h">Invoice INV-2210</div><div class="a-line"><span>Initial consult</span><b>$120</b></div><div class="a-line t"><span>Fund claimed</span><b>$65</b></div></div>'],
-      ['Paid','Wed 18:21','<div class="a-paid"><span class="stamp">PAID</span><br>$55 gap paid at the desk. Follow-up booking offered.</div>']
-    ], sum:[['3 min','message to booked'],['0 min','of front-desk time'],['20:15','after the phones closed']] },
-    venue:{ ex:'Example · family entertainment venue', steps:[
-      ['Enquiry','19:02','<div class="a-bubble c">Birthday party for my son, 10 kids, Saturday the 22nd?</div><div class="a-meta">Facebook message</div>'],
-      ['Reply','+29s','<div class="a-bubble a">Happy birthday to him! 11am or 2pm are open. Bowling + arcade is $28 a child, food included.</div><div class="a-meta">Your agent</div>'],
-      ['Quote','+1 min','<div class="a-doc"><div class="a-doc-h">Party · 10 kids</div><div class="a-line"><span>Bowling + arcade + food</span><b>$280</b></div><div class="a-line t"><span>Deposit to hold the lane</span><b>$50</b></div></div>'],
-      ['Booking','+3 min','<div class="a-cal"><div class="a-cal-d">SAT<b>22</b></div><div class="a-cal-s"><b>11:00 · Lane 3</b>Party host rostered<br>Kitchen order queued</div></div>'],
-      ['Invoice','+3 min','<div class="a-doc"><div class="a-doc-h">Deposit link</div><div class="a-line"><span>Deposit</span><b>$50</b></div><div class="a-line t"><span>Balance on the day</span><b>$230</b></div></div>'],
-      ['Paid','+6 min','<div class="a-paid"><span class="stamp">PAID</span><br>$50 deposit in. Invite template sent. Final numbers asked Thursday.</div>']
-    ], sum:[['6 min','message to deposit paid'],['0','staff on the phone'],['19:02','during the dinner rush']] },
-    salon:{ ex:'Example · hair salon', steps:[
-      ['Enquiry','22:31','<div class="a-bubble c">Can I get a cut and colour with Mia sometime Friday?</div><div class="a-meta">SMS</div>'],
-      ['Reply','+22s','<div class="a-bubble a">Mia has Fri 1pm free, 2.5 hrs, from $210. Want me to lock it in?</div><div class="a-meta">Your agent</div>'],
-      ['Quote','+22s','<div class="a-doc"><div class="a-doc-h">Cut + colour · Mia</div><div class="a-line"><span>From</span><b>$210</b></div><div class="a-line t"><span>Last visit\'s formula</span><b>Attached</b></div></div>'],
-      ['Booking','+1 min','<div class="a-cal"><div class="a-cal-d">FRI<b>24</b></div><div class="a-cal-s"><b>13:00 – 15:30</b>with Mia<br>Reminder Thursday</div></div>'],
-      ['Invoice','Fri 15:30','<div class="a-doc"><div class="a-doc-h">Checkout</div><div class="a-line"><span>Cut + colour</span><b>$210</b></div><div class="a-line t"><span>Card on file</span><b>Ready</b></div></div>'],
-      ['Paid','Fri 15:32','<div class="a-paid"><span class="stamp">PAID</span><br>$210 paid. Rebook nudge set for six weeks.</div>']
-    ], sum:[['1 min','text to booked'],['0 min','of your time'],['22:31','while the salon was dark']] }
-  };
-  var flow = document.getElementById('flow'), sum = document.getElementById('flowSum'), ex = document.getElementById('flowEx');
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.switch [role=tab]'));
-  var timers = [];
-  function show(k){
-    var d = F[k]; timers.forEach(clearTimeout); timers = [];
-    ex.textContent = d.ex;
-    flow.innerHTML = d.steps.map(function(s,i){
-      return '<li class="fstep"><div class="fs-top"><span class="fs-l">' + s[0] + '</span><span class="fs-t">' + s[1] + '</span></div><div class="fs-art">' + s[2] + '</div></li>';
-    }).join('');
-    sum.innerHTML = d.sum.map(function(s){ return '<div><b>' + s[0] + '</b><span>' + s[1] + '</span></div>'; }).join('');
-    var items = flow.querySelectorAll('.fstep');
-    Array.prototype.forEach.call(items, function(el,i){
-      if(reduce){ el.classList.add('on'); return; }
-      timers.push(setTimeout(function(){ el.classList.add('on'); }, 90 + i*140));
-    });
+  /* ---------- 03 wires: each tool converges on the system ---------- */
+  var g = document.getElementById('wires'), n = 7, rowH = 48, out = '';
+  for(var i = 0; i < n; i++){
+    var y = i * rowH + rowH / 2 + 0.5, cy = n * rowH / 2;
+    var d = 'M0 ' + y + ' C 55 ' + y + ', 45 ' + cy + ', 100 ' + cy;
+    out += '<path d="' + d + '"/><path class="p" d="' + d + '" style="animation-delay:' + (-i * 0.35) + 's"/>';
   }
-  tabs.forEach(function(b,i){
-    b.addEventListener('click', function(){
-      tabs.forEach(function(t){ t.setAttribute('aria-selected', t===b ? 'true' : 'false'); t.tabIndex = t===b ? 0 : -1; });
-      show(b.dataset.k);
-    });
-    b.addEventListener('keydown', function(e){
-      var d = e.key==='ArrowRight' ? 1 : e.key==='ArrowLeft' ? -1 : 0; if(!d) return;
-      var n = tabs[(i + d + tabs.length) % tabs.length]; n.focus(); n.click();
-    });
-    b.tabIndex = i===0 ? 0 : -1;
-  });
-  var shown = false;
-  if('IntersectionObserver' in window && !reduce){
-    var fio = new IntersectionObserver(function(es){ if(es[0].isIntersecting && !shown){ shown = true; show('tradie'); fio.disconnect(); } }, { threshold:.25 });
-    fio.observe(flow);
-  } else show('tradie');
-
-  /* ---------- 03 calc ---------- */
-  var hrs = document.getElementById('hrs'), rate = document.getElementById('rate');
-  function money(v){ return v >= 10000 ? '$' + (v/1000).toFixed(v >= 100000 ? 0 : 1).replace(/\.0$/,'') + 'k' : '$' + Math.round(v).toLocaleString('en-AU'); }
-  function fill(r){ r.style.setProperty('--fill', ((r.value - r.min) / (r.max - r.min) * 100) + '%'); }
-  function calc(){
-    var h = +hrs.value, r = +rate.value, back = h * .5 * 48, val = back * r;
-    document.getElementById('hrsOut').textContent = h + (h === 1 ? ' hr' : ' hrs');
-    document.getElementById('rateOut').textContent = '$' + r;
-    document.getElementById('outHrs').textContent = Math.round(back).toLocaleString('en-AU');
-    document.getElementById('outVal').textContent = money(val);
-    var wk = back / 38;
-    document.getElementById('outWk').textContent = "That's " + (wk < 10 ? wk.toFixed(1) : Math.round(wk)) + ' working weeks back.';
-    fill(hrs); fill(rate);
-  }
-  hrs.addEventListener('input', calc); rate.addEventListener('input', calc); calc();
+  g.innerHTML = out;
 
   /* ---------- 04 work preview ---------- */
   var wprev = document.getElementById('wprev'), wimg = document.getElementById('wprevImg'), wcap = document.getElementById('wprevCap');
