@@ -140,7 +140,7 @@ h1 .dim,h2 .dim{color:var(--dim)}
 @media(max-width:600px){.wc-media{padding:16px}}
 .wc-body{min-width:0;padding:clamp(24px,3vw,40px);display:flex;flex-direction:column;justify-content:center}
 .wc-body .tag{font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.wc-body h3{font-family:'Archivo';font-weight:900;font-size:clamp(22px,3vw,28px);color:var(--ink);margin-top:8px;letter-spacing:-.02em;line-height:1.1;overflow-wrap:anywhere}
+.wc-body h2,.wc-body h3{font-family:'Archivo';font-weight:900;font-size:clamp(22px,3vw,28px);color:var(--ink);margin-top:8px;letter-spacing:-.02em;line-height:1.1;overflow-wrap:anywhere}
 .wc-body .role{color:var(--ink-2);font-size:13px;font-weight:600;margin-top:8px}
 .wc-body p{color:var(--muted);font-size:14.5px;line-height:1.62;margin-top:16px}
 .wc-body .feat{list-style:none;margin:16px 0 0;display:flex;flex-direction:column;gap:8px}
