@@ -58,7 +58,7 @@ h1,h2,h3{font-family:'Archivo';color:var(--ink);letter-spacing:-.025em}
 h1{font-weight:900;font-size:clamp(42px,5.6vw,var(--t-3));line-height:1.0}
 h2{font-weight:900;font-size:clamp(30px,3.6vw,var(--t-2));line-height:1.06}
 h3{font-weight:700;font-size:20px;line-height:1.2;letter-spacing:-.01em}
-.dim{color:var(--chrome)}
+.dim{color:#868B90} /* 3:1 on platinum for large text */
 .lede{font-size:18px;line-height:1.618;color:var(--ink-2);max-width:34em}
 .sec{padding:var(--s13) 0}
 @media(max-width:600px){.sec{padding:var(--s8) 0}}
@@ -99,7 +99,7 @@ nav.top .wrap{display:flex;align-items:center;justify-content:space-between;heig
 .facts span::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink)}
 
 .stack-wrap{position:relative}
-.stack{position:relative;height:540px}
+.stack{position:relative;height:520px}
 .art{position:absolute;background:var(--paper);border-radius:var(--r-card);box-shadow:var(--sh-2);border:1px solid var(--line);
   padding:var(--s2) var(--s3);opacity:0;transform:translateY(24px) rotate(var(--rot,0deg)) scale(.97);
   transition:opacity .7s var(--ease),transform .7s var(--ease),box-shadow .5s}
@@ -107,27 +107,28 @@ nav.top .wrap{display:flex;align-items:center;justify-content:space-between;heig
 .art.active{box-shadow:var(--sh-3);transform:translateY(-6px) rotate(0deg);z-index:5}
 .art .ah{display:flex;justify-content:space-between;align-items:center;font-family:'Archivo';font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
 .art .ah b{color:var(--ink);font-weight:700}
-.art-sms{top:0;left:0;width:74%;--rot:-1.6deg}
-.art-quote{top:118px;right:0;width:66%;--rot:1.2deg}
-.art-cal{top:262px;left:2%;width:68%;--rot:-.6deg}
-.art-inv{top:384px;right:3%;width:64%;--rot:1.6deg}
+.art-sms{top:0;left:0;width:84%;--rot:-1.4deg}
+.art-quote{top:142px;right:0;width:76%;--rot:1.2deg}
+.art-cal{top:270px;left:2%;width:78%;--rot:-.6deg}
+.art-inv{top:396px;right:2%;width:76%;--rot:1.4deg}
 .bub{margin-top:var(--s1);padding:10px 14px;border-radius:16px;font-size:13.5px;line-height:1.45;max-width:88%}
 .bub.them{background:var(--mist);color:var(--ink);border-bottom-left-radius:4px}
 .bub.us{background:var(--ink);color:var(--white);margin-left:auto;border-bottom-right-radius:4px}
 .qrow{display:flex;justify-content:space-between;gap:var(--s2);font-size:13.5px;color:var(--ink-2);padding:6px 0;border-bottom:1px dashed var(--line-2)}
 .qrow:last-child{border-bottom:0}
-.qtot{display:flex;justify-content:space-between;align-items:baseline;margin-top:var(--s1)}
-.qtot span{font-size:13px;color:var(--ink-3)}
+.qtot{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);margin-top:var(--s1)}
+.qtot span{font-size:13.5px;line-height:1.4;color:var(--ink-2)}
 .qtot b{font-family:'Archivo';font-weight:900;font-size:var(--t-1);letter-spacing:-.02em}
 .cal{display:flex;gap:var(--s2);margin-top:var(--s1);align-items:stretch}
-.cal .day{flex:none;width:56px;border-radius:12px;background:var(--ink);color:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0}
+.cal .day{flex:none;width:48px;border-radius:12px;background:var(--ink);color:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0}
 .cal .day small{font-family:'Archivo';font-size:10px;letter-spacing:.16em;text-transform:uppercase;opacity:.7}
 .cal .day b{font-family:'Archivo';font-weight:900;font-size:24px;line-height:1.1}
 .cal .slot{flex:1;border-left:3px solid var(--ink);padding-left:var(--s2);font-size:13.5px;line-height:1.5;color:var(--ink-2)}
 .cal .slot b{display:block;color:var(--ink);font-size:14.5px}
-.inv{position:relative;margin-top:var(--s1)}
-.inv .qrow b{color:var(--ink)}
-.stamp{position:absolute;right:4px;top:-2px;font-family:'Archivo';font-weight:900;font-size:22px;letter-spacing:.12em;color:var(--ink);
+.inv{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);margin-top:var(--s1)}
+.inv .iv b{display:block;font-family:'Archivo';font-weight:900;font-size:var(--t-1);letter-spacing:-.02em;line-height:1.1}
+.inv .iv span{font-size:13px;color:var(--ink-3)}
+.stamp{flex:none;font-family:'Archivo';font-weight:900;font-size:22px;letter-spacing:.12em;color:var(--ink);
   border:3px solid var(--ink);border-radius:8px;padding:2px 12px;transform:rotate(-12deg) scale(1.8);opacity:0;
   transition:transform .45s cubic-bezier(.3,1.6,.5,1),opacity .2s}
 .art-inv.stamped .stamp{opacity:.9;transform:rotate(-12deg) scale(1)}
@@ -148,9 +149,9 @@ nav.top .wrap{display:flex;align-items:center;justify-content:space-between;heig
   .stack-wrap{max-width:520px;margin:0 auto;width:100%}
 }
 @media(max-width:600px){
-  .stack{height:560px}
+  .stack{height:556px}
   .art{padding:14px 16px}
-  .art-sms{width:88%}.art-quote{width:82%;top:150px}.art-cal{width:86%;top:300px}.art-inv{width:82%;top:420px}
+  .art-sms{width:90%}.art-quote{width:86%;top:176px}.art-cal{width:88%;top:300px}.art-inv{width:86%;top:428px}
   .steps{grid-template-columns:repeat(2,1fr)}
 }
 
@@ -161,20 +162,21 @@ nav.top .wrap{display:flex;align-items:center;justify-content:space-between;heig
 .tl-card{margin-top:var(--s5);background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:var(--s5)}
 @media(max-width:600px){.tl-card{padding:var(--s3) var(--s2)}}
 .tl-top{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);flex-wrap:wrap}
-.tl-tally{display:flex;gap:var(--s3);font-size:13px;color:var(--ink-3)}
+.tl-tally{display:flex;gap:var(--s3);font-size:13px;color:var(--ink-3);flex-wrap:wrap}
+@media(max-width:600px){.tl-tally{gap:var(--s2)}.tl-tally b{font-size:16px}}
 .tl-tally b{font-family:'Archivo';font-weight:900;font-size:18px;color:var(--ink);margin-right:4px}
 .playbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-2);background:var(--paper);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer}
 .playbtn svg{width:12px;height:12px;fill:currentColor}
-.track-wrap{position:relative;margin:var(--s5) 0 var(--s3);padding:0 6px}
+.track-wrap{position:relative;margin:var(--s8) 0 var(--s3);padding:0 6px}
 .track{position:relative;height:72px}
 .track .rail{position:absolute;left:0;right:0;top:35px;height:2px;background:var(--line-2);border-radius:2px}
 .track .night{position:absolute;left:50%;right:0;top:12px;height:48px;border-radius:12px;
   background:repeating-linear-gradient(135deg,rgba(10,14,17,.035) 0 6px,transparent 6px 12px),rgba(10,14,17,.04)}
-.track .night span{position:absolute;right:10px;top:-22px;font-family:'Archivo';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.track .night span{position:absolute;right:10px;bottom:4px;font-family:'Archivo';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
 .track .day-l{position:absolute;left:10px;top:-10px;font-family:'Archivo';font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
 .track .progress{position:absolute;left:0;top:35px;height:2px;background:var(--ink);border-radius:2px;width:0}
 .cursor{position:absolute;top:4px;width:2px;height:64px;background:var(--ink);transform:translateX(-1px);left:0;pointer-events:none}
-.cursor::after{content:attr(data-time);position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-family:'Archivo';font-size:11px;font-weight:700;
+.cursor::after{content:attr(data-time);position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-family:'Archivo';font-size:11px;font-weight:700;
   background:var(--ink);color:var(--white);padding:2px 8px;border-radius:999px;white-space:nowrap}
 .mk{position:absolute;top:24px;width:24px;height:24px;margin-left:-12px;border:0;background:none;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .mk::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);transition:transform .25s var(--ease),background .25s}
@@ -301,7 +303,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* ---------- ABOUT ---------- */
 .about{display:grid;grid-template-columns:1fr 1.618fr;gap:var(--s8);align-items:center}
 @media(max-width:860px){.about{grid-template-columns:1fr;gap:var(--s5)}}
-.about figure img{width:100%;max-width:440px;aspect-ratio:1;object-fit:cover;border-radius:var(--r-lg);box-shadow:var(--sh-2);filter:grayscale(1) contrast(1.04)}
+.about figure img{width:100%;height:auto;max-width:440px;aspect-ratio:1;object-fit:cover;border-radius:var(--r-lg);box-shadow:var(--sh-2);filter:grayscale(1) contrast(1.04)}
 @media(max-width:860px){.about figure img{max-width:280px}}
 .about .eyebrow{display:block;margin-bottom:var(--s2)}
 .about p{font-size:17px;color:var(--ink-2);margin-top:var(--s3);max-width:32em}
@@ -309,7 +311,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
 /* ---------- CLOSE + FOOTER ---------- */
 .close{background:var(--paper);border:1px solid var(--line);border-radius:32px;box-shadow:var(--sh-2);padding:var(--s13) var(--s5);text-align:center;position:relative;overflow:hidden}
-.close .owl{width:56px;height:56px;margin:0 auto var(--s3);opacity:.92}
+.close .owl{display:block;width:36px;height:56px;margin:0 auto var(--s3);filter:invert(1)}
 .close h2{max-width:14em;margin:0 auto}
 .close p{color:var(--ink-2);max-width:30em;margin:var(--s3) auto var(--s5)}
 .close .ctas{justify-content:center}
@@ -358,7 +360,7 @@ footer.foot img{height:22px;filter:invert(1);opacity:.85}
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <span class="eyebrow" data-r>Brisbane · local, embedded, accountable</span>
-      <h1 data-r>The admin gets done.<br><span class="dim">You don't do it.</span></h1>
+      <h1 data-r>Admin, done.<br><span class="dim">Not by you.</span></h1>
       <p class="lede" data-r>I build a custom AI agent that answers enquiries, books jobs and chases invoices on your own accounts, day and night. Here's what one evening looks like.</p>
       <div class="ctas" data-r>
         <a class="btn btn-primary" href="../quiz.html">Start your free 2-minute audit</a>
@@ -374,27 +376,24 @@ footer.foot img{height:22px;filter:invert(1);opacity:.85}
       <div class="stack" id="stack">
         <div class="art art-sms" data-i="0">
           <div class="ah"><span><b>Messages</b> · Sarah</span><span>9:47pm</span></div>
-          <div class="bub them">Hi, hot water's leaking. Anyone free this week? I'm in Ashgrove.</div>
-          <div class="bub us">Hi Sarah, we can do Thu 10am. Is it electric or gas, and roughly how old?</div>
+          <div class="bub them">Hot water's leaking. Free this week? Ashgrove.</div>
+          <div class="bub us">Hi Sarah, we can do Thu 10am. Electric or gas?</div>
         </div>
         <div class="art art-quote" data-i="1">
           <div class="ah"><span><b>Quote</b> Q-218</span><span>9:48pm</span></div>
-          <div class="qrow"><span>Hot water system, supply + install</span><span>guide</span></div>
-          <div class="qrow"><span>Remove &amp; dispose of old unit</span><span>incl.</span></div>
-          <div class="qtot"><span>Guide price, inc. GST</span><b>$1,850</b></div>
+          <div class="qtot"><span>Hot water system,<br>supply + install (guide)</span><b>$1,850</b></div>
         </div>
         <div class="art art-cal" data-i="2">
           <div class="ah"><span><b>Calendar</b></span><span>9:51pm</span></div>
           <div class="cal">
             <div class="day"><small>Thu</small><b>14</b></div>
-            <div class="slot"><b>Thu 10:00 · Ashgrove</b>Hot water replacement, 2 hrs<br>Reminder set for Wed 6pm</div>
+            <div class="slot"><b>Thu 10:00 · Ashgrove</b>Hot water, 2 hrs · reminder Wed</div>
           </div>
         </div>
         <div class="art art-inv" data-i="3">
           <div class="ah"><span><b>Invoice</b> #1042</span><span>6:02am</span></div>
           <div class="inv">
-            <div class="qrow"><span>Tap service, Paddington</span><b>$640</b></div>
-            <div class="qrow"><span>Matched to bank feed</span><span>auto</span></div>
+            <div class="iv"><b>$640</b><span>Matched to bank feed</span></div>
             <span class="stamp" aria-hidden="true">PAID</span>
           </div>
         </div>
@@ -444,8 +443,7 @@ footer.foot img{height:22px;filter:invert(1);opacity:.85}
 
         <div class="track-wrap">
           <div class="track" id="track">
-            <span class="day-l">Open</span>
-            <div class="night"><span>Closed</span></div>
+                        <div class="night"><span>Closed</span></div>
             <div class="rail"></div>
             <div class="progress" id="prog"></div>
             <div class="cursor" id="cursor" data-time="6:00am" aria-hidden="true"></div>
@@ -613,7 +611,7 @@ footer.foot img{height:22px;filter:invert(1);opacity:.85}
 <section class="sec" style="padding-top:0">
   <div class="wrap">
     <div class="close" data-r>
-      <svg class="owl" viewBox="183 372 40 50" aria-hidden="true"><image href="../logo.svg" x="158" y="367" width="256" height="60" style="filter:invert(1)"/></svg>
+      <svg class="owl" viewBox="164 370 35 54" aria-hidden="true"><image href="../logo.svg" x="158" y="367" width="256" height="60"/></svg>
       <h2>See it running in <span class="dim">your</span> business.</h2>
       <p>Take the free 2-minute audit. You'll get tailored suggestions on where an agent pays off first, on the spot.</p>
       <div class="ctas">
