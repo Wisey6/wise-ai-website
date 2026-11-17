@@ -10,6 +10,11 @@ import {
   renderTemplate, leadName, saveLead, logEvent
 } from '../api.js';
 
+/** append / replaceChildren that skip null and false children (native ones would print "null"). */
+const keep = (c) => c.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false);
+const add = (n, ...c) => { n.append(...keep(c)); return n; };
+const put = (n, ...c) => { n.replaceChildren(...keep(c)); return n; };
+
 /* ======================================================= shared helpers */
 
 export const AU_MOBILE = /^\+614\d{8}$/;
@@ -67,12 +72,22 @@ export function segmentCounter() {
  * never replied gets the sender name (if missing) and the opt-out (if no STOP).
  */
 export function finalBody(rendered, settings = {}, hasReplied = false) {
-  let out = String(rendered ?? '').replace(/[ \t]+\n/g, '\n').trim();
+  // Same clean-up as the server's renderTemplate, so what is copied is what is recorded.
+  let out = String(rendered ?? '').replace(/[ \t]{2,}/g, ' ').replace(/ +([,.?!])/g, '$1').replace(/[ \t]+\n/g, '\n').trim();
   if (hasReplied) return out;
   const sender = (settings.sender_name || '').trim();
   if (sender && !out.toLowerCase().includes(sender.toLowerCase())) out += ` - ${sender}`;
-  if (!/stop/i.test(out) && settings.optout_text) out += ` ${settings.optout_text}`;
+  if (!hasOptOut(out)) out += ` ${(settings.optout_text || '').trim() || 'Reply STOP to opt out'}`;
   return out;
+}
+
+/**
+ * Does the text already carry an opt-out? Mirrors sms-send: an upper-case STOP word, or
+ * "reply/text/txt/send/sms stop" in any case. (A plain case-insensitive "stop" would let
+ * "stop losing jobs" skip the opt-out.)
+ */
+export function hasOptOut(text) {
+  return /\bSTOP\b/.test(text) || /\b(reply|text|txt|send|sms)\s+stop\b/i.test(text);
 }
 
 export function suppressedSet() {
@@ -244,7 +259,7 @@ function templatesFor(campaignId, pred) {
 export default function campaigns(ctx = {}) {
   const tab = TABS.some(([id]) => id === ctx.param) ? ctx.param : 'batch';
   const body = el('div', { class: 'camp-body' });
-  const root = el('div', { class: 'camp stack' },
+  const root = el('div', { class: 'page camp' },
     el('header', { class: 'camp-head' },
       el('div', {}, el('div', { class: 'eyebrow' }, 'Outreach'), el('h1', { class: 'h1' }, 'Campaigns')),
       el('p', { class: 'muted' }, 'One personal text at a time, sent in batches you have read first.')),
@@ -332,7 +347,7 @@ function batchTab() {
     const needHook = reasons.no_hook || 0;
     const other = Object.entries(reasons).filter(([k]) => k !== 'no_hook');
 
-    setup.append(
+    add(setup,
       el('div', { class: 'card-head' },
         el('div', {}, el('div', { class: 'eyebrow' }, 'First texts'), el('h2', { class: 'h2' }, 'Send a batch')),
         smsStrip()),
@@ -441,7 +456,7 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
       onClick: (e) => busy(e.currentTarget, sendAll) }, icon('send', 16), `Send ${n} now`);
     const phoneBtn = el('button', { class: `btn ${canSend ? 'btn-ghost' : 'btn-primary'}`, type: 'button', disabled: !n || null,
       onClick: () => startManual() }, icon('phone', 16), `Send ${n} from my phone`);
-    foot.replaceChildren(
+    put(foot,
       el('div', { class: 'muted camp-review-note' },
         !sms || !sms.configured ? 'SMS sending is not connected, so send these from your phone. Each one is recorded when you tap Sent.'
             : !sms.window_open ? `Outside the sending window (${windowLabel(state.settings)}). You can still send from your phone if it suits.`
@@ -512,7 +527,7 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
         toast(`Recorded text to ${leadName(l)}`);
         i++; show();
       }));
-      stage.replaceChildren(
+      put(stage,
         el('div', { class: 'camp-step-head' },
           el('span', { class: 'eyebrow' }, `${i + 1} of ${queue.length}`),
           el('div', { class: 'camp-step-bar', 'aria-hidden': 'true' },
@@ -539,7 +554,7 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
   }
 
   list.append(...items.map(itemNode));
-  root.append(
+  add(root,
     el('div', { class: 'card-head' },
       el('div', {},
         el('div', { class: 'eyebrow' }, kind === 'first' ? 'Review' : 'Review follow-ups'),
@@ -638,7 +653,7 @@ function sequenceTab() {
     const sender = state.settings?.sender_name || '';
     const cold = templatesFor(c?.id, (t) => t.step < 90);
     const quick = templatesFor(c?.id, (t) => t.step >= 90);
-    wrap.append(
+    add(wrap,
       el('section', { class: 'card' },
         el('div', { class: 'card-head' },
           el('div', {}, el('div', { class: 'eyebrow' }, 'Cold sequence'), el('h2', { class: 'h2' }, 'Templates')),
@@ -762,7 +777,7 @@ function templateCard(t, rerender) {
     });
   });
 
-  card.append(
+  add(card,
     el('div', { class: 'camp-tpl-head' },
       el('span', { class: 'camp-tpl-step' }, isQuick ? 'Reply' : `Step ${t.step}`),
       name,

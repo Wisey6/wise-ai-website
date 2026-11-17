@@ -48,6 +48,16 @@ export function clear(node) {
   return node;
 }
 
+/** Replace a node's children; null / undefined / false children are skipped (unlike Node.append). */
+export function fill(node, ...children) {
+  clear(node);
+  for (const c of children.flat(Infinity)) {
+    if (c === null || c === undefined || c === false) continue;
+    node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return node;
+}
+
 /** Set location.hash ('#leads', 'leads/<id>' and 'leads' all work). */
 export function go(hash) {
   const h = String(hash || '').replace(/^#?/, '#');

@@ -361,7 +361,7 @@ export default function playbook(ctx = {}) {
   const nav = el('nav', { class: 'play-toc', 'aria-label': 'Playbook sections' },
     TOC.map(([id, label]) => el('button', { class: 'play-toc-btn', type: 'button', onClick: () => go(id) }, label)));
 
-  return el('div', { class: 'play stack' },
+  return el('div', { class: 'page play' },
     el('header', { class: 'play-head' },
       el('div', { class: 'eyebrow' }, 'Playbook'),
       el('h1', { class: 'h1' }, 'How we win work'),

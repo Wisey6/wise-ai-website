@@ -125,6 +125,7 @@ export const state = {
   suppressions: [],
   messages: [],
   sms: null,
+  smsChecked: false,
   loaded: false,
   connection: 'connecting'
 };
@@ -206,6 +207,7 @@ export async function loadAll() {
 export async function refreshSmsStatus() {
   const { status, data } = await fn('sms-send', { action: 'status' });
   state.sms = status === 200 && data && typeof data.configured === 'boolean' ? data : null;
+  state.smsChecked = true;
   notify();
   return state.sms;
 }
