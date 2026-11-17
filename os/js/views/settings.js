@@ -4,8 +4,9 @@ import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
 } from '../ui.js?v=20261118c';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, sb } from '../api.js?v=20261118c';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118c';
 import { FUNCTIONS_URL } from '../config.js?v=20261118c';
+import { AGENTS, agentsInfo, settingSwitch } from './agents.js?v=20261118c';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -240,6 +241,9 @@ export default function settings() {
   });
   refreshDirty();
 
+  /* ------------------------------------------------ agents */
+  const agentsSettings = agentsGroup();
+
   /* ------------------------------------------------ PIN */
   const pinForm = el('form', { class: 'stack', novalidate: true });
   const pinFields = {
@@ -368,6 +372,7 @@ export default function settings() {
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'System'), el('h1', { class: 'h1' }, 'Settings'))),
     form,
+    agentsSettings.node,
     group('Security', 'Change PIN', 'Five wrong PINs lock this device for a while. The lock gets longer each time.',
       pinForm),
     group('Connections', 'Integrations', 'What is connected, and the steps to connect the rest.',
@@ -387,6 +392,7 @@ export default function settings() {
   renderIntegrations();
   renderSup();
   root.onState = () => {
+    agentsSettings.update();
     // Forms keep what is typed; only the live panels refresh.
     if ((state.ai?.spent_usd ?? null) !== usageFor && usage !== null) loadUsage(); else renderAiLive();
     renderIntegrations();
@@ -394,6 +400,50 @@ export default function settings() {
     if (!Object.keys(changed()).length) refreshDirty();
   };
   return root;
+}
+
+/** The Agents group: master switch, monthly budget, the four switches, spend. Saves at once. */
+function agentsGroup() {
+  const master = settingSwitch('agents_enabled', 'Agents');
+  const switches = AGENTS.map((a) => ({ a, sw: settingSwitch(a.col, a.name) }));
+  const cap = input('agent_monthly_cap_usd', { type: 'number', min: 0, max: 100, step: 1, value: state.settings?.agent_monthly_cap_usd ?? 25, inputmode: 'decimal' });
+  const saveCap = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'save-agent-cap' } }, 'Save budget');
+  saveCap.addEventListener('click', () => {
+    const v = Number(cap.value);
+    if (cap.value === '' || !(v >= 0 && v <= 100)) { toast('The agent budget must be from US$0 to US$100.', 'bad'); cap.focus(); return; }
+    busy(saveCap, async () => {
+      try { await saveSettings({ agent_monthly_cap_usd: v }); toast('Agent budget saved'); agentStatus(); } catch (e) { toast(`Could not save: ${e.message}`, 'bad'); }
+    });
+  });
+  const live = el('div', { class: 'set-agents-spend', dataset: { agentsSpend: '' } });
+  const update = () => {
+    master.update();
+    switches.forEach((x) => x.sw.update());
+    if (document.activeElement !== cap) cap.value = String(state.settings?.agent_monthly_cap_usd ?? 25);
+    const info = agentsInfo();
+    const pctUsed = info.cap > 0 ? Math.min(100, Math.round((info.spent / info.cap) * 100)) : 100;
+    fill(live,
+      el('div', { class: 'row' },
+        el('span', { class: `badge is-${info.connected ? 'ok' : 'warn'}` }, el('span', { class: 'badge-dot', 'aria-hidden': 'true' }), !info.reachable ? 'Status unavailable right now' : info.connected ? 'Connected' : 'Not connected'),
+        el('span', { class: 'spacer' }),
+        el('span', { class: 'tnum small' }, `${usd(info.spent)} of ${usd(info.cap)} this month`)),
+      el('span', { class: `ag-meter${pctUsed >= 90 ? ' is-high' : ''}`, role: 'img', 'aria-label': `${pctUsed}% of the monthly agent budget used` }, el('i', { style: `width:${pctUsed}%` })));
+  };
+  update();
+  const node = group('Agents', 'Agents', 'Four assistants that read, research and suggest. They never send anything, and nothing they suggest happens until you approve it.',
+    el('div', { class: 'set-agents', dataset: { setAgents: '' } },
+      live,
+      el('ul', { class: 'set-agents-list' },
+        el('li', { dataset: { sw: 'agents_enabled' } }, el('span', {}, el('strong', {}, 'Agents on'), el('span', { class: 'set-toggle-hint' }, 'Off stops all four at once.')), master),
+        switches.map(({ a, sw }) => el('li', { dataset: { sw: a.col } }, el('span', {}, el('strong', {}, a.name), el('span', { class: 'set-toggle-hint' }, a.does)), sw))),
+      el('div', { class: 'set-agents-budget' },
+        field('Monthly agent budget (US$)', cap, 'All four stop for the month once this is spent. 0 to 100.'),
+        saveCap),
+      el('p', { class: 'small muted' }, 'Separate from AI drafting above: drafting has its own monthly cap, and this budget covers only the four agents.'),
+      el('div', { class: 'row' },
+        el('a', { class: 'btn btn-ghost btn-sm', href: '#agents' }, icon('agents', 14), 'Open Agents'),
+        el('a', { class: 'btn btn-ghost btn-sm', href: '#agents/runs' }, icon('list', 14), 'Run log'))));
+  return { node, update };
 }
 
 /** A settings group: title and a short description on the left, the controls on the right. */

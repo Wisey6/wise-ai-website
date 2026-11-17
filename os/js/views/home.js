@@ -2,6 +2,7 @@
 // business: leads and replies, deals, proposals, delivery, invoices and retainers.
 import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118c';
 import { isAuMobile, leadName, leadById, isSuppressed, formatValue } from '../api.js?v=20261118c';
+import { agentsInfo, briefingPanel, todaysBriefing, pendingActions } from './agents.js?v=20261118c';
 
 const DAY = 86400000;
 const seenEvents = new Set();
@@ -74,6 +75,12 @@ function computeDoNext(state) {
   // Business: money owed, work due and deals slipping come straight after calls.
   const biz = businessDoNext(state, today);
   items.push(...biz.urgent);
+
+  // Suggestions from the agents wait for a yes or no; nothing happens until then.
+  const waiting = pendingActions().length;
+  if (waiting) {
+    items.push({ key: 'agent-approvals', icon: 'agents', tone: 'violet', title: `${plural(waiting, 'suggestion')} waiting for your approval`, sub: 'From your agents. Nothing changes until you approve each one.', href: '#agents/approvals', cta: 'Review' });
+  }
 
   // 3. New website leads not yet contacted: speed to lead.
   leads
@@ -585,6 +592,23 @@ function hero(state) {
     smsStrip(state));
 }
 
+/* --------------------------------------------------- morning briefing
+   Only when the agents are connected and the briefing is on. It never runs by
+   itself (it costs money): today's briefing if one exists, else one quiet control. */
+function briefingCard() {
+  const info = agentsInfo();
+  if (!info.ready('briefing')) return null;
+  if (!todaysBriefing()) {
+    return el('section', { class: 'today-brief is-quiet', 'aria-label': 'Morning briefing', dataset: { todayBrief: 'none' } },
+      el('p', { class: 'eyebrow' }, 'Morning briefing'), briefingPanel({ compact: true }));
+  }
+  return el('section', { class: 'card today-card today-brief', 'aria-labelledby': 'brief-h', dataset: { todayBrief: '' } },
+    el('div', { class: 'card-head' },
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow', id: 'brief-h' }, 'Morning briefing')),
+      el('a', { class: 'card-link', href: '#agents' }, 'Agents', icon('arrow', 14))),
+    briefingPanel());
+}
+
 /* ------------------------------------------------------------ warm */
 const WARM_TONE = { replied: 'var(--amber)', interested: 'var(--violet)', booked: 'var(--teal)' };
 
@@ -615,6 +639,7 @@ export default function home(ctx) {
   const { state } = ctx;
   const node = el('div', { class: 'page today' },
     hero(state),
+    briefingCard(),
     businessNumbers(state).hasData ? bizStrip(state) : null,
     kpiStrip(state),
     businessNumbers(state).hasData ? null : bizStrip(state),

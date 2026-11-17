@@ -9,6 +9,7 @@ import {
   normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms,
   leadToDeal, leadToClient, ai
 } from '../api.js?v=20261118c';
+import { agentsInfo, latestResearch, isResearching, runResearch, researchCard, canResearch } from './agents.js?v=20261118c';
 
 /* ------------------------------------------------------------ view state */
 const VIEW_KEY = 'wiseos.leads.view';
@@ -859,6 +860,43 @@ export function openLead(id) {
   drawAi();
   cleanup.push(onChange(drawAi));
 
+  /* Researcher agent: what their own pages say, shown here; nothing is saved until Tyler chooses. */
+  const researchBox = el('section', { class: 'ld-section ld-research', 'aria-label': 'Research', dataset: { ldResearch: '' } });
+  let researchKey = null;
+  const drawResearch = () => {
+    const l = leadById(id) || l0;
+    const ready = agentsInfo().ready('researcher');
+    const r = ready ? latestResearch(id) : null;
+    const working = isResearching(id);
+    const key = ready ? [r?.run_id, r?.at, working, l.hook, l.pain, l.status, l.number_source_url].join('|') : 'off';
+    if (key === researchKey) return;
+    researchKey = key;
+    researchBox.hidden = !ready;
+    if (!ready) { clear(researchBox); return; }
+    const btn = el('button', { type: 'button', class: `btn ${r ? 'btn-ghost' : 'btn-primary'} btn-sm`, dataset: { act: 'research' }, disabled: working || !canResearch(l) || null },
+      icon(r ? 'refresh' : 'search', 14), working ? 'Researching…' : r ? 'Research again' : 'Research this business');
+    btn.addEventListener('click', () => runResearch(id));
+    fill(researchBox,
+      el('div', { class: 'ld-section-head' },
+        el('div', { class: 'stack tight' }, el('p', { class: 'eyebrow' }, 'Researcher agent'), el('h2', { class: 'h2' }, 'What their own pages say')),
+        r ? btn : null),
+      r ? null : el('div', { class: 'ld-research-intro' },
+        el('p', { class: 'small muted' }, canResearch(l)
+          ? 'Reads their website and listing and reports only what it saw, with links. It writes nothing to the lead; you choose what to keep.'
+          : 'Nothing to look up yet: add their website, or at least the business name and suburb.'),
+        btn),
+      working ? el('p', { class: 'small muted ag-working' }, 'Reading their pages. This takes up to a minute.') : null,
+      r ? researchCard(l, r, {
+        onSaved: (k, v) => {
+          if (k === 'hook') { hookIn.value = v; drawPreview(); }
+          if (k === 'pain') { painIn.value = v; drawPreview(); }
+          if (k === 'status') drawHead();
+        }
+      }) : null);
+  };
+  drawResearch();
+  cleanup.push(onChange(drawResearch));
+
   const savePersonal = el('button', { type: 'button', class: 'btn btn-primary btn-sm' }, 'Save personal line');
   savePersonal.addEventListener('click', () => busy(savePersonal, async () => {
     try {
@@ -986,7 +1024,7 @@ export function openLead(id) {
     }
   }, icon('trash', 13), 'Delete');
 
-  const body = el('div', { class: 'drawer-body' }, personal, conversation, details);
+  const body = el('div', { class: 'drawer-body' }, researchBox, personal, conversation, details);
   const drawer = el('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
     el('div', { class: 'drawer-head' },
       el('div', { class: 'ld-title' },

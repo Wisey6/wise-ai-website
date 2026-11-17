@@ -41,7 +41,7 @@ export const NAV = [
     { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261118c') }
   ] },
   { sep: true },
-  { id: 'agents', label: 'Agents', icon: 'agents', view: () => import('./views/agents.js?v=20261118c') },
+  { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261118c') },
   { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118c') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
@@ -266,8 +266,8 @@ let rail = null;
 const soonTag = () => el('span', { class: 'soon-tag' }, 'Soon');
 
 function countBadge(r, cls = 'nav-count') {
-  if (r.badge !== 'unread') return null;
-  const c = el('span', { class: cls, hidden: true });
+  if (r.badge !== 'unread' && r.badge !== 'approvals') return null;
+  const c = el('span', { class: cls, hidden: true, dataset: { count: r.badge } });
   navCounts.push(c);
   return c;
 }
@@ -349,20 +349,27 @@ function buildRail() {
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-lock', onClick: () => lock(), title: 'Lock (signs out)' },
         icon('lock', 15), el('span', { class: 'lbl' }, 'Lock'))));
 
+  // The collapsed dock shows one icon per AREA (Today, Grow, Sell, Deliver, Money,
+  // Know, Agents), lit when the current route is inside it; hovering or focusing
+  // still expands to the full grouped map. Grow carries the unread count, Agents
+  // the approvals count.
   const dockItem = (r) => (r.view
-    ? el('a', { class: 'dock-item', href: `#${r.id}`, tabindex: '-1', dataset: { route: r.id } }, icon(r.icon, 19), countBadge(r, 'dock-count'))
+    ? el('a', { class: 'dock-item', href: `#${r.id}`, tabindex: '-1', title: r.label, dataset: { route: r.id } }, icon(r.icon, 19), countBadge(r, 'dock-count'))
     : el('span', { class: 'dock-item is-soon' }, icon(r.icon, 19)));
-  const live = ROUTES.filter((r) => !r.foot);
-  const planned = NAV.filter((n) => (n.items ? groupSoon(n) : !n.sep && n.soon));
+  const areaItem = (g) => {
+    const live = g.items.filter((i) => i.view);
+    if (!live.length) return el('span', { class: 'dock-item is-soon', title: g.group }, icon(g.icon, 19));
+    const badged = live.find((i) => i.badge);
+    return el('a', { class: 'dock-item dock-area', href: `#${live[0].id}`, tabindex: '-1', title: g.group, dataset: { area: g.group, routes: live.map((i) => i.id).join(' ') } },
+      icon(g.icon, 19), badged ? countBadge(badged, 'dock-count') : null);
+  };
+  const areas = NAV.filter((n) => !n.sep && !(n.foot)).map((n) => (n.items ? areaItem(n) : dockItem(n)));
   const menuBtn = el('button', { type: 'button', class: 'dock-menu', tabindex: '-1' },
     el('span', { class: 'dock-mark' }, el('img', { src: LOGO, alt: '' })));
   const dock = el('div', { class: 'rail-dock', 'aria-hidden': 'true' },
     menuBtn,
     el('button', { type: 'button', class: 'dock-item dock-search', tabindex: '-1', onClick: (e) => palette?.open(e.currentTarget) }, icon('search', 19)),
-    el('div', { class: 'dock-list' },
-      live.map(dockItem),
-      el('span', { class: 'dock-sep' }),
-      planned.map(dockItem)),
+    el('div', { class: 'dock-list' }, areas),
     el('div', { class: 'dock-foot' },
       ROUTES.filter((r) => r.foot).map(dockItem),
       connIndicator('conn-dock'),
@@ -576,15 +583,18 @@ function markActive() {
     a.classList.toggle('is-active', on);
     if (a.tagName === 'A') { if (a.dataset.route === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }
   }
+  for (const a of document.querySelectorAll('.dock-area[data-routes]')) a.classList.toggle('is-active', a.dataset.routes.split(' ').includes(id));
 }
 
 function updateBadges() {
   const unread = state.leads.filter((l) => l.unread && !l.archived).length;
+  const approvals = (state.agent_actions || []).filter((a) => a.status === 'proposed').length;
   navCounts = navCounts.filter((c) => c.isConnected);
   for (const c of navCounts) {
-    c.hidden = !unread;
-    c.textContent = unread > 99 ? '99+' : String(unread);
-    c.setAttribute('aria-label', `${unread} unread`);
+    const n = c.dataset.count === 'approvals' ? approvals : unread;
+    c.hidden = !n;
+    c.textContent = n > 99 ? '99+' : String(n);
+    c.setAttribute('aria-label', c.dataset.count === 'approvals' ? `${n} waiting for approval` : `${n} unread`);
   }
   const r = ROUTES.find((x) => x.id === current.route);
   document.title = `${unread ? `(${unread}) ` : ''}${r ? `${r.label} · ` : ''}Wise AI OS`;

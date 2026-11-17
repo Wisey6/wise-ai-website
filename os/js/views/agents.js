@@ -340,7 +340,7 @@ export function briefingPanel({ compact = false } = {}) {
   const btn = el('button', { type: 'button', class: compact ? 'link-btn' : 'btn btn-ghost btn-sm', dataset: { act: 'brief-write' }, disabled: briefBusy || null, onClick: () => writeBriefing(false) },
     compact ? null : icon('spark', 14), briefBusy ? 'Writing today’s briefing…' : 'Write today’s briefing');
   return el('div', { class: `ag-brief is-empty${compact ? ' is-compact' : ''}`, dataset: { briefing: 'none' } },
-    el('p', { class: 'small muted' }, compact ? 'Not written yet today. It reads the whole hub and costs a few cents, so it waits for you.' : 'Not written yet today. It reads the whole hub, so it only runs when you ask.'),
+    el('p', { class: 'small muted' }, compact ? 'Not written yet today. It reads the whole hub and uses your agent budget, so it waits for you.' : 'Not written yet today. It reads the whole hub, so it only runs when you ask.'),
     btn);
 }
 

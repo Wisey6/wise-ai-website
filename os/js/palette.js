@@ -34,6 +34,10 @@ export function createPalette({ routes, onLock, onTogglePin }) {
     { label: 'Add cost', icon: 'money', meta: 'Costs', keywords: 'expense subscription spend money', run: () => go('#costs/new') },
     { label: 'New ROI report', icon: 'spark', meta: 'ROI reports', keywords: 'create return report client', run: () => go('#roi-reports/new') },
     { label: 'New library entry', icon: 'book', meta: 'Library', keywords: 'create note checklist playbook know', run: () => go('#library/new') },
+    { label: 'Ask the hub', icon: 'agents', meta: 'Agents', keywords: 'question ask ai agent answer', run: () => go('#agents/ask') },
+    { label: 'Tell the agent to do something', icon: 'agents', meta: 'Doer', keywords: 'doer agent instruction set up ai', run: () => go('#agents/doer') },
+    { label: 'Approvals', icon: 'check', meta: 'Agents', keywords: 'approve suggestions proposals agent waiting', run: () => go('#agents/approvals') },
+    { label: 'Research a lead', icon: 'search', meta: 'Researcher', keywords: 'researcher agent website lookup', run: () => go('#agents') },
     { label: 'Pin or unpin the sidebar', icon: 'panel', meta: '[', keywords: 'sidebar dock collapse expand', desktopOnly: true, run: () => onTogglePin?.() },
     { label: 'Lock', icon: 'lock', meta: 'Sign out', keywords: 'sign out log out', run: () => onLock?.() }
   ];
@@ -51,6 +55,14 @@ export function createPalette({ routes, onLock, onTogglePin }) {
   function results(raw) {
     const q = raw.trim().toLowerCase();
     const groups = [];
+    // A question ("…?") can go straight to Ask the hub, prefilled (never through the URL).
+    const question = raw.trim();
+    if (question.length > 2 && question.endsWith('?')) {
+      groups.push({ title: 'Ask', items: [{
+        label: `Ask the hub: ${question.slice(0, 600)}`, icon: 'agents', meta: 'Agents',
+        run: () => { try { sessionStorage.setItem('wiseos.ask.q', question.slice(0, 600)); } catch { /* private mode */ } go('#agents/ask'); }
+      }] });
+    }
     const sections = routes
       .map((r) => ({ r, s: Math.max(score(r.label, q), q ? score(r.area, q) * 0.5 : 0) }))
       .filter((x) => x.s > 0)
