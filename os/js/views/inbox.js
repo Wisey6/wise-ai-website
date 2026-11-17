@@ -403,7 +403,28 @@ export default function inbox(ctx = {}) {
       });
     }
 
-    const node = el('div', { class: 'inbox-composer' }, notice, quick, aiBox, preview, ta, actions);
+    /* A reply drafted by one of the hub's agents, handed over through sessionStorage. Never sent automatically. */
+    const agentNote = el('p', { class: 'inbox-agent-note', hidden: true }, icon('spark', 13), 'Draft from your agent. Read it before you send.');
+    let agentDraft = null;
+    try {
+      agentDraft = sessionStorage.getItem(`wiseos.draft.${leadId}`);
+      if (agentDraft !== null) sessionStorage.removeItem(`wiseos.draft.${leadId}`);
+    } catch { agentDraft = null; }
+    if (agentDraft && agentDraft.trim()) {
+      if (!ta.value.trim()) {
+        ta.value = agentDraft;
+        drafts.set(leadId, agentDraft);
+        agentNote.hidden = false;
+      } else {
+        put(aiBox,
+          el('div', { class: 'inbox-ai-head' }, el('span', { class: 'eyebrow' }, 'Draft from your agent · pick to use'),
+            el('button', { class: 'icon-btn sm', type: 'button', 'aria-label': 'Dismiss the agent draft', onClick: () => clearAi() }, icon('x', 14))),
+          el('button', { class: 'inbox-ai-opt is-agent', type: 'button', onClick: async () => { await useSuggestion(agentDraft); if (ta.value === agentDraft) agentNote.hidden = false; } }, agentDraft));
+        aiBox.hidden = false;
+      }
+    }
+
+    const node = el('div', { class: 'inbox-composer' }, agentNote, notice, quick, aiBox, preview, ta, actions);
     node.refresh = () => { paintQuick(); paintActions(); };
     paintQuick();
     onInput();

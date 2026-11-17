@@ -537,6 +537,26 @@ try {
   await off.waitForSelector('.inbox-msg.is-in');
   await off.waitForTimeout(500);
   check(!(await off.isVisible('.inbox-ai-btn')), 'Suggest replies is not rendered when AI is not configured');
+
+  // A reply drafted by an agent, handed over in sessionStorage
+  const key = `wiseos.draft.${seed.lead}`;
+  const AGENT = 'Hi Mia, here are two times for a quick call: Thursday 10am or Friday 2pm.';
+  await nav(off, 'proposals');
+  await off.evaluate(([k, v]) => sessionStorage.setItem(k, v), [key, AGENT]);
+  await nav(off, `inbox/${seed.lead}`);
+  check((await off.inputValue('.inbox-input')) === AGENT && await off.isVisible('.inbox-agent-note:has-text("Draft from your agent")'), 'agent draft fills an empty reply box with a quiet note');
+  check(await off.evaluate((k) => sessionStorage.getItem(k) === null, key), 'agent draft key removed once used');
+  await off.fill('.inbox-input', 'My own reply, half typed');
+  await nav(off, 'proposals');
+  await off.evaluate(([k, v]) => sessionStorage.setItem(k, v), [key, AGENT]);
+  await nav(off, `inbox/${seed.lead}`);
+  check((await off.inputValue('.inbox-input')) === 'My own reply, half typed' && await off.isVisible('.inbox-ai-opt.is-agent'), 'agent draft never overwrites typed text; it shows as a suggestion');
+  check(await off.evaluate((k) => sessionStorage.getItem(k) === null, key), 'agent draft key removed once shown');
+  await off.click('.inbox-ai-opt.is-agent');
+  await off.click('.modal-foot .btn-primary');
+  await off.waitForTimeout(300);
+  check((await off.inputValue('.inbox-input')) === AGENT, 'choosing the agent draft replaces only after confirming');
+  await off.fill('.inbox-input', '');
   await off.context().close();
 
   /* ------------------------------------------------------------ 390 px */

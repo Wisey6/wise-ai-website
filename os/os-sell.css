@@ -261,3 +261,5 @@ body:has(.deal-card.is-dragging) .pipe-tally-item { border-color: var(--line-2);
 }
 .inbox-ai-opt:hover { border-color: var(--ink); background: var(--hover); }
 .inbox-ai-btn .icon { color: var(--ink); }
+.inbox-agent-note { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-meta); color: var(--muted); }
+.inbox-agent-note .icon { color: var(--ink); }
