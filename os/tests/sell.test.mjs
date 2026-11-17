@@ -202,7 +202,7 @@ try {
   ids.deal2 = await api(page, async (m, tag) => (await m.saveRow('deals', { title: `${tag} Bayside Dental reminders`, stage: 'qualified', value: 1200, probability: 30 })).id, TAG);
   await page.waitForTimeout(400);
   check(await page.isVisible(`.deal-card[data-id="${ids.deal2}"].is-flagged`), 'deal with no next step is flagged on the board');
-  await page.dragAndDrop(`.deal-card[data-id="${ids.deal2}"] .deal-money`, '.pipe-col[data-stage="negotiation"]');
+  await page.dragAndDrop(`.deal-card[data-id="${ids.deal2}"] .deal-open`, '.pipe-col[data-stage="negotiation"]');
   await page.waitForTimeout(1200);
   rows = await db(page, 'deals', { id: ids.deal2 });
   check(rows[0].stage === 'negotiation' && rows[0].probability === 70, `drag to Negotiation saved (stage ${rows[0].stage}, ${rows[0].probability}%)`);
