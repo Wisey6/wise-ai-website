@@ -232,10 +232,12 @@ ol,ul{list-style:none}
 }
 @media (max-width:860px){
   :root{--rail:0px}
-  body{padding-bottom:76px}
-  .rail{inset:auto 0 0 0;width:100%;height:auto;flex-direction:row;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(10,14,17,.06);background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  body{display:flex;flex-direction:column;min-height:100vh}
+  .main{order:1;flex:1}
+  .rail{order:2;position:sticky;top:auto;bottom:0;width:100%;height:auto;flex-direction:row;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(10,14,17,.06);background:#fff}
   .rail .brand,.rail .sep,.areas.bottom,.live.rail-live{display:none}
-  .areas{flex-direction:row;padding:0;gap:0}
+  .areas{flex-direction:row;padding:0;gap:0;flex:1}
+  .areas > li{flex:1 1 0;min-width:0;display:flex}
   .area{padding:4px 0 2px;font-size:10px;gap:2px;border-radius:10px;min-width:0}
   .area .ic{width:36px;height:28px;border-radius:9px}
   .area .ic svg{width:18px;height:18px}
@@ -283,7 +285,8 @@ ol,ul{list-style:none}
   .tile h3{font-size:16px}
   .live-tag .txt{display:none}
   .soon-tag{padding:2px 6px 2px 8px;font-size:9px}
-  .tile .purpose{font-size:12px}
+  .tile .purpose{font-size:12px;white-space:normal}
+  .tile .top .soon-tag{margin-left:0}
   .tile .secs a{font-size:11px;padding:1px 7px}
   .tile .big{font-size:20px;flex-direction:column;align-items:flex-start;gap:2px}
   .tile.planned .big{font-size:13px}

@@ -21,7 +21,7 @@
   --blue:#60A5FA; --teal:#2DD4BF; --amber:#FBBF24; --violet:#A78BFA; --rose:#FB7185; --up:#4ADE80;
   --blue-d:#2563EB; --up-d:#16A34A;
   --ease:cubic-bezier(.16,1,.3,1);
-  --side:248px;
+  --side:258px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--void)}
@@ -62,11 +62,13 @@ svg.i{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;fill:none;stro
   border:1px solid var(--line-2);border-radius:999px;padding:1px 6px}
 /* planned areas: one quiet row each, expands to show sections */
 .area{border-radius:9px}
-.area>.ni{height:auto;min-height:34px;padding-top:7px;padding-bottom:7px;align-items:flex-start}
+.area>.ni{height:auto;min-height:34px;padding:7px 6px 7px 10px;align-items:flex-start}
+.area .cap{letter-spacing:-.01em}
 .area>.ni>svg.i{margin-top:1px}
 .area .stack{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .area .row{display:flex;align-items:center;gap:8px}
-.area .cap{font-size:11.5px;line-height:1.35;color:var(--faint)}
+.area .cap{font-size:11px;line-height:1.35;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.area .row .soon{margin-left:auto}
 .area .chev{margin-top:1px;transition:transform .25s var(--ease);opacity:.7}
 .area>.ni[aria-expanded="true"] .chev{transform:rotate(90deg)}
 .area>.ni[aria-expanded="true"] .cap{display:none}
@@ -370,7 +372,7 @@ svg.i{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;fill:none;stro
         <span class="eyebrow" id="g-plan">Sell · Deliver · Money</span>
         <div class="area">
           <button class="ni" aria-expanded="false" aria-controls="a-sell"><svg class="i"><use href="#i-pipe"/></svg>
-            <span class="stack"><span class="row"><span class="lbl">Sell</span><span class="soon">Soon</span></span><span class="cap">Pipeline · Proposals · ROI calculator</span></span><svg class="i chev"><use href="#i-chev"/></svg></button>
+            <span class="stack"><span class="row"><span class="lbl">Sell</span><span class="soon">Soon</span></span><span class="cap">Pipeline · Proposals · ROI calculator</span></span></button>
           <div class="sub" id="a-sell">
             <button class="ni" data-nav="Pipeline"><span class="lbl">Pipeline</span></button>
             <button class="ni" data-nav="Proposals"><span class="lbl">Proposals</span></button>
@@ -379,7 +381,7 @@ svg.i{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;fill:none;stro
         </div>
         <div class="area">
           <button class="ni" aria-expanded="false" aria-controls="a-deliver"><svg class="i"><use href="#i-case"/></svg>
-            <span class="stack"><span class="row"><span class="lbl">Deliver</span><span class="soon">Soon</span></span><span class="cap">Clients · Projects · ROI reports</span></span><svg class="i chev"><use href="#i-chev"/></svg></button>
+            <span class="stack"><span class="row"><span class="lbl">Deliver</span><span class="soon">Soon</span></span><span class="cap">Clients · Projects · ROI reports</span></span></button>
           <div class="sub" id="a-deliver">
             <button class="ni" data-nav="Clients"><span class="lbl">Clients</span></button>
             <button class="ni" data-nav="Projects"><span class="lbl">Projects</span></button>
@@ -388,7 +390,7 @@ svg.i{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;fill:none;stro
         </div>
         <div class="area">
           <button class="ni" aria-expanded="false" aria-controls="a-money"><svg class="i"><use href="#i-gauge"/></svg>
-            <span class="stack"><span class="row"><span class="lbl">Money</span><span class="soon">Soon</span></span><span class="cap">Income · Costs · Runway</span></span><svg class="i chev"><use href="#i-chev"/></svg></button>
+            <span class="stack"><span class="row"><span class="lbl">Money</span><span class="soon">Soon</span></span><span class="cap">Income · Costs · Runway</span></span></button>
           <div class="sub" id="a-money">
             <button class="ni" data-nav="Income"><span class="lbl">Income</span></button>
             <button class="ni" data-nav="Costs"><span class="lbl">Costs</span></button>
