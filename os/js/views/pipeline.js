@@ -509,7 +509,7 @@ export function openDeal(id) {
     el('div', { class: 'form-grid' },
       el('div', { class: 'full' }, field('Next step', nextIn)),
       field('By', nextOn),
-      el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Quick dates'), el('div', { class: 'row' }, quick('Tomorrow', 1), quick('In 3 days', 3), quick('Next week', 7)))));
+      el('div', { class: 'field deal-quick' }, el('span', { class: 'field-label' }, 'Quick dates'), el('div', { class: 'row nowrap' }, quick('Tomorrow', 1), quick('In 3 days', 3), quick('Next week', 7)))));
 
   /* outcome (won / lost) */
   const outcome = el('section', { class: 'ld-section', 'aria-label': 'Outcome' });

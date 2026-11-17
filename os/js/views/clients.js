@@ -362,7 +362,7 @@ function clientPage(id) {
       el('div', { class: 'kpi' }, el('span', { class: 'kpi-label' }, 'Unpaid'), el('span', { class: `kpi-value${f.overdue.length ? ' dl-bad' : ''}`, dataset: { k: 'unpaid' } }, money(f.unpaid)),
         el('span', { class: 'kpi-sub' }, f.overdue.length ? `${money(f.overdue.reduce((s, i) => s + n(i.amount), 0))} overdue` : f.unpaidList.length ? plural(f.unpaidList.length, 'invoice') + ' out' : 'nothing owed')),
       el('div', { class: 'kpi' }, el('span', { class: 'kpi-label' }, 'Last contact'), el('span', { class: 'kpi-value cl-kpi-date', dataset: { k: 'contact' } }, f.lastContact ? fmtDate(f.lastContact, { day: 'numeric', month: 'short' }) : '—'),
-        el('span', { class: 'kpi-sub' }, f.lastContact ? `${plural(Math.round((Date.parse(today()) - Date.parse(f.lastContact)) / 86400000), 'day')} ago` : 'nothing logged yet'))),
+        el('span', { class: 'kpi-sub' }, f.lastContact ? (f.lastContact >= today() ? 'today' : `${plural(Math.round((Date.parse(today()) - Date.parse(f.lastContact)) / 86400000), 'day')} ago`) : 'nothing logged yet'))),
       el('p', { class: 'small muted cl-money-note' }, 'Invoices are kept in Income. ', el('a', { href: '#income/new', class: 'link-btn' }, 'Add an invoice'), ' and pick this client.'));
 
     const projects = f.projects.filter((p) => !p.archived).sort((a, b) => (isOpenProject(b) - isOpenProject(a)) || String(b.created_at).localeCompare(String(a.created_at)));

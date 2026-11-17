@@ -330,8 +330,9 @@ try {
   await page.fill('.lib-search', '');
   await page.click('[data-act=archive]');
   await page.waitForFunction(async (id) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.library.find((e) => e.id === id)?.archived === true, newId, { timeout: 10000 });
-  await page.waitForTimeout(300);
-  check(await page.locator(`.lib-item:has-text("${title}")`).count() === 0, 'archived entries leave the list');
+  // Realtime echoes of the earlier pin can land after the archive; give the list a moment to settle.
+  const left = await page.waitForFunction((t) => ![...document.querySelectorAll('.lib-item-title')].some((n) => n.textContent === t), title, { timeout: 8000 }).then(() => true).catch(() => false);
+  check(left, 'archived entries leave the list');
   await page.click('.lib-arch-toggle');
   await page.waitForTimeout(200);
   check(await page.locator(`.lib-item:has-text("${title}")`).count() === 1, 'the Archived toggle shows them');
@@ -377,6 +378,8 @@ try {
   await nav(page, 'home', 900);
   check(await page.locator('.kpi-strip.biz [data-biz=pipeline]').count() === 1 && await page.locator('.kpi-strip.biz [data-biz=mrr]').count() === 1
     && await page.locator('.kpi-strip.biz [data-biz=in]').count() === 1 && await page.locator('.kpi-strip.biz [data-biz=unpaid]').count() === 1, 'Today shows the business number strip once there is data');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, 'home-top-1440');
   if (await page.locator('.do-more').count()) { await page.click('.do-more'); await page.waitForTimeout(200); }
   const keys = await page.$$eval('.do-item', (ns) => ns.map((n) => ({ k: n.dataset.key, h: n.querySelector('.do-link')?.getAttribute('href') })));
   const has = (k, h) => keys.some((x) => x.k === k && x.h === h);
@@ -414,9 +417,13 @@ try {
     await page.waitForTimeout(100);
     const idx = (await page.locator('.pal-opt .pal-label').allTextContents()).indexOf(label);
     for (let i = 0; i < idx; i++) await page.keyboard.press('ArrowDown');
+    // Record where the palette sends us (the target view may then open its own form).
+    await page.evaluate(() => { window.__hashes = []; window.addEventListener('hashchange', () => window.__hashes.push(location.hash), { once: true }); });
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(300);
-    check(idx >= 0 && await page.evaluate(() => location.hash) === hash, `palette action “${label}” → ${hash}`);
+    await page.waitForTimeout(400);
+    check(idx >= 0 && (await page.evaluate(() => window.__hashes[0])) === hash, `palette action “${label}” → ${hash}`);
+    for (let i = 0; i < 3 && await page.locator('.modal-backdrop, .drawer').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
+    await nav(page, 'library', 300);
   }
   await page.keyboard.press('Control+k');
   await page.waitForSelector('.pal [role=combobox]');

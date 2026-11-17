@@ -10,7 +10,8 @@ import {
 import { money2, dateFmt, how, pageHead, sectionHead } from './money-ui.js?v=20261118c';
 
 const signed = (n) => `${n < 0 ? '−' : '+'}${money(Math.abs(n))}`;
-const monthsText = (m) => (m >= 24 ? `${num(Math.floor(m / 12))} years` : `${m.toFixed(1)} months`);
+const neg = (n) => (n < 0 ? `−${money(-n)}` : money(n));
+const monthsText = (m) => (m >= 24 ? `${(m / 12).toFixed(1)} years` : `${m.toFixed(1)} months`);
 
 /** "Runs out around" month for a runway of m months from today. */
 export function runsOutMonth(today, m) {
@@ -128,8 +129,8 @@ export default function runwayView(ctx) {
     const next = runway({ cash: w.cash, avgIn: w.avg.average + add, burn: w.burn - cut, draw: w.draw });
     fill(wiOut,
       el('div', { class: 'money-wi-cell' }, el('p', { class: 'eyebrow' }, 'Runway'),
-        el('p', { class: 'money-wi-value', dataset: { wi: 'runway' } }, next.burning ? monthsText(next.months) : 'Not burning'),
-        el('p', { class: 'money-kpi-sub' }, next.burning ? `was ${w.rw.burning ? monthsText(w.rw.months) : 'not burning'}` : `${money(next.spare)} to spare a month`)),
+        el('p', { class: 'money-wi-value', dataset: { wi: 'runway' } }, next.burning ? (w.cash > 0 ? monthsText(next.months) : 'No cash buffer') : 'Not burning'),
+        el('p', { class: 'money-kpi-sub' }, next.burning ? `was ${w.rw.burning ? (w.cash > 0 ? monthsText(w.rw.months) : 'no cash buffer') : 'not burning'}` : `${money(next.spare)} to spare a month`)),
       el('div', { class: 'money-wi-cell' }, el('p', { class: 'eyebrow' }, 'Break-even'),
         el('p', { class: 'money-wi-value', dataset: { wi: 'need' } }, `${money(next.need)}/mo`),
         el('p', { class: 'money-kpi-sub' }, `was ${money(w.rw.need)}`)),
@@ -244,17 +245,17 @@ export default function runwayView(ctx) {
   function projBlock(w, s, today) {
     const { rows, zeroKey } = w.proj;
     return el('section', { class: 'section money-section' },
-      sectionHead('Next six months', zeroKey ? `Cash runs out in ${monthLabel(zeroKey, true)}` : `${money(rows[rows.length - 1].close)} by ${monthLabel(rows[rows.length - 1].key, true)}`),
+      sectionHead('Next six months', zeroKey ? `Cash runs out in ${monthLabel(zeroKey, true)}` : `${neg(rows[rows.length - 1].close)} by ${monthLabel(rows[rows.length - 1].key, true)}`),
       zeroKey ? el('div', { class: 'callout is-bad' }, icon('alert', 16), el('span', {}, `On these numbers your cash goes below zero in ${monthLabel(zeroKey, true)}. Win work, chase invoices or cut costs before then.`)) : null,
       el('div', { class: 'table-wrap' }, el('table', { class: 'table money-table money-proj' },
         el('thead', {}, el('tr', {}, el('th', {}, 'Month'), el('th', { class: 'num' }, 'Starting cash'), el('th', { class: 'num' }, 'Expected in'),
           el('th', { class: 'num' }, 'Out'), el('th', { class: 'num' }, 'Closing cash'))),
         el('tbody', {}, rows.map((r) => el('tr', { class: r.key === zeroKey ? 'is-zero' : '', dataset: { month: r.key } },
           el('td', {}, monthLabel(r.key, true), r.key === zeroKey ? el('span', { class: 'money-sub money-neg' }, 'hits zero') : null),
-          el('td', { class: 'num muted' }, money(r.start)),
+          el('td', { class: 'num muted' }, neg(r.start)),
           el('td', { class: 'num' }, money(r.in), el('span', { class: 'money-sub' }, `${money(r.retainers)} retainers${r.receivables ? ` · ${money(r.receivables)} invoices` : ''}`)),
           el('td', { class: 'num' }, money(r.out), el('span', { class: 'money-sub' }, `${money(r.recurring + r.oneOff)} costs · ${money(r.draw)} pay`)),
-          el('td', { class: 'num' }, el('b', { class: r.close < 0 ? 'money-neg' : '' }, r.close < 0 ? `−${money(-r.close)}` : money(r.close)))))))),
+          el('td', { class: 'num' }, el('b', { class: r.close < 0 ? 'money-neg' : '' }, neg(r.close)))))))),
       how('Starts next month from your cash on hand. In: active retainers plus unpaid invoices due that month (the first month also picks up anything overdue). Out: recurring costs, your pay and one-offs dated that month. All before GST.'));
   }
 

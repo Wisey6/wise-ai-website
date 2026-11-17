@@ -323,8 +323,8 @@ function bizStrip(state) {
       el('span', { class: 'kpi-label' }, c.label),
       el('span', { class: 'kpi-line' },
         el('span', { class: 'kpi-value' }, c.value),
-        el('span', { class: `kpi-sub${c.tone ? ` is-${c.tone}` : ''}` }, c.sub),
-        c.meter !== undefined && c.meter !== null ? el('span', { class: 'biz-meter', role: 'img', 'aria-label': `${n.targetPct}% of the monthly target` }, el('i', { style: `width:${c.meter}%` })) : null))));
+        el('span', { class: `kpi-sub${c.tone ? ` is-${c.tone}` : ''}` }, c.sub)),
+      c.meter !== undefined && c.meter !== null ? el('span', { class: 'biz-meter', role: 'img', 'aria-label': `${n.targetPct}% of the monthly target` }, el('i', { style: `width:${c.meter}%` })) : null)));
 }
 
 /* Rendering follows the approved layout: A's greeting strip, D's compact KPI

@@ -2,7 +2,7 @@
    Prefixes: .sell-* (shared), .pipe-* / .deal-* (pipeline), .prop-* (proposals), .pdoc-* (the document). */
 
 .sell-page .h1 { font-size: var(--fs-h1); }
-.is-amber, .sell-page .is-warn { color: var(--amber-t); }
+.is-amber, .sell-kpi .kpi-sub .is-warn { color: var(--amber-t); }
 
 /* Number strip: ink rule over open numerals (same idea as Today) */
 .sell-kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
@@ -244,3 +244,5 @@ body:has(.deal-card.is-dragging) .pipe-tally-item { border-color: var(--line-2);
   .pdoc-body p, .pdoc-list li { orphans: 3; widows: 3; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.deal-quick .row { gap: 6px; height: var(--control-h); }
+.deal-quick .chip { padding: 0 10px; }

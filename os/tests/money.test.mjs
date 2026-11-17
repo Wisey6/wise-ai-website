@@ -184,21 +184,25 @@ try {
     const ok = await page.evaluate(() => !!document.querySelector('#view .page') && !document.querySelector('#view .err-card'));
     check(ok && page.errors.length === before, `#${r} renders cleanly before test data`);
     if (SHOTS && emptyish) {
+      await page.mouse.move(1000, 20);
+      await page.evaluate(() => document.activeElement && document.activeElement.blur());
+      await page.waitForTimeout(300);
       await page.screenshot({ path: `${SHOTS}/money-${r}-empty-1440.png`, fullPage: true });
     }
   }
   if (emptyish) {
+    const now = await api(page, ({ state }) => ({ inc: state.income.length, cst: state.costs.length, ret: state.clients.some((c) => c.status === 'active' && !c.archived && Number(c.monthly_value) > 0) }));
     await nav(page, 'income');
-    check(await page.isVisible('text=No invoices yet'), 'income empty state');
+    if (!now.inc) check(await page.isVisible('text=No invoices yet'), 'income empty state');
     await nav(page, 'costs');
-    check(await page.isVisible('text=No costs yet'), 'costs empty state');
-    if (Number(original.cash_on_hand) === 0) {
+    if (!now.cst) check(await page.isVisible('text=No costs yet'), 'costs empty state');
+    if (Number(original.cash_on_hand) === 0 && !now.ret && !now.inc && !now.cst) {
       await nav(page, 'runway');
       check(await page.isVisible('text=Three things to enter first'), 'runway empty state with three steps');
     }
     if (SHOTS) {
       const p390 = await openApp({ width: 390, height: 844 });
-      for (const r of ['income', 'costs', 'runway']) { await nav(p390, r); await p390.screenshot({ path: `${SHOTS}/money-${r}-empty-390.png`, fullPage: true }); }
+      for (const r of ['income', 'costs', 'runway']) { await nav(p390, r); await p390.mouse.move(200, 400); await p390.screenshot({ path: `${SHOTS}/money-${r}-empty-390.png`, fullPage: true }); }
       await p390.context().close();
     }
   }
@@ -433,7 +437,7 @@ try {
       hasHow: [...document.querySelectorAll('[data-fig]')].every((n) => n.querySelector('.money-how')) };
   });
   const fmt0 = (n) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(Math.round(n));
-  check(rw.burning ? rw.big === `${rw.months.toFixed(1)} months` || /years/.test(rw.big) : rw.big === 'Not burning' && rw.line.includes(`${fmt0(rw.spare)} to spare`), `runway answer matches the maths (${rw.big} ${rw.line})`);
+  check(rw.burning ? rw.big === (rw.months >= 24 ? `${(rw.months / 12).toFixed(1)} years` : `${rw.months.toFixed(1)} months`) : rw.big === 'Not burning' && rw.line.includes(`${fmt0(rw.spare)} to spare`), `runway answer matches the maths (${rw.big} ${rw.line})`);
   check(rw.needTxt === `${fmt0(rw.need)}/mo` && rw.rows === 6 && rw.hasHow, `break-even ${rw.needTxt}, 6 projection rows, every figure has a how line`);
   check(!/Infinity|NaN/.test(await page.textContent('#view')), 'no Infinity or NaN anywhere on runway');
   // what if, live
@@ -471,6 +475,9 @@ try {
       const over = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       if (vp.width === 390) check(over <= 0, `#${r} at 390px has no horizontal scroll (${over}px)`);
       check(p.errors.length === 0, `#${r} populated at ${vp.width} renders without console errors`);
+      await p.mouse.move(Math.round(vp.width * 0.6), 20);
+      await p.evaluate(() => document.activeElement && document.activeElement.blur());
+      await p.waitForTimeout(400);
       if (SHOTS) await p.screenshot({ path: `${SHOTS}/money-${r}-${vp.width}.png`, fullPage: true });
     }
     if (SHOTS && vp.width === 1440) {

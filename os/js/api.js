@@ -134,6 +134,7 @@ export const state = {
   income: [],
   costs: [],
   library: [],
+  ai: null,
   sms: null,
   smsChecked: false,
   loaded: false,
@@ -212,6 +213,7 @@ export async function loadAll() {
   Object.assign(state, { settings, leads, templates, campaigns, bookings, events, suppressions, messages, loaded: true });
   notify();
   refreshSmsStatus();
+  aiStatus();
   return state;
 }
 
@@ -529,6 +531,45 @@ export async function leadToDeal(lead) {
     title: lead.business || lead.contact_name || 'New deal', lead_id: lead.id, stage: 'qualified',
     next_step: 'Intro call', notes: lead.pain || null
   });
+}
+
+/* ------------------------------------------------------------ AI assistance
+   Button-triggered drafting through the ai-assist function. Nothing is ever sent
+   to a client from here: every result is a draft for the operator to read and edit.
+     await ai('hook', {lead, notes})                       → res.result {options[], ask}
+     await ai('reply', {lead, thread, booking_url})        → res.result {options[]}
+     await ai('proposal', {recipient, notes, roi})         → res.result {problem, solution, scope[]}
+     await ai('roi_summary', {client, period, numbers, metrics, notes}) → res.result {summary, next_steps}
+   Always returns an object and never throws: {ok:true, result, cost_usd} or
+   {ok:false, error, message} where `message` is ready to show in a toast.
+   state.ai = {configured, enabled, spent_usd, cap_usd} | null (refreshed by aiStatus()). */
+const AI_ERRORS = {
+  ai_not_configured: 'AI drafting is not connected yet. Add the API key in Supabase to turn it on.',
+  disabled: 'AI drafting is switched off in Settings.',
+  cap_reached: 'This month\'s AI budget is used up. Raise the cap in Settings to keep drafting.',
+  declined: 'The AI declined to write that one. Try rewording your notes.',
+  too_long: 'That was too much to draft in one go. Trim the notes and try again.',
+  bad_output: 'The draft came back garbled. Try again.',
+  ai_error: 'The AI service had a problem. Try again in a minute.',
+  unauthorized: 'Your session has expired. Lock and unlock, then try again.',
+  bad_request: 'There was nothing to work from. Add some notes first.',
+  network: 'Could not reach the AI service. Check your connection.'
+};
+
+export async function aiStatus() {
+  const { status, data } = await fn('ai-assist', { action: 'status' });
+  state.ai = status === 200 && data && typeof data.configured === 'boolean' ? data : null;
+  notify();
+  return state.ai;
+}
+
+export async function ai(task, context) {
+  const { status, data } = await fn('ai-assist', { task, context });
+  const res = data && typeof data === 'object' ? data : {};
+  if (state.ai && typeof res.spent_usd === 'number') state.ai = { ...state.ai, spent_usd: res.spent_usd };
+  if (status === 200 && res.ok) return res;
+  const error = res.error || (status === 0 ? 'network' : 'ai_error');
+  return { ...res, ok: false, error, message: res.detail || AI_ERRORS[error] || AI_ERRORS.ai_error };
 }
 
 export async function saveCampaign(row) {

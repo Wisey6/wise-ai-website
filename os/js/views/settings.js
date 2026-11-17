@@ -2,7 +2,7 @@
 // and the one-off import from the old HQ console (/admin).
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
-  copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog
+  copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
 } from '../ui.js?v=20261118c';
 import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow } from '../api.js?v=20261118c';
 import { FUNCTIONS_URL } from '../config.js?v=20261118c';
@@ -688,7 +688,7 @@ function importTool() {
 
   function drawStart(err) {
     fileIn.value = '';
-    box.replaceChildren(
+    fill(box, 
       el('div', { class: 'imp-drop' },
         el('ol', { class: 'set-steps' },
           el('li', {}, 'Open the old console at ', el('a', { href: '../admin/', target: '_blank', rel: 'noopener' }, '/admin'), ' and unlock it.'),
@@ -715,7 +715,7 @@ function importTool() {
         drawDone(res);
       });
     });
-    box.replaceChildren(
+    fill(box, 
       el('p', { class: 'small muted' }, `From ${fileName || 'the export'}${data.meta?.updated ? `, last updated ${data.meta.updated}` : ''}.`),
       plan.previous ? el('div', { class: 'callout is-info', dataset: { imp: 'previous' } }, icon('alert', 16),
         el('span', {}, `An earlier import is already here (${plural(plan.previous, 'record')}). Those records are skipped, so nothing comes across twice.`)) : null,
@@ -734,7 +734,7 @@ function importTool() {
 
   function drawDone(res) {
     const n = Object.values(res.inserted).reduce((t, v) => t + v, 0);
-    box.replaceChildren(
+    fill(box, 
       el('div', { class: `callout ${res.errors.length ? 'is-warn' : 'is-ok'}`, role: 'status', dataset: { imp: 'done' } }, icon(res.errors.length ? 'alert' : 'check', 16),
         el('span', {}, `Imported ${plural(n, 'record')}${Object.keys(res.inserted).length ? ` (${Object.entries(res.inserted).map(([t, v]) => `${v} ${t.replace('_', ' ')}`).join(', ')})` : ''}.${res.errors.length ? ` ${plural(res.errors.length, 'record')} could not be saved.` : ' The old console can now be retired.'}`)),
       res.errors.length ? el('ul', { class: 'imp-notes' }, res.errors.slice(0, 20).map((e) => el('li', {}, e))) : null,

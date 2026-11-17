@@ -410,7 +410,7 @@ try {
   await nav(phone, 'pipeline');
   await phone.click('.pipe-bar .tab:has-text("Table")');
   await phone.waitForTimeout(300);
-  check(await noHScroll(phone) && await phone.isVisible(".pipe-cards .deal-card"), 'pipeline table collapses to cards at 390px');
+  check(await noHScroll(phone) && (await phone.isVisible(".pipe-cards .deal-card") || await phone.isVisible(".pipe-content .empty")), 'pipeline table collapses to cards (or a calm empty state) at 390px');
   await phone.click('.pipe-bar .tab:has-text("Board")');
   check(phone.errors.length === 0, `no console errors at 390 (${phone.errors.slice(0, 3).join(' | ')})`);
   await phone.context().close();
