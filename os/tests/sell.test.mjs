@@ -52,6 +52,7 @@ async function openApp(viewport = { width: 1440, height: 900 }, aiMock = null) {
     if (!foreign.test(t) && !/404 \(File not found\)/.test(t)) page.errors.push(t);
   });
   page.on('pageerror', (e) => { if (!foreign.test(e.message)) page.errors.push(`pageerror: ${e.message}`); });
+  page.on('response', (r) => { if (r.status() === 404) page.notFound = [...(page.notFound || []), r.url()]; });
   await page.goto(BASE);
   await page.evaluate(async (pw) => {
     const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
@@ -507,7 +508,7 @@ try {
   await aiPage.waitForTimeout(800);
   check(!(await aiPage.isVisible('.inbox-ai-btn')), 'Suggest replies hides when the latest message is ours');
   const aiErrs = aiPage.errors.filter((e) => !/status of 402/.test(e)); // the mocked cap_reached reply is a 402 on purpose
-  check(aiErrs.length === 0, `no console errors with AI on (${aiErrs.slice(0, 3).join(' | ')})`);
+  check(aiErrs.length === 0, `no console errors with AI on (${aiErrs.slice(0, 3).join(' | ')} ${JSON.stringify(aiPage.notFound || [])})`);
   await aiPage.context().close();
 
   // AI on, phone

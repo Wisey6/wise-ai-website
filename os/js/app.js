@@ -41,7 +41,7 @@ export const NAV = [
     { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261118c') }
   ] },
   { sep: true },
-  { id: 'agents', label: 'Agents', icon: 'agents', soon: true },
+  { id: 'agents', label: 'Agents', icon: 'agents', view: () => import('./views/agents.js?v=20261118c') },
   { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118c') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));

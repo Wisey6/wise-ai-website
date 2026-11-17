@@ -252,6 +252,8 @@ const TABLE_KEY = {
 
 function upsertInto(list, row, { prepend = false, key = 'id' } = {}) {
   const i = list.findIndex((r) => r[key] === row[key]);
+  // A late live-update echo of an older save must not overwrite a newer one.
+  if (i >= 0 && row.updated_at && list[i].updated_at && String(row.updated_at) < String(list[i].updated_at)) return;
   if (i >= 0) list[i] = { ...list[i], ...row };
   else if (prepend) list.unshift(row);
   else list.push(row);
