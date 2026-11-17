@@ -995,3 +995,51 @@ a.feed-row:hover { text-decoration: none; background: linear-gradient(90deg, var
 }
 /* One colour for "unread" everywhere. */
 .unread-dot { background: var(--blue); }
+
+
+/* ------------------------------------------------------- Lock screen: PIN field
+   Resting: clock + a lock to click. Open: one numbers-only field, Windows style. */
+.gate { grid-template-rows: auto 1fr auto auto 1.4fr auto; cursor: default; }
+.gate:not(.is-open) { cursor: pointer; }
+.gate-panel { min-height: 148px; justify-content: flex-start; }
+.gate-unlock {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-4); background: none; border: 0; color: var(--silver);
+  cursor: pointer; padding: var(--space-3); border-radius: var(--radius-m); font-family: var(--font-ui); font-size: var(--fs-sm);
+  -webkit-tap-highlight-color: transparent; animation: gate-in .32s var(--ease);
+}
+.gate-unlock-ring {
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  border: 1px solid rgba(232,235,237,.22); transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform 120ms var(--ease);
+}
+.gate-unlock:hover .gate-unlock-ring, .gate:not(.is-open):hover .gate-unlock-ring { background: rgba(255,255,255,.07); border-color: rgba(232,235,237,.45); }
+.gate-unlock:active .gate-unlock-ring { transform: scale(.95); background: rgba(255,255,255,.14); }
+.gate-unlock:hover .gate-unlock-label { color: #fff; }
+.gate-unlock-label { transition: color var(--dur) var(--ease); }
+.pin-field {
+  display: flex; align-items: center; width: min(300px, 100%); height: 52px; padding: 0 6px 0 var(--space-4);
+  border: 1px solid rgba(232,235,237,.28); border-radius: var(--radius-pill); background: rgba(255,255,255,.04);
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); animation: gate-in .26s var(--ease);
+}
+.pin-field:focus-within { border-color: #fff; background: rgba(255,255,255,.07); }
+.pin-input {
+  flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: 0; color: #fff; caret-color: #fff;
+  font-family: var(--font-ui); font-size: 22px; letter-spacing: .32em; font-variant-numeric: tabular-nums; text-align: left;
+  user-select: text; -webkit-user-select: text;
+}
+.pin-input::placeholder { color: var(--silver); letter-spacing: .02em; font-size: var(--fs-body); opacity: .8; }
+.pin-input:focus-visible { outline: none; }
+.pin-input:disabled { opacity: .45; }
+.pin-go {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #fff; color: var(--ink); cursor: pointer;
+  display: grid; place-items: center; transition: transform 120ms var(--ease), background var(--dur) var(--ease), opacity var(--dur);
+}
+.pin-go:hover { background: var(--platinum); }
+.pin-go:active { transform: scale(.94); }
+.pin-go:disabled { opacity: .35; cursor: not-allowed; }
+.pin-field.is-shake { animation: shake .42s; border-color: #FB7185; }
+.pin-field.is-busy .pin-go { animation: pulse 1s infinite; }
+@keyframes gate-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .gate-unlock, .pin-field { animation: none; } }
+
+.gate-unlock:focus-visible { outline: none; }
+.gate-unlock:focus-visible .gate-unlock-ring { outline: 2px solid #fff; outline-offset: 4px; }

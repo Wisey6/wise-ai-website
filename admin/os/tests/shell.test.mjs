@@ -68,20 +68,30 @@ async function cleanup(p) {
 try {
   /* ---------------------------------------------------------------- gate */
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.gate .keypad', { timeout: 15000 });
-  check(await page.locator('.gate .pin-dot').count() >= 6, 'gate shows at least six PIN dots');
-  check(await page.locator('.gate .key').count() === 12, 'gate keypad has 12 keys');
+  await page.waitForSelector('.gate .gate-unlock', { timeout: 15000 });
   check(/\d/.test(await page.locator('.gate-clock').textContent()), 'gate shows a clock');
-  await page.keyboard.press('1');
-  check(await page.locator('.pin-dot.is-filled').count() === 1, 'keyboard digit fills a dot');
+  check(await page.locator('.gate .pin-input').count() === 0, 'gate rests with no PIN field until the lock is clicked');
+  await page.locator('.gate .gate-unlock').click();
+  await page.waitForSelector('.gate .pin-input');
+  check(await page.evaluate(() => document.activeElement?.classList.contains('pin-input')), 'clicking the lock opens and focuses the PIN field');
+  check(await page.locator('.gate .pin-input').getAttribute('inputmode') === 'numeric'
+    && await page.locator('.gate .pin-input').getAttribute('type') === 'password', 'PIN field is masked and numeric');
+  await page.keyboard.type('a1b-2 c');
+  check(await page.locator('.gate .pin-input').inputValue() === '12', 'PIN field accepts numbers only');
+  await page.locator('.gate .pin-input').evaluate((n) => { n.value = '12x34'; n.dispatchEvent(new Event('input', { bubbles: true })); });
+  check(await page.locator('.gate .pin-input').inputValue() === '1234', 'pasted text is stripped to digits');
+  await page.keyboard.press('Escape');
+  check(await page.locator('.gate .pin-input').count() === 0 && await page.locator('.gate .gate-unlock').count() === 1, 'Escape returns to the resting lock');
+  await page.keyboard.press('7');
+  check(await page.locator('.gate .pin-input').inputValue() === '7', 'typing a digit on the resting screen opens the field with it');
   await page.keyboard.press('Backspace');
-  check(await page.locator('.pin-dot.is-filled').count() === 0, 'Backspace clears a dot');
+  check(await page.locator('.gate .pin-input').inputValue() === '', 'Backspace clears the digit');
   await shot(page, 'gate-1280');
 
   /* --------------------------------------------------------------- login */
   if (PIN) {
-    for (const d of PIN) await page.keyboard.press(d);
-    if (PIN.length > 6) await page.keyboard.press('Enter');
+    await page.keyboard.type(PIN);
+    await page.keyboard.press('Enter');
     await page.waitForSelector('.shell', { timeout: 20000 });
     check(true, 'real PIN pad unlocks through hq-login');
     const dev = await page.evaluate(() => Boolean(localStorage.getItem('wiseos.device')));
