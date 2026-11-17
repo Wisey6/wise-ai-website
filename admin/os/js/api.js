@@ -379,7 +379,7 @@ export async function addLeads(rows) {
   }
   const inserted = [];
   for (let i = 0; i < toInsert.length; i += 500) {
-    const { data, error } = await sb.from('leads').insert(toInsert.slice(i, i + 500)).select();
+    const { data, error } = await sb.from('leads').insert(toInsert.slice(i, i + 500), { defaultToNull: false }).select();
     if (error) throw friendlyDbError(error);
     inserted.push(...data);
   }
@@ -535,19 +535,36 @@ export function composeSms(body, lead, settings = state.settings || {}, { hasRep
   if (!replied) {
     const sender = settings?.sender_name || '';
     if (sender && !text.toLowerCase().includes(sender.toLowerCase())) text += ` - ${sender}`;
-    if (!/stop/i.test(text) && settings?.optout_text) text += ` ${settings.optout_text}`;
+    if (!hasOptOut(text)) text += ` ${(settings?.optout_text || '').trim() || 'Reply STOP to opt out'}`;
   }
   return text;
+}
+
+/**
+ * True when the text already carries an opt-out instruction. Mirrors hasOptOut in
+ * supabase/functions/_shared/template.ts: a bare "stop" (as in "stop losing jobs") does not count.
+ */
+export function hasOptOut(body) {
+  return /\bSTOP\b/.test(body) || /\b(reply|text|txt|send|sms)\s+stop\b/i.test(body);
 }
 
 /** GSM-7 aware segment count for an SMS body. */
 export function smsSegments(text) {
   const s = String(text || '');
-  const gsm = /^[\n\r -~£¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ¡ÄÖÑÜ§¿äöñüà€^{}\\[\]~|]*$/.test(s);
-  const per = gsm ? 160 : 70;
-  const multi = gsm ? 153 : 67;
-  if (s.length <= per) return { chars: s.length, segments: s.length ? 1 : 0, gsm };
-  return { chars: s.length, segments: Math.ceil(s.length / multi), gsm };
+  const BASIC = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+  const EXT = '^{}\\[~]|€';   // each costs two septets
+  let units = 0;
+  let gsm = true;
+  for (const ch of s) {
+    if (BASIC.includes(ch)) units += 1;
+    else if (EXT.includes(ch)) units += 2;
+    else { gsm = false; break; }
+  }
+  if (!gsm) {
+    const n = s.length;   // UCS-2: counted in UTF-16 code units
+    return { chars: n, segments: n === 0 ? 0 : n <= 70 ? 1 : Math.ceil(n / 67), gsm };
+  }
+  return { chars: units, segments: units === 0 ? 0 : units <= 160 ? 1 : Math.ceil(units / 153), gsm };
 }
 
 export const leadById = (id) => state.leads.find((l) => l.id === id) || null;
