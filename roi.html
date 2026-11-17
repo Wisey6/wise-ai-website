@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI: What are missed enquiries costing you?</title>
+<meta name="description" content="A free 30 second calculator. Put in your enquiries, job value and admin hours to see what missed or late replies cost your business each month, with the working shown.">
+<link rel="canonical" href="https://wise-ai.au/roi.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wise AI">
+<meta property="og:locale" content="en_AU">
+<meta property="og:url" content="https://wise-ai.au/roi.html">
+<meta property="og:title" content="Wise AI: What are missed enquiries costing you?">
+<meta property="og:description" content="A free 30 second calculator. Put in your enquiries, job value and admin hours to see what missed or late replies cost your business each month, with the working shown.">
+<meta property="og:image" content="https://wise-ai.au/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Wise AI: your existing business tools connected into one live screen">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Wise AI: What are missed enquiries costing you?">
+<meta name="twitter:description" content="A free 30 second calculator. Put in your enquiries, job value and admin hours to see what missed or late replies cost your business each month, with the working shown.">
+<meta name="twitter:image" content="https://wise-ai.au/og-image.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css?v=10">
+</head>
+<body class="doc">
+  <nav>
+    <a href="/" class="brand" aria-label="Wise AI home"><img src="/logo.svg" alt="Wise AI"></a>
+    <div class="nav-links">
+      <a href="/#story" class="nav-link">The system</a>
+      <a href="/#ladder" class="nav-link">What I build</a>
+      <a href="/agents.html" class="nav-link">AI Agents</a>
+      <a href="/work.html" class="nav-link">Work</a>
+      <a href="/book.html" class="nav-cta">Book a call</a>
+      <button class="nav-burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+  <div class="mobile-menu">
+    <a href="/">Home</a>
+    <a href="/#story">The system</a>
+    <a href="/#ladder">What I build</a>
+    <a href="/agents.html">AI Agents</a>
+    <a href="/work.html">Work</a>
+    <a href="/book.html" class="menu-cta">Book a 15 minute call</a>
+  </div>
+
+  <main class="doc-main">
+    <section class="sec first">
+      <div class="sec-lead">
+        <span class="eyebrow" data-reveal>Missed enquiry calculator</span>
+        <h1 data-reveal>What are missed enquiries <span class="dim">costing&nbsp;you?</span></h1>
+        <p class="sub" data-reveal>Put in your own numbers. It takes about 30 seconds, nothing leaves this page unless you choose to send it, and the working is shown underneath so you can check every figure.</p>
+        <div class="factrow" data-reveal>
+          <span class="fact"><span class="d ex"></span>The starting figures are examples. Change them to yours.</span>
+        </div>
+      </div>
+
+      <form class="calc" id="calc" novalidate onsubmit="return false">
+        <div class="panel">
+          <h2>Your numbers</h2>
+          <p class="psub">Rough is fine. Use the slider or type the number in.</p>
+          <div id="inputs"></div>
+          <noscript><p class="form-note">The calculator needs JavaScript to run. You can email me your numbers at <a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a> and I'll work them through with you.</p></noscript>
+        </div>
+
+        <div class="panel results" id="results" aria-labelledby="resH">
+          <span class="eyebrow" id="resH">What it's costing you</span>
+          <div class="res-big">
+            <div class="n" id="rRevMonth">$0</div>
+            <div class="u">in jobs left on the table each month, about <b id="rRevYear">$0</b> a year</div>
+          </div>
+          <div class="res-grid">
+            <div class="res-tile"><b id="rJobs">0</b><span>jobs lost a month to missed or late replies</span></div>
+            <div class="res-tile"><b id="rAdmin">$0</b><span>a month spent on repetitive admin</span></div>
+          </div>
+          <div class="res-half">
+            <span class="k">If you fixed just half of it</span>
+            <b id="rHalfMonth">$0 a month</b>
+            <p>That's about <b id="rHalfYear">$0</b> a year. Half the lost jobs won back plus half the admin time freed up. A deliberately cautious figure.</p>
+          </div>
+          <p class="form-note">Lost jobs are counted as revenue, not profit. Your margin decides how much of it you'd keep.</p>
+          <p class="sr-only" id="live" aria-live="polite"></p>
+        </div>
+      </form>
+      <a class="calc-peek" id="peek" href="#results" aria-hidden="true" tabindex="-1"><b id="peekVal">$0</b><span>a month left on the table</span><span class="go">Results &darr;</span></a>
+    </section>
+
+    <section class="sec" style="padding-top:0">
+      <div class="panel soft">
+        <span class="eyebrow">The working</span>
+        <h2>How each figure is worked out</h2>
+        <p class="psub">Plain arithmetic, using the numbers above. A month is taken as 52 weeks divided by 12, about 4.33 weeks.</p>
+        <ol class="working" id="working"></ol>
+        <h3 style="margin-top:24px">What this assumes</h3>
+        <ul class="calc-notes">
+          <li>A missed or late enquiry would have turned into work at your normal close rate. Some would never have booked anyway, which is why the close rate is in the sum.</li>
+          <li>Admin hours are costed at the hourly figure you enter. If the admin is yours, use what an hour of your time is worth to the business.</li>
+          <li>"Fixing half" is a cautious planning figure, not a promise. What's realistic depends on your business, and a call is the way to find out.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="sec" style="padding-top:0" id="next">
+      <div class="split">
+        <div class="panel">
+          <span class="eyebrow">Send me these numbers</span>
+          <h2>Want a copy, and a second opinion?</h2>
+          <p class="psub">I'll send you these figures and look over them myself. If I can see a practical way to win some of it back, I'll tell you what it would involve. If I can't, I'll say that too.</p>
+
+          <form class="lead-form" id="sendForm" novalidate>
+            <div class="field">
+              <label for="sName">Your name</label>
+              <input id="sName" type="text" autocomplete="name" placeholder="Jane Smith" maxlength="120">
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="sEmail">Email</label>
+                <input id="sEmail" type="email" autocomplete="email" inputmode="email" placeholder="jane@business.com" maxlength="200">
+              </div>
+              <div class="field">
+                <label for="sPhone">Mobile</label>
+                <input id="sPhone" type="tel" autocomplete="tel" inputmode="tel" placeholder="0400 000 000" maxlength="40">
+              </div>
+            </div>
+            <div class="hp" aria-hidden="true">
+              <label for="website">Leave this empty</label>
+              <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+            <button class="submit" id="sendBtn" type="submit">Send me these numbers</button>
+            <div class="err" id="sendErr" role="alert" aria-live="assertive"></div>
+            <p class="form-note">An email or a mobile is enough. I'll only use your details to reply to you. See the <a href="privacy.html">privacy policy</a>.</p>
+          </form>
+
+          <div class="done" id="doneOk" role="status" tabindex="-1" hidden>
+            <span class="badge">Received</span>
+            <h3 id="doneTitle">Thanks. I've got your numbers.</h3>
+            <p>I'll look over them and get back to you within one business day. Nothing else to do in the meantime.</p>
+          </div>
+          <div class="done fail" id="doneFail" role="alert" tabindex="-1" hidden>
+            <span class="badge">Not sent</span>
+            <h3>That didn't come through on my end.</h3>
+            <p>Sorry about that. Your figures are all still on the page. You can email them to me instead, already written for you:</p>
+            <div class="ctas"><a class="btn btn-primary" id="failMail" href="mailto:tyler@wise-ai.au">Email my numbers to Tyler</a><button class="btn btn-ghost" type="button" id="retryBtn">Try again</button></div>
+          </div>
+        </div>
+
+        <aside class="panel soft">
+          <span class="eyebrow">Rather just talk it through?</span>
+          <h2>Book a 15 minute call</h2>
+          <p class="body">Bring these numbers and we'll look at where the enquiries slip through and what would catch them. You'll get a straight answer on whether it's worth fixing, with no pressure either way.</p>
+          <div class="ctas" style="margin-top:24px"><a class="btn btn-primary" href="book.html">Book a call with Tyler</a></div>
+          <div class="who">
+            <img src="about-tyler.jpg" alt="Tyler Wise" width="64" height="64" loading="lazy">
+            <div><b>Tyler Wise</b><span>Founder, Wise AI · Brisbane</span></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="fnav">
+      <a href="/">Home</a>
+      <a href="agents.html">AI Agents</a>
+      <a href="work.html">Work</a>
+      <a href="quiz.html">Free audit</a>
+      <a href="book.html">Book a call</a>
+      <a href="roi.html" aria-current="page">Cost calculator</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </div>
+    Wise AI · Brisbane, Australia · <b>local, embedded, accountable</b><br>
+    <a href="mailto:tyler@wise-ai.au">tyler@wise-ai.au</a>
+    <div class="legal-line">&copy; 2026 Wise AI. All rights reserved. · ABN 74 653 249 265</div>
+  </footer>
+
+<script src="roi.js"></script>
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var items = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+  if(reduce || !('IntersectionObserver' in window)){ items.forEach(function(el){ el.classList.add('revealed'); }); }
+  else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(!e.isIntersecting) return;
+        e.target.classList.add('revealed');
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px -4% 0px' });
+    items.forEach(function(el){ io.observe(el); });
+  }
+  var nav = document.querySelector('nav');
+  var onScroll = function(){ nav.classList.toggle('stuck', window.scrollY > 8); };
+  onScroll(); window.addEventListener('scroll', onScroll, { passive:true });
+})();
+(function(){
+  var b=document.querySelector('.nav-burger'),m=document.querySelector('.mobile-menu'),nav=document.querySelector('nav');
+  if(!b||!m)return;
+  b.addEventListener('click',function(){
+    var o=!m.classList.contains('open');
+    m.classList.toggle('open',o);b.classList.toggle('open',o);
+    b.setAttribute('aria-expanded',o?'true':'false');
+    if(o&&nav)nav.classList.add('stuck');
+  });
+  Array.prototype.forEach.call(m.querySelectorAll('a'),function(a){
+    a.addEventListener('click',function(){
+      m.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');
+    });
+  });
+})();
+</script>
+</body>
+</html>

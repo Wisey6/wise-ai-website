@@ -10,6 +10,10 @@
 const LEAD_ENDPOINT =
   "https://uyopyiucnklwrddxpgzq.supabase.co/functions/v1/submit-lead";
 
+// Second, independent copy of the lead for the Wise AI customer system.
+const LEAD_INTAKE_URL =
+  "https://adfgtlhryyyrqbbgbfmx.supabase.co/functions/v1/lead-intake";
+
 /* ---------- Questions (sharp, consultative, mapped to the service wedges) --- */
 const QUESTIONS = [
   {
@@ -379,6 +383,7 @@ function finish() {
   result.scrollIntoView({ behavior: "smooth", block: "start" });
 
   submitLead(payload);
+  submitIntake(payload);
 }
 
 function readableAnswers() {
@@ -401,6 +406,30 @@ function submitLead(payload) {
       keepalive: true
     }).catch(() => {});
   } catch (e) { /* result already shown; mailto is the fallback */ }
+}
+
+// Fire-and-forget copy to `lead-intake`. Fully separate from submitLead: neither
+// can affect the other, and nothing here can reach the visitor.
+function submitIntake(p) {
+  try {
+    const summary =
+      `Quiz result: ${p.fit_band} (score ${p.fit_score}). ` +
+      `Where I'd start: ${p.top_solution}. ` +
+      `Recommendations: ${(p.recommendations || []).join(", ")}.`;
+    fetch(LEAD_INTAKE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: p.name,
+        email: p.email || null,
+        phone: p.phone || null,
+        business: p.business || null,
+        source: "wise-ai.au/quiz",
+        summary: summary
+      }),
+      keepalive: true
+    }).catch(() => {});
+  } catch (e) { /* never affects the result screen */ }
 }
 
 /* ---------- "Sounds good" acknowledgement on the result page ---------- */
