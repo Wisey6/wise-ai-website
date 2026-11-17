@@ -9,7 +9,7 @@
 //    try/catch and toast the error.
 //  - fn() and sendSms() never throw on HTTP errors.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118b';
+import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118c';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
@@ -124,6 +124,16 @@ export const state = {
   events: [],
   suppressions: [],
   messages: [],
+  // stage 2: Sell, Deliver, Money, Know
+  clients: [],
+  deals: [],
+  proposals: [],
+  projects: [],
+  tasks: [],
+  roi_reports: [],
+  income: [],
+  costs: [],
+  library: [],
   sms: null,
   smsChecked: false,
   loaded: false,
@@ -197,6 +207,8 @@ export async function loadAll() {
     selectAll('suppressions', (q) => q.order('created_at', { ascending: false })),
     selectAll('messages', (q) => q.gte('created_at', daysAgoIso(30)).order('created_at', { ascending: true }))
   ]);
+  const business = await Promise.all(BUSINESS_TABLES.map((t) => selectAll(t, (q) => q.order('created_at', { ascending: false }))));
+  BUSINESS_TABLES.forEach((t, i) => { state[t] = business[i]; });
   Object.assign(state, { settings, leads, templates, campaigns, bookings, events, suppressions, messages, loaded: true });
   notify();
   refreshSmsStatus();
@@ -224,7 +236,12 @@ function setConnection(c) {
   for (const cb of connectionListeners) cb(c);
 }
 
-const TABLE_KEY = { leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events' };
+/** Stage 2 tables. Each is loaded whole, kept live, and saved through saveRow / deleteRow. */
+export const BUSINESS_TABLES = ['clients', 'deals', 'proposals', 'projects', 'tasks', 'roi_reports', 'income', 'costs', 'library'];
+const TABLE_KEY = {
+  leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events',
+  ...Object.fromEntries(BUSINESS_TABLES.map((t) => [t, t]))
+};
 
 function upsertInto(list, row, { prepend = false, key = 'id' } = {}) {
   const i = list.findIndex((r) => r[key] === row[key]);
@@ -245,7 +262,7 @@ function applyChange(table, type, row, old) {
   if (table === 'events') {
     upsertInto(list, row, { prepend: true });
     if (list.length > 200) list.length = 200;
-  } else if (table === 'leads') {
+  } else if (table === 'leads' || BUSINESS_TABLES.includes(table)) {
     upsertInto(list, row, { prepend: true });
   } else if (table === 'bookings') {
     upsertInto(list, row);
@@ -452,6 +469,66 @@ export async function deleteTemplate(id) {
   fail(error, 'Could not delete the template');
   state.templates = state.templates.filter((t) => t.id !== id);
   notify();
+}
+
+/* ------------------------------------------------- stage 2 generic records
+   One pair of functions for every business table (see BUSINESS_TABLES):
+     saveRow('deals', {title, stage})            → inserts, returns the saved row
+     saveRow('deals', {id, stage: 'won'})        → patches that row, returns it
+     deleteRow('deals', id)
+   state[table] is updated at once (newest first) and views are notified; the
+   realtime channel keeps other tabs and devices in step. Both throw an Error
+   with a readable message on failure. */
+export async function saveRow(table, row) {
+  if (!BUSINESS_TABLES.includes(table)) throw new Error(`Unknown table ${table}`);
+  const { id, created_at: _c, updated_at: _u, ...rest } = row;
+  const q = id
+    ? sb.from(table).update(rest).eq('id', id).select().single()
+    : sb.from(table).insert(rest).select().single();
+  const { data, error } = await q;
+  fail(error, 'Could not save');
+  upsertInto(state[table], data, { prepend: true });
+  notify();
+  return data;
+}
+
+export async function deleteRow(table, id) {
+  if (!BUSINESS_TABLES.includes(table)) throw new Error(`Unknown table ${table}`);
+  const { error } = await sb.from(table).delete().eq('id', id);
+  fail(error, 'Could not delete');
+  const i = state[table].findIndex((r) => r.id === id);
+  if (i >= 0) state[table].splice(i, 1);
+  // Children removed or unlinked by the database: mirror that locally.
+  if (table === 'projects') state.tasks = state.tasks.filter((t) => t.project_id !== id);
+  if (table === 'clients') state.roi_reports = state.roi_reports.filter((r) => r.client_id !== id);
+  notify();
+}
+
+export const rowById = (table, id) => (state[table] || []).find((r) => r.id === id) || null;
+
+/** Turn a lead into a client (or return the client already made from it). Marks the lead won. */
+export async function leadToClient(lead) {
+  const existing = state.clients.find((c) => c.lead_id === lead.id);
+  if (existing) return existing;
+  const client = await saveRow('clients', {
+    name: lead.business || lead.contact_name || lead.phone || 'New client',
+    contact_name: lead.contact_name, email: lead.email, phone: lead.phone, website: lead.website,
+    industry: lead.industry, suburb: lead.suburb, lead_id: lead.id,
+    started_on: new Date().toISOString().slice(0, 10),
+    notes: lead.notes || null
+  });
+  if (lead.status !== 'won') await saveLead(lead.id, { status: 'won' });
+  return client;
+}
+
+/** Open a deal in the pipeline for a lead (or return the open one it already has). */
+export async function leadToDeal(lead) {
+  const open = state.deals.find((d) => d.lead_id === lead.id && !d.archived && !['won', 'lost'].includes(d.stage));
+  if (open) return open;
+  return saveRow('deals', {
+    title: lead.business || lead.contact_name || 'New deal', lead_id: lead.id, stage: 'qualified',
+    next_step: 'Intro call', notes: lead.pain || null
+  });
 }
 
 export async function saveCampaign(row) {

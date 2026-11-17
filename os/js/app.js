@@ -1,10 +1,10 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118b';
-import { createPalette } from './palette.js?v=20261118b';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118c';
+import { createPalette } from './palette.js?v=20261118c';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
   refreshSmsStatus, knownPinLength, leadById, leadName
-} from './api.js?v=20261118b';
+} from './api.js?v=20261118c';
 
 /* ------------------------------------------------------------ route registry
    The single source of truth for navigation. Top-level entries are either a
@@ -14,35 +14,35 @@ import {
    `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
    the foot of the collapsed dock; `href` links out (new tab). */
 export const NAV = [
-  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118b') },
+  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118c') },
   { group: 'Grow', icon: 'grow', items: [
-    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118b') },
-    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118b') },
-    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118b') },
-    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118b') }
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118c') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118c') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118c') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118c') }
   ] },
   { group: 'Sell', icon: 'tag', items: [
-    { id: 'pipeline', label: 'Pipeline', soon: true },
-    { id: 'proposals', label: 'Proposals', soon: true },
+    { id: 'pipeline', label: 'Pipeline', icon: 'tag', view: () => import('./views/pipeline.js?v=20261118c') },
+    { id: 'proposals', label: 'Proposals', icon: 'book', view: () => import('./views/proposals.js?v=20261118c') },
     { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../roi.html' }
   ] },
   { group: 'Deliver', icon: 'deliver', items: [
-    { id: 'clients', label: 'Clients', soon: true },
-    { id: 'projects', label: 'Projects', soon: true },
-    { id: 'roi-reports', label: 'ROI reports', soon: true }
+    { id: 'clients', label: 'Clients', icon: 'leads', view: () => import('./views/clients.js?v=20261118c') },
+    { id: 'projects', label: 'Projects', icon: 'deliver', view: () => import('./views/projects.js?v=20261118c') },
+    { id: 'roi-reports', label: 'ROI reports', icon: 'spark', view: () => import('./views/roi-reports.js?v=20261118c') }
   ] },
   { group: 'Money', icon: 'money', items: [
-    { id: 'income', label: 'Income', soon: true },
-    { id: 'costs', label: 'Costs', soon: true },
-    { id: 'runway', label: 'Runway', soon: true }
+    { id: 'income', label: 'Income', icon: 'money', view: () => import('./views/income.js?v=20261118c') },
+    { id: 'costs', label: 'Costs', icon: 'money', view: () => import('./views/costs.js?v=20261118c') },
+    { id: 'runway', label: 'Runway', icon: 'spark', view: () => import('./views/runway.js?v=20261118c') }
   ] },
   { group: 'Know', icon: 'book', items: [
-    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118b') },
-    { id: 'library', label: 'Library', soon: true }
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118c') },
+    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261118c') }
   ] },
   { sep: true },
   { id: 'agents', label: 'Agents', icon: 'agents', soon: true },
-  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118b') }
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118c') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
 /** Live sections (the ones with a view), in navigation order. */

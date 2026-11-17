@@ -34,7 +34,7 @@ for (const file of walk(join(root, 'js'))) {
 
 const htmlPath = join(root, 'index.html');
 const html = readFileSync(htmlPath, 'utf8');
-const stamped = html.replace(/((?:href|src)=")((?:os\.css|os-views\.css|js\/app\.js))(?:\?v=[^"]*)?"/g,
+const stamped = html.replace(/((?:href|src)=")((?:os(?:-[a-z]+)?\.css|js\/app\.js))(?:\?v=[^"]*)?"/g,
   (_, attr, path) => `${attr}${path}?v=${stamp}"`);
 writeFileSync(htmlPath, stamped);
 

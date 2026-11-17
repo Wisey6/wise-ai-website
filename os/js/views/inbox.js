@@ -4,11 +4,11 @@
 import {
   el, icon, go, badge, statusBadge, toast, confirmDialog, emptyState, timeAgo, timeOnly,
   dayKey, dayLabel, prettyPhone, copyText, busy
-} from '../ui.js?v=20261118b';
+} from '../ui.js?v=20261118c';
 import {
   state, messagesFor, saveLead, suppress, renderTemplate, leadName, logEvent
-} from '../api.js?v=20261118b';
-import { deliver, finalBody, segmentCounter, errText, AU_MOBILE, suppressedSet } from './campaigns.js?v=20261118b';
+} from '../api.js?v=20261118c';
+import { deliver, finalBody, segmentCounter, errText, AU_MOBILE, suppressedSet } from './campaigns.js?v=20261118c';
 
 /** append / replaceChildren that skip null and false children (native ones would print "null"). */
 const keep = (c) => c.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false);
