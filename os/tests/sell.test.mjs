@@ -177,7 +177,7 @@ try {
   ids.lead = (await api(page, async (m, tag) => {
     const { data, error } = await m.sb.from('leads').insert({ business: `${tag} Harbour Plumbing`, contact_name: 'Dave Harbour', status: 'replied', source: 'manual', suburb: 'Wynnum', pain: 'Calls come in while Dave is on the tools and about one in five never gets a call back.' }).select().single();
     if (error) throw new Error(error.message);
-    m.state.leads.unshift(data); m.notify();
+    if (!m.state.leads.some((l) => l.id === data.id)) m.state.leads.unshift(data); m.notify();
     return data.id;
   }, TAG));
 
@@ -414,7 +414,7 @@ try {
   /* ------------------------------------------------------------ AI drafting (mocked) */
   const mock = { status: { configured: true, enabled: true, spent_usd: 0.4, cap_usd: 20 }, next: {}, calls: [] };
   const aiPage = await openApp({ width: 1440, height: 900 }, mock);
-  await aiPage.waitForFunction(async () => Boolean((await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.ai?.configured), null, { timeout: 10000 }).catch(() => {});
+  for (let i = 0; i < 40 && !(await api(aiPage, async (m) => Boolean(m.state.ai))); i++) await aiPage.waitForTimeout(250);
   check(await api(aiPage, async (m) => Boolean(m.state.ai?.configured)), `mocked AI status reaches state.ai (${JSON.stringify(await api(aiPage, async (m) => m.state.ai))}, calls ${mock.calls.length})`);
   const seed = await api(aiPage, async (m, tag) => {
     const lead = (await m.sb.from('leads').insert({ business: `${tag} Coorparoo Physio`, contact_name: 'Mia Chen', phone: '+61400000781', status: 'replied', source: 'manual', pain: 'Front desk misses calls at lunch.', hook: 'Reviews say booking is slow.' }).select().single()).data;
@@ -423,7 +423,8 @@ try {
     const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
     await m.sb.from('messages').insert({ lead_id: lead.id, channel: 'sms', direction: 'out', status: 'manual', body: 'Hi Mia, Tyler from Wise AI here. Do you lose calls over lunch?', created_at: ago(60) });
     await m.sb.from('messages').insert({ lead_id: lead.id, channel: 'sms', direction: 'in', status: 'received', body: 'Yes all the time. What would it cost?', created_at: ago(5) });
-    m.state.leads.unshift(lead); m.notify();
+    if (!m.state.leads.some((l) => l.id === lead.id)) m.state.leads.unshift(lead);
+    m.notify();
     return { lead: lead.id, deal: deal.id, prop: prop.id };
   }, TAG);
   Object.assign(ids, { aiLead: seed.lead, aiDeal: seed.deal, aiProp: seed.prop });
@@ -505,7 +506,8 @@ try {
   await api(aiPage, async (m, id) => { await m.addMessage({ lead_id: id, channel: 'sms', direction: 'out', status: 'manual', body: 'Yes, Saturdays.' }); }, seed.lead);
   await aiPage.waitForTimeout(800);
   check(!(await aiPage.isVisible('.inbox-ai-btn')), 'Suggest replies hides when the latest message is ours');
-  check(aiPage.errors.length === 0, `no console errors with AI on (${aiPage.errors.slice(0, 3).join(' | ')})`);
+  const aiErrs = aiPage.errors.filter((e) => !/status of 402/.test(e)); // the mocked cap_reached reply is a 402 on purpose
+  check(aiErrs.length === 0, `no console errors with AI on (${aiErrs.slice(0, 3).join(' | ')})`);
   await aiPage.context().close();
 
   // AI on, phone

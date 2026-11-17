@@ -135,6 +135,9 @@ export const state = {
   costs: [],
   library: [],
   ai: null,
+  agents: null,
+  agent_runs: [],
+  agent_actions: [],
   sms: null,
   smsChecked: false,
   loaded: false,
@@ -214,6 +217,7 @@ export async function loadAll() {
   notify();
   refreshSmsStatus();
   aiStatus();
+  loadAgents();
   return state;
 }
 
@@ -242,6 +246,7 @@ function setConnection(c) {
 export const BUSINESS_TABLES = ['clients', 'deals', 'proposals', 'projects', 'tasks', 'roi_reports', 'income', 'costs', 'library'];
 const TABLE_KEY = {
   leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events',
+  agent_runs: 'agent_runs', agent_actions: 'agent_actions',
   ...Object.fromEntries(BUSINESS_TABLES.map((t) => [t, t]))
 };
 
@@ -262,6 +267,9 @@ function applyChange(table, type, row, old) {
     return;
   }
   if (table === 'events') {
+    upsertInto(list, row, { prepend: true });
+    if (list.length > 200) list.length = 200;
+  } else if (table === 'agent_runs' || table === 'agent_actions') {
     upsertInto(list, row, { prepend: true });
     if (list.length > 200) list.length = 200;
   } else if (table === 'leads' || BUSINESS_TABLES.includes(table)) {
@@ -570,6 +578,180 @@ export async function ai(task, context) {
   if (status === 200 && res.ok) return res;
   const error = res.error || (status === 0 ? 'network' : 'ai_error');
   return { ...res, ok: false, error, message: res.detail || AI_ERRORS[error] || AI_ERRORS.ai_error };
+}
+
+/* ------------------------------------------------------------------- agents
+   Four scoped assistants behind the `agent` function: researcher, briefing, ask, doer.
+   They never change a record. A change they suggest is an agent_actions row that the
+   operator approves; applyAgentAction() then makes that one change here, in the browser,
+   with the operator's own session, through the allowlist below.
+     state.agents        {configured, enabled, agents{}, spent_usd, cap_usd, runs_today{}, limits{}} | null
+     state.agent_runs    latest 200, newest first, live
+     state.agent_actions latest 200, newest first, live
+     await agentRun('researcher', {lead_id})         await agentRun('briefing', {refresh})
+     await agentRun('ask', {question, history})      await agentRun('doer', {instruction})
+   agentRun never throws: {ok:true, ...} or {ok:false, error, message}. */
+const AGENT_ERRORS = {
+  ...AI_ERRORS,
+  disabled: 'That agent is switched off in Settings.',
+  cap_reached: 'This month\'s agent budget is used up. Raise it in Settings to keep going.',
+  daily_limit: 'That agent has hit its limit for today. It resets at midnight.',
+  empty: 'There is nothing in the hub for it to work from yet.',
+  bad_request: 'It needs a bit more to go on.'
+};
+
+export async function loadAgents() {
+  try {
+    const [runs, actions] = await Promise.all([
+      sb.from('agent_runs').select('*').order('at', { ascending: false }).limit(200),
+      sb.from('agent_actions').select('*').order('created_at', { ascending: false }).limit(200)
+    ]);
+    if (!runs.error) state.agent_runs = runs.data;
+    if (!actions.error) state.agent_actions = actions.data;
+  } catch { /* the agents area simply stays empty */ }
+  notify();
+  return agentStatus();
+}
+
+export async function agentStatus() {
+  const { status, data } = await fn('agent', { action: 'status' });
+  state.agents = status === 200 && data && typeof data.configured === 'boolean' ? data : null;
+  notify();
+  return state.agents;
+}
+
+export async function agentRun(agent, input = {}) {
+  const { status, data } = await fn('agent', { agent, ...input });
+  const res = data && typeof data === 'object' ? data : {};
+  if (state.agents && typeof res.spent_usd === 'number') state.agents = { ...state.agents, spent_usd: res.spent_usd };
+  if (status === 200 && res.ok) return res;
+  const error = res.error || (status === 0 ? 'network' : 'ai_error');
+  return { ...res, ok: false, error, message: res.detail || AGENT_ERRORS[error] || AGENT_ERRORS.ai_error };
+}
+
+const LEAD_STATUSES_AGENT = ['new', 'queued', 'contacted', 'replied', 'interested', 'booked', 'won', 'lost'];
+const DEAL_STAGES_AGENT = ['qualified', 'proposal', 'negotiation'];
+const isoDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const text = (v, max) => (typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null);
+
+/** The only changes an approved agent proposal can make. Anything else is refused. */
+const AGENT_APPLY = {
+  async 'lead.set_status'(p) {
+    const lead = leadById(p.lead_id);
+    if (!lead || lead.status === 'dnc' || !LEAD_STATUSES_AGENT.includes(p.status)) throw new Error('That lead or status is not allowed');
+    await saveLead(lead.id, { status: p.status });
+    return { open: `#leads/${lead.id}` };
+  },
+  async 'lead.set_followup'(p) {
+    const lead = leadById(p.lead_id);
+    if (!lead || lead.status === 'dnc' || !isoDate(p.date)) throw new Error('That lead or date is not allowed');
+    await saveLead(lead.id, { next_followup_at: new Date(`${p.date}T09:00:00`).toISOString() });
+    return { open: `#leads/${lead.id}` };
+  },
+  async 'lead.set_hook'(p) {
+    const lead = leadById(p.lead_id);
+    const hook = text(p.hook, 160);
+    if (!lead || !hook) throw new Error('That lead or line is not allowed');
+    await saveLead(lead.id, { hook });
+    return { open: `#leads/${lead.id}` };
+  },
+  async 'note.add'(p) {
+    const note = text(p.text, 500);
+    if (!note) throw new Error('The note is empty or too long');
+    const stamp = new Date().toLocaleDateString('en-AU');
+    if (p.lead_id) {
+      const lead = leadById(p.lead_id);
+      if (!lead) throw new Error('That lead no longer exists');
+      await saveLead(lead.id, { notes: `${lead.notes ? `${lead.notes}\n` : ''}[${stamp}] ${note}` });
+      return { open: `#leads/${lead.id}` };
+    }
+    const client = rowById('clients', p.client_id);
+    if (!client) throw new Error('That client no longer exists');
+    await saveRow('clients', { id: client.id, notes: `${client.notes ? `${client.notes}\n` : ''}[${stamp}] ${note}` });
+    return { open: `#clients/${client.id}` };
+  },
+  async 'task.create'(p) {
+    const title = text(p.title, 200);
+    if (!title) throw new Error('The task needs a title');
+    const row = { title };
+    if (p.client_id && rowById('clients', p.client_id)) row.client_id = p.client_id;
+    if (p.project_id && rowById('projects', p.project_id)) row.project_id = p.project_id;
+    if (isoDate(p.due_on)) row.due_on = p.due_on;
+    if (['low', 'medium', 'high'].includes(p.priority)) row.priority = p.priority;
+    await saveRow('tasks', row);
+    return { open: '#projects/tasks' };
+  },
+  async 'deal.create'(p) {
+    const title = text(p.title, 200);
+    if (!title) throw new Error('The deal needs a title');
+    const row = { title, stage: 'qualified' };
+    if (p.lead_id && leadById(p.lead_id)) row.lead_id = p.lead_id;
+    if (p.client_id && rowById('clients', p.client_id)) row.client_id = p.client_id;
+    if (Number(p.value) > 0) row.value = Number(p.value);
+    if (Number(p.monthly_value) > 0) row.monthly_value = Number(p.monthly_value);
+    if (text(p.next_step, 200)) row.next_step = text(p.next_step, 200);
+    const deal = await saveRow('deals', row);
+    return { open: `#pipeline/${deal.id}` };
+  },
+  async 'deal.update'(p) {
+    const deal = rowById('deals', p.deal_id);
+    if (!deal || ['won', 'lost'].includes(deal.stage)) throw new Error('That deal is closed or gone');
+    const patch = { id: deal.id };
+    if (p.stage !== undefined) {
+      if (!DEAL_STAGES_AGENT.includes(p.stage)) throw new Error('Closing a deal is yours to do');
+      patch.stage = p.stage;
+    }
+    if (text(p.next_step, 200)) patch.next_step = text(p.next_step, 200);
+    if (isoDate(p.next_step_on)) patch.next_step_on = p.next_step_on;
+    if (Number.isFinite(Number(p.probability)) && p.probability !== undefined) patch.probability = Math.min(100, Math.max(0, Math.round(Number(p.probability))));
+    await saveRow('deals', patch);
+    return { open: `#pipeline/${deal.id}` };
+  },
+  async 'message.draft'(p) {
+    const lead = leadById(p.lead_id);
+    const body = text(p.body, 600);
+    if (!lead || !body || lead.status === 'dnc' || isSuppressed(lead.phone)) throw new Error('That lead cannot be messaged');
+    // A draft only: it is placed in the inbox reply box for the operator to read and send.
+    try { sessionStorage.setItem(`wiseos.draft.${lead.id}`, body); } catch { throw new Error('Could not hand the draft to the inbox'); }
+    return { open: `#inbox/${lead.id}` };
+  },
+  async 'invoice.draft'(p) {
+    const client = rowById('clients', p.client_id);
+    const description = text(p.description, 200);
+    const amount = Number(p.amount);
+    if (!client || !description || !(amount > 0) || amount > 50000) throw new Error('That invoice is not allowed');
+    const row = await saveRow('income', { client_id: client.id, description, amount, kind: p.kind === 'retainer' ? 'retainer' : 'one_off', status: 'draft' });
+    return { open: `#income/${row.id}` };
+  }
+};
+
+async function decideAction(id, patch) {
+  const { data, error } = await sb.from('agent_actions').update({ ...patch, decided_at: new Date().toISOString() }).eq('id', id).select().single();
+  fail(error, 'Could not record the decision');
+  upsertInto(state.agent_actions, data, { prepend: true });
+  notify();
+  return data;
+}
+
+/** Apply one proposal the operator approved. → {ok:true, open} or {ok:false, message}. */
+export async function applyAgentAction(action) {
+  const current = state.agent_actions.find((a) => a.id === action.id) || action;
+  if (current.status !== 'proposed') return { ok: false, message: 'That suggestion has already been dealt with.' };
+  const apply = AGENT_APPLY[current.kind];
+  if (!apply) return { ok: false, message: 'That kind of change is not allowed.' };
+  try {
+    const out = await apply(current.payload || {});
+    await decideAction(current.id, { status: 'applied', result: 'Done' });
+    return { ok: true, ...out };
+  } catch (e) {
+    try { await decideAction(current.id, { status: 'failed', result: String(e.message || e).slice(0, 300) }); } catch { /* keep the original error */ }
+    return { ok: false, message: e.message || 'Could not apply that change.' };
+  }
+}
+
+export async function rejectAgentAction(id) {
+  try { await decideAction(id, { status: 'rejected' }); return { ok: true }; }
+  catch (e) { return { ok: false, message: e.message }; }
 }
 
 export async function saveCampaign(row) {
