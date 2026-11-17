@@ -18,6 +18,8 @@ Allow: /
 # It ships with no business data in it, but there is no reason to crawl it.
 User-agent: *
 Disallow: /admin/
+# The Wise AI OS hub is private too.
+Disallow: /os/
 # Design mockups for review, not public pages.
 Disallow: /mockups/
 

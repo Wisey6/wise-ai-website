@@ -9,7 +9,7 @@
 //    try/catch and toast the error.
 //  - fn() and sendSms() never throw on HTTP errors.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118a';
+import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118b';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
@@ -58,7 +58,7 @@ export async function login(pin) {
 /** Length of the PIN that last unlocked this device (default 6). Never the PIN itself. */
 export function knownPinLength() {
   const n = Number(storageGet(PINLEN_KEY));
-  return n >= 6 && n <= 12 ? n : 6;
+  return n >= 4 && n <= 12 ? n : 6;
 }
 
 /** → {ok:true} | {ok:false, error:'bad_pin'|'weak_pin'|'locked'|..., remaining?, retry_after_s?} */

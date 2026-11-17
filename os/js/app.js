@@ -1,10 +1,10 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118a';
-import { createPalette } from './palette.js?v=20261118a';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118b';
+import { createPalette } from './palette.js?v=20261118b';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
   refreshSmsStatus, knownPinLength, leadById, leadName
-} from './api.js?v=20261118a';
+} from './api.js?v=20261118b';
 
 /* ------------------------------------------------------------ route registry
    The single source of truth for navigation. Top-level entries are either a
@@ -14,17 +14,17 @@ import {
    `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
    the foot of the collapsed dock; `href` links out (new tab). */
 export const NAV = [
-  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118a') },
+  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118b') },
   { group: 'Grow', icon: 'grow', items: [
-    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118a') },
-    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118a') },
-    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118a') },
-    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118a') }
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118b') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118b') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118b') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118b') }
   ] },
   { group: 'Sell', icon: 'tag', items: [
     { id: 'pipeline', label: 'Pipeline', soon: true },
     { id: 'proposals', label: 'Proposals', soon: true },
-    { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../../roi.html' }
+    { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../roi.html' }
   ] },
   { group: 'Deliver', icon: 'deliver', items: [
     { id: 'clients', label: 'Clients', soon: true },
@@ -37,19 +37,19 @@ export const NAV = [
     { id: 'runway', label: 'Runway', soon: true }
   ] },
   { group: 'Know', icon: 'book', items: [
-    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118a') },
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118b') },
     { id: 'library', label: 'Library', soon: true }
   ] },
   { sep: true },
   { id: 'agents', label: 'Agents', icon: 'agents', soon: true },
-  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118a') }
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118b') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
 /** Live sections (the ones with a view), in navigation order. */
 const ROUTES = NAV_ITEMS.filter((r) => r.view);
 const groupSoon = (g) => g.items.every((i) => i.soon || i.href);
 const IDLE_MS = 15 * 60 * 1000;
-const LOGO = '../../logo.svg';
+const LOGO = '../logo.svg';
 const NAV_KEY = 'wiseos.nav';
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl K';
@@ -132,8 +132,8 @@ function renderGate() {
   const submit = async () => {
     if (busy || Date.now() < lockedUntil) return;
     const pin = input.value;
-    if (pin.length < 6) {
-      if (pin.length) { setHint('PINs are at least 6 digits', 'warn'); shake(); }
+    if (pin.length < 4) {
+      if (pin.length) { setHint('PINs are at least 4 digits', 'warn'); shake(); }
       return;
     }
     busy = true;
@@ -178,7 +178,7 @@ function renderGate() {
     if (clean !== input.value) input.value = clean;
     if (hint.classList.contains('is-bad') || hint.classList.contains('is-warn')) setHint('Enter your PIN');
     const n = storedLen();
-    if (n >= 6 && clean.length === n) submit();
+    if (n >= 4 && clean.length === n) submit();
   });
   field.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
 

@@ -1,6 +1,6 @@
 // Today: what happened, what is coming up, and what to do next.
-import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118a';
-import { isAuMobile, leadName, leadById, isSuppressed, formatValue } from '../api.js?v=20261118a';
+import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118b';
+import { isAuMobile, leadName, leadById, isSuppressed, formatValue } from '../api.js?v=20261118b';
 
 const DAY = 86400000;
 const seenEvents = new Set();

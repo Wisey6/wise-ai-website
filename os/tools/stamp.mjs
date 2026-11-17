@@ -4,11 +4,11 @@
 // version on each URL, a visitor can get the new stylesheet with an old script
 // (or one new module importing an old one). Run this before every release:
 //
-//   node admin/os/tools/stamp.mjs            # stamps with today's date + time
-//   node admin/os/tools/stamp.mjs 2026-11-18a
+//   node os/tools/stamp.mjs            # stamps with today's date + time
+//   node os/tools/stamp.mjs 2026-11-18a
 //
 // It rewrites the ?v= on index.html's stylesheet/script links and on every
-// relative import inside admin/os/js. Every import of a module must carry the
+// relative import inside os/js. Every import of a module must carry the
 // same stamp, otherwise the browser loads that module twice.
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';

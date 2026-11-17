@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     if (body.action === "change_pin") {
       if (!(await requireOperator(req))) return json(req, 401, { ok: false, error: "unauthorized" });
       const newPin = typeof body.new_pin === "string" ? body.new_pin : "";
-      if (!/^[0-9]{6,12}$/.test(newPin)) return json(req, 400, { ok: false, error: "weak_pin" });
+      if (!/^[0-9]{4,12}$/.test(newPin)) return json(req, 400, { ok: false, error: "weak_pin" });
       const { data, error } = await db.rpc("hq_change_pin", {
         p_old: pin, p_new: newPin, p_device_token: deviceToken, p_ip: ip,
       });
