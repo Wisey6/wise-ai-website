@@ -5,7 +5,7 @@ import {
   el, clear, fill, icon, badge, toast, modal, confirmDialog, field, input, select, textarea, emptyState,
   money, num, plural, go, copyText, busy, dayKey
 } from '../ui.js?v=20261118c';
-import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118c';
+import { state, saveRow, deleteRow, rowById, ai } from '../api.js?v=20261118c';
 
 /* ================================================================ dates
    Dates are YYYY-MM-DD strings; maths is done in UTC so a day is a day. */
@@ -113,6 +113,10 @@ export function reportTotals(r = {}) {
 
 /** "$6.32 back for every $1" */
 export const returnLine = (multiple) => `$${(Math.floor(multiple * 100) / 100).toFixed(2)} back for every $1`;
+/** "[check: …]" markers the AI leaves where it needs a fact confirmed. */
+export const checkMarkers = (...texts) => texts.flatMap((t) => [...String(t || '').matchAll(/\[check:\s*([^\]]*)\]?/gi)].map((m) => m[1].trim() || 'a detail'));
+export const aiReady = () => Boolean(state.ai?.configured && state.ai.enabled);
+
 const signedMoney = (v) => (v < 0 ? `−${money(-v)}` : money(v));
 
 /** A fresh report for the period after `r`: last period's "after" becomes the new "before". */
@@ -457,6 +461,12 @@ function editorView(id, newClientId) {
         onClick: (e) => busy(e.currentTarget, async () => {
           await flush();
           if (!draft.id) { toast('Add something to the report first', 'warn'); return; }
+          const marks = sent ? [] : checkMarkers(draft.summary, draft.next_steps);
+          if (marks.length) {
+            toast(`Not sent yet. Fill in what the draft marked [check: …]: ${marks.join('; ')}.`, 'warn');
+            (String(draft.summary || '').includes('[check:') ? summaryIn : nextIn).focus();
+            return;
+          }
           try {
             await saveRow('roi_reports', sent ? { id: draft.id, status: 'draft', sent_on: null } : { id: draft.id, status: 'sent', sent_on: today() });
             toast(sent ? 'Back to draft' : `Marked as sent ${fmtDate(today())}`);
@@ -592,6 +602,53 @@ function editorView(id, newClientId) {
   nextIn.rows = 3;
   nextIn.addEventListener('input', () => { draft.next_steps = nextIn.value; touch(); });
 
+  /* ------------------------------------------- AI draft of the words */
+  const aiNotes = input('ai_notes', { placeholder: 'Optional: anything the numbers do not say, e.g. Dana loves the after-hours texts', autocomplete: 'off' });
+  const aiState = el('span', { class: 'small muted', role: 'status', 'aria-live': 'polite' });
+  const aiBtn = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'ai' } }, icon('spark', 14), 'Write the summary with AI');
+  const aiBox = el('div', { class: 'rr-ai' },
+    field('Notes for the write-up', aiNotes, 'The AI drafts from the numbers above and these notes. You read and edit it before anything is sent.'),
+    el('div', { class: 'row' }, aiBtn, aiState));
+  const aiHolder = el('div');
+  const paintAi = () => {
+    if (aiReady()) { if (!aiBox.isConnected) aiHolder.append(aiBox); } else if (aiBox.isConnected && !aiBtn.disabled) aiBox.remove();
+  };
+  const fillWords = (summary, next) => {
+    summaryIn.value = summary; nextIn.value = next;
+    draft.summary = summary; draft.next_steps = next;
+    touch();
+  };
+  aiBtn.addEventListener('click', () => busy(aiBtn, async () => {
+    const before = { s: summaryIn.value, n: nextIn.value };
+    if ((before.s.trim() || before.n.trim()) && !await confirmDialog('Replace what is there?', 'The summary and what is next will be replaced with a fresh AI draft. Your current text goes.', { confirmLabel: 'Replace', danger: false })) return;
+    const t = reportTotals(draft);
+    const c = rowById('clients', draft.client_id);
+    aiState.textContent = 'Drafting. This takes 5 to 20 seconds.';
+    const res = await ai('roi_summary', {
+      client: c?.name || '',
+      period: periodLabel(draft.period_start, draft.period_end),
+      numbers: {
+        hours_saved: n(draft.hours_saved), hourly_value: n(draft.hourly_value), revenue_gained: n(draft.revenue_gained), cost_saved: n(draft.cost_saved),
+        fee: t.fee, total_value: Math.round(t.total * 100) / 100, net_gain: Math.round(t.net * 100) / 100,
+        return_multiple: t.multiple === null ? null : Math.round(t.multiple * 100) / 100
+      },
+      metrics: draft.metrics.filter((m) => (m.label || '').trim()).map((m) => ({ label: m.label, before: has(m.before) ? Number(m.before) : null, after: has(m.after) ? Number(m.after) : null, unit: m.unit || '' })),
+      notes: aiNotes.value.trim() || String(draft.next_steps || '').trim()
+    });
+    aiState.textContent = '';
+    if (!res.ok) { toast(res.message, 'bad'); return; }
+    const summary = String(res.result?.summary || '').trim();
+    const nx = res.result?.next_steps;
+    const next = (Array.isArray(nx) ? nx.map((x) => String(x).trim()).filter(Boolean).join('\n') : String(nx || '')).trim();
+    if (!summary && !next) { toast('The draft came back empty. Try again.', 'bad'); return; }
+    // Typed into the fields while it was drafting: ask again rather than lose it.
+    if ((summaryIn.value !== before.s || nextIn.value !== before.n) && !await confirmDialog('Replace what you just typed?', 'You edited the words while the AI was drafting.', { confirmLabel: 'Replace', danger: false })) return;
+    fillWords(summary, next);
+    const marks = checkMarkers(summary, next);
+    aiState.textContent = marks.length ? `Draft in. Fill in the ${plural(marks.length, 'part')} marked [check: …] before sending.` : 'Draft in. Read it through and make it yours.';
+    toast('Draft written. Read it through before sending.');
+  }));
+
   const verdictBox = el('div', { class: 'rr-verdict', 'aria-live': 'polite' });
   const paintVerdict = () => {
     const t = reportTotals(draft);
@@ -633,7 +690,7 @@ function editorView(id, newClientId) {
     el('section', { class: 'rr-sec' }, el('h2', { class: 'rr-sec-h' }, 'The return'), verdictBox),
     el('section', { class: 'rr-sec' },
       el('h2', { class: 'rr-sec-h' }, 'In words'),
-      field('Summary', summaryIn), field('What is next', nextIn, 'One step per line.')));
+      aiHolder, field('Summary', summaryIn), field('What is next', nextIn, 'One step per line.')));
 
   const docWrap = el('div', { class: 'rr-doc-wrap' });
   function paintPreview() {
@@ -655,6 +712,7 @@ function editorView(id, newClientId) {
   paintPeriodNote();
   drawActions();
   paintPreview();
+  paintAi();
 
   // Live updates never touch the inputs: only the select's options, the header and the preview.
   root.onState = () => {
@@ -665,6 +723,7 @@ function editorView(id, newClientId) {
       fill(removed, el('div', { class: 'callout is-warn' }, icon('alert', 16), 'This report was deleted elsewhere. Your text is still here; copy it if you need it.'));
     }
     drawActions();
+    paintAi();
     fill(docWrap, reportDoc(draft));
   };
   return root;

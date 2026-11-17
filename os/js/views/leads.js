@@ -7,7 +7,7 @@ import {
 import {
   state, saveLead, saveLeads, addLeads, deleteLead, logEvent, addMessage, suppress, messagesFor, onMessage, onChange,
   normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms,
-  leadToDeal, leadToClient
+  leadToDeal, leadToClient, ai
 } from '../api.js?v=20261118c';
 
 /* ------------------------------------------------------------ view state */
@@ -799,6 +799,66 @@ export function openLead(id) {
       toast('Estimate saved to the lead');
     } catch (e) { toast(e.message, 'bad'); }
   }));
+  /* AI: shape Tyler's own observation into a personal line. It never invents one. */
+  const aiBox = el('div', { class: 'ld-ai', dataset: { ai: 'hook' } });
+  let aiBuilt = false;
+  const aiOn = () => Boolean(state.ai?.configured && state.ai.enabled);
+  const buildAi = () => {
+    const l = leadById(id) || l0;
+    const seen = textarea('ai-notes', l.notes || '', 'e.g. three Google reviews this month say nobody called them back');
+    seen.rows = 2;
+    const out = el('div', { class: 'ld-ai-out', 'aria-live': 'polite' });
+    const ask = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'ai-suggest' } }, icon('spark', 14), 'Suggest lines');
+    const panel = el('div', { class: 'ld-ai-panel', hidden: true },
+      field('What did you notice about this business?', seen, 'The line has to come from something you actually saw: a review, their website, a job you know about. The AI only shapes your words; it will not make one up.'),
+      el('div', { class: 'row' }, ask),
+      out);
+    const toggle = el('button', { type: 'button', class: 'link-btn ld-ai-toggle', 'aria-expanded': 'false', dataset: { act: 'ai-hook' } }, icon('spark', 13), 'Suggest a personal line');
+    toggle.addEventListener('click', () => {
+      panel.hidden = !panel.hidden;
+      toggle.setAttribute('aria-expanded', String(!panel.hidden));
+      if (!panel.hidden) seen.focus();
+    });
+    ask.addEventListener('click', () => busy(ask, async () => {
+      const lead = leadById(id) || l0;
+      fill(out, el('p', { class: 'small muted' }, 'Drafting, this takes a few seconds…'));
+      const res = await ai('hook', {
+        lead: { business: lead.business, contact_name: lead.contact_name, industry: lead.industry, suburb: lead.suburb, website: lead.website },
+        notes: seen.value.trim()
+      });
+      if (!res.ok) { clear(out); toast(res.message, 'bad'); return; }
+      const options = (res.result?.options || []).filter((o) => typeof o === 'string' && o.trim());
+      if (!options.length) {
+        fill(out, el('p', { class: 'callout ld-ai-ask' }, icon('search', 15), el('span', {}, res.result?.ask || 'Look at their reviews or website and note one specific thing first.')));
+        return;
+      }
+      fill(out,
+        el('p', { class: 'small muted' }, 'Pick one to put in the personal line. Read it, change it if it is not quite you, then save.'),
+        el('ul', { class: 'ld-ai-opts' }, options.map((o) => el('li', {},
+          el('button', {
+            type: 'button', class: 'ld-ai-opt', dataset: { act: 'ai-pick' },
+            onClick: async () => {
+              const cur = hookIn.value.trim();
+              if (cur && cur !== o.trim()) {
+                const ok = await confirmDialog('Replace the personal line?', `“${cur}” will be replaced with the suggestion. Nothing is saved until you press Save personal line.`, { confirmLabel: 'Replace', danger: false });
+                if (!ok) return;
+              }
+              hookIn.value = o.trim();
+              drawPreview();
+              hookIn.focus();
+              toast('Suggestion added. Read it, then save the personal line.', 'info');
+            }
+          }, o.trim())))));
+    }));
+    fill(aiBox, toggle, panel);
+  };
+  const drawAi = () => {
+    if (aiOn() && !aiBuilt) { buildAi(); aiBuilt = true; }
+    else if (!aiOn() && aiBuilt) { clear(aiBox); aiBuilt = false; }
+  };
+  drawAi();
+  cleanup.push(onChange(drawAi));
+
   const savePersonal = el('button', { type: 'button', class: 'btn btn-primary btn-sm' }, 'Save personal line');
   savePersonal.addEventListener('click', () => busy(savePersonal, async () => {
     try {
@@ -811,6 +871,7 @@ export function openLead(id) {
     el('div', { class: 'ld-section-head' },
       el('div', { class: 'stack tight' }, el('p', { class: 'eyebrow' }, 'Why they should care'), el('h2', { class: 'h2' }, 'Personal line and value'))),
     field('Personal line', hookIn, 'One specific thing you noticed about this business. Goes in as {hook}.'),
+    aiBox,
     el('div', { class: 'form-grid' },
       field('Their pain', painIn, '{pain}'),
       field('Worth to them ($/month)', valueIn, '{value}')),

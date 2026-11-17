@@ -287,3 +287,7 @@ details[open].dl-group > summary .dl-group-head::after, details[open].dl-tgroup 
   .rr-doc-kpi:nth-child(3) { border-left: 1px solid var(--line); padding-left: 14px; }
   .rr-doc-table th:nth-child(4), .rr-doc-table td:nth-child(4) { display: table-cell; }
 }
+
+/* AI draft of the words: a quiet panel above the summary */
+.rr-ai { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0 var(--space-4); border-bottom: 1px solid var(--line); }
+.rr-ai .row { gap: var(--space-3); }

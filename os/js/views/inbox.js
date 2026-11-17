@@ -6,7 +6,7 @@ import {
   dayKey, dayLabel, prettyPhone, copyText, busy
 } from '../ui.js?v=20261118c';
 import {
-  state, messagesFor, saveLead, suppress, renderTemplate, leadName, logEvent
+  state, messagesFor, saveLead, suppress, renderTemplate, leadName, logEvent, ai
 } from '../api.js?v=20261118c';
 import { deliver, finalBody, segmentCounter, errText, AU_MOBILE, suppressedSet } from './campaigns.js?v=20261118c';
 
@@ -274,6 +274,45 @@ export default function inbox(ctx = {}) {
     const preview = el('div', { class: 'inbox-preview', hidden: true });
     const notice = el('div', { class: 'callout is-bad inbox-blocked', hidden: true });
     const quick = el('div', { class: 'inbox-quick', role: 'group', 'aria-label': 'Quick replies' });
+    const aiBox = el('div', { class: 'inbox-ai', hidden: true, role: 'group', 'aria-label': 'Suggested replies' });
+    let aiFor = null;   // id of the inbound message the suggestions answer
+    const latestSms = () => { const rows = (threads.get(leadId) || []).filter((m) => m.channel === 'sms'); return rows[rows.length - 1] || null; };
+    const aiBtn = el('button', { class: 'chip inbox-chip inbox-ai-btn', type: 'button', title: 'Draft reply options with AI. Nothing is sent.' }, icon('spark', 14), 'Suggest replies');
+    aiBtn.addEventListener('click', () => busy(aiBtn, suggestReplies));
+    async function suggestReplies() {
+      const last = latestSms();
+      const thread = (threads.get(leadId) || []).filter((m) => m.channel === 'sms').slice(-12)
+        .map((m) => ({ from: m.direction === 'in' ? 'them' : 'us', text: m.body }));
+      const res = await ai('reply', {
+        lead: { business: lead?.business || null, contact_name: lead?.contact_name || null, status: lead?.status || null },
+        thread, booking_url: state.settings?.booking_url || null
+      });
+      if (!res.ok) { toast(res.message, 'bad'); return; }
+      const options = (res.result?.options || []).map((o) => String(o || '').trim()).filter(Boolean);
+      if (!options.length) { toast('No suggestions came back. Try again.', 'warn'); return; }
+      aiFor = last?.id || null;
+      put(aiBox,
+        el('div', { class: 'inbox-ai-head' }, el('span', { class: 'eyebrow' }, 'Suggested replies · pick one to edit'),
+          el('button', { class: 'icon-btn sm', type: 'button', 'aria-label': 'Dismiss suggestions', onClick: () => clearAi() }, icon('x', 14))),
+        options.map((text) => el('button', { class: 'inbox-ai-opt', type: 'button', onClick: () => useSuggestion(text) }, text)));
+      aiBox.hidden = false;
+    }
+    async function useSuggestion(text) {
+      const cur = ta.value.trim();
+      if (cur && cur !== text) {
+        const ok = await confirmDialog('Replace what is there?', 'Your reply box already has text. Replace it with this suggestion?', { confirmLabel: 'Replace', danger: false });
+        if (!ok) return;
+      }
+      ta.value = text;
+      ta.dispatchEvent(new Event('input'));
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+    function clearAi() { aiFor = null; aiBox.hidden = true; aiBox.replaceChildren(); }
+    function syncAi() {
+      // Suggestions answer one message: they go when a newer message arrives.
+      if (aiFor && latestSms()?.id !== aiFor) clearAi();
+    }
     const actions = el('div', { class: 'inbox-send-row' });
 
     const finalText = () => finalBody(renderTemplate(ta.value, lead || {}, state.settings || {}), state.settings || {}, hasReplied());
@@ -307,7 +346,9 @@ export default function inbox(ctx = {}) {
       quick.replaceChildren(
         el('button', { class: 'chip inbox-chip is-key', type: 'button', onClick: (e) => sendBookingLink(e.currentTarget) }, icon('calendar', 14), 'Send booking link'),
         ...tpls.map((t) => el('button', { class: 'chip inbox-chip', type: 'button', title: t.body,
-          onClick: () => insert(renderTemplate(t.body, lead || {}, state.settings || {})) }, t.name.replace(/^Reply:\s*/i, ''))));
+          onClick: () => insert(renderTemplate(t.body, lead || {}, state.settings || {})) }, t.name.replace(/^Reply:\s*/i, ''))),
+        state.ai?.configured && state.ai.enabled && latestSms()?.direction === 'in' ? aiBtn : null);
+      syncAi();
     }
 
     function paintActions() {
@@ -315,7 +356,7 @@ export default function inbox(ctx = {}) {
       notice.hidden = !reason;
       notice.replaceChildren(reason ? el('span', {}, icon('ban', 14), ` ${reason}`) : '');
       ta.disabled = !!reason;
-      quick.querySelectorAll('button').forEach((b) => { b.disabled = !!reason; });
+      quick.querySelectorAll('button:not([aria-busy])').forEach((b) => { b.disabled = !!reason; });
       const empty = !ta.value.trim();
       const live = !!state.sms?.configured;
       const sendBtn = el('button', { class: `btn ${live ? 'btn-primary inbox-primary' : 'btn-ghost'}`, type: 'button', disabled: !live || empty || !!reason || null,
@@ -362,7 +403,7 @@ export default function inbox(ctx = {}) {
       });
     }
 
-    const node = el('div', { class: 'inbox-composer' }, notice, quick, preview, ta, actions);
+    const node = el('div', { class: 'inbox-composer' }, notice, quick, aiBox, preview, ta, actions);
     node.refresh = () => { paintQuick(); paintActions(); };
     paintQuick();
     onInput();
