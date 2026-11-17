@@ -333,7 +333,7 @@ select.input.sm { padding-right: 28px; }
 @media (max-width: 760px) { .drawer { width: 100vw; } .drawer-body { padding: 16px; } .drawer-head { padding: 14px 16px 12px; } }
 
 /* ------------------------------------------------------------------- toast */
-.toast-wrap { position: fixed; right: 20px; bottom: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+.toast-wrap { position: fixed; right: 20px; top: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
 .toast {
   pointer-events: auto; display: flex; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 32px));
   background: var(--ink); color: #fff; padding: 11px 16px 11px 13px; border-radius: 12px; box-shadow: var(--shadow-m);
@@ -346,7 +346,7 @@ select.input.sm { padding-right: 28px; }
 .toast.is-leaving { opacity: 0; transform: translateY(6px); transition: opacity .25s, transform .25s; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
 @media (min-width: 761px) { body:has(.drawer) .toast-wrap { right: calc(min(600px, 100vw) + 20px); } }
-@media (max-width: 760px) { .toast-wrap { left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); align-items: stretch; } .toast { max-width: none; } }
+@media (max-width: 760px) { .toast-wrap { left: 16px; right: 16px; top: auto; bottom: calc(84px + env(safe-area-inset-bottom)); align-items: stretch; } .toast { max-width: none; } }
 
 /* ------------------------------------------------------------------ misc */
 .divider { height: 1px; background: var(--line-3); border: 0; margin: 0; }
