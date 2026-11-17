@@ -1,10 +1,10 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, trapFocus } from './ui.js';
-import { createPalette } from './palette.js';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118a';
+import { createPalette } from './palette.js?v=20261118a';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
   refreshSmsStatus, knownPinLength, leadById, leadName
-} from './api.js';
+} from './api.js?v=20261118a';
 
 /* ------------------------------------------------------------ route registry
    The single source of truth for navigation. Top-level entries are either a
@@ -14,12 +14,12 @@ import {
    `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
    the foot of the collapsed dock; `href` links out (new tab). */
 export const NAV = [
-  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js') },
+  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118a') },
   { group: 'Grow', icon: 'grow', items: [
-    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js') },
-    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js') },
-    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js') },
-    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js') }
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118a') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118a') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118a') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118a') }
   ] },
   { group: 'Sell', icon: 'tag', items: [
     { id: 'pipeline', label: 'Pipeline', soon: true },
@@ -37,12 +37,12 @@ export const NAV = [
     { id: 'runway', label: 'Runway', soon: true }
   ] },
   { group: 'Know', icon: 'book', items: [
-    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js') },
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118a') },
     { id: 'library', label: 'Library', soon: true }
   ] },
   { sep: true },
   { id: 'agents', label: 'Agents', icon: 'agents', soon: true },
-  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js') }
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118a') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
 /** Live sections (the ones with a view), in navigation order. */
