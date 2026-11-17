@@ -1,4 +1,5 @@
-// Today: what happened, what is coming up, and what to do next.
+// Today: what happened, what is coming up, and what to do next, across the whole
+// business: leads and replies, deals, proposals, delivery, invoices and retainers.
 import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118c';
 import { isAuMobile, leadName, leadById, isSuppressed, formatValue } from '../api.js?v=20261118c';
 
@@ -70,6 +71,10 @@ function computeDoNext(state) {
       });
     });
 
+  // Business: money owed, work due and deals slipping come straight after calls.
+  const biz = businessDoNext(state, today);
+  items.push(...biz.urgent);
+
   // 3. New website leads not yet contacted: speed to lead.
   leads
     .filter((l) => l.source === 'website' && !l.last_contacted_at && ['new', 'interested', 'queued'].includes(l.status) && now - Date.parse(l.created_at) < 14 * DAY)
@@ -99,6 +104,8 @@ function computeDoNext(state) {
       });
     });
 
+  items.push(...biz.soon);
+
   // 5. Interested but not booked: nudge.
   leads
     .filter((l) => l.status === 'interested' && !l.unread && l.last_reply_at && now - Date.parse(l.last_reply_at) > 2 * DAY)
@@ -111,6 +118,8 @@ function computeDoNext(state) {
         href: `#inbox/${l.id}`, cta: 'Send link'
       });
     });
+
+  items.push(...biz.later);
 
   // 6. Follow-ups due.
   const due = leads.filter((l) => l.next_followup_at && Date.parse(l.next_followup_at) <= now && !l.last_reply_at && !['dnc', 'lost', 'won', 'booked'].includes(l.status));
@@ -159,13 +168,175 @@ function computeDoNext(state) {
   return items;
 }
 
+
+/* ------------------------------------------------- the rest of the business */
+const ymd = (d) => String(d || '').slice(0, 10);
+/** Whole days from a YYYY-MM-DD (or ISO) date to `today` (positive = in the past). */
+export function daysSince(date, today = dayKey()) {
+  const a = Date.parse(`${ymd(date)}T00:00:00Z`);
+  const b = Date.parse(`${ymd(today)}T00:00:00Z`);
+  return Number.isNaN(a) || Number.isNaN(b) ? null : Math.round((b - a) / DAY);
+}
+const ago = (n) => (n === 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`);
+const nameOf = (state, id) => state.clients?.find((c) => c.id === id)?.name || '';
+const isOpenDeal = (d) => !d.archived && !['won', 'lost'].includes(d.stage);
+const isActiveClient = (c) => !c.archived && c.status === 'active';
+
+/**
+ * Do-next items from the stage 2 tables, in three urgency bands:
+ *  urgent: overdue invoices, tasks due today or overdue, deals whose next step is overdue
+ *  soon:   proposals sent more than 5 days ago with no decision
+ *  later:  retainers not yet invoiced this month, clients due an ROI report, deals with no next step
+ * Pure: reads only `state` and `today` (YYYY-MM-DD, Brisbane).
+ */
+export function businessDoNext(state, today = dayKey()) {
+  const urgent = []; const soon = []; const later = [];
+  const month = today.slice(0, 7);
+
+  // Invoices past their due date.
+  const overdue = (state.income || []).filter((i) => i.status === 'invoiced' && i.due_on && ymd(i.due_on) < today)
+    .sort((a, b) => ymd(a.due_on).localeCompare(ymd(b.due_on)));
+  overdue.slice(0, 3).forEach((i) => {
+    const who = nameOf(state, i.client_id);
+    const late = daysSince(i.due_on, today);
+    urgent.push({
+      key: `inv-${i.id}`, icon: 'dollar', tone: 'rose',
+      title: `Chase ${money(i.amount)}${who ? ` from ${who}` : ''}`,
+      sub: `${i.invoice_no ? `Invoice ${i.invoice_no}` : i.description || 'Invoice'} was due ${ago(late)}`,
+      href: `#income/${i.id}`, cta: 'Chase'
+    });
+  });
+  if (overdue.length > 3) {
+    const rest = overdue.slice(3);
+    urgent.push({ key: 'inv-more', icon: 'dollar', tone: 'rose', title: `${plural(rest.length, 'more invoice')} overdue`, sub: `${money(rest.reduce((t, i) => t + (Number(i.amount) || 0), 0))} between them`, href: '#income', cta: 'Open' });
+  }
+
+  // Tasks due today or overdue.
+  const tasks = (state.tasks || []).filter((t) => t.state !== 'done' && t.due_on && ymd(t.due_on) <= today)
+    .sort((a, b) => ymd(a.due_on).localeCompare(ymd(b.due_on)));
+  if (tasks.length === 1) {
+    const t = tasks[0];
+    const late = daysSince(t.due_on, today);
+    urgent.push({ key: `task-${t.id}`, icon: 'check', tone: 'amber', title: t.title, sub: `${late ? `Overdue, was due ${ago(late)}` : 'Due today'}${nameOf(state, t.client_id) ? ` · ${nameOf(state, t.client_id)}` : ''}`, href: '#projects/tasks', cta: 'Open' });
+  } else if (tasks.length) {
+    const late = tasks.filter((t) => ymd(t.due_on) < today).length;
+    const due = tasks.length - late;
+    urgent.push({
+      key: 'tasks', icon: 'check', tone: 'amber',
+      title: [late ? `${plural(late, 'task')} overdue` : '', due ? `${plural(due, 'task')} due today` : ''].filter(Boolean).join(', '),
+      sub: `First up: ${tasks[0].title}`, href: '#projects/tasks', cta: 'Open tasks'
+    });
+  }
+
+  // Deals: overdue next step (urgent), no next step at all (later).
+  const open = (state.deals || []).filter(isOpenDeal);
+  open.filter((d) => d.next_step_on && ymd(d.next_step_on) <= today && (d.next_step || '').trim())
+    .sort((a, b) => ymd(a.next_step_on).localeCompare(ymd(b.next_step_on)))
+    .slice(0, 3)
+    .forEach((d) => {
+      const late = daysSince(d.next_step_on, today);
+      urgent.push({
+        key: `deal-${d.id}`, icon: 'tag', tone: 'violet',
+        title: `${d.next_step.trim()}: ${d.title}`,
+        sub: `${late ? `Next step was due ${ago(late)}` : 'Next step due today'}${Number(d.value) ? ` · ${money(d.value)}` : ''}${Number(d.monthly_value) ? ` + ${money(d.monthly_value)}/mo` : ''}`,
+        href: `#pipeline/${d.id}`, cta: 'Do it'
+      });
+    });
+  const noStep = open.filter((d) => !(d.next_step || '').trim());
+  noStep.slice(0, 2).forEach((d) => {
+    later.push({ key: `deal-step-${d.id}`, icon: 'tag', tone: '', title: `Set a next step for ${d.title}`, sub: 'A deal with no next step tends to drift', href: `#pipeline/${d.id}`, cta: 'Set' });
+  });
+  if (noStep.length > 2) later.push({ key: 'deal-step-more', icon: 'tag', tone: '', title: `${plural(noStep.length - 2, 'more deal')} with no next step`, sub: 'Give each one a step and a date', href: '#pipeline', cta: 'Review' });
+
+  // Proposals out for more than five days with no decision.
+  (state.proposals || []).filter((p) => !p.archived && p.status === 'sent' && !p.decided_on && p.sent_on && daysSince(p.sent_on, today) > 5)
+    .sort((a, b) => ymd(a.sent_on).localeCompare(ymd(b.sent_on)))
+    .slice(0, 3)
+    .forEach((p) => {
+      const who = p.recipient_business || nameOf(state, p.client_id) || p.recipient_name || p.title;
+      soon.push({ key: `prop-${p.id}`, icon: 'book', tone: 'amber', title: `Follow up the proposal to ${who}`, sub: `Sent ${ago(daysSince(p.sent_on, today))}, no decision yet`, href: `#proposals/${p.id}`, cta: 'Follow up' });
+    });
+
+  // Retainers not invoiced this calendar month.
+  const active = (state.clients || []).filter(isActiveClient);
+  const billed = new Set((state.income || [])
+    .filter((i) => i.client_id && i.kind === 'retainer' && i.status !== 'void' && ymd(i.issued_on || i.created_at).slice(0, 7) === month)
+    .map((i) => i.client_id));
+  const toBill = active.filter((c) => Number(c.monthly_value) > 0 && !billed.has(c.id));
+  if (toBill.length === 1) {
+    const c = toBill[0];
+    later.push({ key: `retainer-${c.id}`, icon: 'money', tone: '', title: `Invoice ${c.name} for this month`, sub: `${money(c.monthly_value)} retainer, not invoiced yet`, href: '#income', cta: 'Invoice' });
+  } else if (toBill.length) {
+    later.push({ key: 'retainers', icon: 'money', tone: '', title: `Invoice ${plural(toBill.length, 'retainer')} for this month`, sub: `${toBill.slice(0, 3).map((c) => c.name).join(', ')}${toBill.length > 3 ? '…' : ''} · ${money(toBill.reduce((t, c) => t + Number(c.monthly_value), 0))} in total`, href: '#income', cta: 'Invoice' });
+  }
+
+  // Active clients with no ROI report in 35 days (measured from their start when they have none).
+  active.forEach((c) => {
+    const reports = (state.roi_reports || []).filter((r) => r.client_id === c.id);
+    const last = reports.map((r) => ymd(r.sent_on || r.period_end || r.created_at)).sort().pop();
+    const since = daysSince(last || c.started_on || c.created_at, today);
+    if (since !== null && since >= 35) {
+      later.push({ key: `roi-${c.id}`, icon: 'spark', tone: '', title: `Send ${c.name} their ROI report`, sub: last ? `Last one ${ago(since)}` : `A client for ${since} days with no report yet`, href: `#roi-reports/new/${c.id}`, cta: 'Write' });
+    }
+  });
+
+  return { urgent, soon, later };
+}
+
+/** The business at a glance. Pure; `today` is YYYY-MM-DD. */
+export function businessNumbers(state, today = dayKey()) {
+  const month = today.slice(0, 7);
+  const open = (state.deals || []).filter(isOpenDeal);
+  const active = (state.clients || []).filter(isActiveClient);
+  const paid = (state.income || []).filter((i) => i.status === 'paid' && ymd(i.paid_on || i.issued_on).slice(0, 7) === month);
+  const unpaid = (state.income || []).filter((i) => i.status === 'invoiced');
+  const sum = (rows, k) => rows.reduce((t, r) => t + (Number(r[k]) || 0), 0);
+  const target = Number(state.settings?.monthly_target) || 0;
+  const moneyIn = sum(paid, 'amount');
+  return {
+    pipeline: sum(open, 'value'), pipelineMonthly: sum(open, 'monthly_value'), openDeals: open.length,
+    mrr: sum(active, 'monthly_value'), activeClients: active.length,
+    moneyIn, target, targetPct: target ? Math.round((moneyIn / target) * 100) : null,
+    unpaid: sum(unpaid, 'amount'), unpaidCount: unpaid.length,
+    overdue: unpaid.filter((i) => i.due_on && ymd(i.due_on) < today).length,
+    hasData: Boolean((state.clients || []).length || (state.deals || []).length || (state.income || []).length)
+  };
+}
+
+function bizStrip(state) {
+  const n = businessNumbers(state);
+  if (!n.hasData) {
+    return el('div', { class: 'biz-invite', dataset: { biz: 'invite' } },
+      el('span', {}, 'Pipeline value, monthly recurring revenue and money in show here once you open a deal or add a client.'),
+      el('a', { href: '#pipeline/new' }, 'Open a deal', icon('arrow', 13)),
+      el('a', { href: '#clients/new' }, 'Add a client', icon('arrow', 13)));
+  }
+  const pct = n.targetPct === null ? null : Math.min(100, n.targetPct);
+  const cells = [
+    { k: 'pipeline', label: 'Open pipeline', value: money(n.pipeline), sub: n.pipelineMonthly ? `+ ${money(n.pipelineMonthly)}/mo · ${plural(n.openDeals, 'deal')}` : plural(n.openDeals, 'open deal'), href: '#pipeline' },
+    { k: 'mrr', label: 'Monthly recurring', value: money(n.mrr), sub: plural(n.activeClients, 'active client'), href: '#clients' },
+    { k: 'in', label: 'Money in this month', value: money(n.moneyIn), sub: n.target ? `${n.targetPct}% of ${money(n.target)} target` : 'No monthly target set', href: '#income', meter: pct },
+    { k: 'unpaid', label: 'Unpaid invoices', value: money(n.unpaid), sub: n.overdue ? `${n.overdue} overdue` : n.unpaidCount ? plural(n.unpaidCount, 'invoice') : 'All paid', tone: n.overdue ? 'bad' : '', href: '#income' }
+  ];
+  return el('section', { class: 'kpi-strip biz', 'aria-label': 'The business at a glance' },
+    cells.map((c) => el('a', { class: 'kpi-cell', href: c.href, dataset: { biz: c.k } },
+      el('span', { class: 'kpi-label' }, c.label),
+      el('span', { class: 'kpi-line' },
+        el('span', { class: 'kpi-value' }, c.value),
+        el('span', { class: `kpi-sub${c.tone ? ` is-${c.tone}` : ''}` }, c.sub),
+        c.meter !== undefined && c.meter !== null ? el('span', { class: 'biz-meter', role: 'img', 'aria-label': `${n.targetPct}% of the monthly target` }, el('i', { style: `width:${c.meter}%` })) : null))));
+}
+
 /* Rendering follows the approved layout: A's greeting strip, D's compact KPI
    strip, A's numbered Do next, A's calls and warm conversations, D's 14-day
    chart and live feed. Computations above are unchanged. */
 
+const DO_CAP = 9;
+let doShowAll = false;
+
 function doNextCard(state) {
   const items = computeDoNext(state);
-  const shown = items.slice(0, 9);
+  const shown = doShowAll ? items : items.slice(0, DO_CAP);
   const unread = state.leads.filter((l) => l.unread && !l.archived).length;
   const list = el('ol', { class: 'do-list' }, shown.map((it, i) => el('li', { class: `do-item${i === 0 ? ' is-first' : ''}`, dataset: { key: it.key } },
     el('span', { class: 'do-n', 'aria-hidden': 'true' }, String(i + 1).padStart(2, '0')),
@@ -183,11 +354,14 @@ function doNextCard(state) {
     el('div', { class: 'card-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Do next'),
         el('h2', { class: 'h2', id: 'do-next-h' }, items.length ? `${plural(items.length, 'thing')} worth your time, in order` : 'Nothing urgent')),
-      items.length > 9 ? el('span', { class: 'muted small' }, `+${items.length - 9} more`)
-        : unread ? el('a', { class: 'card-link', href: '#inbox' }, 'Open inbox', icon('arrow', 14)) : null),
+      unread ? el('a', { class: 'card-link', href: '#inbox' }, 'Open inbox', icon('arrow', 14)) : null),
     items.length ? list : el('div', { class: 'all-clear' },
       el('span', { class: 'all-clear-mark', 'aria-hidden': 'true' }, icon('check', 18)),
-      el('span', {}, 'All caught up. A good time to write a few personal lines or review the playbook.')));
+      el('span', {}, 'All caught up. A good time to write a few personal lines or review the playbook.')),
+    items.length > DO_CAP ? el('button', {
+      type: 'button', class: 'link-btn do-more', 'aria-expanded': String(doShowAll),
+      onClick: (e) => { doShowAll = !doShowAll; const card = e.currentTarget.closest('.do-card'); const next = doNextCard(state); card.replaceWith(next); next.querySelector('.do-more')?.focus(); }
+    }, doShowAll ? 'Show fewer' : `Show all ${items.length}`) : null);
 }
 
 /* ----------------------------------------------------------- KPI strip */
@@ -441,6 +615,7 @@ export default function home(ctx) {
   const { state } = ctx;
   const node = el('div', { class: 'page today' },
     hero(state),
+    bizStrip(state),
     kpiStrip(state),
     el('div', { class: 'today-grid' },
       el('div', { class: 'today-col c1' }, doNextCard(state)),

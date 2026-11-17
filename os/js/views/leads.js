@@ -6,7 +6,8 @@ import {
 } from '../ui.js?v=20261118c';
 import {
   state, saveLead, saveLeads, addLeads, deleteLead, logEvent, addMessage, suppress, messagesFor, onMessage, onChange,
-  normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms
+  normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms,
+  leadToDeal, leadToClient
 } from '../api.js?v=20261118c';
 
 /* ------------------------------------------------------------ view state */
@@ -718,6 +719,33 @@ export function openLead(id) {
       l.email ? el('a', { class: 'btn btn-ghost btn-sm', href: `mailto:${encodeURIComponent(l.email).replace('%40', '@')}` }, icon('mail', 14), 'Email') : null,
       l.phone ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: () => copyText(l.phone, 'Number copied') }, icon('copy', 14), 'Copy') : null,
       web ? el('a', { class: 'btn btn-ghost btn-sm', href: web, target: '_blank', rel: 'noopener noreferrer' }, icon('external', 14), 'Website') : null);
+    fill(business, ...businessLinks(l));
+    business.hidden = !business.childNodes.length;
+  };
+
+  /* Interested, booked and won leads move on into the pipeline and the client list. */
+  const business = el('div', { class: 'ld-actions ld-business', 'aria-label': 'Pipeline and client' });
+  const businessLinks = (l) => {
+    if (!['interested', 'booked', 'won'].includes(l.status)) return [];
+    const deal = state.deals.find((d) => d.lead_id === l.id && !d.archived);
+    const client = state.clients.find((c) => c.lead_id === l.id);
+    const dealBtn = deal
+      ? el('a', { class: 'btn btn-ghost btn-sm', href: `#pipeline/${deal.id}`, dataset: { act: 'open-deal' } }, icon('tag', 14), `Deal: ${deal.title}`)
+      : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'create-deal' } }, icon('tag', 14), 'Create deal');
+    if (!deal) {
+      dealBtn.addEventListener('click', () => busy(dealBtn, async () => {
+        try { const d = await leadToDeal(leadById(id)); toast('Deal opened in the pipeline'); go(`#pipeline/${d.id}`); } catch (e) { toast(e.message, 'bad'); }
+      }));
+    }
+    const clientBtn = client
+      ? el('a', { class: 'btn btn-ghost btn-sm', href: `#clients/${client.id}`, dataset: { act: 'open-client' } }, icon('leads', 14), `Client: ${client.name}`)
+      : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'make-client' } }, icon('leads', 14), 'Make client');
+    if (!client) {
+      clientBtn.addEventListener('click', () => busy(clientBtn, async () => {
+        try { const c = await leadToClient(leadById(id)); toast('Added to clients'); go(`#clients/${c.id}`); } catch (e) { toast(e.message, 'bad'); }
+      }));
+    }
+    return [dealBtn, clientBtn];
   };
 
   /* --------------------------------------------- personal line + ROI */
@@ -904,7 +932,8 @@ export function openLead(id) {
         el('div', { class: 'stack tight', style: 'flex:1;min-width:0' }, eyebrow, nameH),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close lead', onClick: () => close() }, icon('x', 18))),
       el('div', { class: 'row' }, statusSel, sub),
-      actions),
+      actions,
+      business),
     body,
     el('div', { class: 'drawer-foot' }, archiveBtn, el('span', { class: 'spacer' }), dncBtn, delBtn));
   const backdrop = el('div', { class: 'drawer-backdrop', onClick: () => close() });

@@ -1,10 +1,11 @@
 // Wise AI OS command palette: "Search or jump to…" (Ctrl+K / ⌘K).
-// Sections, quick actions and a live search of leads. Lead data only ever
-// reaches the page as text nodes through el().
+// Sections, quick actions and a live search of leads, clients, deals, projects
+// and library entries. Record data only ever reaches the page as text nodes through el().
 import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js?v=20261118c';
 import { state, leadName } from './api.js?v=20261118c';
 
 const MAX_LEADS = 8;
+const MAX_RECORDS = 4;
 const digits = (s) => String(s || '').replace(/\D/g, '');
 
 /**
@@ -25,6 +26,14 @@ export function createPalette({ routes, onLock, onTogglePin }) {
     { label: 'Import leads', icon: 'upload', meta: 'CSV', keywords: 'csv upload spreadsheet', run: () => go('#leads/import') },
     { label: 'Send batch', icon: 'send', meta: 'Campaigns', keywords: 'first texts sms campaign', run: () => go('#campaigns/send') },
     { label: 'Follow-ups due', icon: 'clock', meta: 'Campaigns', keywords: 'follow up reminder', run: () => go('#campaigns/followups') },
+    { label: 'New deal', icon: 'tag', meta: 'Pipeline', keywords: 'create opportunity sell pipeline', run: () => go('#pipeline/new') },
+    { label: 'New proposal', icon: 'book', meta: 'Proposals', keywords: 'create quote sell', run: () => go('#proposals/new') },
+    { label: 'New client', icon: 'leads', meta: 'Clients', keywords: 'create customer add', run: () => go('#clients/new') },
+    { label: 'New project', icon: 'deliver', meta: 'Projects', keywords: 'create job build deliver', run: () => go('#projects/new') },
+    { label: 'New invoice', icon: 'money', meta: 'Income', keywords: 'create bill income money retainer', run: () => go('#income/new') },
+    { label: 'Add cost', icon: 'money', meta: 'Costs', keywords: 'expense subscription spend money', run: () => go('#costs/new') },
+    { label: 'New ROI report', icon: 'spark', meta: 'ROI reports', keywords: 'create return report client', run: () => go('#roi-reports/new') },
+    { label: 'New library entry', icon: 'book', meta: 'Library', keywords: 'create note checklist playbook know', run: () => go('#library/new') },
     { label: 'Pin or unpin the sidebar', icon: 'panel', meta: '[', keywords: 'sidebar dock collapse expand', desktopOnly: true, run: () => onTogglePin?.() },
     { label: 'Lock', icon: 'lock', meta: 'Sign out', keywords: 'sign out log out', run: () => onLock?.() }
   ];
@@ -82,6 +91,34 @@ export function createPalette({ routes, onLock, onTogglePin }) {
         run: () => go(`#leads/${l.id}`)
       }));
       if (leads.length) groups.push({ title: 'Leads', items: leads, more: found.length > MAX_LEADS ? found.length - MAX_LEADS : 0 });
+
+      // Stage 2 records: a few of each, grouped.
+      const rec = (title, rows, fields, toItem) => {
+        const hits = [];
+        for (const r of rows || []) {
+          const s = Math.max(...fields.map(([k, w]) => score(Array.isArray(r[k]) ? r[k].join(' ') : r[k], q) * w));
+          if (s > 0) hits.push({ r, s: s - (r.archived ? 0.5 : 0) });
+        }
+        hits.sort((a, b) => b.s - a.s || String(b.r.updated_at || '').localeCompare(String(a.r.updated_at || '')));
+        if (hits.length) groups.push({ title, items: hits.slice(0, MAX_RECORDS).map(({ r }) => toItem(r)), more: Math.max(0, hits.length - MAX_RECORDS), moreText: title });
+      };
+      const clientName = (id) => (state.clients || []).find((c) => c.id === id)?.name || '';
+      rec('Clients', state.clients, [['name', 2], ['contact_name', 1.5], ['suburb', 1], ['industry', 1]], (c) => ({
+        label: c.name, sub: [c.contact_name, c.suburb].filter(Boolean).join(' · '), icon: 'leads',
+        meta: c.archived ? 'Archived' : ({ active: 'Active', paused: 'Paused', past: 'Past' }[c.status] || ''), run: () => go(`#clients/${c.id}`)
+      }));
+      rec('Deals', state.deals, [['title', 2], ['next_step', 1]], (d) => ({
+        label: d.title, sub: [clientName(d.client_id), d.next_step].filter(Boolean).join(' · '), icon: 'tag',
+        meta: d.archived ? 'Archived' : ({ qualified: 'Qualified', proposal: 'Proposal', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' }[d.stage] || ''), run: () => go(`#pipeline/${d.id}`)
+      }));
+      rec('Projects', state.projects, [['name', 2]], (p) => ({
+        label: p.name, sub: clientName(p.client_id), icon: 'deliver',
+        meta: p.archived ? 'Archived' : ({ planned: 'Planned', active: 'Active', waiting: 'Waiting', done: 'Done', cancelled: 'Cancelled' }[p.status] || ''), run: () => go(`#projects/${p.id}`)
+      }));
+      rec('Library', state.library, [['title', 2], ['tags', 1]], (e) => ({
+        label: e.title, sub: (e.tags || []).slice(0, 3).join(', '), icon: 'book',
+        meta: e.archived ? 'Archived' : String(e.kind || '').replace('_', ' ').replace(/^\w/, (m) => m.toUpperCase()), run: () => go(`#library/${e.id}`)
+      }));
     }
     return groups;
   }
@@ -121,12 +158,12 @@ export function createPalette({ routes, onLock, onTogglePin }) {
             options.push({ node, run: it.run });
             return node;
           }),
-          g.more ? el('li', { role: 'presentation', class: 'pal-more' }, `${g.more} more match. Refine the search, or open Leads.`) : null));
+          g.more ? el('li', { role: 'presentation', class: 'pal-more' }, `${g.more} more match. Refine the search, or open ${g.moreText || 'Leads'}.`) : null));
     });
     list.replaceChildren(...kids);
     const empty = root.querySelector('.pal-empty');
     empty.hidden = options.length > 0;
-    if (!options.length) empty.textContent = `Nothing matches “${input.value.trim()}”. Try a business, name, phone or suburb.`;
+    if (!options.length) empty.textContent = `Nothing matches “${input.value.trim()}”. Try a business, name, phone, suburb, deal or library title.`;
     input.setAttribute('aria-expanded', String(options.length > 0));
     select(0);
   }
