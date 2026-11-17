@@ -41,7 +41,7 @@ page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 
 async function signIn(p) {
   const res = await p.evaluate(async ({ email, password }) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { error } = await sb.auth.signInWithPassword({ email, password });
     return error ? error.message : 'ok';
   }, { email: EMAIL, password: PASSWORD });
@@ -58,7 +58,7 @@ async function reloadSignedIn(p) {
 
 async function cleanup(p) {
   return p.evaluate(async () => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const a = await sb.from('leads').delete().ilike('business', 'ZZTEST%').select('id');
     const b = await sb.from('events').delete().ilike('summary', '%zztest%').select('id');
     return { leads: a.data?.length ?? a.error?.message, events: b.data?.length ?? b.error?.message };
@@ -259,7 +259,7 @@ try {
   await page.selectOption('.drawer select[name=status]', 'interested');
   await page.waitForTimeout(1200);
   const st1 = await page.evaluate(async (phone) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { data } = await sb.from('leads').select('status').eq('phone', phone).single();
     return data?.status;
   }, e164(m1));
@@ -273,7 +273,7 @@ try {
   await page.getByRole('button', { name: 'Use this estimate' }).click();
   await page.waitForTimeout(1200);
   const roi = await page.evaluate(async (phone) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { data } = await sb.from('leads').select('est_monthly_value,pain').eq('phone', phone).single();
     return data;
   }, e164(m1));
@@ -351,7 +351,7 @@ try {
   await card.dragTo(page.locator('.board-col[data-status="replied"]'));
   await page.waitForTimeout(1500);
   const st2 = await page.evaluate(async (phone) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { data } = await sb.from('leads').select('status').eq('phone', phone).single();
     return data?.status;
   }, e164(mA));
@@ -369,7 +369,7 @@ try {
   const mR = mob();
   await page.waitForTimeout(1500);
   await p2.evaluate(async ({ name, phone }) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     await sb.from('leads').insert({ business: name, phone, source: 'manual', number_source_url: 'https://example.com' });
   }, { name: `ZZTEST Realtime ${tag}`, phone: e164(mR) });
   const arrived = await page.locator('.leads-table tbody tr', { hasText: `ZZTEST Realtime ${tag}` }).waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
@@ -384,7 +384,7 @@ try {
   await page.locator('.bulk-bar select[name=bulk-status]').selectOption('queued');
   await page.waitForTimeout(1500);
   const queued = await page.evaluate(async () => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { data } = await sb.from('leads').select('status').ilike('business', 'ZZTEST%');
     return data.map((d) => d.status);
   });

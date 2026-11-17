@@ -1,8 +1,8 @@
 // Wise AI OS command palette: "Search or jump to…" (Ctrl+K / ⌘K).
 // Sections, quick actions and a live search of leads. Lead data only ever
 // reaches the page as text nodes through el().
-import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js';
-import { state, leadName } from './api.js';
+import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js?v=20261118a';
+import { state, leadName } from './api.js?v=20261118a';
 
 const MAX_LEADS = 8;
 const digits = (s) => String(s || '').replace(/\D/g, '');

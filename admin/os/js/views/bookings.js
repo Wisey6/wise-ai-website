@@ -3,8 +3,8 @@
 import {
   el, icon, go, badge, statusBadge, toast, modal, field, input, textarea, emptyState,
   dayKey, dayLabel, timeOnly, dateTime, timeAgo, prettyPhone, copyText, busy, plural
-} from '../ui.js';
-import { state, saveLead, logEvent, leadName } from '../api.js';
+} from '../ui.js?v=20261118a';
+import { state, saveLead, logEvent, leadName } from '../api.js?v=20261118a';
 
 let showCancelled = false;
 

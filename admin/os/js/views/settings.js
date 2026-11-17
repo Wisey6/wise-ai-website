@@ -2,9 +2,9 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num
-} from '../ui.js';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus } from '../api.js';
-import { FUNCTIONS_URL } from '../config.js';
+} from '../ui.js?v=20261118a';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus } from '../api.js?v=20261118a';
+import { FUNCTIONS_URL } from '../config.js?v=20261118a';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',

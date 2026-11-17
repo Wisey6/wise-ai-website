@@ -36,11 +36,11 @@ async function openApp(viewport = { width: 1280, height: 900 }) {
   page.on('pageerror', (e) => page.errors.push(`pageerror: ${e.message}`));
   await page.goto(BASE);
   await page.evaluate(async (pw) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { error } = await sb.auth.signInWithPassword({ email: 'hq@wise-ai.au', password: pw });
     if (error) throw new Error(error.message);
   }, PASSWORD);
-  await page.waitForFunction(async () => (await import('./js/api.js')).state.loaded, null, { timeout: 20000 });
+  await page.waitForFunction(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.loaded, null, { timeout: 20000 });
   return page;
 }
 
@@ -59,8 +59,8 @@ let originalCap = null;
 try {
   /* ---------------------------------------------------------- pure logic */
   const unit = await page.evaluate(async () => {
-    const pb = await import('./js/views/playbook.js');
-    const cp = await import('./js/views/campaigns.js');
+    const pb = await import(document.querySelector('script[type=module]').src.replace('app.js', 'views/playbook.js'));
+    const cp = await import(document.querySelector('script[type=module]').src.replace('app.js', 'views/campaigns.js'));
     const f = pb.funnel({ perDay: 20, days: 20, delivered: 95, reply: 8, positive: 35, booked: 50, showed: 75, closed: 30, deal: 3000 });
     const n = pb.needed(15000, { perDay: 20, days: 20, delivered: 95, reply: 8, positive: 35, booked: 50, showed: 75, closed: 30, deal: 3000 });
     const zero = pb.needed(15000, { reply: 0 });
@@ -103,7 +103,7 @@ try {
 
   /* ------------------------------------------------------------ seed */
   ids = await sql(page, async (TAG) => {
-    const { sb, state } = await import('./js/api.js');
+    const { sb, state } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const camp = state.campaigns[0]?.id || null;
     const ago = (h) => new Date(Date.now() - h * 3600000).toISOString();
     const rows = [
@@ -130,11 +130,11 @@ try {
     if (b.error) throw new Error(b.error.message);
     return { plumbing: by['ZZ Auto Plumbing'], dental: by['ZZ Auto Dental'], booked: by['ZZ Auto Booked'] };
   }, TAG);
-  await page.waitForFunction(async (id) => (await import('./js/api.js')).state.leads.some((l) => l.id === id), ids.booked, { timeout: 10000 });
-  await page.evaluate(async () => (await import('./js/api.js')).loadAll());
+  await page.waitForFunction(async (id) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.leads.some((l) => l.id === id), ids.booked, { timeout: 10000 });
+  await page.evaluate(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).loadAll());
 
   /* ------------------------------------------------- inbox: live + send */
-  await page.waitForFunction(async () => (await import('./js/api.js')).state.connection === 'live', null, { timeout: 15000 });
+  await page.waitForFunction(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.connection === 'live', null, { timeout: 15000 });
   await nav(page, `inbox/${ids.dental}`);
   await page.waitForSelector('.inbox-msg.is-in');
   const inboundText = await page.textContent('.inbox-msg.is-in .inbox-bubble');
@@ -146,7 +146,7 @@ try {
 
   const other = await openApp();
   await other.evaluate(async (id) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { error } = await sb.from('messages').insert({ lead_id: id, direction: 'in', channel: 'sms', body: 'Also, do you work weekends?', status: 'received' });
     if (error) throw new Error(error.message);
   }, ids.dental);
@@ -162,12 +162,12 @@ try {
   check(prev.includes('Priya') && !prev.includes('{first_name}'), 'composer previews rendered variables');
   await page.evaluate(() => { const t = document.querySelector('.inbox-input'); t.value = t.value.replace(' {first_name}', ''); t.dispatchEvent(new Event('input')); });
 
-  const sms = await page.evaluate(async () => (await import('./js/api.js')).state.sms);
+  const sms = await page.evaluate(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.sms);
   const manualBtn = sms?.configured ? 'button:has-text("Sent from my phone")' : 'button:has-text("Copy & mark sent")';
   await page.click(manualBtn);
   await page.waitForFunction(() => document.querySelector('.inbox-input').value === '', null, { timeout: 15000 });
   const sent = await page.evaluate(async (id) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const { data } = await sb.from('messages').select('body,status,direction').eq('lead_id', id).eq('direction', 'out').order('created_at', { ascending: false }).limit(1);
     return { row: data[0], clip: await navigator.clipboard.readText().catch(() => null) };
   }, ids.dental);
@@ -178,7 +178,7 @@ try {
 
   // Status change is one click
   await page.click('.inbox-thread-actions button:has-text("Interested")');
-  await page.waitForFunction(async (id) => (await import('./js/api.js')).state.leads.find((l) => l.id === id)?.status === 'interested', ids.dental, { timeout: 10000 });
+  await page.waitForFunction(async (id) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.leads.find((l) => l.id === id)?.status === 'interested', ids.dental, { timeout: 10000 });
   check(true, 'one-click status change from the thread');
   if (SHOTS) {
     await page.screenshot({ path: `${SHOTS}/inbox-thread-1280.png` });
@@ -210,7 +210,7 @@ try {
   await page.click('button:has-text("Sent, next")');
   await page.waitForSelector('.camp-step-done', { timeout: 15000 });
   const batchRow = await page.evaluate(async (id) => {
-    const { sb } = await import('./js/api.js');
+    const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const m = await sb.from('messages').select('body,status,template_id').eq('lead_id', id);
     const l = await sb.from('leads').select('status,sequence_step,next_followup_at,last_contacted_at').eq('id', id).single();
     return { m: m.data, l: l.data };
@@ -228,7 +228,7 @@ try {
   check(bk.up >= 1 && !bk.jsLink && bk.outcome, `bookings list upcoming, refuses javascript: links, offers outcomes (${JSON.stringify(bk)})`);
   const pastRow = page.locator('.book-item', { hasText: 'Alex Auto' });
   await pastRow.locator('button:has-text("Won")').click();
-  await page.waitForFunction(async (id) => (await import('./js/api.js')).state.leads.find((l) => l.id === id)?.status === 'won', ids.booked, { timeout: 10000 });
+  await page.waitForFunction(async (id) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.leads.find((l) => l.id === id)?.status === 'won', ids.booked, { timeout: 10000 });
   check(true, 'mark outcome (won) updates the lead');
 
   /* ------------------------------------------------------- playbook */
@@ -249,11 +249,11 @@ try {
   await page.evaluate(() => { try { localStorage.removeItem('wiseos.calc'); } catch { /* */ } });
 
   /* ------------------------------------------------------- settings */
-  originalCap = await page.evaluate(async () => (await import('./js/api.js')).state.settings.daily_cap);
+  originalCap = await page.evaluate(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.settings.daily_cap);
   await nav(page, 'settings');
   await page.fill('input[name=daily_cap]', String(originalCap + 1));
   await page.click('.set-savebar button[type=submit]');
-  await page.waitForFunction(async (v) => (await import('./js/api.js')).state.settings.daily_cap === v, originalCap + 1, { timeout: 10000 });
+  await page.waitForFunction(async (v) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.settings.daily_cap === v, originalCap + 1, { timeout: 10000 });
   const fresh = await openApp();
   await nav(fresh, 'settings');
   const reloaded = await fresh.inputValue('input[name=daily_cap]');
@@ -262,7 +262,7 @@ try {
   await fresh.fill('input[name=optout_text]', 'Bye');
   await fresh.click('.set-savebar button[type=submit]');
   await fresh.waitForTimeout(600);
-  const opt = await fresh.evaluate(async () => (await import('./js/api.js')).state.settings.optout_text);
+  const opt = await fresh.evaluate(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.settings.optout_text);
   check(/STOP/.test(opt), 'opt-out text without STOP is refused');
   await fresh.close();
 
@@ -293,7 +293,7 @@ try {
   // Clean up everything this run created, and restore settings.
   try {
     await page.evaluate(async ({ TAG, cap }) => {
-      const { sb } = await import('./js/api.js');
+      const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
       await sb.from('bookings').delete().like('cal_uid', `${TAG}%`);
       await sb.from('leads').delete().contains('tags', [TAG]);
       await sb.from('suppressions').delete().in('phone', ['+61400000201', '+61400000202', '+61400000203']);
