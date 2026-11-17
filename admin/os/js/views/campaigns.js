@@ -262,13 +262,13 @@ export default function campaigns(ctx = {}) {
   const root = el('div', { class: 'page camp' },
     el('header', { class: 'camp-head' },
       el('div', {}, el('div', { class: 'eyebrow' }, 'Outreach'), el('h1', { class: 'h1' }, 'Campaigns')),
-      el('p', { class: 'muted' }, 'One personal text at a time, sent in batches you have read first.')),
+      el('p', { class: 'camp-lede' }, 'One personal text at a time, sent in batches you have read first.')),
     el('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Campaign sections' },
-      TABS.map(([id, label, ic]) => el('button', {
+      TABS.map(([id, label]) => el('button', {
         class: `tab${id === tab ? ' is-active' : ''}`, role: 'tab', type: 'button',
         'aria-selected': id === tab ? 'true' : 'false',
         onClick: () => go(`#campaigns/${id}`)
-      }, icon(ic, 15), el('span', {}, label)))),
+      }, el('span', {}, label)))),
     body);
 
   let view;
@@ -294,7 +294,7 @@ function campaignPicker(onChange) {
 
 function batchTab() {
   const wrap = el('div', { class: 'stack' });
-  const setup = el('section', { class: 'card camp-setup' });
+  const setup = el('section', { class: 'section camp-sec camp-setup' });
   const review = el('div', { class: 'camp-review-slot' });
   wrap.append(setup, review);
   let count = null;
@@ -348,8 +348,8 @@ function batchTab() {
     const other = Object.entries(reasons).filter(([k]) => k !== 'no_hook');
 
     add(setup,
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'First texts'), el('h2', { class: 'h2' }, 'Send a batch')),
+      el('div', { class: 'section-head' },
+        el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'First texts'), el('h2', { class: 'h2' }, 'Send a batch')),
         smsStrip()),
       el('div', { class: 'camp-setup-grid' },
         campaignPicker(() => { count = null; renderSetup(); }),
@@ -359,12 +359,12 @@ function batchTab() {
       el('div', { class: 'camp-elig' },
         el('div', { class: 'camp-elig-main' },
           el('span', { class: 'camp-elig-num' }, num(eligible.length)),
-          el('span', {}, eligible.length === 1 ? ' lead ready for a first text' : ' leads ready for a first text')),
-        needHook ? el('button', { class: 'btn btn-ghost btn-sm camp-hook-link', type: 'button', onClick: () => go('#leads/needs-hook') },
-          icon('edit', 14), `${plural(needHook, 'lead')} waiting on a personal line · write them`) : null,
+          el('span', { class: 'camp-elig-label' }, eligible.length === 1 ? 'lead ready for a first text' : 'leads ready for a first text')),
+        needHook ? el('button', { class: 'link-btn camp-hook-link', type: 'button', onClick: () => go('#leads/needs-hook') },
+          el('span', { class: 'dot', 'aria-hidden': 'true' }), `${plural(needHook, 'lead')} waiting on a personal line. Write them`) : null,
         other.length ? el('p', { class: 'muted camp-elig-skip' },
           'Not eligible: ', other.map(([k, n]) => `${errText(k)}: ${n}`).join(' · ')) : null),
-      el('div', { class: 'row' },
+      el('div', { class: 'row camp-setup-go' },
         el('button', {
           class: 'btn btn-primary', type: 'button', disabled: !eligible.length || !templateId || null,
           onClick: () => {
@@ -404,7 +404,7 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
     const rendered = finalBody(renderTemplate(template?.body || '', lead, settings), settings, !!lead.last_reply_at);
     return { lead, original: rendered, text: rendered, include: true, result: null };
   });
-  const root = el('section', { class: 'card camp-review' });
+  const root = el('section', { class: 'section camp-sec camp-review' });
   const list = el('ol', { class: 'camp-msgs' });
   const foot = el('div', { class: 'camp-review-foot' });
   let mode = 'review';
@@ -428,20 +428,20 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
       if (r.ok) { ta.readOnly = true; inc.disabled = true; }
     };
     const meta = [l.suburb, l.industry].filter(Boolean).join(' · ');
-    const node = el('li', { class: 'camp-msg' },
+    const node = el('li', { class: 'camp-msg' }, el('div', { class: 'camp-msg-body' },
       el('div', { class: 'camp-msg-head' },
         el('label', { class: 'camp-msg-who' }, inc,
           el('span', {}, el('strong', {}, leadName(l)),
-            el('span', { class: 'muted camp-msg-meta' }, [meta, prettyPhone(l.phone)].filter(Boolean).join(' · ')))),
-        Number(l.est_monthly_value) > 0 ? badge(`${money(l.est_monthly_value)}/mo`, 'info') : null,
+            el('span', { class: 'camp-msg-meta' }, [meta, prettyPhone(l.phone)].filter(Boolean).join(' · ')))),
+        Number(l.est_monthly_value) > 0 ? el('span', { class: 'camp-msg-value' }, `${money(l.est_monthly_value)}/mo`) : null,
         resultSlot),
-      (l.hook || l.pain) ? el('div', { class: 'camp-msg-ctx' },
-        l.hook ? el('div', {}, el('span', { class: 'camp-msg-k' }, 'Your line'), el('span', {}, l.hook)) : null,
-        l.pain ? el('div', {}, el('span', { class: 'camp-msg-k' }, 'Pain'), el('span', {}, l.pain)) : null) : null,
+      (l.hook || l.pain) ? el('dl', { class: 'camp-msg-ctx' },
+        l.hook ? el('div', {}, el('dt', { class: 'camp-msg-k' }, 'Your line'), el('dd', {}, l.hook)) : null,
+        l.pain ? el('div', {}, el('dt', { class: 'camp-msg-k' }, 'Pain'), el('dd', {}, l.pain)) : null) : null,
       ta,
       el('div', { class: 'camp-msg-foot' }, counter,
-        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => { ta.value = it.original; ta.dispatchEvent(new Event('input')); } }, 'Reset')),
-      warnSlot);
+        el('button', { class: 'link-btn camp-reset', type: 'button', onClick: () => { ta.value = it.original; ta.dispatchEvent(new Event('input')); } }, 'Reset to template')),
+      warnSlot));
     return node;
   }
 
@@ -500,7 +500,7 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
     const show = () => {
       if (i >= queue.length) {
         stage.replaceChildren(el('div', { class: 'camp-step-done' },
-          el('div', { class: 'camp-step-icon' }, icon('check', 22)),
+          el('div', { class: 'camp-step-icon' }, icon('check', 28)),
           el('h3', { class: 'h2' }, sent ? `${plural(sent, 'text')} recorded` : 'Nothing recorded'),
           el('p', { class: 'muted' }, 'Replies land in the Inbox. Follow-ups are scheduled from today.'),
           el('div', { class: 'row' },
@@ -555,11 +555,11 @@ function reviewFlow({ leads, template, campaign, kind, onClose }) {
 
   list.append(...items.map(itemNode));
   add(root,
-    el('div', { class: 'card-head' },
-      el('div', {},
-        el('div', { class: 'eyebrow' }, kind === 'first' ? 'Review' : 'Review follow-ups'),
-        el('h2', { class: 'h2' }, `${plural(items.length, 'message')} · ${template?.name || ''}`)),
-      el('p', { class: 'muted camp-review-tip' }, 'Read each one as if you were the owner. Make it about their business.')),
+    el('div', { class: 'section-head' },
+      el('div', { class: 'stack' },
+        el('div', { class: 'eyebrow' }, kind === 'first' ? `Review · ${template?.name || ''}` : `Review follow-ups · ${template?.name || ''}`),
+        el('h2', { class: 'h2' }, `Read ${items.length === 1 ? 'this message' : `these ${items.length} messages`} before they go`)),
+      el('p', { class: 'muted camp-review-tip' }, 'Read each one as the owner would. Make it about their business.')),
     list, foot);
   updateFoot();
   root.onState = () => updateFoot();
@@ -583,13 +583,13 @@ function followupsTab() {
   function render() {
     const due = followupsDue();
     slot.replaceChildren();
-    slot.append(el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Due now'), el('h2', { class: 'h2' }, 'Follow-ups')),
+    slot.append(el('section', { class: 'section camp-sec' },
+      el('div', { class: 'section-head' },
+        el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'Due now'), el('h2', { class: 'h2' }, 'Follow-ups')),
         smsStrip()),
-      el('p', { class: 'muted' }, 'Leads who had a text, have not replied, and whose next step is due. Each follow-up should add something new, not just “bumping this”.')));
+      el('p', { class: 'camp-intro' }, 'Leads who had a text, have not replied, and whose next step is due. Each follow-up should add something new, not just “bumping this”.')));
     if (!due.length) {
-      slot.append(el('section', { class: 'card' }, emptyState({ icon: 'check', title: 'Nothing due', text: 'Follow-ups appear here on the day they are due.' })));
+      slot.append(emptyState({ icon: 'check', title: 'Nothing due', text: 'Follow-ups appear here on the day they are due.' }));
       return;
     }
     const groups = new Map();
@@ -611,18 +611,18 @@ function followupsTab() {
           } catch (err) { toast(`Could not skip: ${err?.message || err}`, 'bad'); }
         });
       };
-      slot.append(el('section', { class: 'card camp-fu' },
-        el('div', { class: 'card-head' },
-          el('div', {},
+      slot.append(el('section', { class: 'section camp-sec camp-fu' },
+        el('div', { class: 'section-head' },
+          el('div', { class: 'stack' },
             el('div', { class: 'eyebrow' }, `Step ${step}`),
             el('h3', { class: 'h2' }, tpl ? tpl.name : 'No template for this step')),
-          badge(`${leads.length} due`, 'warn')),
-        tpl ? el('p', { class: 'camp-fu-body muted' }, tpl.body) : el('p', { class: 'muted' }, `There is no active template with step ${step}. Add one under Sequence, or skip these.`),
+          el('span', { class: 'camp-fu-count' }, `${leads.length} due`)),
+        tpl ? el('p', { class: 'camp-fu-body' }, tpl.body) : el('p', { class: 'muted' }, `There is no active template with step ${step}. Add one under Sequence, or skip these.`),
         el('ul', { class: 'camp-fu-list' }, leads.map((l) => el('li', {},
           el('a', { href: `#leads/${l.id}` }, leadName(l)),
-          el('span', { class: 'muted' }, `due ${timeAgo(l.next_followup_at)}`),
+          el('span', { class: 'camp-fu-due' }, `due ${timeAgo(l.next_followup_at)}`),
           el('button', { class: 'btn btn-ghost btn-sm', type: 'button', 'aria-label': `Skip follow-up for ${leadName(l)}`, onClick: (e) => skip([l], e.currentTarget) }, 'Skip')))),
-        el('div', { class: 'row' },
+        el('div', { class: 'row camp-fu-go' },
           tpl ? el('button', { class: 'btn btn-primary', type: 'button', onClick: () => {
             reviewing = true;
             reviewSlot.replaceChildren(reviewFlow({ leads, template: tpl, campaign: null, kind: 'followup',
@@ -654,22 +654,23 @@ function sequenceTab() {
     const cold = templatesFor(c?.id, (t) => t.step < 90);
     const quick = templatesFor(c?.id, (t) => t.step >= 90);
     add(wrap,
-      el('section', { class: 'card' },
-        el('div', { class: 'card-head' },
-          el('div', {}, el('div', { class: 'eyebrow' }, 'Cold sequence'), el('h2', { class: 'h2' }, 'Templates')),
+      el('section', { class: 'section camp-sec' },
+        el('div', { class: 'section-head' },
+          el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'Cold sequence'), el('h2', { class: 'h2' }, 'Templates')),
           el('button', { class: 'btn btn-primary btn-sm', type: 'button', onClick: () => addTemplate(false) }, icon('plus', 15), 'Add step')),
-        el('div', { class: 'camp-setup-grid' }, c ? campaignPicker(render) : null),
-        el('p', { class: 'muted' },
-          'Step 0 is the first text; each later step goes the set number of days after the one before, only if they have not replied. ',
-          `Cold texts get “ - ${sender || 'sender name'}” added if the sender name is missing, and the opt-out if there is no STOP. The preview shows exactly what goes.`),
-        !sender ? el('p', { class: 'camp-warn-line' }, icon('alert', 14), ' No sender name is set. Add it in Settings so every text says who it is from.') : null),
+        el('div', { class: 'camp-seq-intro' },
+          c ? el('div', { class: 'camp-seq-pick' }, campaignPicker(render)) : null,
+          el('p', { class: 'camp-intro' },
+            'Step 0 is the first text; each later step goes the set number of days after the one before, only if they have not replied. ',
+            `Cold texts get “ - ${sender || 'sender name'}” added if the sender name is missing, and the opt-out if there is no STOP. The preview shows exactly what goes.`)),
+        !sender ? el('p', { class: 'camp-warn-line' }, el('span', { class: 'dot', 'aria-hidden': 'true' }), 'No sender name is set. Add it in Settings so every text says who it is from.') : null),
       ...cold.map((t) => templateCard(t, render)),
-      cold.length ? null : el('section', { class: 'card' }, emptyState({ icon: 'note', title: 'No sequence yet', text: 'Add a step 0 first text.' })),
-      el('section', { class: 'card' },
-        el('div', { class: 'card-head' },
-          el('div', {}, el('div', { class: 'eyebrow' }, 'Inbox'), el('h2', { class: 'h2' }, 'Quick replies')),
+      cold.length ? null : emptyState({ icon: 'note', title: 'No sequence yet', text: 'Add a step 0 first text.' }),
+      el('section', { class: 'section camp-sec camp-seq-quick' },
+        el('div', { class: 'section-head' },
+          el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'Inbox'), el('h2', { class: 'h2' }, 'Quick replies')),
           el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => addTemplate(true) }, icon('plus', 15), 'Add quick reply')),
-        el('p', { class: 'muted' }, 'One-tap replies in the Inbox for people who have already replied. Steps 90 and up.')),
+        el('p', { class: 'camp-intro' }, 'One-tap replies in the Inbox for people who have already replied. Steps 90 and up.')),
       ...quick.map((t) => templateCard(t, render)));
   }
 
@@ -779,9 +780,9 @@ function templateCard(t, rerender) {
 
   add(card,
     el('div', { class: 'camp-tpl-head' },
-      el('span', { class: 'camp-tpl-step' }, isQuick ? 'Reply' : `Step ${t.step}`),
+      el('span', { class: `camp-tpl-step${isQuick ? ' is-quick' : ''}` }, isQuick ? 'Reply' : String(t.step).padStart(2, '0')),
       name,
-      t.campaign_id ? badge(c && t.campaign_id === c.id ? 'This campaign' : 'Campaign', 'info') : badge('All campaigns', 'mute'),
+      el('span', { class: 'camp-tpl-scope' }, t.campaign_id ? (c && t.campaign_id === c.id ? 'This campaign' : 'One campaign') : 'All campaigns'),
       el('span', { class: 'spacer' }),
       el('label', { class: 'camp-check' }, active, el('span', {}, 'Active'))),
     el('div', { class: 'camp-tpl-grid' },
@@ -845,22 +846,22 @@ function campaignsTab() {
   const wrap = el('div', { class: 'stack' });
   function render() {
     wrap.replaceChildren(
-      el('div', { class: 'row' },
-        el('p', { class: 'muted' }, 'Group leads by niche or area so you can compare what works.'),
-        el('span', { class: 'spacer' }),
+      el('div', { class: 'section-head camp-cards-head' },
+        el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'Results'), el('h2', { class: 'h2' }, 'Campaign stats'),
+          el('p', { class: 'muted' }, 'Group leads by niche or area so you can compare what works.')),
         el('button', { class: 'btn btn-primary btn-sm', type: 'button', onClick: () => edit(null) }, icon('plus', 15), 'New campaign')));
     const list = campaignList();
     if (!list.length) {
-      wrap.append(el('section', { class: 'card' }, emptyState({ icon: 'board', title: 'No campaigns', text: 'Create one for your first niche.' })));
+      wrap.append(emptyState({ icon: 'board', title: 'No campaigns', text: 'Create one for your first niche.' }));
       return;
     }
     const msgs = statsCache || [];
     const rows = list.map((c) => ({ c, s: campaignStats(c.id, state.leads || [], msgs, state.bookings || []) }));
     const un = campaignStats(null, state.leads || [], msgs, state.bookings || []);
     if (un.leads) rows.push({ c: { id: null, name: 'No campaign', active: true, description: 'Leads not assigned to a campaign.' }, s: un });
-    wrap.append(el('div', { class: 'grid cols-2 camp-cards' }, rows.map(({ c, s }) => el('section', { class: `card camp-card${c.active ? '' : ' is-paused'}` },
-      el('div', { class: 'card-head' },
-        el('div', {},
+    wrap.append(el('div', { class: 'camp-cards' }, rows.map(({ c, s }) => el('section', { class: `camp-card${c.active ? '' : ' is-paused'}` },
+      el('div', { class: 'camp-card-head' },
+        el('div', { class: 'stack tight' },
           el('h2', { class: 'h2' }, c.name),
           c.description ? el('p', { class: 'muted camp-desc' }, c.description) : null),
         c.id ? el('div', { class: 'row' },

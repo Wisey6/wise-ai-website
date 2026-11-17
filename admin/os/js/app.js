@@ -195,14 +195,15 @@ function renderGate() {
   drawLong();
 
   const gate = el('div', { class: 'gate', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Wise AI OS is locked' },
+    el('div', { class: 'gate-top' },
+      el('div', { class: 'gate-brand' }, el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
+      el('div', { class: 'gate-lock', 'aria-hidden': 'true' }, icon('lock', 13), 'Locked')),
     el('div', { class: 'gate-time' }, clock, date),
     el('div', { class: 'gate-panel' },
-      el('div', { class: 'gate-id' },
-        el('div', { class: 'gate-avatar' }, el('img', { src: '../../favicon.png', alt: '' })),
-        el('div', { class: 'gate-name' }, 'Wise AI OS')),
       dots, live, hint, keypad),
     el('div', { class: 'gate-foot' },
       el('span', {}, 'Type or tap your PIN'),
+      el('span', { class: 'gate-sep', 'aria-hidden': 'true' }),
       longToggle)
   );
 

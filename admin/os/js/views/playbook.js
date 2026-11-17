@@ -164,12 +164,11 @@ function calculator(state) {
     );
   }
 
-  const card = el('section', { class: 'card play-calc', id: 'play-maths' },
-    el('div', { class: 'card-head' },
-      el('div', {},
-        el('div', { class: 'eyebrow' }, 'Campaign maths'),
-        el('h2', { class: 'h2' }, 'What your texting is worth'))),
-    el('p', { class: 'muted play-note' },
+  const card = el('section', { class: 'play-sec play-calc', id: 'play-maths', 'aria-labelledby': 'play-maths-h' },
+    el('header', { class: 'play-sec-head' },
+      el('div', { class: 'eyebrow' }, 'Campaign maths'),
+      el('h2', { class: 'h2 play-h2', id: 'play-maths-h' }, 'What your texting is worth')),
+    el('p', { class: 'play-note' },
       'The starting rates are placeholders, not benchmarks. Replace them with your own numbers once you have sent a couple of hundred texts. Changes are kept on this device.'),
     el('div', { class: 'play-calc-grid' },
       el('div', { class: 'play-calc-inputs' },
@@ -209,9 +208,9 @@ const ul = (...items) => el('ul', { class: 'play-list' }, ...items);
 const ol = (...items) => el('ol', { class: 'play-steps' }, ...items);
 
 function section(id, eyebrow, title, ...body) {
-  return el('section', { class: 'card play-sec', id: `play-${id}` },
-    el('div', { class: 'card-head' },
-      el('div', {}, el('div', { class: 'eyebrow' }, eyebrow), el('h2', { class: 'h2' }, title))),
+  return el('section', { class: 'play-sec', id: `play-${id}`, 'aria-labelledby': `play-${id}-h` },
+    el('header', { class: 'play-sec-head' },
+      el('div', { class: 'eyebrow' }, eyebrow), el('h2', { class: 'h2 play-h2', id: `play-${id}-h` }, title)),
     el('div', { class: 'play-body' }, ...body));
 }
 
@@ -280,8 +279,8 @@ export default function playbook(ctx = {}) {
     ));
 
   const compliance = section('compliance', 'Section 3', 'Australian compliance checklist',
-    el('p', { class: 'play-callout' }, icon('alert', 14),
-      ' A plain summary of the Spam Act 2003 as it applies to these texts. It is not legal advice. If anything is unclear for a specific case, get advice or read the ACMA guidance.'),
+    el('p', { class: 'callout is-warn play-callout' }, icon('alert', 15),
+      el('span', {}, 'A plain summary of the Spam Act 2003 as it applies to these texts. It is not legal advice. If anything is unclear for a specific case, get advice or read the ACMA guidance.')),
     el('ul', { class: 'play-checks' },
       check('Have consent before you send.',
         'Consent can be express or inferred. Here we rely on inferred consent from conspicuous publication: the business publishes the number for enquiries, there is no statement with it saying they do not want commercial messages, and the message is relevant to their business or role. A personal mobile someone has not published for business is out.'),
@@ -307,16 +306,16 @@ export default function playbook(ctx = {}) {
       script('Interested',
         'Great to hear, thanks Sam. Easiest is a 15 minute call so I can see how enquiries come in now and tell you honestly whether this is worth it for you. Here is my calendar: {booking_url}',
         'Send the link straight away. Mark the lead Interested.'),
-      script('"How much is it?"',
+      script('“How much is it?”',
         'Fair question. It depends on how many calls you get and what it needs to plug into, but most setups for a business your size are a one-off build plus a small monthly fee. I would rather give you a real number than a guess, so a 15 minute call is the quickest way. Does this week suit?',
         'Give a range if you have a productised offer with a set price. Never dodge twice.'),
-      script('"Who is this?"',
+      script('“Who is this?”',
         'Sorry, should have been clearer. Tyler from Wise AI, a small automation business in Brisbane. I found your number on your website and texted because of the reviews about missed calls. Happy to leave it there if it is not useful.',
         'Say where you got the number. Offer an easy exit. Most people relax once they know.'),
-      script('"Not now"',
+      script('“Not now”',
         'No worries at all, thanks for letting me know. Would it be OK if I checked back in a couple of months?',
         'If they say yes, set a reminder and note it. If they say no, mark them Lost and leave it.'),
-      script('STOP or "don’t text me"',
+      script('STOP or “don’t text me”',
         'Understood, I have taken you off the list. Sorry for the bother.',
         'One reply at most, then mark Do not contact. A STOP keyword is suppressed automatically; for plain-English requests do it yourself.')
     ));
@@ -359,22 +358,26 @@ export default function playbook(ctx = {}) {
     ));
 
   const nav = el('nav', { class: 'play-toc', 'aria-label': 'Playbook sections' },
-    TOC.map(([id, label]) => el('button', { class: 'play-toc-btn', type: 'button', onClick: () => go(id) }, label)));
+    el('div', { class: 'eyebrow play-toc-title' }, 'Contents'),
+    TOC.map(([id, label], i) => el('button', { class: 'play-toc-btn', type: 'button', onClick: () => go(id) },
+      el('span', { class: 'play-toc-n', 'aria-hidden': 'true' }, String(i + 1).padStart(2, '0')), el('span', {}, label))));
 
   return el('div', { class: 'page play' },
     el('header', { class: 'play-head' },
       el('div', { class: 'eyebrow' }, 'Playbook'),
       el('h1', { class: 'h1' }, 'How we win work'),
-      el('p', { class: 'muted play-lede' },
+      el('p', { class: 'play-lede' },
         'Personal, useful texts to businesses that publish their number, fast replies, and a short call. Read it once properly, then use it as a checklist.')),
-    nav,
-    system,
-    care,
-    calculator(state),
-    compliance,
-    replies,
-    rhythm,
-    clients,
-    company
+    el('div', { class: 'play-layout' },
+      nav,
+      el('div', { class: 'play-doc' },
+        system,
+        care,
+        calculator(state),
+        compliance,
+        replies,
+        rhythm,
+        clients,
+        company))
   );
 }
