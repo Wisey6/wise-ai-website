@@ -2,7 +2,7 @@
 // drawer, realtime, and screenshots at 375px and 1280px.
 //
 //   python3 -m http.server 8101 --bind 127.0.0.1 &
-//   OS_TEST_PASSWORD=... node admin/os/tests/shell.test.mjs
+//   OS_TEST_PASSWORD=... node os/tests/shell.test.mjs
 //   OS_TEST_PIN=... (optional) also unlocks once through the real PIN pad.
 //
 // Env: BASE (default http://127.0.0.1:8101), SHOTS (screenshot dir, optional).
@@ -16,7 +16,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8101';
-const URL = `${BASE}/admin/os/`;
+const URL = `${BASE}/os/`;
 const PASSWORD = process.env.OS_TEST_PASSWORD;
 const PIN = process.env.OS_TEST_PIN;
 const SHOTS = process.env.SHOTS || '';
@@ -166,7 +166,7 @@ try {
   await page.waitForTimeout(200);
   check((await page.evaluate(() => location.hash)) === hashBefore, 'clicking a planned section does not navigate');
   const roiHref = await page.locator('.rail-full a.nav-item', { hasText: 'ROI calculator' }).getAttribute('href');
-  check(roiHref === '../../roi.html', 'ROI calculator links to the public page');
+  check(roiHref === '../roi.html', 'ROI calculator links to the public page');
   await page.mouse.move(900, 500);
   await page.waitForTimeout(600);
   // `[` pins and unpins; the choice survives a reload.

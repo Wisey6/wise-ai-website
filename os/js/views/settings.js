@@ -2,9 +2,9 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num
-} from '../ui.js?v=20261118a';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus } from '../api.js?v=20261118a';
-import { FUNCTIONS_URL } from '../config.js?v=20261118a';
+} from '../ui.js?v=20261118b';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus } from '../api.js?v=20261118b';
+import { FUNCTIONS_URL } from '../config.js?v=20261118b';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -156,13 +156,13 @@ export default function settings() {
   const pinBtn = el('button', { class: 'btn btn-primary', type: 'submit' }, icon('lock', 15), 'Change PIN');
   pinForm.append(
     el('div', { class: 'grid cols-3 set-pin' },
-      field('Current PIN', pinFields.old), field('New PIN', pinFields.nw, '6 to 12 digits'), field('New PIN again', pinFields.again)),
+      field('Current PIN', pinFields.old), field('New PIN', pinFields.nw, '4 to 12 digits'), field('New PIN again', pinFields.again)),
     el('div', { class: 'row' }, pinBtn));
   pinForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const oldPin = pinFields.old.value.trim();
     const newPin = pinFields.nw.value.trim();
-    if (!/^\d{6,12}$/.test(newPin)) { toast('The new PIN must be 6 to 12 digits', 'bad'); return; }
+    if (!/^\d{4,12}$/.test(newPin)) { toast('The new PIN must be 4 to 12 digits', 'bad'); return; }
     if (newPin !== pinFields.again.value.trim()) { toast('The new PINs do not match', 'bad'); return; }
     if (newPin === oldPin) { toast('Pick a PIN that is different from the current one', 'bad'); return; }
     if (/^(\d)\1+$/.test(newPin) || '01234567890123'.includes(newPin) || '98765432109876'.includes(newPin)) { toast('Pick a PIN that is harder to guess', 'bad'); return; }
@@ -175,7 +175,7 @@ export default function settings() {
       }
       const msg = r.error === 'bad_pin' ? `Current PIN is wrong${r.remaining !== undefined ? ` (${r.remaining} tries left before a lockout)` : ''}`
         : r.error === 'locked' ? `Too many tries. Locked for ${Math.ceil((r.retry_after_s || 60) / 60)} min.`
-          : r.error === 'weak_pin' ? 'The new PIN must be 6 to 12 digits'
+          : r.error === 'weak_pin' ? 'The new PIN must be 4 to 12 digits'
             : `Could not change the PIN (${r.error})`;
       toast(msg, 'bad');
     });
@@ -286,7 +286,7 @@ export default function settings() {
     group('Data', 'Export and other tools', 'Everything you have, as a spreadsheet.',
       el('div', { class: 'row' },
         el('button', { class: 'btn btn-ghost', type: 'button', onClick: exportLeads }, icon('download', 15), `Export all leads (${num((state.leads || []).length)})`),
-        el('a', { class: 'btn btn-ghost', href: '../' }, icon('external', 15), 'Finance & projects (legacy HQ)'))));
+        el('a', { class: 'btn btn-ghost', href: '../admin/' }, icon('external', 15), 'Finance & projects (legacy HQ)'))));
 
   renderIntegrations();
   renderSup();

@@ -1,4 +1,4 @@
-// Phone normalisation to E.164. The frontend (admin/os/js/api.js) mirrors this exactly.
+// Phone normalisation to E.164. The frontend (os/js/api.js) mirrors this exactly.
 //   04XXXXXXXX  -> +614XXXXXXXX
 //   614XXXXXXXX -> +614XXXXXXXX
 //   +6104XXXXXXXX (i.e. "+61 04...") -> +614XXXXXXXX

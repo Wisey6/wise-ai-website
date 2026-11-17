@@ -2,7 +2,7 @@
 // live Supabase project. Creates its own rows (tagged), and deletes them at the end.
 //
 //   python3 -m http.server 8102 --bind 127.0.0.1 &
-//   OS_TEST_PASSWORD=… node admin/os/tests/views.test.mjs [shots-dir]
+//   OS_TEST_PASSWORD=… node os/tests/views.test.mjs [shots-dir]
 //
 // BASE overrides the URL. Errors from edge functions that are not deployed yet are
 // reported separately and do not fail the run (they come from the shared data layer).
@@ -10,7 +10,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-const BASE = process.env.BASE || 'http://127.0.0.1:8102/admin/os/';
+const BASE = process.env.BASE || 'http://127.0.0.1:8102/os/';
 const PASSWORD = process.env.OS_TEST_PASSWORD;
 const SHOTS = process.argv[2] || null;
 const TAG = 'zz-views-auto';

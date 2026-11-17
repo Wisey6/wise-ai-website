@@ -1,7 +1,7 @@
 // Operator notification email via Resend. Never throws: a failed email must not fail a request.
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-const HUB = "https://wise-ai.au/admin/os/";
+const HUB = "https://wise-ai.au/os/";
 
 export async function notify(db: SupabaseClient, subject: string, text: string, hash: string): Promise<boolean> {
   try {
