@@ -1,9 +1,10 @@
-// Settings: outreach rules, business details, PIN, integrations, opt-outs and exports.
+// Settings: outreach rules, business details, PIN, integrations, opt-outs, exports,
+// and the one-off import from the old HQ console (/admin).
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
-  copyText, busy, toCsv, downloadFile, plural, num
+  copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog
 } from '../ui.js?v=20261118c';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus } from '../api.js?v=20261118c';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow } from '../api.js?v=20261118c';
 import { FUNCTIONS_URL } from '../config.js?v=20261118c';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
@@ -21,6 +22,11 @@ export function validateSettings(p) {
   if ('booking_url' in p && p.booking_url && !/^https:\/\/\S+$/.test(p.booking_url)) return 'The booking link must start with https://';
   if ('notify_email' in p && p.notify_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.notify_email)) return 'That notification email does not look right.';
   if ('avg_deal_value' in p && !(p.avg_deal_value >= 0)) return 'Average deal value must be zero or more.';
+  if ('business_name' in p && !String(p.business_name || '').trim()) return 'Business name is required.';
+  if ('abn' in p && p.abn && String(p.abn).replace(/\s/g, '').length !== 11) return 'An ABN is 11 digits.';
+  if ('tax_rate' in p && !(p.tax_rate >= 0 && p.tax_rate < 1)) return 'Tax set-aside must be from 0 to 99%.';
+  if ('monthly_target' in p && !(p.monthly_target >= 0)) return 'Monthly revenue target must be zero or more.';
+  if ('owner_draw' in p && !(p.owner_draw >= 0)) return 'Monthly take-home must be zero or more.';
   return null;
 }
 
@@ -43,8 +49,16 @@ export default function settings() {
     require_hook: el('input', { type: 'checkbox', class: 'check', name: 'require_hook', checked: s.require_hook || null }),
     booking_url: input('booking_url', { type: 'url', value: s.booking_url || '', placeholder: 'https://cal.com/…' }),
     notify_email: input('notify_email', { type: 'email', value: s.notify_email || '', placeholder: 'you@wise-ai.au' }),
-    avg_deal_value: input('avg_deal_value', { type: 'number', min: 0, step: 100, value: s.avg_deal_value, inputmode: 'numeric' })
+    avg_deal_value: input('avg_deal_value', { type: 'number', min: 0, step: 100, value: s.avg_deal_value, inputmode: 'numeric' }),
+    business_name: input('business_name', { value: s.business_name || '', required: true, maxlength: 80 }),
+    abn: input('abn', { value: s.abn || '', placeholder: '12 345 678 901', inputmode: 'numeric', maxlength: 14 }),
+    gst_registered: el('input', { type: 'checkbox', class: 'check', name: 'gst_registered', checked: s.gst_registered || null }),
+    tax_rate: input('tax_rate', { type: 'number', min: 0, max: 99, step: 0.5, value: pct(s.tax_rate), inputmode: 'decimal' }),
+    monthly_target: input('monthly_target', { type: 'number', min: 0, step: 500, value: s.monthly_target ?? '', inputmode: 'numeric' }),
+    owner_draw: input('owner_draw', { type: 'number', min: 0, step: 100, value: s.owner_draw ?? '', inputmode: 'numeric' }),
+    proposal_terms: el('textarea', { class: 'input', name: 'proposal_terms', rows: 4, placeholder: 'e.g. 50% to start, 50% on handover. Monthly fees invoiced on the 1st, 14 days to pay. Cancel any time with 30 days notice.' })
   };
+  f.proposal_terms.value = s.proposal_terms || '';
   if (!TIMEZONES.includes(s.timezone)) f.timezone.append(el('option', { value: s.timezone }, s.timezone));
   f.timezone.value = s.timezone;
   const dayBoxes = DAYS.map(([d, label]) => {
@@ -63,7 +77,14 @@ export default function settings() {
     require_hook: f.require_hook.checked,
     booking_url: f.booking_url.value.trim() || null,
     notify_email: f.notify_email.value.trim() || null,
-    avg_deal_value: Number(f.avg_deal_value.value)
+    avg_deal_value: Number(f.avg_deal_value.value),
+    business_name: f.business_name.value.trim(),
+    abn: formatAbn(f.abn.value) || null,
+    gst_registered: f.gst_registered.checked,
+    tax_rate: f.tax_rate.value === '' ? 0 : Math.round(Number(f.tax_rate.value) * 100) / 10000,
+    monthly_target: Number(f.monthly_target.value) || 0,
+    owner_draw: Number(f.owner_draw.value) || 0,
+    proposal_terms: f.proposal_terms.value.trim() || null
   });
 
   const preview = el('p', { class: 'set-preview' });
@@ -76,7 +97,9 @@ export default function settings() {
     const patch = {};
     for (const [k, val] of Object.entries(v)) {
       const before = cur[k] ?? null;
-      const same = Array.isArray(val) ? JSON.stringify(val) === JSON.stringify([...(before || [])].sort((a, b) => a - b)) : String(val ?? '') === String(before ?? '');
+      const same = Array.isArray(val) ? JSON.stringify(val) === JSON.stringify([...(before || [])].sort((a, b) => a - b))
+        : typeof val === 'number' && before !== null && before !== '' ? Math.abs(val - Number(before)) < 1e-9
+          : String(val ?? '') === String(before ?? '');
       if (!same) patch[k] = val;
     }
     return patch;
@@ -110,7 +133,19 @@ export default function settings() {
             el('strong', {}, 'Require a personal line for first texts'),
             el('span', { class: 'set-toggle-hint' }, 'A lead with no hook cannot get a cold first text. Recommended: no generic blasts.')))),
       preview),
-    group('Business', 'Bookings and notifications', 'Where people book, where alerts go, and what a client is worth.',
+    group('Business', 'Business and targets', 'Used on proposals and invoices, and by Today and Runway to read the month.',
+      el('div', { class: 'form-grid' },
+        field('Business name', f.business_name, 'As it appears on proposals and invoices.'),
+        field('ABN', f.abn, 'Optional. 11 digits.'),
+        field('Monthly revenue target ($)', f.monthly_target, 'Today shows money in this month against it.'),
+        field('Monthly take-home needed ($)', f.owner_draw, 'What you need to pay yourself each month. Runway plans around it.'),
+        field('Tax set-aside (%)', f.tax_rate, 'Share of profit to put aside for tax.'),
+        el('label', { class: 'set-toggle set-toggle-inline' }, f.gst_registered,
+          el('span', {},
+            el('strong', {}, 'Registered for GST'),
+            el('span', { class: 'set-toggle-hint' }, 'Adds GST to invoices and proposal totals.'))),
+        el('div', { class: 'full' }, field('Default proposal terms', f.proposal_terms, 'Dropped into each new proposal. Cash on hand lives on the Runway page.')))),
+    group('Bookings', 'Bookings and notifications', 'Where people book, where alerts go, and what a client is worth.',
       el('div', { class: 'form-grid' },
         field('Booking link', f.booking_url, 'Your Cal.com page. Used by {booking_url} and “Send booking link”.'),
         field('Notification email', f.notify_email, 'Gets an email for each reply, booking and website lead.'),
@@ -119,7 +154,12 @@ export default function settings() {
 
   function resetForm() {
     const c = state.settings || {};
-    for (const k of ['sender_name', 'optout_text', 'daily_cap', 'send_start_hour', 'send_end_hour', 'timezone', 'avg_deal_value']) f[k].value = String(c[k] ?? '');
+    for (const k of ['sender_name', 'optout_text', 'daily_cap', 'send_start_hour', 'send_end_hour', 'timezone', 'avg_deal_value', 'monthly_target', 'owner_draw']) f[k].value = String(c[k] ?? '');
+    f.business_name.value = c.business_name || '';
+    f.abn.value = c.abn || '';
+    f.gst_registered.checked = !!c.gst_registered;
+    f.tax_rate.value = pct(c.tax_rate);
+    f.proposal_terms.value = c.proposal_terms || '';
     f.booking_url.value = c.booking_url || '';
     f.notify_email.value = c.notify_email || '';
     f.require_hook.checked = !!c.require_hook;
@@ -286,7 +326,9 @@ export default function settings() {
     group('Data', 'Export and other tools', 'Everything you have, as a spreadsheet.',
       el('div', { class: 'row' },
         el('button', { class: 'btn btn-ghost', type: 'button', onClick: exportLeads }, icon('download', 15), `Export all leads (${num((state.leads || []).length)})`),
-        el('a', { class: 'btn btn-ghost', href: '../admin/' }, icon('external', 15), 'Finance & projects (legacy HQ)'))));
+        el('a', { class: 'btn btn-ghost', href: '../admin/', dataset: { legacy: '' } }, icon('external', 15), 'Old HQ console (retire it once imported)'))),
+    group('Data', 'Import from the old HQ console', 'Brings clients, deals, projects, tasks, income, costs and library entries across from /admin, with their links kept. Run it once; after that the old console can be retired.',
+      importTool()));
 
   renderIntegrations();
   renderSup();
@@ -326,4 +368,382 @@ function integration(name, status, lead, steps, urls) {
           el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: () => copyText(url, 'URL copied') }, icon('copy', 14), 'Copy'))))));
   d.addEventListener('toggle', () => { if (d.open) openInt.add(name); else openInt.delete(name); });
   return d;
+}
+
+/* ===================================================== business helpers */
+const pct = (v) => (v === null || v === undefined || v === '' ? '' : String(Math.round(Number(v) * 10000) / 100));
+/** "12345678901" → "12 345 678 901"; anything else is returned trimmed. */
+export function formatAbn(v) {
+  const d = String(v || '').replace(/\s/g, '');
+  return /^\d{11}$/.test(d) ? `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8)}` : String(v || '').trim();
+}
+
+/* ================================================= HQ console import
+   The old console (/admin) keeps one JSON object: {meta, settings, clients, deals,
+   projects, tasks, income, expenses, subscriptions, outputs, library} with ids like
+   "c_1a2b3c4d" and camelCase links (clientId, projectId). Its Settings page exports
+   that object as plain JSON, or sealed in an envelope {v, kdf, iterations, salt, iv, ct}.
+   Everything below up to importTool() is pure, and unit-tested. */
+
+export const HQ_MARK = 'Imported from the old HQ console';
+const refLine = (id) => `${HQ_MARK} (ref ${id})`;
+const REF_RE = /Imported from the old HQ console \(ref ([\w-]+)\)/;
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const date = (v) => (ISO.test(String(v || '').slice(0, 10)) ? String(v).slice(0, 10) : null);
+const str = (v) => (v === null || v === undefined ? '' : String(v).trim());
+const amt = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0; };
+const joinNotes = (...parts) => parts.map(str).filter(Boolean).join('\n\n') || null;
+const lower = (v) => str(v).toLowerCase();
+
+export const HQ_CLIENT_STATUS = { active: 'active', building: 'active', 'pro-bono': 'active', paused: 'paused', prospect: 'paused', past: 'past' };
+export const HQ_DEAL_STAGE = { lead: 'qualified', qualified: 'qualified', proposal: 'proposal', won: 'won', lost: 'lost' };
+export const HQ_PROJECT_STATUS = { active: 'active', planned: 'planned', blocked: 'waiting', shipped: 'done', archived: 'done' };
+export const HQ_INCOME_STATUS = { paid: 'paid', invoiced: 'invoiced', unbilled: 'draft' };
+export const HQ_COST_CATEGORY = {
+  'ai / tooling': 'software', 'cloud / email': 'software', 'domain / hosting': 'hosting', 'software / marketing': 'marketing',
+  'hardware / asset': 'equipment', 'finance repayment': 'finance', 'govt / registration': 'government', other: 'other'
+};
+const TASK_STATES = ['todo', 'doing', 'review', 'blocked', 'done'];
+const PRIORITIES = ['low', 'medium', 'high'];
+const LIB_KINDS = ['playbook', 'standard', 'knowledge', 'research', 'brand', 'template', 'case_study', 'other'];
+const OUTPUT_KIND = { runbook: 'playbook', report: 'other', proposal: 'template', contract: 'template', deliverable: 'other', demo: 'other', invoice: 'other', other: 'other' };
+const cap = (s) => str(s).replace(/^\w/, (m) => m.toUpperCase());
+
+/** Is this the encrypted backup envelope rather than the plain export? */
+export const isHqEnvelope = (raw) => Boolean(raw && typeof raw === 'object' && raw.ct && raw.iv && raw.salt);
+
+/** Validate and normalise the parsed file. → {data} or {error}. */
+export function readHqExport(raw) {
+  if (isHqEnvelope(raw)) return { error: 'encrypted' };
+  const keys = ['clients', 'deals', 'projects', 'tasks', 'income', 'expenses', 'subscriptions', 'outputs', 'library'];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !keys.some((k) => Array.isArray(raw[k]))) return { error: 'shape' };
+  const data = { settings: raw.settings || {}, meta: raw.meta || {} };
+  for (const k of keys) data[k] = Array.isArray(raw[k]) ? raw[k].filter((r) => r && typeof r === 'object') : [];
+  return { data };
+}
+
+/** One old record → one new row (without its link ids, which are resolved at insert time). */
+export const mapHq = {
+  client(c) {
+    return {
+      row: {
+        name: str(c.name) || 'Unnamed client', contact_name: str(c.contact) || null, email: str(c.email) || null,
+        suburb: str(c.location) || null, status: HQ_CLIENT_STATUS[lower(c.status)] || 'active',
+        monthly_value: Math.max(0, amt(c.mrr)), started_on: date(c.started),
+        notes: joinNotes(c.notes, c.code ? `Client ID ${str(c.code)}` : '', lower(c.status) === 'prospect' ? 'Was a prospect in the old console.' : '', refLine(c.id)),
+        tags: ['hq-import', ...(lower(c.status) === 'prospect' ? ['prospect'] : [])],
+        archived: Boolean(c.archived)
+      },
+      links: {}
+    };
+  },
+  deal(d) {
+    const stage = HQ_DEAL_STAGE[lower(d.stage)] || 'qualified';
+    const p = Number(d.probability);
+    return {
+      row: {
+        title: str(d.name) || 'Untitled deal', stage, value: Math.max(0, amt(d.value)),
+        probability: Number.isFinite(p) && str(d.probability) !== '' ? Math.min(100, Math.max(0, Math.round(p))) : (stage === 'won' ? 100 : stage === 'lost' ? 0 : 30),
+        next_step: str(d.nextAction) || null, next_step_on: ['won', 'lost'].includes(stage) ? null : date(d.due),
+        closed_on: ['won', 'lost'].includes(stage) ? date(d.due) : null,
+        notes: joinNotes(d.notes, refLine(d.id)), archived: Boolean(d.archived)
+      },
+      links: { client_id: d.clientId || null }
+    };
+  },
+  project(p) {
+    return {
+      row: {
+        name: str(p.name) || 'Untitled project', status: HQ_PROJECT_STATUS[lower(p.status)] || 'active',
+        started_on: date(p.start), due_on: date(p.due), description: joinNotes(p.notes, refLine(p.id)),
+        archived: Boolean(p.archived) || lower(p.status) === 'archived'
+      },
+      links: { client_id: p.clientId || null }
+    };
+  },
+  task(t) {
+    const st = TASK_STATES.includes(lower(t.status)) ? lower(t.status) : 'todo';
+    return {
+      row: {
+        title: str(t.title) || 'Untitled task', state: st, priority: PRIORITIES.includes(lower(t.priority)) ? lower(t.priority) : 'medium',
+        due_on: date(t.due), done_at: st === 'done' ? `${date(t.due) || date(t.archivedAt) || new Date().toISOString().slice(0, 10)}T00:00:00Z` : null,
+        notes: joinNotes(t.notes, refLine(t.id))
+      },
+      links: { project_id: t.projectId || null, client_id: t.clientId || null }
+    };
+  },
+  income(i) {
+    const status = HQ_INCOME_STATUS[lower(i.status)] || 'invoiced';
+    const type = lower(i.type) || 'other';
+    return {
+      row: {
+        description: [cap(type), str(i.client) && !i.clientId ? str(i.client) : ''].filter(Boolean).join(' · ') || 'Income',
+        amount: Math.max(0, amt(i.amount)), gst: 0, kind: type === 'retainer' ? 'retainer' : 'one_off', status,
+        invoice_no: str(i.invoice) || null, issued_on: date(i.date), due_on: date(i.due), paid_on: status === 'paid' ? date(i.date) : null,
+        notes: joinNotes(i.notes, i.paidVia ? `Paid via ${str(i.paidVia)}` : '', refLine(i.id))
+      },
+      links: { client_id: i.clientId || null }
+    };
+  },
+  expense(x) {
+    return {
+      row: {
+        name: str(x.item) || 'Expense', vendor: str(x.vendor) || null, category: HQ_COST_CATEGORY[lower(x.category)] || 'other',
+        amount: Math.max(0, amt(x.amount)), cadence: 'one_off', incurred_on: date(x.date), active: true,
+        notes: joinNotes(x.notes, x.paidVia ? `Paid via ${str(x.paidVia)}` : '', x.deductible ? `Deductible: ${str(x.deductible)}` : '', refLine(x.id))
+      },
+      links: {}
+    };
+  },
+  subscription(x) {
+    const cycle = lower(x.cycle) || 'monthly';
+    const a = Math.max(0, amt(x.amount));
+    const conv = cycle === 'quarterly' ? { cadence: 'monthly', amount: Math.round((a / 3) * 100) / 100, note: `Was ${money(a)} a quarter, shown as a monthly cost.` }
+      : cycle === 'weekly' ? { cadence: 'monthly', amount: Math.round(((a * 52) / 12) * 100) / 100, note: `Was ${money(a)} a week, shown as a monthly cost.` }
+        : { cadence: ['yearly', 'annual'].includes(cycle) ? 'yearly' : 'monthly', amount: a, note: '' };
+    return {
+      row: {
+        name: str(x.item) || 'Subscription', vendor: str(x.vendor) || null, category: HQ_COST_CATEGORY[lower(x.category)] || 'software',
+        amount: conv.amount, cadence: conv.cadence, next_due: date(x.nextDue), active: lower(x.status || 'active') !== 'cancelled',
+        notes: joinNotes(x.notes, conv.note, x.paidVia ? `Paid via ${str(x.paidVia)}` : '', refLine(x.id))
+      },
+      links: {}
+    };
+  },
+  library(e) {
+    const path = str(e.path);
+    const url = /^https?:\/\/\S+$/i.test(path) ? path : null;
+    const tags = String(Array.isArray(e.tags) ? e.tags.join(',') : e.tags || '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+    return {
+      row: {
+        title: str(e.title) || 'Untitled', kind: LIB_KINDS.includes(lower(e.kind)) ? lower(e.kind) : 'other',
+        body: joinNotes(e.notes, path && !url ? `Where it lives: ${path}` : '', refLine(e.id)), url,
+        tags: [...new Set([...tags, 'hq-import'])], archived: Boolean(e.archived)
+      },
+      links: {}
+    };
+  },
+  output(o) {
+    const path = str(o.path);
+    const url = /^https?:\/\/\S+$/i.test(path) ? path : null;
+    return {
+      row: {
+        title: str(o.title) || 'Untitled', kind: OUTPUT_KIND[lower(o.kind)] || 'other',
+        body: joinNotes(o.notes, `${cap(o.kind || 'output')} from the old console${o.status ? `, ${lower(o.status)}` : ''}${date(o.date) ? `, ${date(o.date)}` : ''}.`, path && !url ? `Where it lives: ${path}` : '', refLine(o.id)),
+        url, tags: ['hq-import', 'output'], archived: Boolean(o.archived)
+      },
+      links: { client_id: o.clientId || null }
+    };
+  }
+};
+
+/** Import order: parents before children, so links resolve. */
+export const HQ_STEPS = [
+  { key: 'clients', from: 'clients', table: 'clients', map: 'client', label: 'Clients', name: 'name' },
+  { key: 'deals', from: 'deals', table: 'deals', map: 'deal', label: 'Deals', name: 'title' },
+  { key: 'projects', from: 'projects', table: 'projects', map: 'project', label: 'Projects', name: 'name' },
+  { key: 'tasks', from: 'tasks', table: 'tasks', map: 'task', label: 'Tasks', name: 'title' },
+  { key: 'income', from: 'income', table: 'income', map: 'income', label: 'Income', name: null },
+  { key: 'expenses', from: 'expenses', table: 'costs', map: 'expense', label: 'Expenses → Costs', name: 'name' },
+  { key: 'subscriptions', from: 'subscriptions', table: 'costs', map: 'subscription', label: 'Subscriptions → Costs', name: 'name' },
+  { key: 'library', from: 'library', table: 'library', map: 'library', label: 'Library', name: 'title' },
+  { key: 'outputs', from: 'outputs', table: 'library', map: 'output', label: 'Outputs → Library', name: 'title' }
+];
+const NOTE_FIELD = { clients: 'notes', deals: 'notes', projects: 'description', tasks: 'notes', income: 'notes', costs: 'notes', library: 'body' };
+
+/** Old ids already imported, from the marker line: → Map(oldId → {table, id}). */
+export function priorHqRefs(existing) {
+  const out = new Map();
+  for (const [table, f] of Object.entries(NOTE_FIELD)) {
+    for (const r of existing[table] || []) {
+      const m = REF_RE.exec(r[f] || '');
+      if (m) out.set(m[1], { table, id: r.id });
+    }
+  }
+  return out;
+}
+
+/** A key for "the same record" when skipping duplicates by name. */
+function dupKey(step, row) {
+  if (step.table === 'income') return row.invoice_no ? `inv:${lower(row.invoice_no)}` : `amt:${row.amount}:${row.issued_on || ''}:${lower(row.description)}`;
+  if (step.table === 'tasks') return null; // tasks repeat by name across projects; only the ref marker counts
+  return lower(row[step.name]);
+}
+function existingKeys(step, rows) {
+  const m = new Map();
+  for (const r of rows || []) {
+    const k = dupKey(step, r);
+    if (k && !m.has(k)) m.set(k, r.id);
+  }
+  return m;
+}
+
+/**
+ * Work out exactly what an import would do.
+ * existing: {clients, deals, projects, tasks, income, costs, library} (rows already in the hub).
+ * opts: {includeArchived = true, skipDuplicates = true}
+ * → {steps:[{key,label,table,found,archived,toImport,already,dupes}], items:[{step,ref,row,links,reuse?}], notes:[], previous:n}
+ * An item with `reuse` is not inserted; its old id simply maps onto the existing row.
+ */
+export function planHqImport(data, existing = {}, { includeArchived = true, skipDuplicates = true } = {}) {
+  const prior = priorHqRefs(existing);
+  const items = [];
+  const steps = [];
+  const notes = [];
+  const seenNames = {};
+  for (const step of HQ_STEPS) {
+    const rows = data[step.from] || [];
+    const keys = existingKeys(step, existing[step.table]);
+    seenNames[step.table] ||= new Map();
+    const s = { key: step.key, label: step.label, table: step.table, found: rows.length, archived: 0, toImport: 0, already: 0, dupes: 0, skipped: 0 };
+    for (const old of rows) {
+      const isArchived = Boolean(old.archived);
+      if (isArchived) s.archived++;
+      const ref = str(old.id) || null;
+      if (ref && prior.has(ref)) { s.already++; items.push({ step: step.key, table: step.table, ref, reuse: prior.get(ref).id }); continue; }
+      if (isArchived && !includeArchived) { s.skipped++; continue; }
+      if (step.key === 'income' && Number(old.amount) < 0) { s.skipped++; notes.push(`An income row of ${money(old.amount)} is negative and was left out.`); continue; }
+      const mapped = mapHq[step.map](old);
+      const k = dupKey(step, mapped.row);
+      if (skipDuplicates && k && (keys.has(k) || seenNames[step.table].has(k))) {
+        s.dupes++;
+        items.push({ step: step.key, table: step.table, ref, reuse: keys.get(k) || null, sameAs: keys.has(k) ? null : seenNames[step.table].get(k) });
+        continue;
+      }
+      if (k) seenNames[step.table].set(k, ref);
+      s.toImport++;
+      items.push({ step: step.key, table: step.table, ref, row: mapped.row, links: mapped.links });
+    }
+    steps.push(s);
+  }
+  const prospects = (data.clients || []).filter((c) => lower(c.status) === 'prospect').length;
+  if (prospects) notes.push(`${plural(prospects, 'prospect')} become${prospects === 1 ? 's a paused client' : ' paused clients'} tagged “prospect”. The hub tracks prospects as leads or deals, so move them over when you next talk.`);
+  const odd = (data.subscriptions || []).filter((x) => ['quarterly', 'weekly'].includes(lower(x.cycle))).length;
+  if (odd) notes.push(`${plural(odd, 'subscription')} billed quarterly or weekly ${odd === 1 ? 'is' : 'are'} shown as a monthly cost (the note on each keeps the original amount).`);
+  const unbilled = (data.income || []).filter((i) => lower(i.status) === 'unbilled').length;
+  if (unbilled) notes.push(`${plural(unbilled, 'unbilled income row')} come${unbilled === 1 ? 's' : ''} in as draft invoices.`);
+  if ((data.outputs || []).length) notes.push('Outputs (proposals, contracts, runbooks and so on) become library entries tagged “output”: the new Proposals section starts fresh.');
+  if ((data.tasks || []).some((t) => t.archived)) notes.push('Tasks have no archive in the hub: archived tasks you import come in as they were.');
+  if (data.settings && (data.settings.quitLine || data.settings.quitLine === 0)) notes.push(`The old quit line (${money(data.settings.quitLine)} a month) is not copied. Set “Monthly take-home needed” under Business above.`);
+  const dangling = (data.deals || []).concat(data.projects || [], data.tasks || [], data.income || [], data.outputs || [])
+    .filter((r) => (r.clientId && !(data.clients || []).some((c) => c.id === r.clientId)) || (r.projectId && !(data.projects || []).some((p) => p.id === r.projectId))).length;
+  if (dangling) notes.push(`${plural(dangling, 'record')} point${dangling === 1 ? 's' : ''} at a client or project that is not in the file; ${dangling === 1 ? 'it comes' : 'they come'} in unlinked.`);
+  const previous = [...prior.keys()].length;
+  return { steps, items, notes, previous };
+}
+
+/**
+ * Carry out a plan. save(table, row) → saved row (saveRow in the app).
+ * Old ids are mapped to new ids as each row lands, so links are kept.
+ * → {inserted: {table: n}, idMap: Map, errors: [msg]}
+ */
+export async function runHqImport(plan, save, onProgress) {
+  const idMap = new Map();
+  const inserted = {};
+  const errors = [];
+  let done = 0;
+  const total = plan.items.filter((i) => i.row).length;
+  for (const it of plan.items) {
+    if (!it.row) {
+      const to = it.reuse || (it.sameAs ? idMap.get(it.sameAs) : null);
+      if (it.ref && to) idMap.set(it.ref, to);
+      continue;
+    }
+    const row = { ...it.row };
+    for (const [k, old] of Object.entries(it.links || {})) row[k] = old ? (idMap.get(old) || null) : null;
+    try {
+      const saved = await save(it.table, row);
+      if (it.ref) idMap.set(it.ref, saved.id);
+      inserted[it.table] = (inserted[it.table] || 0) + 1;
+    } catch (e) {
+      errors.push(`${it.table}: ${row.name || row.title || row.description || it.ref}: ${e.message}`);
+    }
+    done++;
+    onProgress?.(done, total);
+  }
+  return { inserted, idMap, errors };
+}
+
+/* ------------------------------------------------------- the tool (UI) */
+function importTool() {
+  const box = el('div', { class: 'imp stack' });
+  let data = null;
+  let fileName = '';
+  const opts = { includeArchived: true, skipDuplicates: true };
+  const existing = () => ({ clients: state.clients, deals: state.deals, projects: state.projects, tasks: state.tasks, income: state.income, costs: state.costs, library: state.library });
+
+  const fileIn = el('input', { type: 'file', accept: '.json,application/json', class: 'imp-file', id: 'hq-import-file', 'aria-label': 'Old HQ console export (JSON)' });
+  fileIn.addEventListener('change', async () => {
+    const file = fileIn.files?.[0];
+    if (!file) return;
+    fileName = file.name;
+    let raw;
+    try { raw = JSON.parse(await file.text()); } catch { data = null; drawStart('That file is not valid JSON. Export it again from the old console.'); return; }
+    const res = readHqExport(raw);
+    if (res.error === 'encrypted') { data = null; drawStart('This is the encrypted backup. Open the old console, unlock it, and use Settings → Plain JSON export, then pick that file here.'); return; }
+    if (res.error) { data = null; drawStart('That file does not look like an export from the old HQ console.'); return; }
+    data = res.data;
+    drawPreview();
+  });
+
+  function drawStart(err) {
+    fileIn.value = '';
+    box.replaceChildren(
+      el('div', { class: 'imp-drop' },
+        el('ol', { class: 'set-steps' },
+          el('li', {}, 'Open the old console at ', el('a', { href: '../admin/', target: '_blank', rel: 'noopener' }, '/admin'), ' and unlock it.'),
+          el('li', {}, 'In its Settings, choose ', el('strong', {}, 'Plain JSON export'), '. An encrypted backup will not work here: export it as plain JSON first.'),
+          el('li', {}, 'Pick that file below. You see exactly what will come across before anything is saved.')),
+        el('label', { class: 'field' }, el('span', { class: 'field-label' }, 'Export file'), fileIn),
+        err ? el('div', { class: 'callout is-warn', role: 'alert' }, icon('alert', 16), el('span', {}, err)) : null,
+        el('p', { class: 'small muted' }, 'The file stays on this device and is read in the browser. Delete it once the import is done: it is not encrypted.')));
+  }
+
+  function drawPreview() {
+    const plan = planHqImport(data, existing(), opts);
+    const total = plan.steps.reduce((t, s) => t + s.toImport, 0);
+    const box1 = el('input', { type: 'checkbox', class: 'check', name: 'imp-archived', checked: opts.includeArchived || null, onChange: (e) => { opts.includeArchived = e.target.checked; drawPreview(); } });
+    const box2 = el('input', { type: 'checkbox', class: 'check', name: 'imp-dupes', checked: opts.skipDuplicates || null, onChange: (e) => { opts.skipDuplicates = e.target.checked; drawPreview(); } });
+    const go = el('button', { type: 'button', class: 'btn btn-primary', disabled: !total || null, dataset: { act: 'import' } }, icon('upload', 15), total ? `Import ${plural(total, 'record')}` : 'Nothing new to import');
+    const progress = el('p', { class: 'small muted', role: 'status' });
+    go.addEventListener('click', async () => {
+      const ok = await confirmDialog('Import from the old console?', `${plural(total, 'record')} will be added to the hub. Records already imported are skipped, so running it again is safe.`, { confirmLabel: 'Import', danger: false });
+      if (!ok) return;
+      await busy(go, async () => {
+        const fresh = planHqImport(data, existing(), opts);
+        const res = await runHqImport(fresh, saveRow, (d, t) => { progress.textContent = `Saving ${d} of ${t}…`; });
+        drawDone(res);
+      });
+    });
+    box.replaceChildren(
+      el('p', { class: 'small muted' }, `From ${fileName || 'the export'}${data.meta?.updated ? `, last updated ${data.meta.updated}` : ''}.`),
+      plan.previous ? el('div', { class: 'callout is-info', dataset: { imp: 'previous' } }, icon('alert', 16),
+        el('span', {}, `An earlier import is already here (${plural(plan.previous, 'record')}). Those records are skipped, so nothing comes across twice.`)) : null,
+      el('div', { class: 'table-wrap' }, el('table', { class: 'table imp-table' },
+        el('thead', {}, el('tr', {}, el('th', {}, 'From the old console'), el('th', { class: 'num' }, 'In file'), el('th', { class: 'num' }, 'Will import'), el('th', {}, 'Skipped'))),
+        el('tbody', {}, plan.steps.filter((s) => s.found).map((s) => el('tr', { dataset: { step: s.key } },
+          el('td', {}, s.label), el('td', { class: 'num' }, num(s.found)), el('td', { class: 'num', dataset: { n: 'import' } }, num(s.toImport)),
+          el('td', { class: 'small muted' }, [s.already ? `${s.already} imported before` : '', s.dupes ? `${s.dupes} already in the hub by name` : '', s.skipped ? `${s.skipped} archived or not usable` : ''].filter(Boolean).join(' · ') || '–')))))),
+      el('div', { class: 'imp-opts' },
+        el('label', {}, box1, el('span', {}, 'Include archived records (they come in archived)')),
+        el('label', {}, box2, el('span', {}, 'Skip anything already in the hub with the same name (links still point at the existing record)'))),
+      plan.notes.length ? el('div', { class: 'stack tight' }, el('span', { class: 'field-label' }, 'Worth knowing'), el('ul', { class: 'imp-notes' }, plan.notes.map((n) => el('li', {}, n)))) : null,
+      el('div', { class: 'row' }, go, el('button', { type: 'button', class: 'btn btn-ghost', onClick: () => { data = null; drawStart(); } }, 'Choose another file')),
+      progress);
+  }
+
+  function drawDone(res) {
+    const n = Object.values(res.inserted).reduce((t, v) => t + v, 0);
+    box.replaceChildren(
+      el('div', { class: `callout ${res.errors.length ? 'is-warn' : 'is-ok'}`, role: 'status', dataset: { imp: 'done' } }, icon(res.errors.length ? 'alert' : 'check', 16),
+        el('span', {}, `Imported ${plural(n, 'record')}${Object.keys(res.inserted).length ? ` (${Object.entries(res.inserted).map(([t, v]) => `${v} ${t.replace('_', ' ')}`).join(', ')})` : ''}.${res.errors.length ? ` ${plural(res.errors.length, 'record')} could not be saved.` : ' The old console can now be retired.'}`)),
+      res.errors.length ? el('ul', { class: 'imp-notes' }, res.errors.slice(0, 20).map((e) => el('li', {}, e))) : null,
+      el('div', { class: 'row' },
+        el('a', { class: 'btn btn-ghost btn-sm', href: '#clients' }, 'Clients'), el('a', { class: 'btn btn-ghost btn-sm', href: '#pipeline' }, 'Pipeline'),
+        el('a', { class: 'btn btn-ghost btn-sm', href: '#income' }, 'Income'), el('a', { class: 'btn btn-ghost btn-sm', href: '#library' }, 'Library'),
+        el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: () => { data = null; drawStart(); } }, 'Import another file')));
+  }
+
+  drawStart();
+  return box;
 }

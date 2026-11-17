@@ -336,7 +336,7 @@ export default function library(ctx) {
           (e.tags || []).length ? el('span', { class: 'truncate' }, (e.tags || []).slice(0, 3).join(', ')) : null,
           el('span', { class: 'lib-item-when' }, timeAgo(e.updated_at || e.created_at)))))));
   }
-  const drawSide = () => { drawChips(); drawList(); };
+  const drawSide = () => { root.classList.toggle('is-empty', !state.library.length); drawChips(); drawList(); };
 
   const side = el('aside', { class: 'lib-side', 'aria-label': 'Library list' },
     el('label', { class: 'lib-search-wrap' }, icon('search', 15), search),

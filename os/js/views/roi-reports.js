@@ -297,10 +297,10 @@ function listView() {
 
     fill(due, dueList.length ? el('section', { class: 'section' },
       el('div', { class: 'section-head' }, el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Due now'), el('h2', { class: 'h2' }, 'Clients waiting on their numbers'))),
-      el('ul', { class: 'dl-due' }, dueList.map((c) => {
+      el('ul', { class: 'rr-due' }, dueList.map((c) => {
         const last = st.roi_reports.filter((r) => r.client_id === c.id).map(reportDate).sort().pop();
         return el('li', {},
-          el('a', { href: `#clients/${c.id}`, class: 'dl-due-name' }, c.name),
+          el('a', { href: `#clients/${c.id}`, class: 'rr-due-name' }, c.name),
           el('span', { class: 'muted small' }, last ? `Last report ${fmtDate(last)}` : 'No report yet'),
           el('a', { class: 'btn btn-ghost btn-sm', href: `#roi-reports/new/${c.id}` }, icon('edit', 13), 'Write it'));
       }))) : null);

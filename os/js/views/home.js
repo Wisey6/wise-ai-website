@@ -615,8 +615,9 @@ export default function home(ctx) {
   const { state } = ctx;
   const node = el('div', { class: 'page today' },
     hero(state),
-    bizStrip(state),
+    businessNumbers(state).hasData ? bizStrip(state) : null,
     kpiStrip(state),
+    businessNumbers(state).hasData ? null : bizStrip(state),
     el('div', { class: 'today-grid' },
       el('div', { class: 'today-col c1' }, doNextCard(state)),
       el('div', { class: 'today-col c2' }, callsCard(state), pipelineCard(state)),
