@@ -362,7 +362,7 @@ textarea.camp-tpl-body { min-height: 128px; font-size: var(--fs-body); }
 .book-item.is-off { opacity: .55; }
 .book-item.is-soon::before { content: ''; position: absolute; left: calc(-1 * var(--space-4)); top: var(--space-4); bottom: var(--space-4); width: 2px; background: var(--ink); }
 .book-when { display: flex; flex-direction: column; gap: 2px; }
-.book-time { white-space: nowrap; font-weight: 600; font-size: var(--fs-lead); line-height: var(--lh-title); font-variant-numeric: tabular-nums; color: var(--ink); }
+.book-time { white-space: nowrap; font-family: var(--font-display); font-weight: 900; letter-spacing: var(--track-display); font-size: var(--fs-lead); line-height: var(--lh-title); font-variant-numeric: tabular-nums; color: var(--ink); }
 .book-date { font-size: var(--fs-meta); color: var(--muted); font-variant-numeric: tabular-nums; }
 .book-item.is-soon .book-date { color: var(--ink); font-weight: 500; }
 .book-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
