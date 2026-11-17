@@ -84,11 +84,14 @@ export default function settings() {
   function refreshDirty() {
     const n = Object.keys(changed()).length;
     saveBtn.disabled = !n;
+    savebar.classList.toggle('is-dirty', !!n);
     dirtyNote.textContent = n ? `${plural(n, 'unsaved change')}` : 'All saved';
     const v = read();
     preview.textContent = `A cold text ends like this: “…worth a quick chat? - ${v.sender_name || '(no sender)'} ${v.optout_text}”`;
   }
 
+  const savebar = el('div', { class: 'set-savebar' }, dirtyNote, el('span', { class: 'spacer' }),
+    el('button', { class: 'btn btn-ghost', type: 'button', onClick: () => resetForm() }, 'Undo'), saveBtn);
   const form = el('form', { class: 'stack set-form', novalidate: true },
     el('section', { class: 'card' },
       el('div', { class: 'card-head' },
@@ -116,8 +119,7 @@ export default function settings() {
         field('Booking link', f.booking_url, 'Your Cal.com page. Used by {booking_url} and “Send booking link”.'),
         field('Notification email', f.notify_email, 'Gets an email for each reply, booking and website lead.'),
         field('Average deal value ($)', f.avg_deal_value, 'Used by the playbook calculator and pipeline value.'))),
-    el('div', { class: 'set-savebar' }, dirtyNote, el('span', { class: 'spacer' }),
-      el('button', { class: 'btn btn-ghost', type: 'button', onClick: () => resetForm() }, 'Undo changes'), saveBtn));
+    savebar);
 
   function resetForm() {
     const c = state.settings || {};

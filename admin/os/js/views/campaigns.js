@@ -363,7 +363,7 @@ function batchTab() {
         needHook ? el('button', { class: 'btn btn-ghost btn-sm camp-hook-link', type: 'button', onClick: () => go('#leads/needs-hook') },
           icon('edit', 14), `${plural(needHook, 'lead')} waiting on a personal line · write them`) : null,
         other.length ? el('p', { class: 'muted camp-elig-skip' },
-          'Not eligible: ', other.map(([k, n]) => `${errText(k).toLowerCase()} ${n}`).join(' · ')) : null),
+          'Not eligible: ', other.map(([k, n]) => `${errText(k)}: ${n}`).join(' · ')) : null),
       el('div', { class: 'row' },
         el('button', {
           class: 'btn btn-primary', type: 'button', disabled: !eligible.length || !templateId || null,

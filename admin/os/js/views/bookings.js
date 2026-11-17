@@ -128,10 +128,7 @@ export default function bookings() {
   function outcomeButtons(b, l) {
     const wrap = el('div', { class: 'book-outcome row', role: 'group', 'aria-label': `Outcome for ${leadName(l)}` });
     const done = ['won', 'lost'].includes(l.status);
-    if (done) {
-      wrap.append(el('span', { class: 'muted book-outcome-note' }, l.status === 'won' ? 'Won' : 'Lost'));
-      return wrap;
-    }
+    if (done) return null;   // the lead's status badge already says won / lost
     const mk = (label, tone, onClick) => {
       const btn = el('button', { class: `btn btn-sm btn-ghost book-oc is-${tone}`, type: 'button' }, label);
       btn.addEventListener('click', () => onClick(btn));
