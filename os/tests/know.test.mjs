@@ -210,9 +210,9 @@ try {
     const again = S.planHqImport(read, existing);
     // Duplicate by name maps onto the existing row.
     const dupPlan = S.planHqImport(read, { clients: [{ id: 'existing-bowl', name: 'bowl', notes: '' }] });
-    let m = 0;
+    let k = 0;
     const dupSaved = [];
-    await S.runHqImport(dupPlan, async (table, row) => { const r = { ...row, id: `x-${++m}` }; dupSaved.push({ table, ...r }); return r; });
+    await S.runHqImport(dupPlan, async (table, row) => { const r = { ...row, id: `x-${++k}` }; dupSaved.push({ table, ...r }); return r; });
     return {
       enc: S.readHqExport({ v: 1, kdf: 'PBKDF2-SHA256', iterations: 1, salt: 'a', iv: 'b', ct: 'c' }).error,
       shape: S.readHqExport({ hello: 1 }).error,

@@ -164,7 +164,7 @@ body:has(.deal-card.is-dragging) .pipe-tally-item { border-color: var(--line-2);
 .pdoc { color: var(--ink); font-family: var(--font-ui); font-size: 14.5px; line-height: 1.65; }
 .pdoc p { margin: 0; }
 .pdoc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-5); padding-bottom: var(--space-5); border-bottom: 1px solid var(--ink); }
-.pdoc-logo { height: 30px; width: auto; }
+.pdoc-logo { height: 30px; width: auto; filter: brightness(0); } /* the wordmark file is light; ink on paper */
 .pdoc-meta { display: grid; grid-template-columns: auto auto; gap: 2px var(--space-4); margin: 0; font-size: 12px; line-height: 1.5; text-align: right; }
 .pdoc-meta div { display: contents; }
 .pdoc-meta dt { font-family: var(--font-display); font-size: 9.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
@@ -178,7 +178,9 @@ body:has(.deal-card.is-dragging) .pipe-tally-item { border-color: var(--line-2);
 .pdoc-sec { padding-top: 28px; }
 .pdoc-sec h2 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; padding-top: 14px; border-top: 1px solid var(--line); font-family: var(--font-display); font-weight: 900; font-size: 20px; line-height: 1.2; letter-spacing: -.02em; break-after: avoid; page-break-after: avoid; }
 .pdoc-n { font-size: 11px; font-weight: 600; letter-spacing: .1em; color: var(--faint); font-variant-numeric: tabular-nums; }
-.pdoc-body { display: flex; flex-direction: column; gap: 10px; max-width: 64ch; color: var(--body); }
+.pdoc-body { display: flex; flex-direction: column; gap: 10px; color: var(--body); }
+.pdoc-body > p, .pdoc-body > .pdoc-list { max-width: 64ch; }
+.pdoc-body > .pdoc-list:last-child { margin-bottom: 2px; }
 .pdoc-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .pdoc-list li { position: relative; padding-left: 20px; }
 .pdoc-list li::before { content: ''; position: absolute; left: 2px; top: .8em; width: 9px; border-top: 1px solid var(--ink); }

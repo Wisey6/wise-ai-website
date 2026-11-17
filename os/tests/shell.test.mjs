@@ -105,7 +105,7 @@ try {
   check(await page.locator('.gate').count() === 0, 'gate is removed after unlock');
 
   /* -------------------------------------------------------------- routes */
-  for (const r of ['home', 'leads', 'inbox', 'campaigns', 'bookings', 'playbook', 'settings']) {
+  for (const r of ['home', 'leads', 'inbox', 'campaigns', 'bookings', 'playbook', 'library', 'settings']) {
     const before = errors.length;
     await page.evaluate((h) => { location.hash = h; }, `#${r}`);
     await page.waitForTimeout(700);
@@ -158,11 +158,13 @@ try {
   const soon = await page.evaluate(() => [...document.querySelectorAll('.rail-full .nav-item.is-soon')].map((n) => ({
     href: n.getAttribute('href'), dis: n.getAttribute('aria-disabled'), tab: n.tabIndex, tag: n.tagName
   })));
-  check(soon.length >= 10 && soon.every((s) => !s.href && s.dis === 'true' && s.tab === -1 && s.tag === 'SPAN'), `planned sections are dimmed, disabled and not focusable (${soon.length})`);
+  check(soon.length === 1 && soon.every((s) => !s.href && s.dis === 'true' && s.tab === -1 && s.tag === 'SPAN'), `only Agents is planned: dimmed, disabled and not focusable (${soon.length})`);
+  const live = await page.evaluate(() => [...document.querySelectorAll('.rail-full a.nav-item[data-route]')].map((n) => n.dataset.route));
+  check(['pipeline', 'proposals', 'clients', 'projects', 'roi-reports', 'income', 'costs', 'runway', 'library'].every((r) => live.includes(r)), 'Sell, Deliver, Money and Library are live links in the sidebar');
   await page.mouse.move(30, 420);
   await page.waitForTimeout(500);
   const hashBefore = await page.evaluate(() => location.hash);
-  await page.locator('.rail-full .nav-item.is-soon', { hasText: 'Proposals' }).click();
+  await page.locator('.rail-full .nav-item.is-soon', { hasText: 'Agents' }).click();
   await page.waitForTimeout(200);
   check((await page.evaluate(() => location.hash)) === hashBefore, 'clicking a planned section does not navigate');
   const roiHref = await page.locator('.rail-full a.nav-item', { hasText: 'ROI calculator' }).getAttribute('href');
@@ -205,6 +207,8 @@ try {
   await page.waitForSelector('.pal [role=combobox]');
   check(await page.evaluate(() => document.activeElement?.getAttribute('role') === 'combobox'), 'Ctrl+K opens the palette with the input focused');
   check(await page.locator('.pal-box[role=dialog][aria-modal=true] [role=listbox] [role=option]').count() > 5, 'palette lists sections and actions');
+  const palLabels = await page.locator('.pal-opt .pal-label').allTextContents();
+  check(['Pipeline', 'Clients', 'Income', 'Library', 'New deal', 'New invoice', 'New library entry'].every((l) => palLabels.includes(l)), 'palette lists the new sections and their actions');
   await page.keyboard.type('camp');
   const firstOpt = await page.locator('.pal-opt.is-sel .pal-label').textContent();
   check(firstOpt === 'Campaigns', `palette filters as you type (${firstOpt})`);
@@ -264,6 +268,7 @@ try {
     return data?.status;
   }, e164(m1));
   check(st1 === 'interested', `status changes via drawer (db: ${st1})`);
+  check(await page.locator('.drawer [data-act=create-deal]').count() === 1 && await page.locator('.drawer [data-act=make-client]').count() === 1, 'an interested lead offers Create deal and Make client');
 
   // ROI estimator writes est_monthly_value and pain.
   await page.click('.roi summary');
@@ -411,6 +416,8 @@ try {
   await page.waitForSelector('.more-sheet');
   check(await page.locator('.more-sheet .nav-group').count() === 5, 'More sheet shows the grouped map');
   check(await page.locator('.more-sheet .nav-item.is-soon[href]').count() === 0, 'More sheet planned items are not links');
+  const sheetRoutes = await page.$$eval('.more-sheet a.nav-item[data-route]', (ns) => ns.map((n) => n.dataset.route));
+  check(['pipeline', 'proposals', 'clients', 'projects', 'roi-reports', 'income', 'costs', 'runway', 'library'].every((r) => sheetRoutes.includes(r)), 'More sheet lists every new section');
   await shot(page, 'more-375');
   await page.locator('.more-sheet a[data-route="settings"]').click();
   await page.waitForTimeout(600);

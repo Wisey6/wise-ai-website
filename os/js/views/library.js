@@ -273,7 +273,7 @@ export function filterEntries(list, { q = '', kind = '', archived = false } = {}
     .filter((e) => Boolean(e.archived) === Boolean(archived))
     .filter((e) => !kind || e.kind === kind)
     .filter((e) => !needle || [e.title, e.body, (e.tags || []).join(' ')].join(' ').toLowerCase().includes(needle))
-    .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)));
+    .sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)));
 }
 
 /* ================================================================== view */
@@ -491,7 +491,7 @@ export default function library(ctx) {
             await flush();
             if (!id) { if (!f.title.value.trim()) { f.title.focus(); toast('Give it a title first', 'warn'); } return; }
             ui.editing = null;
-            if (location.hash !== `#library/${id}`) go(`#library/${id}`); else drawMain();
+            if (!isNew && location.hash === `#library/${id}`) drawMain(); else go(`#library/${id}`);
           }
         }, icon('check', 14), 'Done')),
       field('Title', f.title),

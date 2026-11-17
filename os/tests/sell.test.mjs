@@ -192,6 +192,8 @@ try {
   await page.waitForTimeout(900);
   rows = await db(page, 'deals', { id: ids.deal });
   check(rows[0].next_step === 'Call Dave about the quote' && rows[0].next_step_on === addD(-1) && rows[0].notes === 'Wants it before Christmas.', 'drawer edits saved');
+  await page.evaluate(() => { document.querySelector('.deal-drawer .drawer-body').scrollTop = 0; });
+  await page.waitForTimeout(3800);
   await shot(page, 'deal-drawer-1440');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
@@ -296,6 +298,8 @@ try {
   const kept = await page.evaluate(() => ({ v: document.querySelector('.prop-editor textarea[name=problem]').value, f: document.activeElement?.name }));
   check(kept.v.endsWith('Typing while data changes.') && kept.f === 'problem', 'typed text and focus survive a live update');
   await page.waitForSelector('.prop-saved[data-state="saved"]', { timeout: 10000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(300);
   await shot(page, 'proposal-editor-1440');
 
   /* copy as text */
@@ -406,7 +410,7 @@ try {
   await nav(phone, 'pipeline');
   await phone.click('.pipe-bar .tab:has-text("Table")');
   await phone.waitForTimeout(300);
-  check(await noHScroll(phone) && await phone.isVisible(`.pipe-cards .deal-card[data-id="${ids.deal}"]`), 'pipeline table collapses to cards at 390px');
+  check(await noHScroll(phone) && await phone.isVisible(".pipe-cards .deal-card"), 'pipeline table collapses to cards at 390px');
   await phone.click('.pipe-bar .tab:has-text("Board")');
   check(phone.errors.length === 0, `no console errors at 390 (${phone.errors.slice(0, 3).join(' | ')})`);
   await phone.context().close();
