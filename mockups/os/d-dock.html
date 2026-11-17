@@ -89,7 +89,7 @@ svg{display:block;flex:none}
 .btn-ink:hover{background:var(--ink-2);border-color:var(--ink-2)}
 .btn-sm{height:30px;padding:0 13px;font-size:12.5px}
 .icon-btn{width:36px;height:36px;border-radius:999px;border:1px solid var(--line-2);background:#fff;display:none;place-items:center;color:var(--ink)}
-.m-only{display:none}
+.m-only,.m-live{display:none}
 
 /* ---------- Content ---------- */
 .main{padding:20px 24px 28px;max-width:1720px}
@@ -108,7 +108,7 @@ svg{display:block;flex:none}
 .kpi .v{font-family:var(--display);font-weight:900;font-size:24px;letter-spacing:-.02em;line-height:1.1}
 .kpi .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi .sub.up{color:var(--up-t);font-weight:600}
-.kpi-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.kpi-row{display:flex;align-items:baseline;gap:10px;min-width:0}
 
 .grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
 .col{display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -225,6 +225,7 @@ svg{display:block;flex:none}
   .top-r .btn-imp,.top-r .btn-add{display:none}
   .icon-btn{display:grid}
   .m-only{display:grid}
+  .m-live{display:inline-flex;margin-left:2px}
   .tabs{order:3;flex:0 0 100%;height:44px;overflow-x:auto;scrollbar-width:none;border-top:1px solid var(--line-3);padding:0 10px;gap:0}
   .tabs::-webkit-scrollbar{display:none}
   .main{padding:16px 16px 24px}
@@ -299,6 +300,7 @@ svg{display:block;flex:none}
       <span class="m-brand m-only" aria-hidden="true"><span class="crop"><img src="../../logo.svg" alt=""></span></span>
       <h1 id="areaTitle">Today</h1>
       <span class="pill-soon" id="areaSoon" hidden>Soon</span>
+      <span class="m-live" title="Live connection"><span class="dot"></span><span class="sr">Live</span></span>
     </div>
     <div class="vr" aria-hidden="true"></div>
     <div class="tabs" role="tablist" id="tabs" aria-label="Sections"></div>

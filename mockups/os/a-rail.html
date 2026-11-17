@@ -37,13 +37,13 @@ svg{display:block;flex:none}
 .shell{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);min-height:100vh}
 .rail{position:sticky;top:0;height:100vh;background:var(--void);color:var(--chrome);display:flex;flex-direction:column;
   background-image:radial-gradient(140% 50% at 0% 0%,rgba(255,255,255,.055),transparent 60%);z-index:40}
-.brand{display:flex;align-items:center;gap:10px;padding:22px 22px 18px}
+.brand{display:flex;align-items:center;gap:10px;padding:20px 22px 14px}
 .brand img{height:21px;width:auto;filter:brightness(0) invert(1)}
 .os-tag{font-family:var(--display);font-weight:600;font-size:9.5px;letter-spacing:.24em;color:var(--silver);border:1px solid rgba(232,235,237,.2);border-radius:999px;padding:2px 7px 2px 9px}
-.rail-close{display:none}
+.brand .rail-close{display:none}
 .nav{flex:1 1 auto;overflow-y:auto;padding:2px 12px 12px;scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
-.nav-item{display:flex;align-items:center;gap:11px;width:100%;height:32px;padding:0 10px;border-radius:9px;color:var(--chrome);
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;height:29px;padding:0 10px;border-radius:9px;color:var(--chrome);
   font-size:13.5px;font-weight:500;text-align:left;position:relative;transition:background .15s,color .15s}
 .nav-item svg{width:16px;height:16px;color:var(--silver);transition:color .15s}
 .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
@@ -52,29 +52,29 @@ svg{display:block;flex:none}
 .nav-item[aria-current="page"] svg{color:#fff}
 .nav-item[aria-current="page"]::before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#fff}
 .nav-item:focus-visible{outline-color:#fff;outline-offset:-2px}
-.nav-item.top{height:36px;font-size:14px}
+.nav-item.top{height:34px;font-size:14px}
 .nav-sub{padding-left:37px}
 .badge{margin-left:auto;min-width:19px;height:19px;padding:0 6px;border-radius:999px;background:var(--rose);color:#fff;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
 .soon .nav-item,.nav-item.soon{color:#868C92}
 .soon .nav-item:hover,.nav-item.soon:hover{color:var(--platinum)}
 .soon-tag{margin-left:auto;font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#868C92}
-.group{margin-top:14px}
-.group-label{display:flex;align-items:center;gap:11px;height:24px;padding:0 10px;margin-bottom:2px;
+.group{margin-top:10px}
+.group-label{display:flex;align-items:center;gap:11px;height:22px;padding:0 10px;margin-bottom:2px;
   font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--silver)}
 .group-label svg{width:16px;height:16px;color:var(--steel)}
 .group.soon .group-label{color:#868C92}
 .group-list{list-style:none;position:relative}
 .group-list::before{content:'';position:absolute;left:18px;top:4px;bottom:4px;width:1px;background:rgba(232,235,237,.09)}
-.nav-sep{height:1px;background:rgba(232,235,237,.08);margin:14px 10px 10px}
-.rail-foot{padding:12px 12px 16px;border-top:1px solid rgba(232,235,237,.08);display:flex;flex-direction:column;gap:6px}
-.live{display:flex;align-items:center;gap:9px;padding:4px 10px;font-size:12px;color:var(--silver)}
+.nav-sep{height:1px;background:rgba(232,235,237,.08);margin:10px 10px 6px}
+.rail-foot{padding:10px 12px 12px;border-top:1px solid rgba(232,235,237,.08);display:flex;align-items:center;justify-content:space-between;gap:6px}
+.live{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:12px;color:var(--silver);white-space:nowrap}
 .live b{color:var(--platinum);font-weight:600}
 .dot{width:8px;height:8px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 3px rgba(34,197,94,.18);flex:none}
-.lock{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:999px;border:1px solid rgba(232,235,237,.16);color:var(--chrome);font-size:13px;font-weight:500}
+.lock{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 12px;border-radius:999px;border:1px solid rgba(232,235,237,.16);color:var(--chrome);font-size:13px;font-weight:500}
 .lock:hover{background:rgba(255,255,255,.06);color:#fff;border-color:rgba(232,235,237,.3)}
 .lock:focus-visible{outline-color:#fff}
 .lock svg{width:15px;height:15px}
-kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver);border:1px solid rgba(232,235,237,.2);border-radius:5px;padding:0 5px;line-height:17px}
+kbd{margin-left:2px;font-family:var(--font);font-size:10.5px;color:var(--silver);border:1px solid rgba(232,235,237,.2);border-radius:5px;padding:0 5px;line-height:17px}
 
 /* ---------------------------------------------------------------- main */
 .main{min-width:0;padding:24px 32px 48px}
@@ -131,7 +131,7 @@ kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver
 .todo .ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center}
 .todo .ic svg{width:16px;height:16px}
 .ic.reply{background:#EFF4FF;color:var(--blue)}
-.ic.call{background:#E9F7F5;color:var(--teal)}
+.ic.callb{background:#E9F7F5;color:var(--teal)}
 .ic.follow{background:#FEF5E7;color:#B45309}
 .ic.send{background:var(--mist2);color:var(--ink)}
 .ic.write{background:#F3EEFF;color:var(--violet)}
@@ -226,11 +226,15 @@ kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver
     transition:transform .3s cubic-bezier(.16,1,.3,1);visibility:hidden;padding-bottom:70px}
   .rail.open{transform:none;visibility:visible}
   .brand{padding:18px 18px 10px}
-  .rail-close{display:grid;margin-left:auto;border-color:rgba(232,235,237,.18);color:var(--chrome)}
+  .brand .rail-close{display:grid;margin-left:auto;border-color:rgba(232,235,237,.18);color:var(--chrome)}
   .rail-close:focus-visible{outline-color:#fff}
-  .nav-item{height:40px}
+  .nav-item{height:36px}
   .nav-item.top{height:42px}
-  .rail-foot{flex-direction:row;align-items:center;justify-content:space-between;padding-bottom:14px}
+  .rail-foot{padding-bottom:14px}
+  .group-list{display:grid;grid-template-columns:1fr 1fr}
+  .group-list::before{display:none}
+  .group-list .nav-sub{padding-left:37px}
+  .group-list li:nth-child(even) .nav-sub{padding-left:12px}
   .rail-foot .lock{flex:none;padding:0 14px}
   .rail-foot .lock kbd{display:none}
   .scrim{display:block;position:fixed;inset:0;background:rgba(10,14,17,.4);z-index:35;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -264,7 +268,9 @@ kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver
   .warm .status{grid-column:2;grid-row:1}
   .warm .val{grid-column:1;grid-row:2}
   .pipe{margin:2px 16px 12px}
-  .legend{padding:0 16px 4px;gap:14px}
+  .legend{padding:0 16px 4px;gap:6px 14px}
+  .lg{font-size:11.5px;gap:6px}
+  .lg b{font-size:17px}
   .chart{padding:4px 10px 12px}
   .feed{padding:0 16px 10px}
 }
@@ -369,8 +375,8 @@ kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver
       <button class="nav-item top" type="button" data-nav="settings"><svg><use href="#i-settings"/></svg>Settings</button>
     </nav>
     <div class="rail-foot">
-      <div class="live" role="status"><span class="dot"></span><b>Live</b><span>synced just now</span></div>
-      <button class="lock" type="button"><svg><use href="#i-lock"/></svg>Lock<kbd>L</kbd></button>
+      <div class="live" role="status"><span class="dot"></span><b>Live</b><span>synced now</span></div>
+      <button class="lock" type="button"><svg><use href="#i-lock"/></svg>Lock</button>
     </div>
   </aside>
   <div class="scrim" data-close></div>
@@ -427,7 +433,7 @@ kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver
                 <button class="act" type="button">Reply</button>
               </li>
               <li>
-                <span class="n">3</span><span class="ic call"><svg><use href="#i-phone"/></svg></span>
+                <span class="n">3</span><span class="ic callb"><svg><use href="#i-phone"/></svg></span>
                 <div class="tx"><div class="t">Call back Coastline Plumbing</div><div class="d">Website enquiry 12 min ago</div></div>
                 <button class="act" type="button"><svg><use href="#i-phone"/></svg>Call</button>
               </li>
@@ -544,7 +550,7 @@ kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver
   var reps =[4,5,0,0,6,4,3,5,2,0,0,4,6,3];
   var books=[0,1,0,0,1,0,0,1,0,0,0,1,1,1];
   var days=['Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed'];
-  var W=640,H=150,pl=26,pr=4,pt=14,pb=22,max=30,n=texts.length;
+  var narrow=window.innerWidth<760;var W=narrow?340:640,H=narrow?150:150,pl=26,pr=4,pt=14,pb=22,max=30,n=texts.length;
   var cw=(W-pl-pr)/n,bw=cw*0.56,s='';
   [0,10,20,30].forEach(function(g){var y=pt+(H-pt-pb)*(1-g/max);
     s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#EDEFF1"/>';
