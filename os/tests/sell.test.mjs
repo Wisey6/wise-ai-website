@@ -25,8 +25,25 @@ const browser = await chromium.launch();
 // Views owned by other agents (clients, projects) may not exist yet; their load errors are not ours.
 const foreign = /views\/(clients|projects|roi-reports|income|costs|runway|library)\.js|functions\/v1\/|net::ERR_FAILED|Failed to fetch dynamically imported module/;
 
-async function openApp(viewport = { width: 1440, height: 900 }) {
+/* A stand-in for the ai-assist edge function, so tests never call (or pay for) the real AI.
+   mock.status → the status reply; mock.next[task] → {status, body} for the next call of that task. */
+async function mockAi(ctx, mock) {
+  await ctx.route('**/functions/v1/ai-assist', async (route) => {
+    const req = route.request();
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS', 'content-type': 'application/json' };
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors, body: '' });
+    let body = {};
+    try { body = req.postDataJSON() || {}; } catch { body = {}; }
+    if (body.action === 'status') return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(mock.status) });
+    mock.calls.push(body);
+    const r = mock.next[body.task] || { status: 500, body: { ok: false, error: 'ai_error' } };
+    return route.fulfill({ status: r.status, headers: cors, body: JSON.stringify(r.body) });
+  });
+}
+
+async function openApp(viewport = { width: 1440, height: 900 }, aiMock = null) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, permissions: ['clipboard-read', 'clipboard-write'] });
+  if (aiMock) await mockAi(ctx, aiMock);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('console', (m) => {
@@ -393,6 +410,131 @@ try {
   await nav(page, 'pipeline');
   check(await page.isVisible('.sell-kpi[data-k="rate"]'), 'win rate shows when there are closed deals');
   check(page.errors.length === 0, `no console errors at 1440 (${page.errors.slice(0, 3).join(' | ')})`);
+
+  /* ------------------------------------------------------------ AI drafting (mocked) */
+  const mock = { status: { configured: true, enabled: true, spent_usd: 0.4, cap_usd: 20 }, next: {}, calls: [] };
+  const aiPage = await openApp({ width: 1440, height: 900 }, mock);
+  await aiPage.waitForFunction(async () => Boolean((await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.ai?.configured), null, { timeout: 10000 }).catch(() => {});
+  check(await api(aiPage, async (m) => Boolean(m.state.ai?.configured)), `mocked AI status reaches state.ai (${JSON.stringify(await api(aiPage, async (m) => m.state.ai))}, calls ${mock.calls.length})`);
+  const seed = await api(aiPage, async (m, tag) => {
+    const lead = (await m.sb.from('leads').insert({ business: `${tag} Coorparoo Physio`, contact_name: 'Mia Chen', phone: '+61400000781', status: 'replied', source: 'manual', pain: 'Front desk misses calls at lunch.', hook: 'Reviews say booking is slow.' }).select().single()).data;
+    const deal = await m.saveRow('deals', { title: `${tag} Coorparoo booking`, lead_id: lead.id, stage: 'proposal', notes: 'Two physios, about 40 enquiries a week, mostly phone.' });
+    const prop = await m.saveRow('proposals', { title: `${tag} Coorparoo booking`, deal_id: deal.id, lead_id: lead.id, status: 'draft', recipient_name: 'Mia Chen', recipient_business: `${tag} Coorparoo Physio`, problem: 'My own words about the problem.', scope: [], line_items: [{ label: 'Set-up', amount: 2000, recurring: false }], roi: { include: false, inputs: {} }, terms: 'Standard terms.', valid_until: '2099-01-01' });
+    const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
+    await m.sb.from('messages').insert({ lead_id: lead.id, channel: 'sms', direction: 'out', status: 'manual', body: 'Hi Mia, Tyler from Wise AI here. Do you lose calls over lunch?', created_at: ago(60) });
+    await m.sb.from('messages').insert({ lead_id: lead.id, channel: 'sms', direction: 'in', status: 'received', body: 'Yes all the time. What would it cost?', created_at: ago(5) });
+    m.state.leads.unshift(lead); m.notify();
+    return { lead: lead.id, deal: deal.id, prop: prop.id };
+  }, TAG);
+  Object.assign(ids, { aiLead: seed.lead, aiDeal: seed.deal, aiProp: seed.prop });
+
+  // Proposal: open the panel, notes prefilled
+  await nav(aiPage, `proposals/${seed.prop}`);
+  await aiPage.click('.prop-ai-btn');
+  const notes = await aiPage.inputValue('.prop-ai textarea[name=ai-notes]');
+  check(notes.includes('40 enquiries a week') && notes.includes('misses calls at lunch') && notes.includes('booking is slow'), 'AI notes prefilled from the deal notes and the lead pain and hook');
+  await shot(aiPage, 'proposal-ai-panel-1440');
+  // error path
+  mock.next.proposal = { status: 402, body: { ok: false, error: 'cap_reached' } };
+  await aiPage.click('.prop-ai .btn-primary');
+  await aiPage.waitForSelector('.toast.is-bad:has-text("budget is used up")', { timeout: 8000 });
+  check((await aiPage.inputValue('.prop-editor textarea[name=problem]')) === 'My own words about the problem.', 'cap_reached shows the message and changes nothing');
+  check(mock.calls.at(-1)?.task === 'proposal' && mock.calls.at(-1)?.context?.recipient?.business === `${TAG} Coorparoo Physio` && !('roi' in (mock.calls.at(-1)?.context || {})), 'proposal call sends recipient and notes, and no roi when the block is off');
+  // success, with replace confirmation: cancel first, then replace
+  mock.next.proposal = { status: 200, body: { ok: true, cost_usd: 0.01, result: {
+    problem: 'About one in four calls at lunch goes unanswered.', solution: 'A text-back for missed calls and online booking for [check: which clinic software].',
+    scope: [{ title: 'Missed-call text-back', detail: 'Replies in a minute.' }, { title: 'Online booking', detail: 'Linked to [check: booking system].' }] } } };
+  await aiPage.click('.prop-ai .btn-primary');
+  await aiPage.waitForSelector('.modal h2:has-text("Replace what is there?")', { timeout: 8000 });
+  await aiPage.click('.modal-foot .btn-ghost');
+  await aiPage.waitForTimeout(300);
+  check((await aiPage.inputValue('.prop-editor textarea[name=problem]')) === 'My own words about the problem.', 'declining the replace keeps typed text');
+  await aiPage.click('.prop-ai .btn-primary');
+  await aiPage.waitForSelector('.modal h2:has-text("Replace what is there?")', { timeout: 8000 });
+  await aiPage.click('.modal-foot .btn-primary');
+  await aiPage.waitForTimeout(400);
+  check((await aiPage.inputValue('.prop-editor textarea[name=problem]')).startsWith('About one in four') && (await aiPage.inputValue('.prop-editor [name=scope-title-1]')) === 'Online booking', 'draft fills problem, solution and scope after confirming');
+  check(/2 \[check: …\] items to fill/.test(await aiPage.textContent('.prop-checks')) && await aiPage.isVisible('.prop-editor textarea[name=solution].has-check'), 'editor counts and highlights the [check: …] items');
+  await aiPage.waitForSelector('.prop-saved[data-state="saved"]', { timeout: 10000 });
+  await aiPage.waitForTimeout(500);
+  let pr = (await db(aiPage, 'proposals', { id: seed.prop }))[0];
+  check(pr.problem.startsWith('About one in four') && pr.scope.length === 2 && pr.status === 'draft', 'autosave picked up the draft; nothing sent');
+  await aiPage.evaluate(() => window.scrollTo(0, 0));
+  await shot(aiPage, 'proposal-ai-checks-1440');
+  await aiPage.click('.prop-actions .btn[data-status="sent"]');
+  await aiPage.waitForSelector('.toast.is-bad:has-text("Not sent")', { timeout: 8000 });
+  await aiPage.waitForTimeout(500);
+  check((await db(aiPage, 'proposals', { id: seed.prop }))[0].status === 'draft', '[check: …] blocks Mark as sent');
+  await aiPage.fill('.prop-editor textarea[name=solution]', 'A text-back for missed calls and online booking through Cliniko.');
+  await aiPage.fill('.prop-editor [name=scope-detail-1]', 'Linked to Cliniko.');
+  await aiPage.waitForSelector('.prop-saved[data-state="saved"]', { timeout: 10000 });
+  check(!(await aiPage.isVisible('.prop-checks .callout')), 'filling the items clears the warning');
+  await aiPage.click('.prop-actions .btn[data-status="sent"]');
+  await aiPage.waitForTimeout(1200);
+  check((await db(aiPage, 'proposals', { id: seed.prop }))[0].status === 'sent', 'once filled, Mark as sent works');
+
+  // Inbox: suggest replies
+  await nav(aiPage, `inbox/${seed.lead}`);
+  await aiPage.waitForSelector('.inbox-msg.is-in');
+  await aiPage.waitForSelector('.inbox-ai-btn', { timeout: 8000 });
+  check(await aiPage.isVisible('.inbox-ai-btn'), 'Suggest replies shows when the latest message is inbound');
+  mock.next.reply = { status: 200, body: { ok: true, cost_usd: 0.004, result: { options: ['Hi Mia, it depends on the set-up. Can I call you tomorrow?', 'Good question. Most clinics start around $2,000. Want to book 15 minutes?'] } } };
+  await aiPage.click('.inbox-ai-btn');
+  await aiPage.waitForSelector('.inbox-ai-opt', { timeout: 8000 });
+  const sent = mock.calls.at(-1);
+  check(sent.task === 'reply' && sent.context.thread.length === 2 && sent.context.thread[1].from === 'them' && sent.context.lead.business === `${TAG} Coorparoo Physio`, 'reply call sends the thread oldest first with us/them');
+  await shot(aiPage, 'inbox-ai-1440');
+  await aiPage.click('.inbox-ai-opt >> nth=0');
+  check((await aiPage.inputValue('.inbox-input')).startsWith('Hi Mia, it depends'), 'picking a suggestion fills an empty reply box');
+  await aiPage.click('.inbox-ai-opt >> nth=1');
+  await aiPage.waitForSelector('.modal h2:has-text("Replace what is there?")', { timeout: 5000 });
+  await aiPage.click('.modal-foot .btn-ghost');
+  await aiPage.waitForTimeout(300);
+  check((await aiPage.inputValue('.inbox-input')).startsWith('Hi Mia, it depends'), 'typed text is kept unless the operator replaces it');
+  await aiPage.click('.inbox-ai-opt >> nth=1');
+  await aiPage.click('.modal-foot .btn-primary');
+  await aiPage.waitForTimeout(300);
+  check((await aiPage.inputValue('.inbox-input')).startsWith('Good question'), 'replace swaps in the second suggestion (nothing sent)');
+  mock.next.reply = { status: 402, body: { ok: false, error: 'cap_reached' } };
+  await aiPage.click('.inbox-ai-btn');
+  await aiPage.waitForSelector('.toast.is-bad:has-text("budget is used up")', { timeout: 8000 });
+  check(true, 'reply cap_reached shows the message');
+  await api(aiPage, async (m, id) => { await m.addMessage({ lead_id: id, channel: 'sms', direction: 'in', status: 'received', body: 'Also, do you do weekends?' }); }, seed.lead);
+  await aiPage.waitForFunction(() => document.querySelector('.inbox-ai')?.hidden === true, null, { timeout: 8000 }).catch(() => {});
+  check(await aiPage.evaluate(() => document.querySelector('.inbox-ai').hidden), 'suggestions disappear when a new message arrives');
+  await api(aiPage, async (m, id) => { await m.addMessage({ lead_id: id, channel: 'sms', direction: 'out', status: 'manual', body: 'Yes, Saturdays.' }); }, seed.lead);
+  await aiPage.waitForTimeout(800);
+  check(!(await aiPage.isVisible('.inbox-ai-btn')), 'Suggest replies hides when the latest message is ours');
+  check(aiPage.errors.length === 0, `no console errors with AI on (${aiPage.errors.slice(0, 3).join(' | ')})`);
+  await aiPage.context().close();
+
+  // AI on, phone
+  const aiPhone = await openApp({ width: 390, height: 844 }, mock);
+  await api(aiPhone, async (m, id) => { await m.addMessage({ lead_id: id, channel: 'sms', direction: 'in', status: 'received', body: 'Can you send the price?' }); }, seed.lead);
+  await nav(aiPhone, `inbox/${seed.lead}`);
+  await aiPhone.waitForSelector('.inbox-ai-btn', { timeout: 8000 });
+  mock.next.reply = { status: 200, body: { ok: true, result: { options: ['Sure Mia, it is $2,000 to set up. I will email the proposal today.', 'Happy to. Can I call you at 2 to walk you through it?'] } } };
+  await aiPhone.click('.inbox-ai-btn');
+  await aiPhone.waitForSelector('.inbox-ai-opt');
+  check(await noHScroll(aiPhone), 'inbox suggestions fit at 390px');
+  await shot(aiPhone, 'inbox-ai-390');
+  await nav(aiPhone, `proposals/${seed.prop}`);
+  await aiPhone.click('.prop-ai-btn');
+  await aiPhone.waitForTimeout(300);
+  check(await noHScroll(aiPhone), 'proposal AI panel fits at 390px');
+  await shot(aiPhone, 'proposal-ai-panel-390');
+  await aiPhone.context().close();
+
+  // AI not configured: no buttons at all
+  const off = await openApp({ width: 1440, height: 900 }, { status: { configured: false, enabled: false, spent_usd: 0, cap_usd: 20 }, next: {}, calls: [] });
+  await api(off, async (m, id) => { await m.addMessage({ lead_id: id, channel: 'sms', direction: 'in', status: 'received', body: 'Hello?' }); }, seed.lead);
+  await nav(off, `proposals/${seed.prop}`);
+  check(!(await off.isVisible('.prop-ai-btn')), 'Draft with AI is not rendered when AI is not configured');
+  await nav(off, `inbox/${seed.lead}`);
+  await off.waitForSelector('.inbox-msg.is-in');
+  await off.waitForTimeout(500);
+  check(!(await off.isVisible('.inbox-ai-btn')), 'Suggest replies is not rendered when AI is not configured');
+  await off.context().close();
 
   /* ------------------------------------------------------------ 390 px */
   const phone = await openApp({ width: 390, height: 844 });

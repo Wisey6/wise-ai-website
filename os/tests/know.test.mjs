@@ -29,8 +29,29 @@ const browser = await chromium.launch();
 const API = "document.querySelector('script[type=module]').src.replace('app.js', 'api.js')";
 const mod = (p) => `document.querySelector('script[type=module]').src.replace('app.js', '${p}')`;
 
+/* The AI is never called for real from tests (it costs money): ai-assist is mocked. */
+const aiCalls = [];
+async function mockAi(ctx) {
+  await ctx.route('**/functions/v1/ai-assist', async (route) => {
+    const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    let body = {};
+    try { body = JSON.parse(route.request().postData() || '{}'); } catch { /* */ }
+    aiCalls.push(body);
+    let data;
+    if (body.action === 'status') data = { configured: true, enabled: true, spent_usd: 0.0042, cap_usd: 5 };
+    else if (body.task === 'hook' && String(body.context?.notes || '').trim()) {
+      data = { ok: true, cost_usd: 0.0006, spent_usd: 0.0048, result: { options: ['Saw a few reviews say calls go unanswered while you are on the tools.', 'Noticed your Google reviews mention slow call-backs on busy days.'], ask: '' } };
+    } else if (body.task === 'hook') {
+      data = { ok: true, cost_usd: 0.0003, spent_usd: 0.0051, result: { options: [], ask: 'Have a look at their Google reviews and note one thing customers mention.' } };
+    } else data = { ok: false, error: 'bad_request' };
+    return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(data) });
+  });
+}
+
 async function openApp(viewport = { width: 1440, height: 900 }) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: SHOTS ? 2 : 1, permissions: ['clipboard-read', 'clipboard-write'] });
+  await mockAi(ctx);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('console', (m) => {
@@ -227,6 +248,9 @@ try {
       againTotal: again.steps.reduce((t, s) => t + s.toImport, 0), againPrev: again.previous,
       notes: plan.notes.length,
       dupDealClient: dupSaved.find((r) => r.title === 'Quote calc')?.client_id, dupClients: dupSaved.filter((r) => r.table === 'clients').length,
+      usd: [S.usd(0), S.usd(0.0042), S.usd(0.016), S.usd(1.234)],
+      sum: S.summariseAiUsage([{ task: 'hook', cost_usd: 0.001 }, { task: 'proposal', cost_usd: 0.05 }, { task: 'hook', cost_usd: 0.002 }]),
+      capBad: S.validateSettings({ ai_monthly_cap_usd: 600 }),
       v: [S.validateSettings({ abn: '123' }), S.validateSettings({ abn: '51 824 753 556' }), S.validateSettings({ tax_rate: 1 }), S.validateSettings({ business_name: ' ' }), S.formatAbn('51824753556')]
     };
   }, mod('views/settings.js'));
@@ -250,6 +274,9 @@ try {
   check(imp.againTotal === 0 && imp.againPrev === 14, `a second import finds the markers and imports nothing (${imp.againTotal}, ${imp.againPrev} seen)`);
   check(imp.dupClients === 2 && imp.dupDealClient === 'existing-bowl', 'skip duplicates by name points links at the existing record');
   check(imp.notes >= 4, `preview explains what does not map cleanly (${imp.notes} notes)`);
+  check(JSON.stringify(imp.usd) === JSON.stringify(['US$0.00', 'under 1 cent', 'US$0.02', 'US$1.23']), `AI spend reads in cents (${imp.usd})`);
+  check(imp.sum.count === 3 && Math.abs(imp.sum.cost - 0.053) < 1e-9 && imp.sum.rows[0].task === 'proposal' && imp.sum.rows[1].count === 2, 'AI usage summarises by task');
+  check(Boolean(imp.capBad), 'an AI cap over US$500 is refused');
   check(imp.v[0] && !imp.v[1] && imp.v[2] && imp.v[3] && imp.v[4] === '51 824 753 556', 'business settings validation (ABN, tax, name)');
 
   /* ============================================================ library UI */
@@ -464,13 +491,42 @@ try {
   await nav(page, `leads/${newLead}`);
   await page.waitForSelector('.drawer');
   check(await page.locator('.drawer [data-act=create-deal]').count() === 0, 'a new lead does not offer the hand-offs yet');
+
+  // AI: suggest a personal line from Tyler's own observation (mocked endpoint).
+  check(await page.locator('.drawer [data-act=ai-hook]').count() === 1, 'AI on: the drawer offers “Suggest a personal line”');
+  await page.click('.drawer [data-act=ai-hook]');
+  await page.fill('.drawer [name=ai-notes]', '');
+  await page.click('.drawer [data-act=ai-suggest]');
+  await page.waitForSelector('.drawer .ld-ai-ask', { timeout: 10000 });
+  check(/Google reviews/.test(await page.locator('.drawer .ld-ai-ask').textContent()) && await page.locator('.drawer [data-act=ai-pick]').count() === 0, 'with nothing observed, the AI asks what to look at instead of inventing a line');
+  await page.fill('.drawer [name=ai-notes]', 'Reviews say they are hard to reach on site');
+  await page.click('.drawer [data-act=ai-suggest]');
+  await page.waitForSelector('.drawer [data-act=ai-pick]', { timeout: 10000 });
+  const hookCall = aiCalls.filter((c) => c.task === 'hook').pop();
+  check(hookCall?.context?.notes === 'Reviews say they are hard to reach on site' && hookCall.context.lead.business === `${P} Cold ${TAG}`, 'the hook request carries the lead and the observation');
+  const opts = await page.locator('.drawer [data-act=ai-pick]').allTextContents();
+  await page.locator('.drawer [data-act=ai-pick]').first().click();
+  await page.waitForTimeout(200);
+  check(await page.inputValue('.drawer [name=hook]') === opts[0], 'picking a suggestion fills the empty personal line');
+  await page.locator('.drawer [data-act=ai-pick]').nth(1).click();
+  await page.waitForSelector('.modal');
+  await page.click('.modal-foot button[type=submit]');
+  await page.waitForTimeout(200);
+  check(await page.inputValue('.drawer [name=hook]') === opts[1], 'replacing an existing line asks first');
+  const savedHook = await db(page, async (id) => (await (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).sb.from('leads').select('hook').eq('id', id).single()).data.hook, newLead);
+  check(!savedHook, 'a suggestion is not saved until Tyler saves it');
+  await shot(page, 'lead-ai-1440');
+  await page.evaluate(async () => { const a = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js')); a.state.ai = { ...a.state.ai, enabled: false }; a.notify(); });
+  await page.waitForTimeout(300);
+  check(await page.locator('.drawer [data-act=ai-hook]').count() === 0, 'AI switched off: the button disappears');
+  await page.evaluate(async () => { const a = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js')); a.state.ai = { ...a.state.ai, enabled: true }; a.notify(); });
   await page.keyboard.press('Escape');
 
   /* ============================================================ settings */
   settingsBefore = await db(page, async () => {
     const { state } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
     const s = state.settings;
-    return { business_name: s.business_name, abn: s.abn, gst_registered: s.gst_registered, tax_rate: s.tax_rate, monthly_target: s.monthly_target, owner_draw: s.owner_draw, proposal_terms: s.proposal_terms };
+    return { business_name: s.business_name, abn: s.abn, gst_registered: s.gst_registered, tax_rate: s.tax_rate, monthly_target: s.monthly_target, owner_draw: s.owner_draw, proposal_terms: s.proposal_terms, ai_enabled: s.ai_enabled, ai_monthly_cap_usd: s.ai_monthly_cap_usd };
   });
   await nav(page, 'settings');
   check(await page.locator('input[name=business_name]').count() === 1 && await page.locator('input[name=gst_registered]').count() === 1 && await page.locator('textarea[name=proposal_terms]').count() === 1, 'Settings has the Business group');
@@ -489,6 +545,21 @@ try {
   check(abn2 === '51 824 753 556', 'a short ABN is refused');
   await db(page, async (s) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).saveSettings(s), settingsBefore);
   check(await page.locator('a[data-legacy]').textContent().then((t) => /retire/i.test(t)), 'legacy link says the old console can be retired');
+
+  // AI drafting group.
+  await nav(page, 'library', 200);
+  await nav(page, 'settings');
+  check(await page.locator('[data-ai-status=connected]').count() === 1, 'AI group shows Connected');
+  check((await page.locator('[data-ai-spend]').textContent()) === 'under 1 cent of US$5.00', `AI spend vs cap (${await page.locator('[data-ai-spend]').textContent()})`);
+  await page.waitForFunction(() => !/Loading/.test(document.querySelector('.set-ai')?.textContent || ''), null, { timeout: 10000 });
+  check(await page.locator('.set-ai-usage').count() === 1 || /No drafts yet/.test(await page.locator('.set-ai').textContent()), 'this month’s usage by task is shown');
+  check(/small, fast model/.test(await page.locator('.set-ai-notes').textContent()) && /without you reading it/.test(await page.locator('.set-ai-notes').textContent()), 'AI group says which model does what and that nothing is sent unread');
+  await page.fill('input[name=ai_monthly_cap_usd]', String(Number(settingsBefore.ai_monthly_cap_usd ?? 5) + 1));
+  await page.click('.set-savebar button[type=submit]');
+  await page.waitForFunction(async (v) => Number((await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.settings.ai_monthly_cap_usd) === v, Number(settingsBefore.ai_monthly_cap_usd ?? 5) + 1, { timeout: 10000 });
+  check(true, 'AI monthly cap saves');
+  await shot(page, 'settings-ai-1440');
+  await db(page, async (s) => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).saveSettings(s), settingsBefore);
 
   // Import through the UI.
   const fixture = {
@@ -565,6 +636,7 @@ try {
     await wide.close();
   }
   check(page.errors.length === 0, `no console errors in the main run ${page.errors.join(' | ')}`);
+  check(aiCalls.every((c) => c.action === 'status' || c.task === 'hook'), 'every AI call in the run went to the mock');
 } catch (err) {
   fails.push(`exception: ${err.stack || err.message}`);
   console.log('FAIL exception', err);

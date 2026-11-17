@@ -589,7 +589,8 @@ try {
   await ap.click('button[data-act=sent]');
   await waitDb(ap, async (id) => { const { sb } = await window.__mod('api.js'); const { data } = await sb.from('roi_reports').select('status').eq('id', id).single(); return data.status === 'sent'; }, ids.report3, 'send after markers cleared');
   check(true, 'Mark as sent works once no [check: marker remains');
-  check(ap.errors.length === 0, `no console errors with AI mocked (${ap.errors.join(' | ')})`);
+  const apErr = ap.errors.filter((e) => !/status of 402/.test(e)); // the mocked cap_reached response itself
+  check(apErr.length === 0, `no console errors with AI mocked (${apErr.join(' | ')})`);
   await ap.context().close();
   // hidden when not configured, or switched off
   for (const st of [{ configured: false, enabled: false, spent_usd: 0, cap_usd: 20 }, { configured: true, enabled: false, spent_usd: 0, cap_usd: 20 }]) {
