@@ -4,7 +4,7 @@ import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
 } from '../ui.js?v=20261118c';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow } from '../api.js?v=20261118c';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, sb } from '../api.js?v=20261118c';
 import { FUNCTIONS_URL } from '../config.js?v=20261118c';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
@@ -27,6 +27,7 @@ export function validateSettings(p) {
   if ('tax_rate' in p && !(p.tax_rate >= 0 && p.tax_rate < 1)) return 'Tax set-aside must be from 0 to 99%.';
   if ('monthly_target' in p && !(p.monthly_target >= 0)) return 'Monthly revenue target must be zero or more.';
   if ('owner_draw' in p && !(p.owner_draw >= 0)) return 'Monthly take-home must be zero or more.';
+  if ('ai_monthly_cap_usd' in p && !(p.ai_monthly_cap_usd >= 0 && p.ai_monthly_cap_usd <= 500)) return 'The AI monthly cap must be from US$0 to US$500.';
   return null;
 }
 
@@ -59,6 +60,8 @@ export default function settings() {
     proposal_terms: el('textarea', { class: 'input', name: 'proposal_terms', rows: 4, placeholder: 'e.g. 50% to start, 50% on handover. Monthly fees invoiced on the 1st, 14 days to pay. Cancel any time with 30 days notice.' })
   };
   f.proposal_terms.value = s.proposal_terms || '';
+  f.ai_enabled = el('input', { type: 'checkbox', class: 'check', name: 'ai_enabled', checked: s.ai_enabled || null });
+  f.ai_monthly_cap_usd = input('ai_monthly_cap_usd', { type: 'number', min: 0, max: 500, step: 1, value: s.ai_monthly_cap_usd ?? 5, inputmode: 'decimal' });
   if (!TIMEZONES.includes(s.timezone)) f.timezone.append(el('option', { value: s.timezone }, s.timezone));
   f.timezone.value = s.timezone;
   const dayBoxes = DAYS.map(([d, label]) => {
@@ -84,8 +87,47 @@ export default function settings() {
     tax_rate: f.tax_rate.value === '' ? 0 : Math.round(Number(f.tax_rate.value) * 100) / 10000,
     monthly_target: Number(f.monthly_target.value) || 0,
     owner_draw: Number(f.owner_draw.value) || 0,
-    proposal_terms: f.proposal_terms.value.trim() || null
+    proposal_terms: f.proposal_terms.value.trim() || null,
+    ai_enabled: f.ai_enabled.checked,
+    ai_monthly_cap_usd: f.ai_monthly_cap_usd.value === '' ? 0 : Number(f.ai_monthly_cap_usd.value)
   });
+
+  /* AI status, spend and this month's usage (live: redrawn on state changes). */
+  const aiLive = el('div', { class: 'set-ai', dataset: { ai: 'status' } });
+  let usage = null;
+  let usageFor = null;
+  const loadUsage = async () => {
+    const month = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Brisbane' }).slice(0, 7);
+    usageFor = state.ai?.spent_usd ?? null;
+    const { data, error } = await sb.from('ai_usage').select('task,cost_usd,ok,at').gte('at', `${month}-01T00:00:00+10:00`).order('at', { ascending: false }).limit(2000);
+    usage = error ? { error: error.message } : summariseAiUsage(data || []);
+    renderAiLive();
+  };
+  function renderAiLive() {
+    const a = state.ai;
+    const status = !a ? ['warn', 'Status unavailable right now'] : a.configured ? ['ok', 'Connected'] : ['warn', 'Not connected'];
+    const cap = Number(a?.cap_usd ?? state.settings?.ai_monthly_cap_usd ?? 0);
+    const spent = Number(a?.spent_usd || 0);
+    const pctUsed = cap ? Math.min(100, Math.round((spent / cap) * 100)) : 0;
+    fill(aiLive,
+      el('div', { class: 'set-ai-status' },
+        el('span', { class: `badge is-${status[0]}`, dataset: { aiStatus: a?.configured ? 'connected' : 'not-connected' } }, el('span', { class: 'badge-dot', 'aria-hidden': 'true' }), status[1]),
+        a && a.configured && !a.enabled ? el('span', { class: 'small muted' }, 'Switched off below') : null),
+      !a || !a.configured ? el('p', { class: 'small muted' }, 'To connect: in Supabase, Edge Functions, Secrets, add a secret named ANTHROPIC_API_KEY holding your Anthropic API key. It is never stored in the hub.') : null,
+      a ? el('div', { class: 'set-ai-spend' },
+        el('div', { class: 'row' }, el('span', { class: 'field-label' }, 'Spent this month'), el('span', { class: 'spacer' }),
+          el('span', { class: 'tnum small', dataset: { aiSpend: '' } }, `${usd(spent)} of ${usd(cap)}`)),
+        el('span', { class: 'set-ai-meter', role: 'img', 'aria-label': `${pctUsed}% of the monthly AI cap used` }, el('i', { style: `width:${pctUsed}%` }))) : null,
+      usage === null ? el('p', { class: 'small muted' }, 'Loading this month’s usage…')
+        : usage.error ? el('p', { class: 'small muted' }, `Usage could not be loaded (${usage.error}).`)
+          : usage.rows.length ? el('div', { class: 'table-wrap' }, el('table', { class: 'table imp-table set-ai-usage' },
+            el('thead', {}, el('tr', {}, el('th', {}, 'Used for'), el('th', { class: 'num' }, 'Drafts'), el('th', { class: 'num' }, 'Cost'))),
+            el('tbody', {}, usage.rows.map((r) => el('tr', { dataset: { task: r.task } }, el('td', {}, AI_TASK_LABEL[r.task] || r.task), el('td', { class: 'num' }, num(r.count)), el('td', { class: 'num' }, usd(r.cost))))),
+            el('tfoot', {}, el('tr', {}, el('td', {}, 'Total'), el('td', { class: 'num' }, num(usage.count)), el('td', { class: 'num' }, usd(usage.cost))))))
+            : el('p', { class: 'small muted' }, 'No drafts yet this month.'));
+  }
+  renderAiLive();
+  loadUsage();
 
   const preview = el('p', { class: 'set-preview' });
   const saveBtn = el('button', { class: 'btn btn-primary', type: 'submit', disabled: true }, 'Save changes');
@@ -145,6 +187,15 @@ export default function settings() {
             el('strong', {}, 'Registered for GST'),
             el('span', { class: 'set-toggle-hint' }, 'Adds GST to invoices and proposal totals.'))),
         el('div', { class: 'full' }, field('Default proposal terms', f.proposal_terms, 'Dropped into each new proposal. Cash on hand lives on the Runway page.')))),
+    group('AI', 'AI drafting', 'Drafts personal lines, replies, proposals and ROI write-ups when you ask. Nothing is ever sent without you reading it.',
+      aiLive,
+      el('div', { class: 'form-grid' },
+        el('label', { class: 'set-toggle set-toggle-inline' }, f.ai_enabled,
+          el('span', {}, el('strong', {}, 'AI drafting on'), el('span', { class: 'set-toggle-hint' }, 'Off hides every AI button in the hub.'))),
+        field('Monthly cap (US$)', f.ai_monthly_cap_usd, 'Drafting stops for the month once this is spent. 0 to 500.')),
+      el('ul', { class: 'set-ai-notes' },
+        el('li', {}, 'Short texts (personal lines and replies) use the small, fast model. Proposals and ROI write-ups use the mid model.'),
+        el('li', {}, 'Nothing is ever sent without you reading it: every draft lands in a field for you to edit, then you save or send it yourself.'))),
     group('Bookings', 'Bookings and notifications', 'Where people book, where alerts go, and what a client is worth.',
       el('div', { class: 'form-grid' },
         field('Booking link', f.booking_url, 'Your Cal.com page. Used by {booking_url} and “Send booking link”.'),
@@ -160,6 +211,8 @@ export default function settings() {
     f.gst_registered.checked = !!c.gst_registered;
     f.tax_rate.value = pct(c.tax_rate);
     f.proposal_terms.value = c.proposal_terms || '';
+    f.ai_enabled.checked = !!c.ai_enabled;
+    f.ai_monthly_cap_usd.value = String(c.ai_monthly_cap_usd ?? 5);
     f.booking_url.value = c.booking_url || '';
     f.notify_email.value = c.notify_email || '';
     f.require_hook.checked = !!c.require_hook;
@@ -179,6 +232,7 @@ export default function settings() {
     busy(saveBtn, async () => {
       try {
         await saveSettings(patch);
+        if ('ai_enabled' in patch || 'ai_monthly_cap_usd' in patch) aiStatus();
         toast('Settings saved');
       } catch (er) { toast(`Could not save: ${er.message}`, 'bad'); }
       refreshDirty();
@@ -334,6 +388,7 @@ export default function settings() {
   renderSup();
   root.onState = () => {
     // Forms keep what is typed; only the live panels refresh.
+    if ((state.ai?.spent_usd ?? null) !== usageFor && usage !== null) loadUsage(); else renderAiLive();
     renderIntegrations();
     renderSup();
     if (!Object.keys(changed()).length) refreshDirty();
@@ -746,4 +801,26 @@ function importTool() {
 
   drawStart();
   return box;
+}
+
+/* ===================================================== AI usage helpers */
+export const AI_TASK_LABEL = { hook: 'Personal lines', reply: 'Replies', proposal: 'Proposals', roi_summary: 'ROI write-ups' };
+/** US dollars to the cent; a tiny non-zero amount reads "under 1 cent". */
+export function usd(n) {
+  const v = Number(n) || 0;
+  if (v > 0 && v < 0.005) return 'under 1 cent';
+  return `US$${v.toFixed(2)}`;
+}
+/** ai_usage rows → {rows:[{task,count,cost}], count, cost}, most expensive first. */
+export function summariseAiUsage(rows) {
+  const by = new Map();
+  for (const r of rows) {
+    const t = r.task || 'other';
+    const cur = by.get(t) || { task: t, count: 0, cost: 0 };
+    cur.count += 1;
+    cur.cost += Number(r.cost_usd) || 0;
+    by.set(t, cur);
+  }
+  const list = [...by.values()].sort((a, b) => b.cost - a.cost || b.count - a.count);
+  return { rows: list, count: list.reduce((t, r) => t + r.count, 0), cost: list.reduce((t, r) => t + r.cost, 0) };
 }

@@ -6,7 +6,7 @@ import {
   el, fill, clear, icon, badge, toast, modal, confirmDialog, field, input, select, textarea,
   emptyState, money, num, plural, dayKey, go, busy, copyText, timeOnly
 } from '../ui.js?v=20261118c';
-import { state, saveRow, deleteRow, rowById, leadById, leadName } from '../api.js?v=20261118c';
+import { state, saveRow, deleteRow, rowById, leadById, leadName, ai } from '../api.js?v=20261118c';
 
 /* ------------------------------------------------------------- statuses */
 export const PROPOSAL_STATUSES = [
@@ -94,6 +94,14 @@ export function roiWorking(inp, r) {
   }
   return lines;
 }
+
+/* ------------------------------------------------------- [check: …] markers
+   AI drafts mark facts Tyler must confirm as "[check: …]". None may reach a client. */
+export function checkMarkers(p) {
+  const texts = [p.problem, p.solution, p.terms, ...(Array.isArray(p.scope) ? p.scope.flatMap((x) => [x.title, x.detail]) : [])];
+  return texts.flatMap((t) => String(t || '').match(/\[check:[^\]]*\]?/gi) || []);
+}
+const aiReady = () => Boolean(state.ai?.configured && state.ai.enabled);
 
 /* ---------------------------------------------------------- numbering */
 export function suggestNumber(proposals = state.proposals, year = today().slice(0, 4)) {
@@ -466,6 +474,7 @@ function editorView(id) {
     if (dirty && !timer && saved.dataset.state !== 'error') await flush();
   }
   const changed = () => {
+    drawChecks();
     dirty = true;
     showSaved('dirty', 'Unsaved changes');
     clearTimeout(timer);
@@ -614,7 +623,60 @@ function editorView(id) {
     }
   }, icon('trash', 13), 'Delete');
 
+  /* AI draft panel */
+  const aiNotes = textarea('ai-notes', '', 'What they do, what is going wrong, what they asked for, anything they said about numbers');
+  aiNotes.rows = 6;
+  const aiPanel = el('section', { class: 'prop-ai', hidden: true, 'aria-label': 'Draft with AI' });
+  const aiGo = el('button', { type: 'button', class: 'btn btn-primary btn-sm' }, icon('spark', 13), 'Draft');
+  function openAi() {
+    if (!aiNotes.value.trim()) {
+      const d = doc.deal_id ? rowById('deals', doc.deal_id) : null;
+      const l = doc.lead_id ? leadById(doc.lead_id) : (d?.lead_id ? leadById(d.lead_id) : null);
+      aiNotes.value = [d?.notes, l?.pain, l?.hook].map((x) => String(x || '').trim()).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join('\n\n');
+    }
+    aiPanel.hidden = false;
+    aiPanel.scrollIntoView({ block: 'nearest' });
+    aiNotes.focus();
+  }
+  aiGo.addEventListener('click', () => busy(aiGo, async () => {
+    const notes = aiNotes.value.trim();
+    if (!notes) { toast('Add a few notes on the business first', 'warn'); aiNotes.focus(); return; }
+    const ctx = { recipient: { name: doc.recipient_name || null, business: doc.recipient_business || null }, notes };
+    if (doc.roi.include) ctx.roi = roiCompute(doc.roi.inputs, proposalTotals(doc));
+    const res = await ai('proposal', ctx);
+    if (!res.ok) { toast(res.message, 'bad'); return; }
+    const r = res.result || {};
+    const scope = (Array.isArray(r.scope) ? r.scope : []).map((x) => ({ title: String(x?.title || ''), detail: String(x?.detail || '') }));
+    const hasText = (doc.problem || '').trim() || (doc.solution || '').trim() || doc.scope.some((x) => (x.title || '').trim() || (x.detail || '').trim());
+    if (hasText) {
+      const ok = await confirmDialog('Replace what is there?', 'The draft will replace the problem, what you will build and the scope you have written. Terms, prices and ROI stay as they are.', { confirmLabel: 'Replace', danger: false });
+      if (!ok) return;
+    }
+    problemIn.value = String(r.problem || ''); doc.problem = problemIn.value;
+    solutionIn.value = String(r.solution || ''); doc.solution = solutionIn.value;
+    doc.scope = scope;
+    drawScope();
+    changed();
+    aiPanel.hidden = true;
+    const n = checkMarkers(doc).length;
+    toast(n ? `Draft in. Read it through and fill the ${n} [check: …] item${n === 1 ? '' : 's'} before sending.` : 'Draft in. Read it through and make it yours before sending.', n ? 'warn' : 'ok');
+  }));
+  fill(aiPanel,
+    el('div', { class: 'prop-sec-head' }, el('p', { class: 'eyebrow' }, 'Draft with AI'), el('h2', { class: 'h3' }, 'Your notes on this business')),
+    field('Notes', aiNotes, 'The AI drafts the problem, what you will build and the scope from these. Anything it is unsure of comes back as [check: …] for you to fill.'),
+    el('div', { class: 'row' }, aiGo, el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: () => { aiPanel.hidden = true; } }, 'Cancel')));
+
+  const checksBox = el('div', { class: 'prop-checks', 'aria-live': 'polite' });
+  function drawChecks() {
+    const n = checkMarkers(doc).length;
+    fill(checksBox, n ? el('div', { class: 'callout is-warn' }, icon('alert', 16),
+      el('span', {}, `${n} [check: …] item${n === 1 ? '' : 's'} to fill before sending. Replace each one with the real detail.`)) : null);
+    [problemIn, solutionIn, termsIn].forEach((t) => t.classList.toggle('has-check', /\[check:/i.test(t.value)));
+    scopeBox.querySelectorAll('input, textarea').forEach((t) => t.classList.toggle('has-check', /\[check:/i.test(t.value)));
+  }
+
   const editor = el('div', { class: 'prop-editor' },
+    aiPanel, checksBox,
     sec('1 · Who it is for', 'Recipient',
       el('div', { class: 'form-grid' },
         el('div', { class: 'full' }, field('From deal', dealSel, null), linkInfo),
@@ -643,6 +705,10 @@ function editorView(id) {
   const top = el('div', { class: 'prop-top' });
   const statusBox = el('div', { class: 'row prop-status' });
   async function setStatus(status) {
+    if (status === 'sent') {
+      const n = checkMarkers(doc).length;
+      if (n) { drawChecks(); toast(`Not sent: ${n} [check: …] item${n === 1 ? ' is' : 's are'} still in the proposal. Fill ${n === 1 ? 'it' : 'them'} in first.`, 'bad'); return; }
+    }
     await flush();
     const patch = { id, status };
     if (status === 'sent') { patch.sent_on = doc.sent_on || today(); patch.decided_on = null; }
@@ -678,6 +744,7 @@ function editorView(id) {
           el('p', { class: 'eyebrow' }, doc.number || 'Proposal'),
           el('h1', { class: 'h1 prop-h1' }, (doc.title || '').trim() || 'Untitled proposal')),
         el('div', { class: 'prop-actions' },
+          aiReady() ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm prop-ai-btn', onClick: openAi }, icon('spark', 13), 'Draft with AI') : null,
           st === 'draft' ? b('Mark as sent', 'sent', true) : null,
           st === 'sent' || st === 'expired' ? [b('Accepted', 'accepted', true), b('Declined', 'declined'), b('Back to draft', 'draft')] : null,
           st === 'accepted' || st === 'declined' ? b('Reopen', 'sent') : null,
@@ -691,6 +758,8 @@ function editorView(id) {
   root.append(top, el('div', { class: 'prop-split' }, editor, preview));
   drawTop(); drawLinks(); drawScope(); drawItems(); drawTotals(); drawRoiOut(); drawPreview();
   if (fillRecipient()) changed();
+  drawChecks();
+  let aiShown = aiReady();
 
   root.onState = () => {
     const r = rowById('proposals', id);
@@ -699,7 +768,9 @@ function editorView(id) {
       Object.assign(doc, { status: r.status, sent_on: r.sent_on, decided_on: r.decided_on });
       drawTop();
       schedulePreview();
-    }
+    } else if (aiReady() !== aiShown) drawTop();
+    aiShown = aiReady();
+    if (!aiShown) aiPanel.hidden = true;
     drawLinks();
   };
   return root;

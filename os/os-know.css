@@ -144,3 +144,22 @@
   .kpi-strip.biz .kpi-cell:nth-child(-n+2) { border-top: 0; }
   .kpi-strip.biz .kpi-cell .kpi-value { font-size: 30px; }
 }
+
+/* ============================================================ AI (settings + leads drawer) */
+.set-ai { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+.set-ai-status { display: flex; align-items: center; gap: var(--space-3); }
+.set-ai-spend { display: flex; flex-direction: column; gap: var(--space-2); max-width: 420px; }
+.set-ai-meter { display: block; height: 3px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.set-ai-meter i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+.set-ai-usage tfoot td { font-weight: 600; border-top: 1px solid var(--line); }
+.set-ai-notes { margin: var(--space-4) 0 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-sm); color: var(--body); }
+.ld-ai { display: flex; flex-direction: column; gap: var(--space-3); }
+.ld-ai:empty { display: none; }
+.ld-ai-toggle { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; text-decoration: none; }
+.ld-ai-panel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0 var(--space-3) var(--space-4); border-left: 2px solid var(--line); }
+.ld-ai-out { display: flex; flex-direction: column; gap: var(--space-2); }
+.ld-ai-out:empty { display: none; }
+.ld-ai-opts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ld-ai-opt { width: 100%; text-align: left; padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--paper); color: var(--ink); font-size: var(--fs-sm); line-height: var(--lh-body); cursor: pointer; transition: border-color var(--dur), background var(--dur); }
+.ld-ai-opt:hover { border-color: var(--ink); background: var(--hover); }
+.ld-ai-ask { margin: 0; }

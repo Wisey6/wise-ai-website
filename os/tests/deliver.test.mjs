@@ -25,8 +25,9 @@ const near = (a, b, eps = 1e-6) => Math.abs(a - b) < eps;
 const browser = await chromium.launch();
 const pages = [];
 
-async function openApp(viewport = { width: 1440, height: 900 }, hash = '') {
+async function openApp(viewport = { width: 1440, height: 900 }, hash = '', setup = null) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, permissions: ['clipboard-read', 'clipboard-write'] });
+  if (setup) await setup(ctx);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('console', (m) => {
@@ -518,11 +519,93 @@ try {
     await dl.context().close();
   }
 
+
+  /* ============================================== AI draft (mocked: never calls the real AI) */
+  const mock = { status: { configured: true, enabled: true, spent_usd: 0.42, cap_usd: 20 }, mode: 'ok', bodies: [] };
+  const DRAFT1 = { summary: 'Dana’s phones are answered now. Nine more calls a week get caught, and [check: number of new reviews] reviews came in.', next_steps: ['Add after-hours booking', 'Ask happy customers for reviews'] };
+  const DRAFT2 = { summary: 'October was a strong month. Missed calls fell from 12 to 3 a week.', next_steps: 'Add after-hours booking\nTurn on review requests' };
+  const routeAi = async (ctx, m) => {
+    await ctx.route('**/functions/v1/ai-assist', async (route) => {
+      const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      const body = route.request().postDataJSON() || {};
+      const json = (status, obj) => route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(obj) });
+      if (body.action === 'status') return json(200, m.status);
+      m.bodies.push(body);
+      if (m.mode === 'cap') return json(402, { ok: false, error: 'cap_reached' });
+      await new Promise((r) => setTimeout(r, 600));
+      return json(200, { ok: true, result: m.mode === 'ok' ? DRAFT1 : DRAFT2, cost_usd: 0.004, spent_usd: 0.43 });
+    });
+  };
+  const ap = await openApp({ width: 1440, height: 900 }, '', (ctx) => routeAi(ctx, mock));
+  await nav(ap, `roi-reports/new/${ids.client}`, '.rr-editor');
+  await ap.waitForSelector('button[data-act=ai]', { timeout: 10000 });
+  check(true, 'AI button shows when AI is configured and enabled');
+  await ap.fill('input[name=m-label-0]', 'Missed calls a week');
+  await ap.fill('input[name=m-before-0]', '12');
+  await ap.fill('input[name=m-after-0]', '3');
+  await ap.fill('input[name=hours_saved]', '20');
+  await ap.fill('input[name=hourly_value]', '60');
+  await ap.waitForFunction(() => /^#roi-reports\/[0-9a-f-]{36}$/.test(location.hash), null, { timeout: 15000 });
+  ids.report3 = await ap.evaluate(() => location.hash.split('/')[1]);
+  // error: budget used up
+  mock.mode = 'cap';
+  await ap.click('button[data-act=ai]');
+  await ap.waitForSelector('.toast.is-bad:has-text("AI budget is used up")', { timeout: 10000 });
+  check(await ap.inputValue('textarea[name=summary]') === '', 'cap_reached shows the ready-made message and leaves the fields alone');
+  // success into empty fields: no confirm, busy while it works
+  mock.mode = 'ok';
+  await ap.fill('input[name=ai_notes]', 'Dana loves the after-hours texts');
+  await ap.click('button[data-act=ai]');
+  await ap.waitForSelector('button[data-act=ai].is-busy', { timeout: 3000 });
+  check(true, 'AI button shows a busy state while drafting');
+  await ap.waitForFunction((s) => document.querySelector('textarea[name=summary]').value === s, DRAFT1.summary, { timeout: 15000 });
+  check(await ap.inputValue('textarea[name=next_steps]') === 'Add after-hours booking\nAsk happy customers for reviews', 'draft fills summary and next steps (list joined one per line)');
+  const sent1 = mock.bodies.at(-1);
+  check(sent1.task === 'roi_summary' && sent1.context.client === `${P} Harbour Plumbing` && sent1.context.period === 'October 2026' && sent1.context.notes === 'Dana loves the after-hours texts'
+    && sent1.context.numbers.hours_saved === 20 && sent1.context.numbers.total_value === 1200 && sent1.context.numbers.fee === 1500 && sent1.context.numbers.return_multiple === 0.8
+    && sent1.context.metrics[0].label === 'Missed calls a week' && sent1.context.metrics[0].before === 12, `AI request carries client, period, numbers, metrics, notes (${JSON.stringify(sent1.context.numbers)})`);
+  await waitDb(ap, async ({ id, s }) => { const { sb } = await window.__mod('api.js'); const { data } = await sb.from('roi_reports').select('summary').eq('id', id).single(); return data.summary === s; }, { id: ids.report3, s: DRAFT1.summary }, 'AI draft autosave');
+  check(true, 'autosave picks up the AI draft');
+  // [check: blocks sending
+  await ap.click('button[data-act=sent]');
+  await ap.waitForSelector('.toast.is-warn:has-text("number of new reviews")', { timeout: 8000 });
+  await ap.waitForTimeout(800);
+  check(await db(ap, async (id) => { const { sb } = await window.__mod('api.js'); const { data } = await sb.from('roi_reports').select('status').eq('id', id).single(); return data.status; }, ids.report3) === 'draft', 'Mark as sent is blocked while a [check: marker remains, and says what to fill in');
+  await shot(ap, 'roi-ai-1440');
+  // replace confirmation: cancel keeps text, replace swaps it
+  mock.mode = 'ok2';
+  await ap.click('button[data-act=ai]');
+  await ap.waitForSelector('.modal .h2:text("Replace what is there?")');
+  await ap.click('.modal-foot button:has-text("Cancel")');
+  await ap.waitForTimeout(400);
+  check(await ap.inputValue('textarea[name=summary]') === DRAFT1.summary && mock.bodies.length === 2, 'cancelling the replace confirmation keeps typed text and makes no call');
+  await ap.click('button[data-act=ai]');
+  await ap.waitForSelector('.modal .h2:text("Replace what is there?")');
+  await ap.click('.modal-foot button[type=submit]');
+  await ap.waitForFunction((s) => document.querySelector('textarea[name=summary]').value === s, DRAFT2.summary, { timeout: 15000 });
+  check(true, 'confirming replaces the words with the new draft');
+  await ap.waitForFunction(() => document.querySelector('.rr-save')?.textContent === 'Saved', null, { timeout: 15000 });
+  await ap.click('button[data-act=sent]');
+  await waitDb(ap, async (id) => { const { sb } = await window.__mod('api.js'); const { data } = await sb.from('roi_reports').select('status').eq('id', id).single(); return data.status === 'sent'; }, ids.report3, 'send after markers cleared');
+  check(true, 'Mark as sent works once no [check: marker remains');
+  check(ap.errors.length === 0, `no console errors with AI mocked (${ap.errors.join(' | ')})`);
+  await ap.context().close();
+  // hidden when not configured, or switched off
+  for (const st of [{ configured: false, enabled: false, spent_usd: 0, cap_usd: 20 }, { configured: true, enabled: false, spent_usd: 0, cap_usd: 20 }]) {
+    const off = { status: st, mode: 'ok', bodies: [] };
+    const hp = await openApp({ width: 1440, height: 900 }, '', (ctx) => routeAi(ctx, off));
+    await nav(hp, `roi-reports/${ids.report3}`, '.rr-editor');
+    await hp.waitForTimeout(500);
+    check(await hp.locator('button[data-act=ai]').count() === 0 && await hp.locator('input[name=ai_notes]').count() === 0, `AI control renders nothing when ${st.configured ? 'switched off' : 'not configured'}`);
+    await hp.context().close();
+  }
+
   /* ============================================== delete the client */
   await nav(page, `clients/${ids.client}`, '.cl-h1');
   await page.click(`.page-head button[aria-label^="Delete"]`);
   const confirmText = await text(page, '.modal .confirm-text');
-  check(confirmText.includes('1 ROI report') && confirmText.includes('1 project') && confirmText.includes('3 invoices') === false && confirmText.includes('4 invoices'), `delete says what goes with it (${confirmText})`);
+  check(confirmText.includes('2 ROI reports') && confirmText.includes('1 project') && confirmText.includes('3 invoices') === false && confirmText.includes('4 invoices'), `delete says what goes with it (${confirmText})`);
   await page.click('.modal-foot button[type=submit]');
   await page.waitForFunction(() => location.hash === '#clients', null, { timeout: 10000 });
   const gone = await waitDb(page, async ({ c, r }) => {

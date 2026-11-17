@@ -246,3 +246,18 @@ body:has(.deal-card.is-dragging) .pipe-tally-item { border-color: var(--line-2);
 }
 .deal-quick .row { gap: 6px; height: var(--control-h); }
 .deal-quick .chip { padding: 0 10px; }
+
+/* ------------------------------------------------------------ AI drafting (proposals + inbox) */
+.prop-ai { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); margin-bottom: var(--space-4); border: 1px solid var(--line); border-left: 2px solid var(--ink); border-radius: var(--radius-s); }
+.prop-checks:empty { display: none; }
+.prop-checks { margin-bottom: var(--space-4); }
+.prop-editor .input.has-check { border-color: var(--amber); box-shadow: inset 2px 0 0 var(--amber); }
+.inbox-ai { display: flex; flex-direction: column; gap: 6px; }
+.inbox-ai-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.inbox-ai-opt {
+  text-align: left; font: inherit; font-size: var(--fs-sm); line-height: 1.45; color: var(--ink); cursor: pointer;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 10px 12px;
+  transition: border-color var(--dur), background var(--dur); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.inbox-ai-opt:hover { border-color: var(--ink); background: var(--hover); }
+.inbox-ai-btn .icon { color: var(--ink); }
