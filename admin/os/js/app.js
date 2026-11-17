@@ -1,24 +1,58 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, modal, trapFocus } from './ui.js';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js';
+import { createPalette } from './palette.js';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
   refreshSmsStatus, knownPinLength, leadById, leadName
 } from './api.js';
 
 /* ------------------------------------------------------------ route registry
-   One line per section. `view` lazily imports a module whose default export is
-   (ctx) => Node. `tab` marks the routes shown in the phone tab bar (max 4). */
-const ROUTES = [
+   The single source of truth for navigation. Top-level entries are either a
+   section or a group of sections; `soon: true` marks a planned section (shown
+   dimmed, never a link). Making a section real is a one-line change: drop
+   `soon` and add `view` (a lazy import whose default export is (ctx) => Node).
+   `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
+   the foot of the collapsed dock; `href` links out (new tab). */
+export const NAV = [
   { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js') },
-  { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js') },
-  { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, view: () => import('./views/inbox.js') },
-  { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js') },
-  { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js') },
-  { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js') },
-  { id: 'settings', label: 'Settings', icon: 'settings', view: () => import('./views/settings.js') }
+  { group: 'Grow', icon: 'grow', items: [
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js') }
+  ] },
+  { group: 'Sell', icon: 'tag', items: [
+    { id: 'pipeline', label: 'Pipeline', soon: true },
+    { id: 'proposals', label: 'Proposals', soon: true },
+    { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../../roi.html' }
+  ] },
+  { group: 'Deliver', icon: 'deliver', items: [
+    { id: 'clients', label: 'Clients', soon: true },
+    { id: 'projects', label: 'Projects', soon: true },
+    { id: 'roi-reports', label: 'ROI reports', soon: true }
+  ] },
+  { group: 'Money', icon: 'money', items: [
+    { id: 'income', label: 'Income', soon: true },
+    { id: 'costs', label: 'Costs', soon: true },
+    { id: 'runway', label: 'Runway', soon: true }
+  ] },
+  { group: 'Know', icon: 'book', items: [
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js') },
+    { id: 'library', label: 'Library', soon: true }
+  ] },
+  { sep: true },
+  { id: 'agents', label: 'Agents', icon: 'agents', soon: true },
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js') }
 ];
+const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
+/** Live sections (the ones with a view), in navigation order. */
+const ROUTES = NAV_ITEMS.filter((r) => r.view);
+const groupSoon = (g) => g.items.every((i) => i.soon || i.href);
 const IDLE_MS = 15 * 60 * 1000;
 const LOGO = '../../logo.svg';
+const NAV_KEY = 'wiseos.nav';
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+const SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl K';
 
 const app = $('#app');
 let booted = false;
@@ -202,80 +236,321 @@ function renderGate() {
 
 const viewCache = new Map();
 let current = { route: null, param: null, node: null };
-const navCounts = [];
-const connNodes = [];
+let navCounts = [];
+let connNodes = [];
+let palette = null;
+let rail = null;
 
-function navLink(r, cls) {
-  const count = el('span', { class: 'nav-count', hidden: true, 'aria-label': '' });
-  if (r.id === 'inbox') navCounts.push(count);
-  return el('a', { class: cls, href: `#${r.id}`, dataset: { route: r.id } },
-    icon(r.icon, cls === 'tab-item' ? 22 : 18),
-    el('span', { class: 'nav-label' }, r.label),
-    count);
+const soonTag = () => el('span', { class: 'soon-tag' }, 'Soon');
+
+function countBadge(r, cls = 'nav-count') {
+  if (r.badge !== 'unread') return null;
+  const c = el('span', { class: cls, hidden: true });
+  navCounts.push(c);
+  return c;
 }
 
-function connIndicator() {
+/** One entry of the grouped map: a live link, an external link, or a dimmed planned item. */
+function navEntry(r, cls, { inSoonGroup = false } = {}) {
+  if (r.view) {
+    return el('a', { class: cls, href: `#${r.id}`, dataset: { route: r.id } },
+      cls.includes('nav-top') ? icon(r.icon, 17) : null,
+      el('span', { class: 'nav-label' }, r.label),
+      countBadge(r));
+  }
+  if (r.href) {
+    return el('a', { class: `${cls} is-external`, href: r.href, target: '_blank', rel: 'noopener', title: `${r.label} (opens the public page in a new tab)` },
+      cls.includes('nav-top') ? icon(r.icon, 17) : null,
+      el('span', { class: 'nav-label' }, r.label),
+      el('span', { class: 'nav-ext' }, icon('external', 12)),
+      el('span', { class: 'sr-only' }, ' (opens in a new tab)'));
+  }
+  return el('span', { class: `${cls} is-soon`, 'aria-disabled': 'true', dataset: { soon: r.id } },
+    cls.includes('nav-top') ? icon(r.icon, 17) : null,
+    el('span', { class: 'nav-label' }, r.label),
+    inSoonGroup ? el('span', { class: 'sr-only' }, ' (coming soon)') : soonTag());
+}
+
+/** Layout A's grouped map. `prefix` keeps ids unique between the rail and the phone sheet. */
+function navMap(prefix) {
+  const nodes = NAV.map((n, i) => {
+    if (n.sep) return el('div', { class: 'nav-sep', role: 'presentation' });
+    if (!n.items) return navEntry(n, 'nav-item nav-top');
+    const soon = groupSoon(n);
+    const id = `${prefix}-g${i}`;
+    return el('div', { class: `nav-group${soon ? ' is-soon' : ''}`, role: 'group', 'aria-labelledby': id },
+      el('div', { class: 'nav-group-label', id }, icon(n.icon, 16), el('span', {}, n.group), soon ? soonTag() : null),
+      el('ul', { class: 'nav-group-list' }, n.items.map((it) => el('li', {}, navEntry(it, 'nav-item nav-sub', { inSoonGroup: soon })))));
+  });
+  return el('nav', { class: 'nav', 'aria-label': 'Sections' }, nodes);
+}
+
+function paintConn({ node, label, extraCls }, c) {
+  node.className = `conn${extraCls ? ` ${extraCls}` : ''} is-${c}`;
+  label.textContent = c === 'live' ? 'Live' : c === 'offline' ? 'Offline' : 'Connecting';
+  node.title = c === 'live' ? 'Live: updates arrive instantly' : c === 'offline' ? 'Offline: changes will not arrive' : 'Connecting to live updates';
+}
+
+function connIndicator(extraCls = '') {
   const label = el('span', { class: 'conn-label' }, 'Connecting');
-  const node = el('span', { class: 'conn', role: 'status', title: 'Live connection' }, el('span', { class: 'conn-dot' }), label);
-  connNodes.push({ node, label });
+  const node = el('span', { class: `conn ${extraCls}`, role: 'status' }, el('span', { class: 'conn-dot' }), label);
+  const entry = { node, label, extraCls };
+  connNodes.push(entry);
+  paintConn(entry, state.connection);
   return node;
 }
 
-function openMore() {
-  const items = ROUTES.filter((r) => !r.tab).map((r) => {
-    const a = navLink(r, 'nav-item');
-    a.addEventListener('click', () => setTimeout(() => $('.modal-backdrop .icon-btn')?.click(), 0));
-    return a;
-  });
-  const lockBtn = el('button', { type: 'button', class: 'btn btn-ghost btn-block', onClick: () => lock() }, icon('lock', 16), 'Lock now');
-  modal({
-    title: 'More',
-    body: el('nav', { class: 'nav more-sheet', 'aria-label': 'More sections' }, items, el('div', { style: 'height:8px' }), lockBtn),
-    hideConfirm: true,
-    cancelLabel: 'Close'
-  });
-  markActive();
+function searchTrigger(cls, compact = false) {
+  return el('button', {
+    type: 'button', class: cls, dataset: { palette: '' }, 'aria-haspopup': 'dialog',
+    'aria-keyshortcuts': 'Control+K Meta+K', 'aria-label': compact ? `Search or jump to (${SHORTCUT})` : null,
+    onClick: (e) => palette?.open(e.currentTarget)
+  }, icon('search', compact ? 19 : 15), compact ? null : el('span', { class: 'nav-search-ph' }, 'Search or jump to…'), compact ? null : el('kbd', {}, SHORTCUT));
 }
 
-function renderShell() {
-  clear(app);
-  const nav = el('nav', { class: 'nav', 'aria-label': 'Sections' }, ROUTES.map((r) => navLink(r, 'nav-item')));
-  const rail = el('aside', { class: 'rail' },
-    el('a', { class: 'rail-brand', href: '#home', 'aria-label': 'Wise AI OS home' },
-      el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
-    nav,
+/* -------------------------------------------------------------- the rail
+   Desktop: a slim icon dock (D) that expands into layout A's grouped map as an
+   overlay on hover / keyboard focus, or stays open beside the content when
+   pinned. The dock is a pointer-only visual duplicate (aria-hidden); the full
+   map is the accessible navigation and expands as soon as focus enters it. */
+function buildRail() {
+  const pinBtn = el('button', { type: 'button', class: 'rail-pin', 'aria-pressed': 'false' }, icon('panel-pin', 17));
+  const full = el('div', { class: 'rail-full' },
+    el('div', { class: 'rail-head' },
+      el('a', { class: 'rail-brand', href: '#home', 'aria-label': 'Wise AI OS home' },
+        el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
+      pinBtn),
+    el('div', { class: 'rail-search' }, searchTrigger('nav-search')),
+    navMap('rail'),
     el('div', { class: 'rail-foot' },
       connIndicator(),
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-lock', onClick: () => lock(), title: 'Lock (signs out)' },
         icon('lock', 15), el('span', { class: 'lbl' }, 'Lock'))));
 
+  const dockItem = (r) => (r.view
+    ? el('a', { class: 'dock-item', href: `#${r.id}`, tabindex: '-1', dataset: { route: r.id } }, icon(r.icon, 19), countBadge(r, 'dock-count'))
+    : el('span', { class: 'dock-item is-soon' }, icon(r.icon, 19)));
+  const live = ROUTES.filter((r) => !r.foot);
+  const planned = NAV.filter((n) => (n.items ? groupSoon(n) : !n.sep && n.soon));
+  const menuBtn = el('button', { type: 'button', class: 'dock-menu', tabindex: '-1' },
+    el('span', { class: 'dock-mark' }, el('img', { src: LOGO, alt: '' })));
+  const dock = el('div', { class: 'rail-dock', 'aria-hidden': 'true' },
+    menuBtn,
+    el('button', { type: 'button', class: 'dock-item dock-search', tabindex: '-1', onClick: (e) => palette?.open(e.currentTarget) }, icon('search', 19)),
+    el('div', { class: 'dock-list' },
+      live.map(dockItem),
+      el('span', { class: 'dock-sep' }),
+      planned.map(dockItem)),
+    el('div', { class: 'dock-foot' },
+      ROUTES.filter((r) => r.foot).map(dockItem),
+      connIndicator('conn-dock'),
+      el('button', { type: 'button', class: 'dock-item', tabindex: '-1', onClick: () => lock() }, icon('lock', 18))));
+
+  const node = el('aside', { class: 'rail', 'aria-label': 'Main navigation' }, dock, full);
+  return { node, full, dock, pinBtn, menuBtn };
+}
+
+function readPinned() { try { return localStorage.getItem(NAV_KEY) === 'pinned'; } catch { return false; } }
+function savePinned(p) { try { localStorage.setItem(NAV_KEY, p ? 'pinned' : 'dock'); } catch { /* private mode: per-session only */ } }
+
+function railController(shell, parts) {
+  const { node, full, dock, pinBtn, menuBtn } = parts;
+  const wide = matchMedia('(min-width: 1100px)');
+  const desktop = matchMedia('(min-width: 761px)');
+  let pinned = readPinned();
+  let open = false;
+  let openedBy = null;
+  let hover = false;
+  let suppress = false; // after choosing an item, ignore hover until the pointer leaves
+  let tOpen = 0;
+  let tClose = 0;
+
+  const effPinned = () => pinned && wide.matches;
+  const apply = () => {
+    const pin = effPinned();
+    const expanded = pin || open;
+    shell.classList.toggle('nav-pinned', pin);
+    node.classList.toggle('is-expanded', expanded);
+    node.classList.toggle('is-peek', expanded && !pin);
+    node.dataset.state = pin ? 'pinned' : expanded ? 'peek' : 'dock';
+    pinBtn.setAttribute('aria-pressed', String(pinned));
+    const lbl = pinned ? 'Unpin sidebar' : 'Keep sidebar open';
+    pinBtn.setAttribute('aria-label', lbl);
+    pinBtn.title = `${lbl} ( [ )`;
+    menuBtn.setAttribute('aria-expanded', String(expanded));
+  };
+  const setOpen = (v, by = null) => {
+    clearTimeout(tOpen); clearTimeout(tClose);
+    if (open === v) { if (v && by) openedBy = by; return; }
+    open = v;
+    openedBy = v ? by : null;
+    if (!v && full.contains(document.activeElement) && !effPinned()) {
+      // A mouse click left focus in the map; let it go rather than hide a focused control.
+      if (!document.activeElement.matches(':focus-visible')) document.activeElement.blur();
+    }
+    apply();
+  };
+  const closeSoon = () => { clearTimeout(tClose); tClose = setTimeout(() => setOpen(false), 250); };
+
+  node.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'touch') return;
+    hover = true;
+    clearTimeout(tClose);
+    if (!open && !effPinned() && !suppress) { clearTimeout(tOpen); tOpen = setTimeout(() => setOpen(true, 'hover'), 120); }
+  });
+  node.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'touch') return;
+    hover = false;
+    suppress = false;
+    clearTimeout(tOpen);
+    if (open && openedBy !== 'click' && !(openedBy === 'focus' && full.contains(document.activeElement))) closeSoon();
+  });
+  node.addEventListener('focusin', (e) => {
+    if (dock.contains(e.target)) return; // pointer-only duplicate
+    clearTimeout(tClose);
+    if (!open && !effPinned()) setOpen(true, 'focus');
+  });
+  node.addEventListener('focusout', (e) => {
+    if (e.relatedTarget && node.contains(e.relatedTarget)) return;
+    if (open && openedBy === 'focus' && !hover) closeSoon();
+  });
+  node.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && open && !effPinned()) {
+      e.stopPropagation();
+      setOpen(false);
+      $('#view')?.focus({ preventScroll: true });
+    }
+  });
+  // Choosing a destination tucks the overlay away.
+  node.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]');
+    if (!a) return;
+    if (open && !effPinned()) { suppress = hover; setOpen(false); }
+  });
+  // Touch / no-hover: the dock's mark opens the overlay; tapping outside closes it.
+  menuBtn.addEventListener('click', () => {
+    if (effPinned()) return;
+    setOpen(!open, 'click');
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (open && !effPinned() && !node.contains(e.target) && (openedBy === 'click' || e.pointerType === 'touch')) setOpen(false);
+  });
+  pinBtn.addEventListener('click', () => togglePin());
+  wide.addEventListener('change', apply);
+  desktop.addEventListener('change', () => { if (!desktop.matches) setOpen(false); });
+
+  function togglePin() {
+    if (!wide.matches) { setOpen(!open, 'click'); return; }
+    pinned = !pinned;
+    savePinned(pinned);
+    if (!pinned) {
+      // Unpinned: stay open only while the pointer (or keyboard focus) is in the rail.
+      open = hover || full.contains(document.activeElement);
+      openedBy = open ? (hover ? 'hover' : 'focus') : null;
+    } else {
+      open = false;
+    }
+    apply();
+  }
+  apply();
+  return { togglePin, close: () => setOpen(false), get pinned() { return pinned; } };
+}
+
+/* ------------------------------------------------------- phone More sheet */
+function openMore(trigger) {
+  if ($('.more-layer')) return closeMore();
+  const prev = document.activeElement;
+  const sheet = el('div', { class: 'more-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'All sections' },
+    el('div', { class: 'more-head' },
+      el('a', { class: 'rail-brand', href: '#home', 'aria-label': 'Wise AI OS home' }, el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
+      el('button', { type: 'button', class: 'icon-btn more-close', 'aria-label': 'Close menu', onClick: () => closeMore() }, icon('x', 18))),
+    navMap('sheet'),
+    el('div', { class: 'rail-foot' },
+      connIndicator(),
+      el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-lock', onClick: () => lock() }, icon('lock', 15), el('span', { class: 'lbl' }, 'Lock'))));
+  const layer = el('div', { class: 'more-layer' }, el('div', { class: 'more-scrim', onClick: () => closeMore() }), sheet);
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.stopPropagation(); closeMore(); }
+    else if (e.key === 'Tab') trapFocus(e, sheet);
+  };
+  sheet.addEventListener('click', (e) => { if (e.target.closest('a[href]')) setTimeout(() => closeMore(), 0); });
+  layer._close = () => {
+    document.removeEventListener('keydown', onKey, true);
+    trigger?.setAttribute('aria-expanded', 'false');
+    layer.classList.add('is-leaving');
+    setTimeout(() => layer.remove(), 220);
+    if (prev && prev.focus && prev.isConnected) prev.focus({ preventScroll: true });
+  };
+  document.addEventListener('keydown', onKey, true);
+  document.body.append(layer);
+  trigger?.setAttribute('aria-expanded', 'true');
+  updateBadges();
+  markActive();
+  setTimeout(() => sheet.querySelector('.more-close')?.focus(), 30);
+}
+function closeMore() {
+  const layer = $('.more-layer:not(.is-leaving)');
+  if (layer) layer._close();
+}
+
+function renderShell() {
+  clear(app);
+  navCounts = [];
+  connNodes = [];
+  const parts = buildRail();
+
   const topbar = el('header', { class: 'topbar' },
     el('a', { href: '#home', 'aria-label': 'Wise AI OS home' }, el('img', { src: LOGO, alt: 'Wise AI' })),
+    el('span', { class: 'os-tag' }, 'OS'),
     connIndicator(),
+    searchTrigger('icon-btn topbar-search', true),
     el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Lock', onClick: () => lock() }, icon('lock', 19)));
 
-  const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Sections' },
-    ROUTES.filter((r) => r.tab).slice(0, 4).map((r) => navLink(r, 'tab-item')),
-    el('button', { type: 'button', class: 'tab-item', dataset: { route: 'more' }, onClick: openMore, 'aria-label': 'More sections' },
-      icon('more', 22), el('span', {}, 'More')));
+  const moreBtn = el('button', { type: 'button', class: 'tab-item', dataset: { route: 'more' }, 'aria-label': 'More sections', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', onClick: (e) => openMore(e.currentTarget) },
+    icon('more', 22), el('span', {}, 'More'));
+  const tabbar = el('nav', { class: 'tabbar', 'aria-label': 'Quick sections' },
+    ROUTES.filter((r) => r.tab).slice(0, 4).map((r) => el('a', { class: 'tab-item', href: `#${r.id}`, dataset: { route: r.id } },
+      icon(r.icon, 22), el('span', { class: 'nav-label' }, r.label), countBadge(r))),
+    moreBtn);
+  tabbar.addEventListener('click', (e) => { if (e.target.closest('a[href]')) closeMore(); });
 
   const view = el('div', { id: 'view', tabindex: '-1' });
   const main = el('main', { class: 'main', id: 'main' }, view);
-  app.append(el('div', { class: 'shell' }, rail, el('div', { style: 'min-width:0' }, topbar, main)), tabbar);
+  const shell = el('div', { class: 'shell' }, parts.node, el('div', { class: 'shell-main' }, topbar, main));
+  app.append(shell, tabbar);
+  rail = railController(shell, parts);
 
   onConnection((c) => {
-    for (const { node, label } of connNodes) {
-      node.className = `conn is-${c}`;
-      label.textContent = c === 'live' ? 'Live' : c === 'offline' ? 'Offline' : 'Connecting';
-      node.title = c === 'live' ? 'Live: updates arrive instantly' : c === 'offline' ? 'Offline: changes will not arrive' : 'Connecting to live updates';
+    connNodes = connNodes.filter((n) => n.node.isConnected);
+    for (const n of connNodes) paintConn(n, c);
+  });
+}
+
+function editableTarget(t) {
+  return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+}
+
+function shellKeys() {
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+      if (document.querySelector('.modal-backdrop')) return;
+      e.preventDefault();
+      if (palette.isOpen()) palette.close(); else palette.open(document.activeElement);
+      return;
+    }
+    if (e.key === '[' && !e.metaKey && !e.ctrlKey && !e.altKey && !editableTarget(e.target)
+      && !palette.isOpen() && !document.querySelector('.modal-backdrop, .drawer, .more-layer') && window.innerWidth > 760) {
+      e.preventDefault();
+      rail.togglePin();
     }
   });
 }
 
 function markActive() {
   const id = current.route;
+  const tabbed = ROUTES.find((r) => r.id === id)?.tab;
   for (const a of document.querySelectorAll('[data-route]')) {
-    const on = a.dataset.route === id || (a.dataset.route === 'more' && !ROUTES.find((r) => r.id === id)?.tab);
+    const on = a.dataset.route === id || (a.dataset.route === 'more' && !tabbed);
     a.classList.toggle('is-active', on);
     if (a.tagName === 'A') { if (a.dataset.route === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }
   }
@@ -283,6 +558,7 @@ function markActive() {
 
 function updateBadges() {
   const unread = state.leads.filter((l) => l.unread && !l.archived).length;
+  navCounts = navCounts.filter((c) => c.isConnected);
   for (const c of navCounts) {
     c.hidden = !unread;
     c.textContent = unread > 99 ? '99+' : String(unread);
@@ -418,6 +694,8 @@ async function boot(gate) {
   booted = true;
   gate?.destroy();
   renderShell();
+  palette = createPalette({ routes: ROUTES, onLock: () => lock(), onTogglePin: () => rail.togglePin() });
+  shellKeys();
   window.addEventListener('hashchange', () => render({ navigated: true }));
   onChange(onStateChange);
   watchEvents();

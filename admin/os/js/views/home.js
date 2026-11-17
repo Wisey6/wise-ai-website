@@ -159,32 +159,40 @@ function computeDoNext(state) {
   return items;
 }
 
+/* Rendering follows the approved layout: A's greeting strip, D's compact KPI
+   strip, A's numbered Do next, A's calls and warm conversations, D's 14-day
+   chart and live feed. Computations above are unchanged. */
+
 function doNextCard(state) {
   const items = computeDoNext(state);
-  const list = el('ul', { class: 'do-list' }, items.slice(0, 9).map((it) => el('li', { class: 'do-item' },
-    el('div', { class: 'row nowrap', style: 'gap:6px' },
-      el('a', { class: 'do-link', href: it.href, style: 'flex:1;min-width:0', dataset: { key: it.key } },
-        el('span', { class: `do-icon${it.tone ? ` t-${it.tone}` : ''}` }, icon(it.icon, 17)),
-        el('span', { style: 'min-width:0' },
-          el('span', { class: 'do-title', style: 'display:block' }, it.title),
-          it.sub ? el('span', { class: 'do-sub', style: 'display:block' }, it.sub) : null),
-        el('span', { class: 'do-meta' }, el('span', { class: 'do-cta' }, it.cta), el('span', { class: 'do-go' }, icon('chevron', 16)))),
+  const shown = items.slice(0, 9);
+  const unread = state.leads.filter((l) => l.unread && !l.archived).length;
+  const list = el('ol', { class: 'do-list' }, shown.map((it, i) => el('li', { class: `do-item${i === 0 ? ' is-first' : ''}`, dataset: { key: it.key } },
+    el('span', { class: 'do-n', 'aria-hidden': 'true' }, String(i + 1)),
+    el('span', { class: `do-icon${it.tone ? ` t-${it.tone}` : ''}`, 'aria-hidden': 'true' }, icon(it.icon, 16)),
+    el('span', { class: 'do-text' },
+      el('span', { class: 'do-title' }, it.title),
+      it.sub ? el('span', { class: 'do-sub' }, it.sub) : null),
+    el('span', { class: 'do-acts' },
       it.extra ? el('a', {
-        class: 'btn btn-ghost btn-sm', href: it.extra.href, 'aria-label': `${it.extra.label}: ${it.title}`,
+        class: 'act act-extra', href: it.extra.href, 'aria-label': `${it.extra.label}: ${it.title}`,
         target: it.extra.external ? '_blank' : null, rel: it.extra.external ? 'noopener noreferrer' : null
-      }, icon(it.extra.icon, 14), it.extra.label) : null))));
+      }, icon(it.extra.icon, 14), it.extra.label) : null,
+      el('a', { class: `act do-link${i === 0 ? ' is-primary' : ''}`, href: it.href, 'aria-label': `${it.cta}: ${it.title}`, dataset: { key: it.key } }, it.cta)))));
 
-  return el('section', { class: 'card', 'aria-labelledby': 'do-next-h' },
+  return el('section', { class: 'card today-card do-card', 'aria-labelledby': 'do-next-h' },
     el('div', { class: 'card-head' },
-      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Do next'), el('h2', { class: 'h2', id: 'do-next-h' }, items.length ? `${plural(items.length, 'thing')} worth your time` : 'Nothing urgent')),
-      items.length > 9 ? el('span', { class: 'muted small' }, `+${items.length - 9} more`) : null),
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Do next'),
+        el('h2', { class: 'h2', id: 'do-next-h' }, items.length ? `${plural(items.length, 'thing')} worth your time, in order` : 'Nothing urgent')),
+      items.length > 9 ? el('span', { class: 'muted small' }, `+${items.length - 9} more`)
+        : unread ? el('a', { class: 'card-link', href: '#inbox' }, 'Open inbox', icon('arrow', 14)) : null),
     items.length ? list : el('div', { class: 'all-clear' },
       el('span', { class: 'do-icon t-up' }, icon('check', 17)),
       el('span', {}, 'All caught up. A good time to write a few personal lines or review the playbook.')));
 }
 
-/* ------------------------------------------------------------- funnel */
-function funnel(state) {
+/* ----------------------------------------------------------- KPI strip */
+function kpiStrip(state) {
   const now = Date.now();
   const wk = (iso) => iso && now - Date.parse(iso) < 7 * DAY;
   const leads = state.leads.filter(isActive);
@@ -197,26 +205,26 @@ function funnel(state) {
   const repliedWk = leads.filter((l) => wk(l.last_reply_at)).length;
   const rate = contacted.length ? Math.round((replied.length / contacted.length) * 100) : null;
   const rateWk = contactedWk ? Math.round((repliedWk / contactedWk) * 100) : null;
-  const total = Math.max(1, leads.length);
   const wonValue = won.reduce((sum, l) => sum + (Number(l.est_monthly_value) || 0), 0);
+  const newWk = leads.filter((l) => wk(l.created_at)).length;
 
   const steps = [
-    { label: 'Leads', value: num(leads.length), sub: `+${leads.filter((l) => wk(l.created_at)).length} this week`, share: leads.length / total, href: '#leads' },
-    { label: 'Contacted', value: num(contacted.length), sub: `${contactedWk} this week`, share: contacted.length / total, href: '#leads' },
-    { label: 'Reply rate', value: rate === null ? '–' : `${rate}%`, sub: rateWk === null ? `${replied.length} replied` : `${rateWk}% this week`, share: replied.length / total, href: '#inbox' },
-    { label: 'Interested', value: num(interested.length), sub: `${interested.filter((l) => wk(l.updated_at)).length} moved this week`, share: interested.length / total, href: '#leads' },
-    { label: 'Booked', value: num(bookings.length), sub: `${bookings.filter((b) => wk(b.created_at)).length} this week`, share: bookings.length / total, href: '#bookings' },
-    { label: 'Won', value: num(won.length), sub: wonValue ? `${money(wonValue)}/mo value` : `${won.filter((l) => wk(l.updated_at)).length} this week`, share: won.length / total, href: '#leads' }
+    { label: 'Leads', value: num(leads.length), sub: `+${newWk} this week`, up: newWk > 0, href: '#leads' },
+    { label: 'Contacted', value: num(contacted.length), sub: `${contactedWk} this week`, href: '#leads' },
+    { label: 'Reply rate', value: rate === null ? '–' : `${rate}%`, sub: rateWk === null ? `${replied.length} replied` : `${rateWk}% this week`, href: '#inbox' },
+    { label: 'Interested', value: num(interested.length), sub: `${interested.filter((l) => wk(l.updated_at)).length} moved this week`, href: '#leads' },
+    { label: 'Booked', value: num(bookings.length), sub: `${bookings.filter((b) => wk(b.created_at)).length} this week`, href: '#bookings' },
+    { label: 'Won', value: num(won.length), sub: wonValue ? `${money(wonValue)}/mo` : `${won.filter((l) => wk(l.updated_at)).length} this week`, href: '#leads' }
   ];
-  return el('section', { class: 'funnel', 'aria-label': 'Funnel: all time, with this week' },
-    steps.map((s) => el('a', { class: 'funnel-step', href: s.href },
+  return el('section', { class: 'kpi-strip funnel', 'aria-label': 'Funnel: all time, with this week' },
+    steps.map((s) => el('a', { class: 'kpi-cell funnel-step', href: s.href },
       el('span', { class: 'kpi-label' }, s.label),
-      el('span', { class: 'kpi-value' }, s.value),
-      el('span', { class: 'kpi-sub' }, s.sub),
-      el('span', { class: 'funnel-bar', 'aria-hidden': 'true' }, el('span', { style: `width:${Math.max(2, Math.round(s.share * 100))}%` })))));
+      el('span', { class: 'kpi-line' },
+        el('span', { class: 'kpi-value' }, s.value),
+        el('span', { class: `kpi-sub${s.up ? ' is-up' : ''}` }, s.sub)))));
 }
 
-/* -------------------------------------------------------------- spark */
+/* -------------------------------------------------------------- chart */
 const SVG = 'http://www.w3.org/2000/svg';
 function svg(tag, attrs = {}, ...kids) {
   const n = document.createElementNS(SVG, tag);
@@ -224,8 +232,9 @@ function svg(tag, attrs = {}, ...kids) {
   kids.forEach((k) => n.append(k));
   return n;
 }
+const shortDate = (key) => new Date(`${key}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 
-function sparkCard(state) {
+function chartCard(state) {
   const days = [];
   for (let i = 13; i >= 0; i--) days.push(dayKey(new Date(Date.now() - i * DAY)));
   const idx = Object.fromEntries(days.map((d, i) => [d, i]));
@@ -241,95 +250,141 @@ function sparkCard(state) {
     const i = idx[dayKey(b.created_at)];
     if (i !== undefined && b.status !== 'cancelled') series.bookings[i]++;
   }
-  const W = 560; const H = 150; const P = { l: 26, r: 8, t: 10, b: 22 };
-  const max = Math.max(4, ...series.sent, ...series.replies, ...series.bookings);
-  const x = (i) => P.l + (i * (W - P.l - P.r)) / 13;
-  const y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
-  const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'spark', role: 'img', 'aria-label': `Last 14 days: ${series.sent.reduce((a, b) => a + b, 0)} texts sent, ${series.replies.reduce((a, b) => a + b, 0)} replies, ${series.bookings.reduce((a, b) => a + b, 0)} bookings` });
-  for (const f of [0, 0.5, 1]) {
-    const v = Math.round(max * f);
-    chart.append(svg('line', { x1: P.l, x2: W - P.r, y1: y(v), y2: y(v), class: 'grid-line' }));
-    const t = svg('text', { x: P.l - 6, y: y(v) + 3, 'text-anchor': 'end', class: 'axis' }); t.textContent = String(v); chart.append(t);
-  }
-  [0, 7, 13].forEach((i) => {
-    const t = svg('text', { x: x(i), y: H - 5, 'text-anchor': i === 0 ? 'start' : i === 13 ? 'end' : 'middle', class: 'axis' });
-    t.textContent = i === 13 ? 'Today' : new Date(`${days[i]}T00:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-    chart.append(t);
-  });
-  const colours = { sent: 'var(--ink)', replies: 'var(--blue)', bookings: 'var(--teal)' };
-  // Area under "sent" for weight, then the lines.
-  const pts = (arr) => arr.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  chart.append(svg('polygon', { points: `${x(0)},${y(0)} ${pts(series.sent)} ${x(13)},${y(0)}`, fill: 'rgba(10,14,17,.05)' }));
-  for (const k of ['sent', 'replies', 'bookings']) {
-    chart.append(svg('polyline', { points: pts(series[k]), fill: 'none', stroke: colours[k], 'stroke-width': k === 'sent' ? 2 : 1.75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-    const last = series[k][13];
-    chart.append(svg('circle', { cx: x(13), cy: y(last), r: 3, fill: colours[k] }));
-  }
   const sum = (a) => a.reduce((p, c) => p + c, 0);
-  return el('section', { class: 'card' },
+  const W = 336; const top = 12; const base = 98; const h = base - top;
+  const peak = Math.max(4, ...series.sent, ...series.replies);
+  const max = peak <= 10 ? Math.ceil(peak / 2) * 2 : Math.ceil(peak / 10) * 10;
+  const slot = W / 14;
+  const yv = (v) => base - (v / max) * h;
+  let busiest = 0;
+  series.sent.forEach((v, i) => { if (v > series.sent[busiest]) busiest = i; });
+  const chart = svg('svg', { viewBox: `0 0 ${W} ${base + 2}`, class: 'bars', 'aria-hidden': 'true', preserveAspectRatio: 'none' });
+  [0.5, 1].forEach((f) => chart.append(svg('line', { x1: 0, x2: W, y1: yv(max * f), y2: yv(max * f), class: 'grid-line' })));
+  for (let i = 0; i < 14; i++) {
+    const x = i * slot + 3.5; const bw = slot - 7;
+    const v = series.sent[i]; const r = series.replies[i];
+    const th = v ? Math.max((v / max) * h, 2) : 0;
+    if (v) chart.append(svg('rect', { x, y: base - th, width: bw, height: th, rx: 2.5, class: i === 13 ? 'b-sent is-today' : 'b-sent' }));
+    else chart.append(svg('rect', { x, y: base - 1.5, width: bw, height: 1.5, rx: 0.75, class: 'b-zero' }));
+    if (r) { const rh = Math.max((r / max) * h, 2); chart.append(svg('rect', { x: x + 3, y: base - rh, width: Math.max(bw - 6, 2), height: rh, rx: 2, class: 'b-reply' })); }
+    if (series.bookings[i]) chart.append(svg('circle', { cx: x + bw / 2, cy: Math.max(5, base - Math.max(th, r ? (r / max) * h : 0) - 8), r: 3.5, class: 'b-book' }));
+  }
+  chart.append(svg('line', { x1: 0, x2: W, y1: base, y2: base, class: 'axis-line' }));
+  const label = `Last 14 days: ${sum(series.sent)} texts sent, ${sum(series.replies)} replies, ${sum(series.bookings)} bookings.`
+    + (series.sent[busiest] ? ` Busiest day ${shortDate(days[busiest])} with ${series.sent[busiest]} texts.` : '');
+  const lg = (cls, text, value) => el('div', { class: 'lg' }, el('span', { class: 'lg-k' }, el('i', { class: cls }), text), el('span', { class: 'lg-v' }, num(value)));
+  return el('section', { class: 'card today-card chart-card', 'aria-labelledby': 'chart-h' },
     el('div', { class: 'card-head' },
-      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Last 14 days'), el('h2', { class: 'h2' }, 'Texts, replies and bookings')),
-      el('div', { class: 'legend' },
-        el('span', {}, el('i', { style: 'background:var(--ink)' }), `Sent ${sum(series.sent)}`),
-        el('span', {}, el('i', { style: 'background:var(--blue)' }), `Replies ${sum(series.replies)}`),
-        el('span', {}, el('i', { style: 'background:var(--teal)' }), `Bookings ${sum(series.bookings)}`))),
-    chart);
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow', id: 'chart-h' }, 'Last 14 days')),
+      el('span', { class: 'muted small' }, `${shortDate(days[0])} to ${shortDate(days[13])}`)),
+    el('div', { class: 'legend' },
+      lg('k-sent', 'Texts sent', sum(series.sent)),
+      lg('k-reply', 'Replies', sum(series.replies)),
+      lg('k-book', 'Bookings', sum(series.bookings))),
+    el('div', { class: 'chart', role: 'img', 'aria-label': label }, chart),
+    el('div', { class: 'chart-axis', 'aria-hidden': 'true' },
+      el('span', {}, shortDate(days[0])), el('span', {}, shortDate(days[7])), el('span', { class: 'is-today' }, 'Today')));
 }
 
 /* ------------------------------------------------------------ calls */
 function callsCard(state) {
   const now = Date.now();
   const upcoming = state.bookings.filter((b) => b.status === 'booked' && b.starts_at && Date.parse(b.ends_at || b.starts_at) > now).slice(0, 4);
-  return el('section', { class: 'card' },
+  const counts = { Today: 0, Tomorrow: 0, later: 0 };
+  for (const b of state.bookings.filter((x) => x.status === 'booked' && x.starts_at && Date.parse(x.ends_at || x.starts_at) > now)) {
+    const d = dayLabel(b.starts_at);
+    if (d === 'Today' || d === 'Tomorrow') counts[d]++; else counts.later++;
+  }
+  const parts = [];
+  if (counts.Today) parts.push(`${counts.Today} today`);
+  if (counts.Tomorrow) parts.push(`${counts.Tomorrow} tomorrow`);
+  if (counts.later) parts.push(`${counts.later} later`);
+  const title = parts.length ? (parts.length === 1 && counts.later ? plural(counts.later, 'call') : parts.join(', ')) : 'No calls booked';
+  return el('section', { class: 'card today-card', 'aria-labelledby': 'calls-h' },
     el('div', { class: 'card-head' },
-      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Upcoming calls'), el('h2', { class: 'h2' }, upcoming.length ? plural(upcoming.length, 'call') : 'No calls booked')),
-      el('a', { class: 'btn btn-ghost btn-sm', href: '#bookings' }, 'All bookings')),
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Upcoming calls'), el('h2', { class: 'h2', id: 'calls-h' }, title)),
+      el('a', { class: 'card-link', href: '#bookings' }, 'All bookings', icon('arrow', 14))),
     upcoming.length
-      ? el('ul', { class: 'call-list' }, upcoming.map((b) => {
+      ? el('ul', { class: 'calls call-list' }, upcoming.map((b, i) => {
         const lead = b.lead_id ? leadById(b.lead_id) : null;
-        return el('li', { class: 'call-item' },
-          el('div', { class: 'call-when' }, el('b', {}, timeOnly(b.starts_at).replace(/\s?[ap]m/i, '')), el('span', {}, /pm/i.test(timeOnly(b.starts_at)) ? 'pm' : 'am')),
-          el('div', { style: 'min-width:0' },
-            el('a', { href: lead ? `#leads/${lead.id}` : '#bookings', class: 'do-title truncate', style: 'display:block;color:var(--ink)' }, lead ? leadName(lead) : (b.attendee_name || 'Booking')),
-            el('span', { class: 'do-sub', style: 'display:block' }, `${dayLabel(b.starts_at)} · ${b.title || 'Discovery call'}`)),
-          b.meeting_url && /^https?:\/\//i.test(b.meeting_url)
-            ? el('a', { class: 'icon-btn', href: b.meeting_url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Join call' }, icon('external', 16))
-            : null);
+        const who = lead ? leadName(lead) : (b.attendee_name || 'Booking');
+        const t = timeOnly(b.starts_at);
+        const day = dayLabel(b.starts_at);
+        const join = b.meeting_url && /^https?:\/\//i.test(b.meeting_url);
+        return el('li', { class: `call call-item${i === 0 ? ' is-next' : ''}${day !== 'Today' && i > 0 ? ' is-later' : ''}` },
+          el('div', { class: 'call-when' }, el('b', {}, t.replace(/\s?[ap]m/i, '')), el('span', {}, /pm/i.test(t) ? 'pm' : 'am')),
+          el('div', { class: 'call-body' },
+            el('a', { href: lead ? `#leads/${lead.id}` : '#bookings', class: 'call-nm' }, who),
+            el('span', { class: 'call-mt' }, `${day} · ${b.title || 'Discovery call'}${i === 0 ? ' · next up' : ''}`)),
+          join
+            ? el('a', { class: 'mini-btn', href: b.meeting_url, target: '_blank', rel: 'noopener noreferrer', 'aria-label': `Join call with ${who}` }, icon('video', 15))
+            : el('a', { class: 'mini-btn', href: '#bookings', 'aria-label': `Booking with ${who}` }, icon('calendar', 15)));
       }))
-      : el('p', { class: 'muted small' }, state.settings?.booking_url ? 'When someone books through your link it lands here, and on Today.' : 'Add your booking link in Settings so people can book a call.'));
+      : el('p', { class: 'muted small card-note' }, state.settings?.booking_url ? 'When someone books through your link it lands here, and on Today.' : 'Add your booking link in Settings so people can book a call.'));
 }
 
 /* ------------------------------------------------------------ feed */
-const EVENT_TONE = { sms_reply: 'var(--blue)', sms_sent: 'var(--ink)', booking: 'var(--teal)', booking_cancelled: 'var(--amber)', website_lead: 'var(--violet)', opt_out: 'var(--rose)', dnc: 'var(--rose)', import: 'var(--up)' };
+const FEED = {
+  sms_reply: { label: 'Reply received', icon: 'message', tone: 'blue' },
+  sms_sent: { label: 'Text sent', icon: 'send', tone: '' },
+  booking: { label: 'Booking made', icon: 'calendar', tone: 'teal' },
+  booking_cancelled: { label: 'Booking cancelled', icon: 'calendar', tone: 'amber' },
+  website_lead: { label: 'Website lead', icon: 'globe', tone: 'violet' },
+  opt_out: { label: 'Opt-out honoured', icon: 'ban', tone: 'rose' },
+  dnc: { label: 'Do not contact', icon: 'ban', tone: 'rose' },
+  import: { label: 'Leads imported', icon: 'upload', tone: 'up' }
+};
 
 function feedCard(state) {
-  const events = state.events.slice(0, 12);
+  const events = state.events.slice(0, 7);
+  const live = state.connection === 'live';
   const list = el('ul', { class: 'feed' }, events.map((e) => {
     const isNew = !firstPaint && !seenEvents.has(e.id);
     seenEvents.add(e.id);
     const lead = e.lead_id ? leadById(e.lead_id) : null;
+    const k = FEED[e.kind] || { label: String(e.kind || 'Update').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()), icon: 'spark', tone: '' };
+    const body = [
+      el('span', { class: `fi${k.tone ? ` t-${k.tone}` : ''}`, 'aria-hidden': 'true' }, icon(k.icon, 14)),
+      el('span', { class: 'feed-txt' },
+        el('span', { class: 'ft' }, el('b', {}, k.label), lead ? ` · ${leadName(lead)}` : ''),
+        e.summary ? el('span', { class: 'fd' }, e.summary) : null),
+      el('time', { class: 'when', datetime: e.at || '' }, timeAgo(e.at))
+    ];
     return el('li', { class: isNew ? 'is-new' : '' },
-      el('span', { class: 'dot', style: `background:${EVENT_TONE[e.kind] || 'var(--faint)'}` }),
-      lead ? el('a', { href: `#leads/${lead.id}`, class: 'truncate', style: 'display:block' }, e.summary) : el('span', { class: 'truncate' }, e.summary),
-      el('span', { class: 'when' }, timeAgo(e.at)));
+      lead ? el('a', { class: 'feed-row', href: `#leads/${lead.id}` }, body) : el('div', { class: 'feed-row' }, body));
   }));
-  return el('section', { class: 'card' },
+  return el('section', { class: 'card today-card', 'aria-labelledby': 'feed-h' },
     el('div', { class: 'card-head' },
-      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Live activity'), el('h2', { class: 'h2' }, 'What just happened'))),
-    events.length ? list : el('p', { class: 'muted small' }, 'Texts, replies, bookings and website enquiries appear here the moment they happen.'));
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Activity'), el('h2', { class: 'h2', id: 'feed-h' }, 'Live feed')),
+      el('span', { class: `livetag${live ? '' : ' is-off'}` }, el('span', { class: 'dot' }), live ? 'Live' : state.connection === 'offline' ? 'Offline' : 'Connecting')),
+    events.length ? list : el('p', { class: 'muted small card-note' }, 'Texts, replies, bookings and website enquiries appear here the moment they happen.'));
 }
 
 /* ------------------------------------------------------------ hero */
+const hourLabel = (n) => {
+  const h = Number(n);
+  const hh = ((h + 11) % 12) + 1;
+  return `${hh}:00 ${h >= 12 ? 'pm' : 'am'}`;
+};
+
 function smsStrip(state) {
   const s = state.sms;
   if (!s) {
-    return el('div', { class: 'sms-strip' }, el('span', { class: 'item' }, el('span', { class: `dot${state.smsChecked ? ' warn' : ''}` }),
+    return el('div', { class: 'sms-strip' }, el('span', { class: 'item lbl' }, el('span', { class: `dot${state.smsChecked ? ' warn' : ''}` }),
       state.smsChecked ? 'SMS status unavailable right now' : 'Checking SMS…'));
   }
+  const set = state.settings || {};
+  const cap = Number(s.daily_cap) || 0;
+  const sent = Number(s.sent_today) || 0;
+  const pct = cap ? Math.min(100, Math.round((sent / cap) * 100)) : 0;
   return el('div', { class: 'sms-strip', 'aria-label': 'SMS status' },
-    el('span', { class: 'item' }, el('span', { class: `dot ${s.configured ? 'ok' : 'warn'}` }), s.configured ? 'SMS connected' : el('a', { href: '#settings' }, 'SMS not connected')),
-    el('span', { class: 'item' }, el('span', { class: `dot ${s.sent_today >= s.daily_cap ? 'bad' : 'ok'}` }), `${num(s.sent_today)} / ${num(s.daily_cap)} sent today`),
-    el('span', { class: 'item' }, el('span', { class: `dot ${s.window_open ? 'ok' : 'warn'}` }), s.window_open ? 'Sending window open' : 'Sending window closed'));
+    el('span', { class: 'item lbl' }, el('span', { class: `dot ${s.configured ? 'ok' : 'warn'}` }), s.configured ? 'SMS connected' : el('a', { href: '#settings' }, 'SMS not connected')),
+    el('span', { class: 'sep', 'aria-hidden': 'true' }, '·'),
+    el('span', { class: 'item mono' }, `${num(sent)} of ${num(cap)} sent today`),
+    el('span', { class: `meter${sent >= cap ? ' is-full' : ''}`, role: 'img', 'aria-label': `${num(sent)} of ${num(cap)} daily texts sent` }, el('i', { style: `width:${pct}%` })),
+    el('span', { class: 'sep', 'aria-hidden': 'true' }, '·'),
+    el('span', { class: 'item' }, el('span', { class: `dot ${s.window_open ? 'ok' : 'warn'}` }),
+      s.window_open ? `Window open until ${hourLabel(set.send_end_hour ?? 17)}` : `Window closed · opens ${hourLabel(set.send_start_hour ?? 9)}`));
 }
 
 function hero(state) {
@@ -339,22 +394,27 @@ function hero(state) {
   const bits = [];
   if (unread) bits.push(`${plural(unread, 'reply', 'replies')} waiting`);
   if (callsToday) bits.push(`${plural(callsToday, 'call')} today`);
-  const lede = state.leads.length
-    ? (bits.length ? `${bits.join(' and ')}.` : 'Quiet so far. A good day to write personal lines and send a careful batch.')
-    : 'An empty pipeline is a clean slate. Start by importing a list or adding someone you already know.';
+  const lede = !state.leads.length
+    ? ['An empty pipeline is a clean slate. Start by importing a list or adding someone you already know.']
+    : bits.length
+      ? [el('b', {}, `${bits[0]}${bits.length > 1 ? ',' : '.'}`), bits.length > 1 ? ` ${bits[1]}.` : '']
+      : ['Quiet so far. A good day to write personal lines and send a careful batch.'];
   const date = new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Brisbane', weekday: 'long', day: 'numeric', month: 'long' });
-  return el('section', { class: 'home-hero' },
-    el('div', {},
-      el('p', { class: 'eyebrow' }, date),
-      el('h1', { class: 'h1' }, `${greeting()}, Tyler`),
-      el('p', { class: 'lede' }, lede),
-      el('div', { style: 'margin-top:14px' }, smsStrip(state))),
-    el('div', { class: 'row' },
-      el('a', { class: 'btn btn-ghost', href: '#leads/import' }, icon('upload', 16), 'Import'),
-      el('a', { class: 'btn btn-primary', href: '#leads/new' }, icon('plus', 16), 'Add lead')));
+  return el('section', { class: 'home-hero', 'aria-labelledby': 'greet-h' },
+    el('div', { class: 'hero-top' },
+      el('div', { class: 'hero-copy' },
+        el('p', { class: 'eyebrow' }, date),
+        el('h1', { class: 'h1', id: 'greet-h' }, `${greeting()}, Tyler`),
+        el('p', { class: 'lede' }, lede)),
+      el('div', { class: 'hero-actions' },
+        el('a', { class: 'btn btn-ghost', href: '#leads/import' }, icon('upload', 16), 'Import'),
+        el('a', { class: 'btn btn-primary', href: '#leads/new' }, icon('plus', 16), 'Add lead'))),
+    smsStrip(state));
 }
 
-/* ------------------------------------------------------------ pipeline */
+/* ------------------------------------------------------------ warm */
+const WARM_TONE = { replied: 'var(--amber)', interested: 'var(--violet)', booked: 'var(--teal)' };
+
 function pipelineCard(state) {
   const leads = state.leads.filter(isActive);
   const hot = leads.filter((l) => ['replied', 'interested', 'booked'].includes(l.status))
@@ -362,25 +422,31 @@ function pipelineCard(state) {
     .slice(0, 5);
   if (!hot.length) return null;
   const total = hot.reduce((s, l) => s + (Number(l.est_monthly_value) || 0), 0);
-  return el('section', { class: 'card' },
+  const bar = total
+    ? el('div', { class: 'pipe', role: 'img', 'aria-label': `Share of ${money(total)} a month by conversation: ${hot.filter((l) => Number(l.est_monthly_value)).map((l) => `${leadName(l)} ${money(l.est_monthly_value)}`).join(', ')}` },
+      hot.filter((l) => Number(l.est_monthly_value) > 0).map((l) => el('i', { style: `flex:${Number(l.est_monthly_value)};background:${WARM_TONE[l.status] || 'var(--ink)'}` })))
+    : null;
+  return el('section', { class: 'card today-card', 'aria-labelledby': 'warm-h' },
     el('div', { class: 'card-head' },
-      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Warm conversations'), el('h2', { class: 'h2' }, total ? `${money(total)}/mo on the table` : 'People who replied')),
-      el('a', { class: 'btn btn-ghost btn-sm', href: '#leads' }, 'Pipeline')),
-    el('ul', { class: 'call-list' }, hot.map((l) => el('li', {},
-      el('a', { class: 'do-link', href: `#leads/${l.id}`, style: 'margin:0;grid-template-columns:minmax(0,1fr) auto auto' },
-        el('span', { style: 'min-width:0' }, el('span', { class: 'do-title truncate', style: 'display:block' }, leadName(l)), el('span', { class: 'do-sub', style: 'display:block' }, l.pain || l.hook || l.suburb || '')),
-        l.est_monthly_value ? el('span', { class: 'small', style: 'font-weight:600;color:var(--teal-t)' }, `${formatValue(l.est_monthly_value)}/mo`) : el('span'),
-        statusBadge(l.status))))));
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Warm conversations'),
+        el('h2', { class: 'h2', id: 'warm-h' }, total ? [el('span', { class: 'tot' }, `${money(total)}/mo`), ' on the table'] : 'People who replied')),
+      el('a', { class: 'card-link', href: '#leads' }, 'Pipeline', icon('arrow', 14))),
+    bar,
+    el('ul', { class: 'warm' }, hot.map((l) => el('li', {},
+      el('a', { class: 'warm-nm', href: `#leads/${l.id}` }, leadName(l)),
+      l.est_monthly_value ? el('span', { class: 'warm-val' }, formatValue(l.est_monthly_value), el('small', {}, '/mo')) : el('span', { class: 'warm-val faint' }, '–'),
+      statusBadge(l.status)))));
 }
 
 export default function home(ctx) {
   const { state } = ctx;
-  const node = el('div', { class: 'page' },
+  const node = el('div', { class: 'page today' },
     hero(state),
-    funnel(state),
-    el('div', { class: 'home-cols' },
-      el('div', { class: 'stack loose' }, doNextCard(state), sparkCard(state)),
-      el('div', { class: 'stack loose' }, callsCard(state), pipelineCard(state), feedCard(state))));
+    kpiStrip(state),
+    el('div', { class: 'today-grid' },
+      el('div', { class: 'today-col c1' }, doNextCard(state)),
+      el('div', { class: 'today-col c2' }, callsCard(state), pipelineCard(state)),
+      el('div', { class: 'today-col c3' }, chartCard(state), feedCard(state))));
   firstPaint = false;
   return node;
 }

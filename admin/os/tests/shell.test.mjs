@@ -48,6 +48,14 @@ async function signIn(p) {
   if (res !== 'ok') throw new Error(`sign-in failed: ${res}`);
 }
 
+async function reloadSignedIn(p) {
+  await p.reload({ waitUntil: 'networkidle' });
+  await signIn(p);
+  await p.waitForSelector('#view .page:not([aria-busy])', { timeout: 20000 });
+  await p.mouse.move(900, 500);
+  await p.waitForTimeout(700);
+}
+
 async function cleanup(p) {
   return p.evaluate(async () => {
     const { sb } = await import('./js/api.js');
@@ -102,6 +110,119 @@ try {
   await page.evaluate(() => { location.hash = '#home'; });
   await page.waitForSelector('.do-list, .all-clear');
   check(await page.locator('section[aria-labelledby="do-next-h"]').count() === 1, 'Home shows the Do next card');
+
+  /* ----------------------------------------------------- sidebar (dock) */
+  const railState = () => page.locator('.rail').getAttribute('data-state');
+  const viewX = async () => (await page.locator('#view').boundingBox()).x;
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(700);
+  check(await railState() === 'dock', 'sidebar starts as the collapsed dock by default');
+  check(Math.round((await page.locator('.rail').boundingBox()).width) === 64, 'dock is 64px wide');
+  const x0 = await viewX();
+  // Brushing past does not open it.
+  await page.mouse.move(30, 420);
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(350);
+  check(await railState() === 'dock', 'brushing past the dock does not expand it');
+  // Hover expands as an overlay; the content does not move.
+  await page.mouse.move(30, 420);
+  await page.waitForTimeout(500);
+  check(await railState() === 'peek', 'hovering the dock expands the sidebar');
+  check(Math.round((await page.locator('.rail').boundingBox()).width) === 240, 'expanded sidebar is 240px');
+  check(Math.abs((await viewX()) - x0) < 1, 'hover expansion overlays the content without shifting it');
+  check(await page.locator('.rail-full .nav-group').count() === 5, 'expanded sidebar shows the grouped map');
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(120);
+  check(await railState() === 'peek', 'sidebar waits before tucking away');
+  await page.waitForTimeout(450);
+  check(await railState() === 'dock', 'leaving the sidebar tucks it back into the dock');
+  // Keyboard focus expands it; Escape tucks it away.
+  await page.locator('.rail-full a[data-route="leads"]').focus();
+  await page.waitForTimeout(300);
+  check(await railState() === 'peek', 'keyboard focus in the sidebar expands it');
+  check(await page.evaluate(() => getComputedStyle(document.querySelector('.rail-full')).opacity) === '1', 'focused sidebar labels are visible');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(350);
+  check(await railState() === 'dock', 'Escape tucks the sidebar away');
+  // Planned items are not navigation.
+  const soon = await page.evaluate(() => [...document.querySelectorAll('.rail-full .nav-item.is-soon')].map((n) => ({
+    href: n.getAttribute('href'), dis: n.getAttribute('aria-disabled'), tab: n.tabIndex, tag: n.tagName
+  })));
+  check(soon.length >= 10 && soon.every((s) => !s.href && s.dis === 'true' && s.tab === -1 && s.tag === 'SPAN'), `planned sections are dimmed, disabled and not focusable (${soon.length})`);
+  await page.mouse.move(30, 420);
+  await page.waitForTimeout(500);
+  const hashBefore = await page.evaluate(() => location.hash);
+  await page.locator('.rail-full .nav-item.is-soon', { hasText: 'Proposals' }).click();
+  await page.waitForTimeout(200);
+  check((await page.evaluate(() => location.hash)) === hashBefore, 'clicking a planned section does not navigate');
+  const roiHref = await page.locator('.rail-full a.nav-item', { hasText: 'ROI calculator' }).getAttribute('href');
+  check(roiHref === '../../roi.html', 'ROI calculator links to the public page');
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(600);
+  // `[` pins and unpins; the choice survives a reload.
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('[');
+  await page.waitForTimeout(400);
+  check(await railState() === 'pinned', '[ pins the sidebar open');
+  check((await viewX()) - x0 > 150, `pinned sidebar makes room for the content (${Math.round((await viewX()) - x0)}px)`);
+  check(await page.locator('.rail-pin[aria-pressed="true"]').count() === 1, 'pin button reports pressed');
+  await reloadSignedIn(page); // sessions are not persisted: sign in again after a reload
+  check(await railState() === 'pinned', 'pinned sidebar persists across reload');
+  check(await page.evaluate(() => localStorage.getItem('wiseos.nav')) === 'pinned', 'pin choice stored in wiseos.nav');
+  await page.locator('.rail-pin').click();
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(600);
+  check(await railState() === 'dock', 'pin button unpins back to the dock');
+  await page.keyboard.press('[');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('[');
+  await page.waitForTimeout(300);
+  await reloadSignedIn(page); // sessions are not persisted: sign in again after a reload
+  check(await railState() === 'dock', 'unpinned choice persists across reload');
+  await page.evaluate(() => { location.hash = '#leads'; });
+  await page.waitForSelector('.leads-page');
+  await page.locator('.leads-bar input[type=search]').focus();
+  await page.keyboard.press('[');
+  await page.waitForTimeout(300);
+  check(await railState() === 'dock', '[ typed in a text field does not toggle the sidebar');
+  await page.fill('.leads-bar input[type=search]', '');
+  await page.evaluate(() => { location.hash = '#home'; });
+  await page.waitForSelector('.do-list, .all-clear');
+
+  /* ---------------------------------------------------- command palette */
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('Control+k');
+  await page.waitForSelector('.pal [role=combobox]');
+  check(await page.evaluate(() => document.activeElement?.getAttribute('role') === 'combobox'), 'Ctrl+K opens the palette with the input focused');
+  check(await page.locator('.pal-box[role=dialog][aria-modal=true] [role=listbox] [role=option]').count() > 5, 'palette lists sections and actions');
+  await page.keyboard.type('camp');
+  const firstOpt = await page.locator('.pal-opt.is-sel .pal-label').textContent();
+  check(firstOpt === 'Campaigns', `palette filters as you type (${firstOpt})`);
+  await page.keyboard.press('Tab');
+  check(await page.evaluate(() => document.activeElement?.classList.contains('pal-input')), 'Tab stays inside the palette');
+  await page.fill('.pal-input', 'zzzz-no-such-thing');
+  check(await page.locator('.pal-empty:not([hidden])').count() === 1, 'palette shows an empty state');
+  await page.fill('.pal-input', '');
+  await page.keyboard.type('b');
+  const opts = await page.locator('.pal-opt .pal-label').allTextContents();
+  const target = opts.indexOf('Bookings');
+  for (let i = 0; i < target; i++) await page.keyboard.press('ArrowDown');
+  const active = await page.evaluate(() => document.getElementById(document.querySelector('.pal-input').getAttribute('aria-activedescendant'))?.textContent);
+  check(target >= 0 && /Bookings/.test(active || ''), 'arrow keys move the active option');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  check((await page.evaluate(() => location.hash)) === '#bookings' && await page.locator('.pal').count() === 0, 'Enter navigates and closes the palette');
+  // The visible trigger: focus returns to it on Escape.
+  await page.locator('.rail-full .nav-search').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.pal [role=combobox]');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  check(await page.locator('.pal').count() === 0, 'Escape closes the palette');
+  check(await page.evaluate(() => document.activeElement?.classList.contains('nav-search')), 'focus returns to the search trigger');
+  await page.keyboard.press('Escape');
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(400);
 
   /* ------------------------------------------------------------ add lead */
   const tag = rnd();
@@ -158,6 +279,26 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   check(await page.locator('.drawer').count() === 0, 'Escape closes the drawer');
+
+  /* --------------------------------------------- palette finds a lead */
+  await page.keyboard.press('Control+k');
+  await page.waitForSelector('.pal [role=combobox]');
+  await page.keyboard.type(`Plumbing ${tag}`);
+  await page.waitForTimeout(150);
+  const leadOpt = page.locator('.pal-group', { hasText: 'Leads' }).locator('.pal-opt', { hasText: `ZZTEST Plumbing ${tag}` });
+  check(await leadOpt.count() === 1, 'palette finds a lead by business name');
+  await page.fill('.pal-input', m1.slice(4));
+  await page.waitForTimeout(150);
+  check(await page.locator('.pal-opt', { hasText: `ZZTEST Plumbing ${tag}` }).count() === 1, 'palette finds a lead by phone digits');
+  await page.fill('.pal-input', `Dave Test`);
+  await page.waitForTimeout(150);
+  const idx = (await page.locator('.pal-opt .pal-label').allTextContents()).indexOf(`ZZTEST Plumbing ${tag}`);
+  for (let i = 0; i < idx; i++) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.drawer', { timeout: 10000 });
+  check(/^#leads\/[0-9a-f-]{36}$/.test(await page.evaluate(() => location.hash)) && (await page.locator('.drawer .h1').textContent()).includes(`ZZTEST Plumbing ${tag}`), 'choosing a lead in the palette opens it');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
   /* ---------------------------------------------------------- CSV import */
   const mA = mob(); const mB = mob();
@@ -258,6 +399,8 @@ try {
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'More sections' }).click();
   await page.waitForSelector('.more-sheet');
+  check(await page.locator('.more-sheet .nav-group').count() === 5, 'More sheet shows the grouped map');
+  check(await page.locator('.more-sheet .nav-item.is-soon[href]').count() === 0, 'More sheet planned items are not links');
   await shot(page, 'more-375');
   await page.locator('.more-sheet a[data-route="settings"]').click();
   await page.waitForTimeout(600);
