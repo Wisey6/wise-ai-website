@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<!-- Wise AI OS layout study A, "Rail": dark void sidebar with the full navigation map grouped by area,
+     mist canvas, white cards, dark greeting strip. Phone: bottom tab bar, "More" opens the full map.
+     Static design mockup with sample data only. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wise AI OS · Rail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0A0E11;--ink2:#1F2327;--body:#3A3F44;--muted:#5B6168;--faint:#767C82;
+  --line:#E3E6E9;--line2:#EDEFF1;--paper:#FFFFFF;--mist:#F6F7F8;--mist2:#EEF0F2;
+  --void:#0A0E11;--steel:#53585D;--silver:#989CA0;--chrome:#C3C8CC;--platinum:#E8EBED;
+  --blue:#2563EB;--teal:#0D9488;--amber:#D97706;--violet:#7C3AED;--rose:#E11D48;--up:#16A34A;
+  --rail-w:240px;
+  --shadow:0 1px 2px rgba(10,14,17,.04),0 6px 20px rgba(10,14,17,.05);
+  --radius:16px;
+  --display:'Archivo',system-ui,sans-serif;
+  --font:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--mist)}
+body{font-family:var(--font);color:var(--ink);font-size:14px;line-height:1.5;background:var(--mist);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+svg{display:block;flex:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.eyebrow{font-family:var(--display);font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------------------------------------------------------------- shell */
+.shell{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;background:var(--void);color:var(--chrome);display:flex;flex-direction:column;
+  background-image:radial-gradient(140% 50% at 0% 0%,rgba(255,255,255,.055),transparent 60%);z-index:40}
+.brand{display:flex;align-items:center;gap:10px;padding:22px 22px 18px}
+.brand img{height:21px;width:auto;filter:brightness(0) invert(1)}
+.os-tag{font-family:var(--display);font-weight:600;font-size:9.5px;letter-spacing:.24em;color:var(--silver);border:1px solid rgba(232,235,237,.2);border-radius:999px;padding:2px 7px 2px 9px}
+.rail-close{display:none}
+.nav{flex:1 1 auto;overflow-y:auto;padding:2px 12px 12px;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-item{display:flex;align-items:center;gap:11px;width:100%;height:32px;padding:0 10px;border-radius:9px;color:var(--chrome);
+  font-size:13.5px;font-weight:500;text-align:left;position:relative;transition:background .15s,color .15s}
+.nav-item svg{width:16px;height:16px;color:var(--silver);transition:color .15s}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item:hover svg{color:#fff}
+.nav-item[aria-current="page"]{background:rgba(255,255,255,.1);color:#fff;font-weight:600}
+.nav-item[aria-current="page"] svg{color:#fff}
+.nav-item[aria-current="page"]::before{content:'';position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#fff}
+.nav-item:focus-visible{outline-color:#fff;outline-offset:-2px}
+.nav-item.top{height:36px;font-size:14px}
+.nav-sub{padding-left:37px}
+.badge{margin-left:auto;min-width:19px;height:19px;padding:0 6px;border-radius:999px;background:var(--rose);color:#fff;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+.soon .nav-item,.nav-item.soon{color:#868C92}
+.soon .nav-item:hover,.nav-item.soon:hover{color:var(--platinum)}
+.soon-tag{margin-left:auto;font-family:var(--display);font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#868C92}
+.group{margin-top:14px}
+.group-label{display:flex;align-items:center;gap:11px;height:24px;padding:0 10px;margin-bottom:2px;
+  font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--silver)}
+.group-label svg{width:16px;height:16px;color:var(--steel)}
+.group.soon .group-label{color:#868C92}
+.group-list{list-style:none;position:relative}
+.group-list::before{content:'';position:absolute;left:18px;top:4px;bottom:4px;width:1px;background:rgba(232,235,237,.09)}
+.nav-sep{height:1px;background:rgba(232,235,237,.08);margin:14px 10px 10px}
+.rail-foot{padding:12px 12px 16px;border-top:1px solid rgba(232,235,237,.08);display:flex;flex-direction:column;gap:6px}
+.live{display:flex;align-items:center;gap:9px;padding:4px 10px;font-size:12px;color:var(--silver)}
+.live b{color:var(--platinum);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 3px rgba(34,197,94,.18);flex:none}
+.lock{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:999px;border:1px solid rgba(232,235,237,.16);color:var(--chrome);font-size:13px;font-weight:500}
+.lock:hover{background:rgba(255,255,255,.06);color:#fff;border-color:rgba(232,235,237,.3)}
+.lock:focus-visible{outline-color:#fff}
+.lock svg{width:15px;height:15px}
+kbd{margin-left:auto;font-family:var(--font);font-size:10.5px;color:var(--silver);border:1px solid rgba(232,235,237,.2);border-radius:5px;padding:0 5px;line-height:17px}
+
+/* ---------------------------------------------------------------- main */
+.main{min-width:0;padding:24px 32px 48px}
+.page{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+/* hero strip */
+.hero{position:relative;overflow:hidden;background:var(--void);color:#fff;border-radius:20px;padding:22px 26px 18px;
+  background-image:radial-gradient(70% 140% at 100% 0%,rgba(37,99,235,.16),transparent 60%),radial-gradient(60% 120% at 0% 100%,rgba(255,255,255,.05),transparent 60%)}
+.hero-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px 24px;flex-wrap:wrap}
+.hero .eyebrow{color:var(--silver)}
+.hero h1{font-family:var(--display);font-weight:900;font-size:34px;line-height:1.05;letter-spacing:-.03em;margin:8px 0 6px}
+.hero p.sum{color:var(--chrome);font-size:15px}
+.hero p.sum b{color:#fff;font-weight:600}
+.hero-actions{display:flex;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:999px;font-size:13.5px;font-weight:600;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.btn svg{width:15px;height:15px}
+.btn-light{background:#fff;color:var(--ink)}
+.btn-light:hover{background:var(--platinum)}
+.btn-ghost{border:1px solid rgba(232,235,237,.24);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.08);border-color:rgba(232,235,237,.4)}
+.hero .btn:focus-visible{outline-color:#fff}
+.sms{margin-top:16px;padding-top:13px;border-top:1px solid rgba(232,235,237,.1);display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;font-size:12.5px;color:var(--chrome)}
+.sms .lbl{display:flex;align-items:center;gap:9px;color:#fff;font-weight:600}
+.sms .sep{color:var(--steel)}
+.meter{width:120px;height:4px;border-radius:4px;background:rgba(232,235,237,.14);overflow:hidden}
+.meter i{display:block;height:100%;width:55%;background:#fff;border-radius:4px}
+
+/* cards */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px 10px}
+.card-head h2{font-family:var(--display);font-size:16px;font-weight:800;letter-spacing:-.01em;margin-top:4px}
+.chip-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--line);border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink);background:var(--paper);white-space:nowrap}
+.chip-btn:hover{border-color:#C9CED3;background:var(--mist)}
+
+/* KPI row */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.kpi{padding:14px 18px 15px;border-left:1px solid var(--line2)}
+.kpi:first-child{border-left:0}
+.kpi .v{font-family:var(--display);font-weight:900;font-size:26px;letter-spacing:-.03em;line-height:1.1;margin-top:6px}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.kpi .s.up{color:#15803D;font-weight:600}
+.kpi .bar{height:3px;border-radius:3px;background:var(--line2);margin-top:10px;overflow:hidden}
+.kpi .bar i{display:block;height:100%;background:var(--ink);border-radius:3px}
+
+/* grid */
+.grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:16px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* do next */
+.todo{list-style:none;padding:0 12px 8px}
+.todo li{display:grid;grid-template-columns:22px 32px minmax(0,1fr) auto;align-items:center;gap:12px;padding:9px 8px;border-top:1px solid var(--line2)}
+.todo li:first-child{border-top:0}
+.todo .n{font-family:var(--display);font-weight:700;font-size:12px;color:var(--faint);text-align:center;font-variant-numeric:tabular-nums}
+.todo .ic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center}
+.todo .ic svg{width:16px;height:16px}
+.ic.reply{background:#EFF4FF;color:var(--blue)}
+.ic.call{background:#E9F7F5;color:var(--teal)}
+.ic.follow{background:#FEF5E7;color:#B45309}
+.ic.send{background:var(--mist2);color:var(--ink)}
+.ic.write{background:#F3EEFF;color:var(--violet)}
+.ic.record{background:#F3EEFF;color:var(--violet)}
+.todo .t{font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.todo .d{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;min-width:92px;padding:0 14px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--ink);background:var(--paper);white-space:nowrap}
+.act:hover{border-color:#B9BFC5;background:var(--mist)}
+.act svg{width:14px;height:14px}
+.act.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.act.primary:hover{background:var(--ink2)}
+.todo li.first{background:linear-gradient(90deg,rgba(37,99,235,.045),transparent 70%);border-radius:10px}
+
+/* calls */
+.calls{list-style:none;padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+.call{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;gap:12px;padding:9px 10px 9px 12px;border:1px solid var(--line2);border-radius:12px}
+.call .tm{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:-.01em;line-height:1.15}
+.call .tm small{display:block;font-family:var(--font);font-weight:500;font-size:11px;color:var(--muted);letter-spacing:0}
+.call .nm{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.call .mt{font-size:12px;color:var(--muted)}
+.call.next{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+.icon-btn{width:32px;height:32px;border-radius:999px;display:grid;place-items:center;color:var(--muted);border:1px solid var(--line)}
+.icon-btn:hover{color:var(--ink);background:var(--mist)}
+.icon-btn svg{width:15px;height:15px}
+
+/* warm */
+.warm{list-style:none;padding:0 20px 12px}
+.warm li{display:grid;grid-template-columns:minmax(0,1fr) auto 86px;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line2)}
+.warm li:first-child{border-top:0}
+.warm .nm{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.warm .val{font-weight:600;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.warm .val small{color:var(--muted);font-weight:500}
+.status{justify-self:end;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font-size:11.5px;font-weight:600}
+.status::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-replied{background:#EFF4FF;color:#1D4ED8}
+.st-booked{background:#E9F7F5;color:#0F766E}
+.st-interested{background:#FEF5E7;color:#B45309}
+.pipe{display:flex;height:6px;border-radius:6px;overflow:hidden;margin:2px 20px 12px;gap:2px}
+.pipe i{display:block;height:100%}
+
+/* chart */
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:0 20px 4px}
+.lg{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--muted)}
+.lg b{font-family:var(--display);font-size:20px;font-weight:900;letter-spacing:-.02em;color:var(--ink)}
+.lg i{width:9px;height:9px;border-radius:3px;display:inline-block;transform:translateY(-1px)}
+.chart{padding:4px 16px 14px}
+.chart svg{width:100%;height:auto}
+
+/* feed */
+.feed{list-style:none;padding:0 20px 12px}
+.feed li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:start;padding:9px 0;border-top:1px solid var(--line2)}
+.feed li:first-child{border-top:0}
+.feed .fi{width:28px;height:28px;border-radius:8px;display:grid;place-items:center}
+.feed .fi svg{width:14px;height:14px}
+.feed .ft{font-size:13px;font-weight:600;line-height:1.35}
+.feed .fd{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed time{font-size:11.5px;color:var(--faint);white-space:nowrap;padding-top:1px}
+.fi.optout{background:#FFEFF2;color:var(--rose)}
+.fi.booking{background:#E9F7F5;color:var(--teal)}
+.fi.lead{background:#EFF4FF;color:var(--blue)}
+.fi.sent{background:var(--mist2);color:var(--steel)}
+.fi.reply{background:#EFF4FF;color:var(--blue)}
+
+/* ---------------------------------------------------------------- phone chrome */
+.topbar,.tabbar,.scrim{display:none}
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .kpi:nth-child(4){border-left:0}
+  .kpi:nth-child(n+4){border-top:1px solid var(--line2)}
+}
+@media (max-width:980px){
+  .grid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+  .shell{display:block}
+  .main{padding:14px 16px 104px}
+  .topbar{display:flex;position:sticky;top:0;z-index:30;height:54px;align-items:center;gap:10px;padding:0 10px 0 16px;background:var(--void);color:#fff}
+  .topbar img{height:18px;width:auto;filter:brightness(0) invert(1)}
+  .topbar .live{margin-left:auto;padding:4px 6px}
+  .topbar .icon-btn{border-color:rgba(232,235,237,.18);color:var(--chrome)}
+  .topbar .icon-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+  .topbar .icon-btn:focus-visible{outline-color:#fff}
+  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(255,255,255,.96);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:50px;color:var(--muted);font-size:10.5px;font-weight:600;border-radius:10px;position:relative}
+  .tab svg{width:21px;height:21px}
+  .tab[aria-current="page"],.tab.on{color:var(--ink)}
+  .tab[aria-current="page"]::after,.tab.on::after{content:'';position:absolute;top:-6px;left:30%;right:30%;height:2px;border-radius:0 0 2px 2px;background:var(--ink)}
+  .tab .badge{position:absolute;top:3px;left:calc(50% + 4px);min-width:17px;height:17px;font-size:10px;padding:0 4px;margin:0}
+  /* the rail becomes the "More" sheet */
+  .rail{position:fixed;top:auto;left:0;right:0;bottom:0;height:auto;max-height:86vh;border-radius:20px 20px 0 0;transform:translateY(105%);
+    transition:transform .3s cubic-bezier(.16,1,.3,1);visibility:hidden;padding-bottom:70px}
+  .rail.open{transform:none;visibility:visible}
+  .brand{padding:18px 18px 10px}
+  .rail-close{display:grid;margin-left:auto;border-color:rgba(232,235,237,.18);color:var(--chrome)}
+  .rail-close:focus-visible{outline-color:#fff}
+  .nav-item{height:40px}
+  .nav-item.top{height:42px}
+  .rail-foot{flex-direction:row;align-items:center;justify-content:space-between;padding-bottom:14px}
+  .rail-foot .lock{flex:none;padding:0 14px}
+  .rail-foot .lock kbd{display:none}
+  .scrim{display:block;position:fixed;inset:0;background:rgba(10,14,17,.4);z-index:35;opacity:0;pointer-events:none;transition:opacity .2s}
+  .scrim.open{opacity:1;pointer-events:auto}
+
+  .hero{padding:18px 18px 14px;border-radius:16px}
+  .hero h1{font-size:28px}
+  .hero p.sum{font-size:14px}
+  .hero-actions{width:100%}
+  .hero-actions .btn{flex:1;justify-content:center}
+  .sms{font-size:12px;gap:6px 10px}
+  .sms .sep{display:none}
+  .sms .meter{order:9;width:100%}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi{padding:12px 14px 13px}
+  .kpi:nth-child(n){border-left:1px solid var(--line2);border-top:1px solid var(--line2)}
+  .kpi:nth-child(odd){border-left:0}
+  .kpi:nth-child(-n+2){border-top:0}
+  .kpi .v{font-size:23px}
+  .card-head{padding:14px 16px 8px}
+  .todo{padding:0 8px 6px}
+  .todo li{grid-template-columns:30px minmax(0,1fr);grid-template-areas:"ic tx" ". ac";gap:4px 10px;padding:11px 6px}
+  .todo .n{display:none}
+  .todo .ic{grid-area:ic;width:30px;height:30px}
+  .todo .tx{grid-area:tx}
+  .todo .t,.todo .d{white-space:normal}
+  .todo .act{grid-area:ac;justify-self:start;margin-top:6px}
+  .calls{padding:0 10px 12px}
+  .warm{padding:0 16px 10px}
+  .warm li{grid-template-columns:minmax(0,1fr) auto;row-gap:2px}
+  .warm .status{grid-column:2;grid-row:1}
+  .warm .val{grid-column:1;grid-row:2}
+  .pipe{margin:2px 16px 12px}
+  .legend{padding:0 16px 4px;gap:14px}
+  .chart{padding:4px 10px 12px}
+  .feed{padding:0 16px 10px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-today" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-grow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-sell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/></symbol>
+    <symbol id="i-deliver" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-know" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></symbol>
+    <symbol id="i-agents" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14a6.5 6.5 0 0 1 3.5 6"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-reply" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.2-4.6A8 8 0 1 1 21 12z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.7 5.7 12.6 12.6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <img src="../../logo.svg" alt="Wise AI">
+  <span class="os-tag">OS</span>
+  <span class="live"><span class="dot"></span><b>Live</b></span>
+  <button class="icon-btn" type="button" aria-label="Lock"><svg><use href="#i-lock"/></svg></button>
+</header>
+
+<div class="shell">
+  <aside class="rail" id="rail" aria-label="Main navigation">
+    <div class="brand">
+      <img src="../../logo.svg" alt="Wise AI">
+      <span class="os-tag">OS</span>
+      <button class="icon-btn rail-close" type="button" aria-label="Close menu" data-close><svg><use href="#i-close"/></svg></button>
+    </div>
+    <nav class="nav">
+      <button class="nav-item top" type="button" data-nav="today" aria-current="page"><svg><use href="#i-today"/></svg>Today</button>
+
+      <div class="group">
+        <div class="group-label"><svg><use href="#i-grow"/></svg>Grow</div>
+        <ul class="group-list">
+          <li><button class="nav-item nav-sub" type="button" data-nav="leads">Leads</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="inbox">Inbox<span class="badge" aria-label="3 unread">3</span></button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="campaigns">Campaigns</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="bookings">Bookings</button></li>
+        </ul>
+      </div>
+
+      <div class="group soon">
+        <div class="group-label"><svg><use href="#i-sell"/></svg>Sell<span class="soon-tag">Soon</span></div>
+        <ul class="group-list">
+          <li><button class="nav-item nav-sub" type="button" data-nav="pipeline">Pipeline</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="proposals">Proposals</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="roi-calc">ROI calculator</button></li>
+        </ul>
+      </div>
+
+      <div class="group soon">
+        <div class="group-label"><svg><use href="#i-deliver"/></svg>Deliver<span class="soon-tag">Soon</span></div>
+        <ul class="group-list">
+          <li><button class="nav-item nav-sub" type="button" data-nav="clients">Clients</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="projects">Projects</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="roi-reports">ROI reports</button></li>
+        </ul>
+      </div>
+
+      <div class="group soon">
+        <div class="group-label"><svg><use href="#i-money"/></svg>Money<span class="soon-tag">Soon</span></div>
+        <ul class="group-list">
+          <li><button class="nav-item nav-sub" type="button" data-nav="income">Income</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="costs">Costs</button></li>
+          <li><button class="nav-item nav-sub" type="button" data-nav="runway">Runway</button></li>
+        </ul>
+      </div>
+
+      <div class="group">
+        <div class="group-label"><svg><use href="#i-know"/></svg>Know</div>
+        <ul class="group-list">
+          <li><button class="nav-item nav-sub" type="button" data-nav="playbook">Playbook</button></li>
+          <li><button class="nav-item nav-sub soon" type="button" data-nav="library">Library<span class="soon-tag">Soon</span></button></li>
+        </ul>
+      </div>
+
+      <div class="nav-sep" role="presentation"></div>
+      <button class="nav-item top soon" type="button" data-nav="agents"><svg><use href="#i-agents"/></svg>Agents<span class="soon-tag">Soon</span></button>
+      <button class="nav-item top" type="button" data-nav="settings"><svg><use href="#i-settings"/></svg>Settings</button>
+    </nav>
+    <div class="rail-foot">
+      <div class="live" role="status"><span class="dot"></span><b>Live</b><span>synced just now</span></div>
+      <button class="lock" type="button"><svg><use href="#i-lock"/></svg>Lock<kbd>L</kbd></button>
+    </div>
+  </aside>
+  <div class="scrim" data-close></div>
+
+  <main class="main" id="main">
+    <div class="page">
+
+      <section class="hero" aria-labelledby="greet">
+        <div class="hero-top">
+          <div>
+            <div class="eyebrow">Wednesday 18 November</div>
+            <h1 id="greet">Good morning, Tyler</h1>
+            <p class="sum"><b>3 replies waiting,</b> 2 calls today.</p>
+          </div>
+          <div class="hero-actions">
+            <button class="btn btn-ghost" type="button"><svg><use href="#i-upload"/></svg>Import</button>
+            <button class="btn btn-light" type="button"><svg><use href="#i-plus"/></svg>Add lead</button>
+          </div>
+        </div>
+        <div class="sms">
+          <span class="lbl"><span class="dot"></span>SMS connected</span>
+          <span class="sep">·</span>
+          <span class="num">22 of 40 sent today</span>
+          <span class="meter" role="img" aria-label="22 of 40 daily texts sent"><i></i></span>
+          <span class="sep">·</span>
+          <span>Window open until 5:00 pm</span>
+        </div>
+      </section>
+
+      <section class="card kpis" aria-label="Key numbers">
+        <div class="kpi"><div class="eyebrow">Leads</div><div class="v num">184</div><div class="s up">+26 this week</div><div class="bar"><i style="width:100%"></i></div></div>
+        <div class="kpi"><div class="eyebrow">Contacted</div><div class="v num">121</div><div class="s">66% of leads</div><div class="bar"><i style="width:66%"></i></div></div>
+        <div class="kpi"><div class="eyebrow">Reply rate</div><div class="v num">18%</div><div class="s">of contacted</div><div class="bar"><i style="width:18%"></i></div></div>
+        <div class="kpi"><div class="eyebrow">Interested</div><div class="v num">14</div><div class="s">warm leads</div><div class="bar"><i style="width:11.6%"></i></div></div>
+        <div class="kpi"><div class="eyebrow">Booked</div><div class="v num">6</div><div class="s">intro calls</div><div class="bar"><i style="width:5%"></i></div></div>
+        <div class="kpi"><div class="eyebrow">Won</div><div class="v num">2</div><div class="s num">$9,400</div><div class="bar"><i style="width:1.7%"></i></div></div>
+      </section>
+
+      <div class="grid">
+        <div class="col">
+          <section class="card" aria-labelledby="donext">
+            <div class="card-head">
+              <div><div class="eyebrow">Do next</div><h2 id="donext">7 things worth your time, in order</h2></div>
+            </div>
+            <ol class="todo">
+              <li class="first">
+                <span class="n">1</span><span class="ic reply"><svg><use href="#i-reply"/></svg></span>
+                <div class="tx"><div class="t">Reply to Harbour Street Dental</div><div class="d">“Yes maybe, what does it cost?”</div></div>
+                <button class="act primary" type="button">Reply</button>
+              </li>
+              <li>
+                <span class="n">2</span><span class="ic reply"><svg><use href="#i-reply"/></svg></span>
+                <div class="tx"><div class="t">Reply to Northside Auto Electrics</div><div class="d">“Who is this?”</div></div>
+                <button class="act" type="button">Reply</button>
+              </li>
+              <li>
+                <span class="n">3</span><span class="ic call"><svg><use href="#i-phone"/></svg></span>
+                <div class="tx"><div class="t">Call back Coastline Plumbing</div><div class="d">Website enquiry 12 min ago</div></div>
+                <button class="act" type="button"><svg><use href="#i-phone"/></svg>Call</button>
+              </li>
+              <li>
+                <span class="n">4</span><span class="ic follow"><svg><use href="#i-clock"/></svg></span>
+                <div class="tx"><div class="t">Send 8 follow-ups that are due</div><div class="d">No reply yet to the last text</div></div>
+                <button class="act" type="button">Review</button>
+              </li>
+              <li>
+                <span class="n">5</span><span class="ic send"><svg><use href="#i-send"/></svg></span>
+                <div class="tx"><div class="t">Send first texts: 12 ready</div><div class="d">Each one with a personal line</div></div>
+                <button class="act" type="button">Send batch</button>
+              </li>
+              <li>
+                <span class="n">6</span><span class="ic write"><svg><use href="#i-pen"/></svg></span>
+                <div class="tx"><div class="t">9 leads need a personal line</div><div class="d">One specific thing you noticed about each business</div></div>
+                <button class="act" type="button">Write</button>
+              </li>
+              <li>
+                <span class="n">7</span><span class="ic record"><svg><use href="#i-check"/></svg></span>
+                <div class="tx"><div class="t">How did the call with Ridgeway Physio go?</div><div class="d">Mark it won, lost or follow up</div></div>
+                <button class="act" type="button">Record</button>
+              </li>
+            </ol>
+          </section>
+
+          <section class="card" aria-labelledby="trend">
+            <div class="card-head">
+              <div><div class="eyebrow">Last 14 days</div><h2 id="trend">Texts, replies and bookings</h2></div>
+              <button class="chip-btn" type="button">Campaigns</button>
+            </div>
+            <div class="legend">
+              <span class="lg"><i style="background:#C9CED3"></i><b class="num">246</b>texts sent</span>
+              <span class="lg"><i style="background:var(--blue)"></i><b class="num">42</b>replies</span>
+              <span class="lg"><i style="background:var(--teal);border-radius:50%"></i><b class="num">6</b>bookings</span>
+            </div>
+            <div class="chart" id="chart"></div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="card" aria-labelledby="calls">
+            <div class="card-head">
+              <div><div class="eyebrow">Upcoming calls</div><h2 id="calls">2 today, 1 tomorrow</h2></div>
+              <button class="chip-btn" type="button">Bookings</button>
+            </div>
+            <ul class="calls">
+              <li class="call next">
+                <div class="tm num">10:30<small>am</small></div>
+                <div style="min-width:0"><div class="nm">Kelvin Grove Smash Repairs</div><div class="mt">Today · 15 min intro</div></div>
+                <button class="icon-btn" type="button" aria-label="Open call with Kelvin Grove Smash Repairs"><svg><use href="#i-video"/></svg></button>
+              </li>
+              <li class="call">
+                <div class="tm num">2:00<small>pm</small></div>
+                <div style="min-width:0"><div class="nm">Bayside Pet Grooming</div><div class="mt">Today · 15 min intro</div></div>
+                <button class="icon-btn" type="button" aria-label="Open call with Bayside Pet Grooming"><svg><use href="#i-video"/></svg></button>
+              </li>
+              <li class="call">
+                <div class="tm num">9:00<small>am</small></div>
+                <div style="min-width:0"><div class="nm">Paddington Electrical</div><div class="mt">Tomorrow</div></div>
+                <button class="icon-btn" type="button" aria-label="Open call with Paddington Electrical"><svg><use href="#i-video"/></svg></button>
+              </li>
+            </ul>
+          </section>
+
+          <section class="card" aria-labelledby="warm">
+            <div class="card-head">
+              <div><div class="eyebrow">Warm conversations</div><h2 id="warm"><span class="num">$11,200/mo</span> on the table</h2></div>
+              <button class="chip-btn" type="button">Leads</button>
+            </div>
+            <div class="pipe" role="img" aria-label="Share of monthly value by conversation">
+              <i style="flex:2400;background:var(--blue)"></i><i style="flex:3000;background:var(--teal)"></i><i style="flex:1800;background:var(--amber)"></i><i style="flex:4000;background:var(--teal)"></i>
+            </div>
+            <ul class="warm">
+              <li><span class="nm">Harbour Street Dental</span><span class="val num">$2,400<small>/mo</small></span><span class="status st-replied">Replied</span></li>
+              <li><span class="nm">Ridgeway Physio</span><span class="val num">$3,000<small>/mo</small></span><span class="status st-booked">Booked</span></li>
+              <li><span class="nm">Coastline Plumbing</span><span class="val num">$1,800<small>/mo</small></span><span class="status st-interested">Interested</span></li>
+              <li><span class="nm">Bayside Pet Grooming</span><span class="val num">$4,000<small>/mo</small></span><span class="status st-booked">Booked</span></li>
+            </ul>
+          </section>
+
+          <section class="card" aria-labelledby="feed">
+            <div class="card-head">
+              <div><div class="eyebrow">Live activity</div><h2 id="feed">Just now</h2></div>
+              <span class="live" style="color:var(--muted);padding:6px 0 0"><span class="dot"></span>Live</span>
+            </div>
+            <ul class="feed">
+              <li><span class="fi reply"><svg><use href="#i-reply"/></svg></span><div style="min-width:0"><div class="ft">Reply received</div><div class="fd">Harbour Street Dental: “Yes maybe, what does it cost?”</div></div><time>4 min</time></li>
+              <li><span class="fi lead"><svg><use href="#i-globe"/></svg></span><div style="min-width:0"><div class="ft">Website lead</div><div class="fd">Coastline Plumbing filled in the enquiry form</div></div><time>12 min</time></li>
+              <li><span class="fi booking"><svg><use href="#i-calendar"/></svg></span><div style="min-width:0"><div class="ft">Booking made</div><div class="fd">Bayside Pet Grooming, today 2:00 pm</div></div><time>38 min</time></li>
+              <li><span class="fi sent"><svg><use href="#i-send"/></svg></span><div style="min-width:0"><div class="ft">Text delivered</div><div class="fd">Follow-up to Paddington Electrical</div></div><time>1 hr</time></li>
+              <li><span class="fi optout"><svg><use href="#i-ban"/></svg></span><div style="min-width:0"><div class="ft">Opt-out honoured</div><div class="fd">Number removed from every campaign</div></div><time>2 hr</time></li>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<nav class="tabbar" aria-label="Quick navigation">
+  <button class="tab" type="button" data-nav="today" aria-current="page"><svg><use href="#i-today"/></svg>Today</button>
+  <button class="tab" type="button" data-nav="leads"><svg><use href="#i-users"/></svg>Leads</button>
+  <button class="tab" type="button" data-nav="inbox"><svg><use href="#i-inbox"/></svg>Inbox<span class="badge" aria-label="3 unread">3</span></button>
+  <button class="tab" type="button" data-nav="campaigns"><svg><use href="#i-send"/></svg>Campaigns</button>
+  <button class="tab" type="button" id="more" aria-expanded="false" aria-controls="rail"><svg><use href="#i-more"/></svg>More</button>
+</nav>
+
+<script>
+(function(){
+  // 14-day chart: texts sent (bars), replies (blue inset bars), bookings (teal dots)
+  var texts=[24,26,0,0,28,24,22,26,18,0,0,26,28,24];
+  var reps =[4,5,0,0,6,4,3,5,2,0,0,4,6,3];
+  var books=[0,1,0,0,1,0,0,1,0,0,0,1,1,1];
+  var days=['Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed'];
+  var W=640,H=150,pl=26,pr=4,pt=14,pb=22,max=30,n=texts.length;
+  var cw=(W-pl-pr)/n,bw=cw*0.56,s='';
+  [0,10,20,30].forEach(function(g){var y=pt+(H-pt-pb)*(1-g/max);
+    s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#EDEFF1"/>';
+    s+='<text x="'+(pl-8)+'" y="'+(y+3.5)+'" text-anchor="end" font-size="10" fill="#767C82">'+g+'</text>';});
+  for(var i=0;i<n;i++){
+    var x=pl+i*cw+(cw-bw)/2,ih=H-pt-pb,th=ih*texts[i]/max,rh=ih*reps[i]/max,base=pt+ih;
+    if(texts[i]) s+='<rect x="'+x+'" y="'+(base-th)+'" width="'+bw+'" height="'+th+'" rx="3" fill="#DDE1E5"/>';
+    if(reps[i]) s+='<rect x="'+(x+bw*0.2)+'" y="'+(base-rh)+'" width="'+(bw*0.6)+'" height="'+rh+'" rx="2" fill="#2563EB"/>';
+    if(books[i]) s+='<circle cx="'+(x+bw/2)+'" cy="'+(base-th-8)+'" r="3.6" fill="#0D9488" stroke="#fff" stroke-width="1.5"/>';
+    if(i%2===0||i===n-1) s+='<text x="'+(x+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="'+(i===n-1?'#0A0E11':'#767C82')+'" font-weight="'+(i===n-1?'600':'400')+'">'+(i===n-1?'Today':days[i])+'</text>';
+  }
+  document.getElementById('chart').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Last 14 days: 246 texts sent, 42 replies, 6 bookings" font-family="Inter, system-ui, sans-serif">'+s+'</svg>';
+
+  // navigation: move active state everywhere, open/close the More sheet on phones
+  var rail=document.getElementById('rail'),scrim=document.querySelector('.scrim'),more=document.getElementById('more');
+  var tabs=['today','leads','inbox','campaigns'];
+  function setSheet(open){rail.classList.toggle('open',open);scrim.classList.toggle('open',open);more.setAttribute('aria-expanded',open?'true':'false');}
+  document.querySelectorAll('[data-nav]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var k=b.getAttribute('data-nav');
+      document.querySelectorAll('[data-nav]').forEach(function(o){
+        if(o.getAttribute('data-nav')===k) o.setAttribute('aria-current','page'); else o.removeAttribute('aria-current');
+      });
+      more.classList.toggle('on',tabs.indexOf(k)<0);
+      setSheet(false);
+    });
+  });
+  more.addEventListener('click',function(){setSheet(!rail.classList.contains('open'));});
+  document.querySelectorAll('[data-close]').forEach(function(c){c.addEventListener('click',function(){setSheet(false);});});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape') setSheet(false);});
+})();
+</script>
+</body>
+</html>
