@@ -31,14 +31,13 @@ export function splitBookings(list, now = Date.now(), { includeCancelled = false
 
 export default function bookings() {
   const root = el('div', { class: 'page book' });
-  const linkCard = el('section', { class: 'card book-link' });
+  const linkCard = el('section', { class: 'book-link' });
   const summary = el('div', { class: 'grid cols-3 book-kpis' });
   const lists = el('div', { class: 'stack' });
 
   function renderLink() {
     const url = state.settings?.booking_url || '';
     linkCard.replaceChildren(
-      el('div', { class: 'book-link-icon', 'aria-hidden': 'true' }, icon('calendar', 20)),
       el('div', { class: 'book-link-main' },
         el('div', { class: 'eyebrow' }, 'Your booking link'),
         url ? el('a', { class: 'book-link-url', href: url, target: '_blank', rel: 'noopener' }, url)
@@ -68,17 +67,17 @@ export default function bookings() {
       el('input', { type: 'checkbox', class: 'check', checked: showCancelled || null, onChange: (e) => { showCancelled = e.target.checked; renderLists(); } }),
       el('span', {}, 'Show cancelled and rescheduled'));
 
-    const upcomingCard = el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Coming up'), el('h2', { class: 'h2' }, 'Upcoming calls')),
+    const upcomingCard = el('section', { class: 'section book-sec' },
+      el('div', { class: 'section-head' },
+        el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'Coming up'), el('h2', { class: 'h2' }, 'Upcoming calls')),
         toggle),
       upcoming.length ? groupByDay(upcoming) : emptyState({ icon: 'calendar', title: 'No upcoming calls',
         text: all.length ? 'New bookings from Cal.com appear here as soon as they are made.' : 'When someone books through your Cal.com link it appears here, linked to the lead.' }));
-    const pastCard = el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Done'), el('h2', { class: 'h2' }, 'Past calls'))),
+    const pastCard = el('section', { class: 'section book-sec' },
+      el('div', { class: 'section-head' },
+        el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'Done'), el('h2', { class: 'h2' }, 'Past calls'))),
       past.length ? el('ul', { class: 'book-list' }, past.slice(0, 60).map((b) => row(b, true)))
-        : el('p', { class: 'muted' }, 'No past calls yet.'));
+        : el('p', { class: 'muted book-none' }, 'No past calls yet.'));
     lists.replaceChildren(upcomingCard, pastCard);
   }
 
@@ -107,7 +106,7 @@ export default function bookings() {
     return el('li', { class: `book-item${b.status !== 'booked' ? ' is-off' : ''}${soon ? ' is-soon' : ''}` },
       el('div', { class: 'book-when' },
         el('span', { class: 'book-time' }, b.starts_at ? timeOnly(b.starts_at) : 'TBC'),
-        el('span', { class: 'book-date muted' }, b.starts_at ? (isPast ? dateTime(b.starts_at).replace(/,.*$/, '') : timeAgo(b.starts_at)) : '')),
+        el('span', { class: 'book-date' }, b.starts_at ? (isPast ? dateTime(b.starts_at).replace(/,.*$/, '') : timeAgo(b.starts_at)) : '')),
       el('div', { class: 'book-main' },
         el('div', { class: 'book-who' },
           el('strong', {}, who),

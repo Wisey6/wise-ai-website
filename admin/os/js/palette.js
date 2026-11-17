@@ -78,6 +78,7 @@ export function createPalette({ routes, onLock, onTogglePin }) {
         sub: [l.contact_name && l.contact_name !== leadName(l) ? l.contact_name : '', prettyPhone(l.phone), l.suburb].filter(Boolean).join(' · '),
         icon: 'user',
         meta: l.archived ? 'Archived' : (STATUS[l.status]?.label || ''),
+        status: l.archived ? '' : (l.status || ''),
         run: () => go(`#leads/${l.id}`)
       }));
       if (leads.length) groups.push({ title: 'Leads', items: leads, more: found.length > MAX_LEADS ? found.length - MAX_LEADS : 0 });
@@ -115,7 +116,8 @@ export function createPalette({ routes, onLock, onTogglePin }) {
               el('span', { class: 'pal-ic', 'aria-hidden': 'true' }, icon(it.icon, 15)),
               el('span', { class: 'pal-txt' }, el('span', { class: 'pal-label' }, it.label), it.sub ? el('span', { class: 'pal-sub' }, it.sub) : null),
               it.badge ? el('span', { class: 'pal-badge' }, `${it.badge} unread`) : null,
-              it.meta ? el('span', { class: 'pal-meta' }, it.meta) : null);
+              it.meta ? el('span', { class: `pal-meta${it.status ? ' badge' : ''}`, dataset: it.status ? { status: it.status } : {} },
+                it.status ? el('span', { class: 'badge-dot', 'aria-hidden': 'true' }) : null, it.meta) : null);
             options.push({ node, run: it.run });
             return node;
           }),

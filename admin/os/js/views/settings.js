@@ -92,10 +92,8 @@ export default function settings() {
 
   const savebar = el('div', { class: 'set-savebar' }, dirtyNote, el('span', { class: 'spacer' }),
     el('button', { class: 'btn btn-ghost', type: 'button', onClick: () => resetForm() }, 'Undo'), saveBtn);
-  const form = el('form', { class: 'stack set-form', novalidate: true },
-    el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Outreach'), el('h2', { class: 'h2' }, 'Sending rules'))),
+  const form = el('form', { class: 'set-form', novalidate: true },
+    group('Outreach', 'Sending rules', 'Who texts are from, how many go out, and when.',
       el('div', { class: 'form-grid' },
         field('Sender name', f.sender_name, 'Who every text is from. Added to a cold text if it is missing.'),
         field('Opt-out text', f.optout_text, 'Added to cold texts that do not mention STOP.'),
@@ -110,11 +108,9 @@ export default function settings() {
         el('label', { class: 'set-toggle full' }, f.require_hook,
           el('span', {},
             el('strong', {}, 'Require a personal line for first texts'),
-            el('span', { class: 'muted' }, ' A lead with no hook cannot get a cold first text. Recommended: no generic blasts.')))),
+            el('span', { class: 'set-toggle-hint' }, 'A lead with no hook cannot get a cold first text. Recommended: no generic blasts.')))),
       preview),
-    el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Business'), el('h2', { class: 'h2' }, 'Bookings and notifications'))),
+    group('Business', 'Bookings and notifications', 'Where people book, where alerts go, and what a client is worth.',
       el('div', { class: 'form-grid' },
         field('Booking link', f.booking_url, 'Your Cal.com page. Used by {booking_url} and “Send booking link”.'),
         field('Notification email', f.notify_email, 'Gets an email for each reply, booking and website lead.'),
@@ -258,7 +254,7 @@ export default function settings() {
             el('td', {}, x.reason === 'opt_out' ? 'Replied STOP' : x.reason === 'manual' ? 'Added by you' : x.reason),
             el('td', { class: 'muted' }, dateTime(x.created_at)))))))
         : el('p', { class: 'muted' }, 'Nobody has opted out yet.'),
-      rows.length > 200 ? el('p', { class: 'muted' }, `Showing 200 of ${num(rows.length)}. Export for the full list.`) : null);
+      rows.length > 200 ? el('p', { class: 'muted' }, `Showing 200 of ${num(rows.length)}. Export for the full list.`) : '');
   }
   const exportSup = () => {
     const rows = (state.suppressions || []).map((x) => ({ phone: x.phone, reason: x.reason, added: x.created_at }));
@@ -278,27 +274,16 @@ export default function settings() {
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'System'), el('h1', { class: 'h1' }, 'Settings'))),
     form,
-    el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Security'), el('h2', { class: 'h2' }, 'Change PIN'))),
-      el('p', { class: 'muted set-p' }, 'Five wrong PINs lock this device for a while. The lock gets longer each time.'),
+    group('Security', 'Change PIN', 'Five wrong PINs lock this device for a while. The lock gets longer each time.',
       pinForm),
-    el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Connections'), el('h2', { class: 'h2' }, 'Integrations')),
-        recheck),
+    group('Connections', 'Integrations', 'What is connected, and the steps to connect the rest.',
+      el('div', { class: 'set-int-tools' }, recheck),
       integ),
-    el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Compliance'), el('h2', { class: 'h2' }, 'Do-not-contact list')),
-        el('div', { class: 'row' }, supSearch,
-          el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: exportSup }, icon('download', 14), 'Export CSV'))),
-      el('p', { class: 'muted set-p' }, 'Numbers here are never texted, even if the lead is deleted or re-imported. Removal is not offered: once someone opts out, they stay out.'),
-      supForm,
+    group('Compliance', 'Do-not-contact list', 'Numbers here are never texted, even if the lead is deleted or re-imported. Removal is not offered: once someone opts out, they stay out.',
+      el('div', { class: 'set-sup-tools' }, supForm, el('span', { class: 'spacer' }), supSearch,
+        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: exportSup }, icon('download', 14), 'Export CSV')),
       supBody),
-    el('section', { class: 'card' },
-      el('div', { class: 'card-head' },
-        el('div', {}, el('div', { class: 'eyebrow' }, 'Data'), el('h2', { class: 'h2' }, 'Export and other tools'))),
+    group('Data', 'Export and other tools', 'Everything you have, as a spreadsheet.',
       el('div', { class: 'row' },
         el('button', { class: 'btn btn-ghost', type: 'button', onClick: exportLeads }, icon('download', 15), `Export all leads (${num((state.leads || []).length)})`),
         el('a', { class: 'btn btn-ghost', href: '../' }, icon('external', 15), 'Finance & projects (legacy HQ)'))));
@@ -312,6 +297,16 @@ export default function settings() {
     if (!Object.keys(changed()).length) refreshDirty();
   };
   return root;
+}
+
+/** A settings group: title and a short description on the left, the controls on the right. */
+function group(eyebrow, title, desc, ...body) {
+  return el('section', { class: 'set-sec' },
+    el('div', { class: 'set-sec-head' },
+      el('div', { class: 'eyebrow' }, eyebrow),
+      el('h2', { class: 'h2' }, title),
+      desc ? el('p', { class: 'set-sec-desc' }, desc) : null),
+    el('div', { class: 'set-sec-body' }, ...body));
 }
 
 const openInt = new Set();

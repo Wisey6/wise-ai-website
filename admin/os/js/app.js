@@ -60,12 +60,15 @@ let booted = false;
 /* ================================================================ PIN gate */
 
 function renderGate() {
-  const pinLen = knownPinLength();
-  let digits = [];
+  // Windows-style lock: a resting screen with the clock and a lock to click,
+  // then a single numbers-only PIN field. No on-screen keypad.
   let busy = false;
   let lockedUntil = 0;
-  let longMode = pinLen > 6;
   let countdownTimer = null;
+  let open = false;
+
+  // Auto-submit only when this device has unlocked before, so we know the PIN's length.
+  const storedLen = () => { try { return Number(localStorage.getItem('wiseos.pinlen')) || 0; } catch { return 0; } };
 
   const clock = el('div', { class: 'gate-clock', 'aria-hidden': 'true' });
   const date = el('div', { class: 'gate-date' });
@@ -77,21 +80,33 @@ function renderGate() {
   tick();
   const clockTimer = setInterval(tick, 1000);
 
-  const dots = el('div', { class: 'pin-dots', 'aria-hidden': 'true' });
-  const live = el('div', { class: 'sr-only', 'aria-live': 'polite' });
-  const hint = el('div', { class: 'gate-hint', role: 'status' }, 'Enter your PIN');
-
-  const drawDots = () => {
-    const n = Math.max(longMode ? Math.max(pinLen, 6) : pinLen, digits.length);
-    clear(dots);
-    for (let i = 0; i < n; i++) dots.append(el('span', { class: `pin-dot${i < digits.length ? ' is-filled' : ''}` }));
-    live.textContent = `${digits.length} digit${digits.length === 1 ? '' : 's'} entered`;
-  };
-
+  const hint = el('div', { class: 'gate-hint', role: 'status' });
   const setHint = (text, tone = '') => { hint.textContent = text; hint.className = `gate-hint${tone ? ` is-${tone}` : ''}`; };
 
-  const keys = [];
-  const setDisabled = (d) => keys.forEach((k) => { k.disabled = d; });
+  const input = el('input', {
+    class: 'pin-input', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '12',
+    autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false',
+    placeholder: 'PIN', 'aria-label': 'PIN', name: 'wiseos-pin'
+  });
+  const go = el('button', { type: 'submit', class: 'pin-go', 'aria-label': 'Unlock' }, icon('arrow', 18));
+  const field = el('form', { class: 'pin-field', novalidate: true }, input, go);
+
+  const unlockBtn = el('button', { type: 'button', class: 'gate-unlock', 'aria-label': 'Unlock Wise AI OS' },
+    el('span', { class: 'gate-unlock-ring' }, icon('lock', 22)),
+    el('span', { class: 'gate-unlock-label' }, 'Click to unlock'));
+
+  const panel = el('div', { class: 'gate-panel' }, unlockBtn);
+  const REST_FOOT = 'Click the lock, or start typing your PIN';
+  const foot = el('span', {}, REST_FOOT);
+
+  const setDisabled = (d) => { input.disabled = d; go.disabled = d; };
+
+  const shake = () => {
+    field.classList.remove('is-shake');
+    void field.offsetWidth;
+    field.classList.add('is-shake');
+    setTimeout(() => field.classList.remove('is-shake'), 450);
+  };
 
   const startCountdown = (secs) => {
     lockedUntil = Date.now() + secs * 1000;
@@ -103,41 +118,43 @@ function renderGate() {
         clearInterval(countdownTimer);
         setDisabled(false);
         setHint('Enter your PIN');
+        if (open) input.focus();
         return;
       }
       const m = Math.floor(left / 60);
-      const s = String(left % 60).padStart(2, '0');
-      setHint(`Too many attempts. Try again in ${m}:${s}`, 'bad');
+      const sec = String(left % 60).padStart(2, '0');
+      setHint(`Too many attempts. Try again in ${m}:${sec}`, 'bad');
     };
     step();
     countdownTimer = setInterval(step, 1000);
   };
 
-  const shake = () => {
-    dots.classList.remove('is-shake');
-    void dots.offsetWidth;
-    dots.classList.add('is-shake');
-    setTimeout(() => dots.classList.remove('is-shake'), 450);
-  };
-
   const submit = async () => {
-    if (busy || digits.length < 6 || Date.now() < lockedUntil) {
-      if (digits.length && digits.length < 6) { setHint('PINs are at least 6 digits', 'warn'); shake(); }
+    if (busy || Date.now() < lockedUntil) return;
+    const pin = input.value;
+    if (pin.length < 6) {
+      if (pin.length) { setHint('PINs are at least 6 digits', 'warn'); shake(); }
       return;
     }
     busy = true;
-    dots.classList.add('is-busy');
+    field.classList.add('is-busy');
+    setDisabled(true);
     setHint('Unlocking…');
-    const pin = digits.join('');
     const res = await login(pin);
     busy = false;
-    dots.classList.remove('is-busy');
+    field.classList.remove('is-busy');
     if (res.ok) {
       setHint('Welcome back');
       return; // the auth listener boots the shell
     }
-    digits = [];
-    drawDots();
+    input.value = '';
+    if (res.error === 'locked') {
+      shake();
+      startCountdown(Number(res.retry_after_s) || 300);
+      return;
+    }
+    setDisabled(false);
+    input.focus();
     if (res.error === 'bad_pin') {
       shake();
       const r = Number(res.remaining);
@@ -145,9 +162,6 @@ function renderGate() {
         ? `That PIN didn't match. ${r} attempt${r === 1 ? '' : 's'} left before a lockout.`
         : "That PIN didn't match.", 'bad');
       if (navigator.vibrate) navigator.vibrate(120);
-    } else if (res.error === 'locked') {
-      shake();
-      startCountdown(Number(res.retry_after_s) || 300);
     } else if (res.error === 'network' || res.error === 'not_deployed') {
       setHint("Can't reach the sign-in service. Check your connection and try again.", 'warn');
     } else {
@@ -155,70 +169,78 @@ function renderGate() {
     }
   };
 
-  const press = (d) => {
-    if (busy || Date.now() < lockedUntil) return;
-    if (digits.length >= 12) return;
-    digits.push(String(d));
+  // Numbers only, however the text arrives (typing, paste, autofill, IME).
+  input.addEventListener('beforeinput', (e) => {
+    if (e.data && /\D/.test(e.data) && e.inputType !== 'insertFromPaste') e.preventDefault();
+  });
+  input.addEventListener('input', () => {
+    const clean = input.value.replace(/\D/g, '').slice(0, 12);
+    if (clean !== input.value) input.value = clean;
     if (hint.classList.contains('is-bad') || hint.classList.contains('is-warn')) setHint('Enter your PIN');
-    drawDots();
-    if (!longMode && digits.length === pinLen) submit();
+    const n = storedLen();
+    if (n >= 6 && clean.length === n) submit();
+  });
+  field.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
+
+  const openField = (firstDigit = '') => {
+    if (open) return;
+    open = true;
+    gate.classList.add('is-open');
+    foot.textContent = 'Numbers only · Esc to go back';
+    fillNode(panel, field, hint);
+    setHint(storedLen() ? 'Enter your PIN' : 'Enter your PIN, then press Enter');
+    if (Date.now() < lockedUntil) setDisabled(true);
+    input.value = firstDigit;
+    input.focus();
+    if (firstDigit) input.dispatchEvent(new Event('input', { bubbles: true }));
   };
-  const back = () => { if (!busy) { digits.pop(); drawDots(); } };
-  const reset = () => { if (!busy) { digits = []; drawDots(); } };
-
-  const flash = (label) => {
-    const k = keys.find((b) => b.dataset.k === label);
-    if (!k) return;
-    k.classList.add('is-pressed');
-    setTimeout(() => k.classList.remove('is-pressed'), 120);
+  const closeField = () => {
+    if (!open || busy) return;
+    open = false;
+    input.value = '';
+    gate.classList.remove('is-open');
+    foot.textContent = REST_FOOT;
+    fillNode(panel, unlockBtn);
+    unlockBtn.focus();
   };
+  const fillNode = (node, ...kids) => { clear(node); node.append(...kids); };
 
-  const key = (label, onClick, opts = {}) => {
-    const b = el('button', {
-      type: 'button', class: `key${opts.fn ? ' is-fn' : ''}`, 'aria-label': opts.aria || label, dataset: { k: opts.k || label },
-      onClick: (e) => { e.currentTarget.blur(); onClick(); }
-    }, opts.icon ? icon(opts.icon, 22) : label);
-    keys.push(b);
-    return b;
-  };
-
-  const keypad = el('div', { class: 'keypad', role: 'group', 'aria-label': 'PIN keypad' },
-    ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => key(String(n), () => press(n))),
-    key('Delete', back, { fn: true, icon: 'backspace', aria: 'Delete last digit', k: 'Backspace' }),
-    key('0', () => press(0)),
-    key('Enter', submit, { fn: true, icon: 'arrow', aria: 'Unlock', k: 'Enter' })
-  );
-
-  const longToggle = el('button', { type: 'button' });
-  const drawLong = () => { longToggle.textContent = longMode ? 'Using a longer PIN · press Enter' : 'Longer PIN?'; };
-  longToggle.addEventListener('click', () => { longMode = !longMode; digits = []; drawDots(); drawLong(); });
-  drawLong();
+  unlockBtn.addEventListener('click', () => openField());
 
   const gate = el('div', { class: 'gate', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Wise AI OS is locked' },
+    el('div', { class: 'gate-top' },
+      el('div', { class: 'gate-brand' }, el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
+      el('div', { class: 'gate-lock', 'aria-hidden': 'true' }, icon('lock', 13), 'Locked')),
     el('div', { class: 'gate-time' }, clock, date),
-    el('div', { class: 'gate-panel' },
-      el('div', { class: 'gate-id' },
-        el('div', { class: 'gate-avatar' }, el('img', { src: '../../favicon.png', alt: '' })),
-        el('div', { class: 'gate-name' }, 'Wise AI OS')),
-      dots, live, hint, keypad),
-    el('div', { class: 'gate-foot' },
-      el('span', {}, 'Type or tap your PIN'),
-      longToggle)
+    panel,
+    el('div', { class: 'gate-foot' }, foot)
   );
+
+  // Clicking anywhere on the resting screen opens the PIN field, as on Windows.
+  gate.addEventListener('click', (e) => {
+    if (!open && !e.target.closest('button, a, input')) openField();
+  });
 
   const onKey = (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); flash(e.key); press(Number(e.key)); }
-    else if (e.key === 'Backspace') { e.preventDefault(); flash('Backspace'); back(); }
-    else if (e.key === 'Enter') {
-      if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.gate-foot')) return;
-      e.preventDefault(); flash('Enter'); submit();
-    } else if (e.key === 'Escape') { reset(); setHint('Enter your PIN'); }
+    if (!open) {
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); openField(e.key); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openField(); }
+      else if (e.key === 'Tab') trapFocus(e, gate);
+      return;
+    }
+    if (e.key === 'Escape') { e.preventDefault(); closeField(); }
     else if (e.key === 'Tab') trapFocus(e, gate);
+    else if (document.activeElement !== input && /^[0-9]$/.test(e.key) && !input.disabled) {
+      // A digit typed while focus is elsewhere still lands in the field.
+      e.preventDefault();
+      input.focus();
+      input.value = (input.value + e.key).slice(0, 12);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   };
   document.addEventListener('keydown', onKey);
 
-  drawDots();
   document.body.append(gate);
 
   return {

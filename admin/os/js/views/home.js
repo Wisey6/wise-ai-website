@@ -168,8 +168,7 @@ function doNextCard(state) {
   const shown = items.slice(0, 9);
   const unread = state.leads.filter((l) => l.unread && !l.archived).length;
   const list = el('ol', { class: 'do-list' }, shown.map((it, i) => el('li', { class: `do-item${i === 0 ? ' is-first' : ''}`, dataset: { key: it.key } },
-    el('span', { class: 'do-n', 'aria-hidden': 'true' }, String(i + 1)),
-    el('span', { class: `do-icon${it.tone ? ` t-${it.tone}` : ''}`, 'aria-hidden': 'true' }, icon(it.icon, 16)),
+    el('span', { class: 'do-n', 'aria-hidden': 'true' }, String(i + 1).padStart(2, '0')),
     el('span', { class: 'do-text' },
       el('span', { class: 'do-title' }, it.title),
       it.sub ? el('span', { class: 'do-sub' }, it.sub) : null),
@@ -187,7 +186,7 @@ function doNextCard(state) {
       items.length > 9 ? el('span', { class: 'muted small' }, `+${items.length - 9} more`)
         : unread ? el('a', { class: 'card-link', href: '#inbox' }, 'Open inbox', icon('arrow', 14)) : null),
     items.length ? list : el('div', { class: 'all-clear' },
-      el('span', { class: 'do-icon t-up' }, icon('check', 17)),
+      el('span', { class: 'all-clear-mark', 'aria-hidden': 'true' }, icon('check', 18)),
       el('span', {}, 'All caught up. A good time to write a few personal lines or review the playbook.')));
 }
 

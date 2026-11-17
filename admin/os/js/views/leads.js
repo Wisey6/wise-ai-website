@@ -180,7 +180,7 @@ export default function leadsView(ctx) {
     campSel.addEventListener('change', () => campSel.value && run({ campaign_id: campSel.value === 'none' ? null : campSel.value }, `Campaign updated on ${plural(ids.length, 'lead')}`));
     const archived = ui.special === 'archived';
     bulk.append(el('div', { class: 'bulk-bar', role: 'region', 'aria-label': 'Bulk actions' },
-      el('b', { style: 'font-size:13px;margin-right:4px' }, `${num(ids.length)} selected`),
+      el('b', { class: 'bulk-count' }, `${num(ids.length)} selected`),
       statusSel, campSel,
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: (e) => busy(e.currentTarget, () => run({ status: 'queued' }, `${plural(ids.length, 'lead')} queued`)) }, icon('send', 13), 'Queue'),
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: (e) => busy(e.currentTarget, () => run({ archived: !archived }, archived ? 'Restored' : `${plural(ids.length, 'lead')} archived`)) }, icon('archive', 13), archived ? 'Restore' : 'Archive'),
@@ -241,7 +241,7 @@ export default function leadsView(ctx) {
         el('td', { class: 'small lead-camp-cell', title: campaignById(l.campaign_id)?.name || null }, campaignById(l.campaign_id)?.name || el('span', { class: 'faint' }, '—')),
         el('td', { class: 'small muted nowrap' }, timeAgo(lastActivity(l))),
         el('td', { class: 'small nowrap' }, l.next_followup_at
-          ? el('span', { style: Date.parse(l.next_followup_at) <= Date.now() ? 'color:var(--amber-t);font-weight:600' : '' }, dayLabel(l.next_followup_at))
+          ? el('span', { class: Date.parse(l.next_followup_at) <= Date.now() ? 'due' : null }, dayLabel(l.next_followup_at))
           : el('span', { class: 'faint' }, '—'))))));
 
     const mobile = el('div', { class: 'lead-mobile' }, shown.map((l) => el('div', { class: 'lead-card' },
@@ -251,7 +251,7 @@ export default function leadsView(ctx) {
         el('span', {}, [prettyPhone(l.phone), l.suburb, (l.hook || '').trim() ? 'personalised' : null].filter(Boolean).join(' · '))),
       statusBadge(l.status))));
 
-    return el('div', { class: 'card flush' },
+    return el('div', { class: 'card flush leads-table-card' },
       el('div', { class: 'table-wrap leads-table-wrap' }, table),
       mobile,
       list.length > shown.length ? el('div', { class: 'row', style: 'justify-content:center;padding:12px' },
@@ -787,7 +787,7 @@ export function openLead(id) {
       field('Their pain', painIn, '{pain}'),
       field('Worth to them ($/month)', valueIn, '{value}')),
     el('details', { class: 'roi' },
-      el('summary', { style: 'cursor:pointer;font-weight:600;font-size:13px' }, 'ROI estimator'),
+      el('summary', {}, 'ROI estimator'),
       el('div', { class: 'roi-grid', style: 'margin-top:10px' },
         field('Missed enquiries / week', missedIn),
         field('Average job ($)', jobIn),

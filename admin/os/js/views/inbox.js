@@ -104,7 +104,7 @@ export default function inbox(ctx = {}) {
     const all = conversations();
     const unreadTotal = all.filter((c) => c.lead.unread).length;
     const tot = listPane.querySelector('.inbox-unread-total');
-    tot.replaceChildren(unreadTotal ? badge(`${unreadTotal} unread`, 'warn') : '');
+    tot.textContent = unreadTotal ? `${unreadTotal} unread` : '';
     const q = query.trim().toLowerCase();
     const rows = all.filter((c) => (filter === 'unread' ? c.lead.unread : filter === 'waiting' ? c.waiting : true))
       .filter((c) => !q || [leadName(c.lead), c.lead.contact_name, c.lead.phone, prettyPhone(c.lead.phone), c.lead.suburb, c.last?.body]
@@ -131,11 +131,11 @@ export default function inbox(ctx = {}) {
             el('span', { class: 'inbox-item-top' },
               el('span', { class: 'inbox-item-name' }, leadName(l)),
               el('span', { class: 'inbox-item-time' }, c.at ? timeAgo(new Date(c.at).toISOString()) : '')),
-            el('span', { class: 'inbox-item-preview' }, preview),
-            el('span', { class: 'inbox-item-meta' },
-              statusBadge(l.status),
-              drafts.get(l.id)?.trim() ? el('span', { class: 'inbox-draft-tag' }, 'Draft') : null,
-              l.unread ? el('span', { class: 'inbox-dot', 'aria-label': 'Unread' }) : null)))));
+            el('span', { class: 'inbox-item-body' },
+              el('span', { class: 'inbox-item-preview' },
+                drafts.get(l.id)?.trim() ? el('span', { class: 'inbox-draft-tag' }, 'Draft · ') : null, preview),
+              l.unread ? el('span', { class: 'inbox-dot', role: 'img', 'aria-label': 'Unread' }) : null),
+            el('span', { class: 'inbox-item-meta' }, statusBadge(l.status))))));
     }
   }
 
@@ -165,7 +165,7 @@ export default function inbox(ctx = {}) {
     const meta = [lead.contact_name && lead.contact_name !== leadName(lead) ? lead.contact_name : null, lead.suburb, lead.industry].filter(Boolean).join(' · ');
     const statusBtns = STATUS_ACTIONS.map(([id, label]) => {
       const on = lead.status === id;
-      const b = el('button', { class: `btn btn-sm ${on ? 'btn-primary' : 'btn-ghost'}${id === 'dnc' ? ' inbox-dnc' : ''}`, type: 'button', 'aria-pressed': on ? 'true' : 'false' }, label);
+      const b = el('button', { class: `inbox-status${on ? ' is-active' : ''}${id === 'dnc' ? ' inbox-dnc' : ''}`, type: 'button', 'aria-pressed': on ? 'true' : 'false' }, label);
       b.addEventListener('click', () => setStatus(id, b));
       return b;
     });
@@ -179,16 +179,17 @@ export default function inbox(ctx = {}) {
             lead.phone ? el('a', { href: `tel:${lead.phone}` }, prettyPhone(lead.phone)) : 'No phone',
             meta ? ` · ${meta}` : '')),
         el('span', { class: 'spacer' }),
-        statusBadge(lead.status),
         el('a', { class: 'btn btn-ghost btn-sm', href: `#leads/${lead.id}`, title: 'Open the lead' }, icon('user', 15), el('span', { class: 'inbox-hide-sm' }, 'Lead')),
-        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', title: lead.unread ? 'Mark read' : 'Mark unread',
+        el('button', { class: 'icon-btn inbox-unread-btn', type: 'button', title: lead.unread ? 'Mark read' : 'Mark unread',
           'aria-label': lead.unread ? 'Mark read' : 'Mark unread', onClick: (e) => toggleUnread(e.currentTarget) },
         icon(lead.unread ? 'check' : 'mail', 15))),
-      el('div', { class: 'inbox-thread-actions row', role: 'group', 'aria-label': 'Set status' }, statusBtns),
+      el('div', { class: 'inbox-thread-bar' },
+        el('span', { class: 'inbox-thread-status' }, statusBadge(lead.status)),
+        el('div', { class: 'inbox-thread-actions', role: 'group', 'aria-label': 'Set status' }, statusBtns)),
       (lead.hook || lead.pain || Number(lead.est_monthly_value) > 0) ? el('div', { class: 'inbox-ctx' },
-        lead.hook ? el('span', {}, el('b', {}, 'Your line '), lead.hook) : null,
-        lead.pain ? el('span', {}, el('b', {}, 'Pain '), lead.pain) : null,
-        Number(lead.est_monthly_value) > 0 ? el('span', {}, el('b', {}, 'Worth '), `$${Math.round(lead.est_monthly_value).toLocaleString('en-AU')}/mo`) : null) : null);
+        lead.hook ? el('span', {}, el('b', {}, 'Your line'), lead.hook) : null,
+        lead.pain ? el('span', {}, el('b', {}, 'Pain'), lead.pain) : null,
+        Number(lead.est_monthly_value) > 0 ? el('span', { class: 'tnum' }, el('b', {}, 'Worth'), `$${Math.round(lead.est_monthly_value).toLocaleString('en-AU')}/mo`) : null) : null);
   }
 
   async function setStatus(id, btn) {
@@ -232,8 +233,8 @@ export default function inbox(ctx = {}) {
       if (k !== day) { day = k; msgsEl.append(el('div', { class: 'inbox-day' }, el('span', {}, dayLabel(m.created_at)))); }
       if (m.channel === 'call' || m.channel === 'note' || m.channel === 'email') {
         msgsEl.append(el('div', { class: 'inbox-sys' },
-          icon(m.channel === 'call' ? 'phone' : m.channel === 'email' ? 'mail' : 'note', 13),
-          el('span', {}, `${m.channel === 'call' ? 'Call' : m.channel === 'email' ? 'Email' : 'Note'} · ${timeOnly(m.created_at)}: `),
+          el('span', { class: 'inbox-sys-kind' }, icon(m.channel === 'call' ? 'phone' : m.channel === 'email' ? 'mail' : 'note', 13),
+            `${m.channel === 'call' ? 'Call' : m.channel === 'email' ? 'Email' : 'Note'} · ${timeOnly(m.created_at)}`),
           el('span', { class: 'inbox-sys-body' }, m.body)));
         continue;
       }
@@ -271,7 +272,7 @@ export default function inbox(ctx = {}) {
     ta.value = drafts.get(leadId) || '';
     const counter = segmentCounter();
     const preview = el('div', { class: 'inbox-preview', hidden: true });
-    const notice = el('div', { class: 'inbox-blocked', hidden: true });
+    const notice = el('div', { class: 'callout is-bad inbox-blocked', hidden: true });
     const quick = el('div', { class: 'inbox-quick', role: 'group', 'aria-label': 'Quick replies' });
     const actions = el('div', { class: 'inbox-send-row' });
 
@@ -304,8 +305,8 @@ export default function inbox(ctx = {}) {
     function paintQuick() {
       const tpls = (state.templates || []).filter((t) => t.active && t.step >= 90);
       quick.replaceChildren(
-        el('button', { class: 'inbox-chip is-key', type: 'button', onClick: (e) => sendBookingLink(e.currentTarget) }, icon('calendar', 14), 'Send booking link'),
-        ...tpls.map((t) => el('button', { class: 'inbox-chip', type: 'button', title: t.body,
+        el('button', { class: 'chip inbox-chip is-key', type: 'button', onClick: (e) => sendBookingLink(e.currentTarget) }, icon('calendar', 14), 'Send booking link'),
+        ...tpls.map((t) => el('button', { class: 'chip inbox-chip', type: 'button', title: t.body,
           onClick: () => insert(renderTemplate(t.body, lead || {}, state.settings || {})) }, t.name.replace(/^Reply:\s*/i, ''))));
     }
 
