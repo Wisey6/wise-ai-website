@@ -560,7 +560,7 @@ kbd{margin-left:2px;font-family:var(--font);font-size:10.5px;color:var(--silver)
     if(texts[i]) s+='<rect x="'+x+'" y="'+(base-th)+'" width="'+bw+'" height="'+th+'" rx="3" fill="#DDE1E5"/>';
     if(reps[i]) s+='<rect x="'+(x+bw*0.2)+'" y="'+(base-rh)+'" width="'+(bw*0.6)+'" height="'+rh+'" rx="2" fill="#2563EB"/>';
     if(books[i]) s+='<circle cx="'+(x+bw/2)+'" cy="'+(base-th-8)+'" r="3.6" fill="#0D9488" stroke="#fff" stroke-width="1.5"/>';
-    if(i%2===0||i===n-1) s+='<text x="'+(x+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="'+(i===n-1?'#0A0E11':'#767C82')+'" font-weight="'+(i===n-1?'600':'400')+'">'+(i===n-1?'Today':days[i])+'</text>';
+    if(i%2===1) s+='<text x="'+(x+bw/2)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="'+(i===n-1?'#0A0E11':'#767C82')+'" font-weight="'+(i===n-1?'600':'400')+'">'+(i===n-1?'Today':days[i])+'</text>';
   }
   document.getElementById('chart').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Last 14 days: 246 texts sent, 42 replies, 6 bookings" font-family="Inter, system-ui, sans-serif">'+s+'</svg>';
 
