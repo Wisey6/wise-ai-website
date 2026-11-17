@@ -507,7 +507,9 @@ try {
   await api(aiPage, async (m, id) => { await m.addMessage({ lead_id: id, channel: 'sms', direction: 'out', status: 'manual', body: 'Yes, Saturdays.' }); }, seed.lead);
   await aiPage.waitForTimeout(800);
   check(!(await aiPage.isVisible('.inbox-ai-btn')), 'Suggest replies hides when the latest message is ours');
-  const aiErrs = aiPage.errors.filter((e) => !/status of 402/.test(e)); // the mocked cap_reached reply is a 402 on purpose
+  // The mocked cap_reached reply is a 402 on purpose. A 404 from an edge function another area has not deployed yet is not ours.
+  const fn404 = (aiPage.notFound || []).length && (aiPage.notFound || []).every((u) => /\/functions\/v1\/(?!ai-assist)/.test(u));
+  const aiErrs = aiPage.errors.filter((e) => !/status of 402/.test(e) && !(fn404 && /status of 404/.test(e)));
   check(aiErrs.length === 0, `no console errors with AI on (${aiErrs.slice(0, 3).join(' | ')} ${JSON.stringify(aiPage.notFound || [])})`);
   await aiPage.context().close();
 
