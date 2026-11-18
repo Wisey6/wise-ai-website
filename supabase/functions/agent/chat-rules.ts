@@ -423,6 +423,23 @@ export function maskRow(r: Row): Row {
   return out;
 }
 
+const ISO_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+/**
+ * Tool results for the model: JSON with every timestamp shown as local time ("2026-11-20 09:00")
+ * in the hub's zone, so the model never sees (or explains) UTC.
+ */
+export function resultJson(out: unknown, tz: string): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  return JSON.stringify(out, (_k, v) => {
+    if (typeof v !== "string" || !ISO_TS.test(v)) return v;
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return v;
+    const p: Record<string, string> = {};
+    for (const x of fmt.formatToParts(d)) p[x.type] = x.value;
+    return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+  });
+}
+
 /** Makes a search term safe for a PostgREST or() filter. */
 export function searchTerm(q: unknown): string {
   return String(q ?? "").replace(/[%_,()*\\:"'.]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);

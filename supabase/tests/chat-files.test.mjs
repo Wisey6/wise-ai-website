@@ -160,3 +160,9 @@ test("Word .docx text comes out of word/document.xml; other zips give null", asy
   assert.deepEqual(R.readPlan("word", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 1000), { how: "docx" });
   assert.equal(R.readPlan("word", "application/msword", 1000).how, "unsupported");
 });
+
+test("tool results show timestamps in local time, never UTC", async () => {
+  const { resultJson } = await import("../functions/agent/chat-rules.ts");
+  assert.equal(resultJson({ a: "2026-11-19T23:00:00+00:00", b: "2026-11-20", n: 3, c: [{ d: "2026-11-18T05:06:24.37726Z" }] }, "Australia/Brisbane"),
+    '{"a":"2026-11-20 09:00","b":"2026-11-20","n":3,"c":[{"d":"2026-11-18 15:06"}]}');
+});

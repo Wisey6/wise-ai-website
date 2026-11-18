@@ -23,7 +23,7 @@ import {
 } from "./validate.ts";
 import {
   ARCHIVE_TABLES, KINDS, type LinkCandidate, Refusal, type Step, TABLE_KIND, buildHistory, buildPatch, checkChatRequest, checkPatch,
-  diffPatch, fallbackTitle, labelFor, linkFor, maskPhone, maskRow, ownsChat, pickLinks, searchTerm, splitTitle, trimText,
+  diffPatch, fallbackTitle, labelFor, resultJson, linkFor, maskPhone, maskRow, ownsChat, pickLinks, searchTerm, splitTitle, trimText,
   undoConflicts, undoInsertPlan,
 } from "./chat-rules.ts";
 import { CHAT_SYSTEM, CHAT_TOOLS } from "./chat-prompt.ts";
@@ -422,7 +422,7 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
     if (!out) {
       return { is_error: true, content: `Unknown tool "${name}". The tools are: ${CHAT_TOOLS.map((x) => x.name).join(", ")}.` };
     }
-    return { content: JSON.stringify(out) };
+    return { content: resultJson(out, t.tz) };
   } catch (e) {
     if (e instanceof Refusal) {
       t.steps.push({ tool: name, kind: READ_TOOLS.includes(name) ? "read" : "note", ok: false, text: `${name}: ${e.message}`.slice(0, 300) });
@@ -574,7 +574,7 @@ function describe(t: Turn, table: string, diff: Row): string {
     if (v === null || v === "") val = "cleared";
     else if (k === "owner_id") val = t.team.find((m) => m.id === v)?.name ?? "someone";
     else if (k.endsWith("_id")) val = "linked";
-    else if (k === "next_followup_at") val = String(v).slice(0, 10);
+    else if (k === "next_followup_at") val = resultJson(v, t.tz).slice(1, 11);
     else if (k === "notes") val = "note added";
     else if (k === "phone" || k === "email") val = "set";
     else if (typeof v === "number" && ["amount", "value", "monthly_value", "est_monthly_value"].includes(k)) val = `$${v.toLocaleString("en-AU")}`;
