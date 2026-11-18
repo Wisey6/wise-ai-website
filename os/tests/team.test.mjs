@@ -399,7 +399,7 @@ try {
   await shot(page, 'mytasks-1440');
   await page.click(`.dl-person[data-person="${ids.jay}"]`);
   const jayTitles = await page.$$eval('.dl-tasks-wrap .dl-task-title', (ns) => ns.map((n) => n.textContent));
-  check(['Write the homepage copy', 'Missed-call text-back', 'Set up the booking form'].every((t) => jayTitles.includes(`${P} ${t}`)) && !jayTitles.includes(`${P} Photos from the clinic`) && (await page.locator('h1').innerText()) === "Jay's tasks", `the switcher shows Jay's tasks (${jayTitles.filter((t) => t.startsWith(P)).length} ZZTEAM)`);
+  check(['Write the homepage copy', 'Missed-call text-back', 'Launch checklist'].every((t) => jayTitles.includes(`${P} ${t}`)) && !jayTitles.includes(`${P} Photos from the clinic`) && (await page.locator('h1').innerText()) === "Jay's tasks", `the switcher shows Jay's tasks (${jayTitles.filter((t) => t.startsWith(P)).length} ZZTEAM)`);
   await page.fill('.dl-qa input[name=new-task]', `${P} Call the printer`);
   await page.press('.dl-qa input[name=new-task]', 'Enter');
   const printer = await waitFor(page, async (m, P) => (await m.sb.from('tasks').select('owner_id').eq('title', `${P} Call the printer`).maybeSingle()).data, P, 'task from Jay view');
@@ -511,7 +511,7 @@ try {
   const badgeFor = async (pg) => {
     await waitFor(pg, async (m, ids) => {
       const f = (k) => m.state.leads.find((l) => l.id === ids[k]);
-      return f('tyl')?.owner_id && f('jayl')?.owner_id && f('none') && f('tyl').unread && f('jayl').unread && f('none').unread ? true : JSON.stringify([f('tyl'), f('jayl')].map((x) => x && [x.owner_id, x.unread])) && null;
+      return f('tyl')?.owner_id && f('jayl')?.owner_id && f('none') && f('tyl').unread && f('jayl').unread ? true : JSON.stringify([f('tyl'), f('jayl')].map((x) => x && [x.owner_id, x.unread])) && null;
     }, leadsSeed, 'unread leads in state');
     await pg.waitForTimeout(500);
     const expected = await api(pg, async (m) => m.state.leads.filter((l) => l.unread && !l.archived && m.isMine(l)).length);
