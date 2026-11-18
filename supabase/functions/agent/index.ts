@@ -476,11 +476,14 @@ Deno.serve(async (req) => {
     const agentOn = (a: AgentName) => settings[`agent_${a}`] === true;
 
     if (body.action === "status") {
+      const runs = await runsToday(ctx);
+      const chatModel = CHAT_MODELS.includes(String(settings.agent_chat_model)) ? String(settings.agent_chat_model) : SONNET;
       return json(req, 200, {
         configured, enabled,
         agents: Object.fromEntries(AGENTS.map((a) => [a, agentOn(a)])),
-        spent_usd: ctx.spent, cap_usd: ctx.cap, runs_today: await runsToday(ctx), limits: DAILY_LIMITS,
-        chat_model: CHAT_MODELS.includes(String(settings.agent_chat_model)) ? settings.agent_chat_model : SONNET,
+        spent_usd: ctx.spent, cap_usd: ctx.cap, runs_today: runs, limits: DAILY_LIMITS,
+        chat_model: chatModel,
+        chat: { enabled: enabled && agentOn("chat"), runs_today: runs.chat, limit: DAILY_LIMITS.chat, model: chatModel },
       });
     }
 

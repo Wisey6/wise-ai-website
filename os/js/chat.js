@@ -483,7 +483,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   const form = el('form', { class: 'cx-composer', novalidate: true },
     notice,
     el('div', { class: 'cx-box' }, box, sendBtn),
-    el('div', { class: 'cx-under' }, el('span', { class: 'cx-hint' }, el('kbd', {}, 'Enter'), ' to send · ', el('kbd', {}, 'Shift'), ' + ', el('kbd', {}, 'Enter'), ' for a new line'), count));
+    el('div', { class: 'cx-under' }, el('span', { class: 'cx-hint' }, el('kbd', {}, 'Enter'), 'to send', el('span', { class: 'cx-hint-sep', 'aria-hidden': 'true' }, '·'), el('kbd', {}, 'Shift'), el('kbd', {}, 'Enter'), 'for a new line'), count));
   const grow = () => {
     box.style.height = 'auto';
     const max = dock ? 168 : 240;

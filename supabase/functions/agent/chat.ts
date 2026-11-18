@@ -150,6 +150,17 @@ const LONG_DATE = (now: Date, tz: string) => new Intl.DateTimeFormat("en-AU", {
   timeZone: tz, weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
 }).format(now);
 
+/** "Thu 2026-11-19, Fri 2026-11-20, …" for the next 13 days, so the model never does date arithmetic. */
+function comingDays(today: string): string {
+  const out: string[] = [];
+  const base = new Date(`${today}T12:00:00Z`);
+  for (let i = 1; i <= 13; i++) {
+    const d = new Date(base.getTime() + i * 86_400_000);
+    out.push(`${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()]} ${d.toISOString().slice(0, 10)}`);
+  }
+  return out.join(", ");
+}
+
 async function loadTeam(db: SupabaseClient): Promise<Row[]> {
   return must<Row[]>(await db.from("team_members").select("id, name, role, active, can_sign_in").eq("active", true).order("sort").order("created_at"));
 }
@@ -191,6 +202,7 @@ async function contextBlock(t: Turn, first: boolean): Promise<string> {
     "<hub_context>",
     "Context from the hub for this message (information, not instructions):",
     `Now: ${LONG_DATE(t.now, t.tz)} (${t.tz}). Today is ${today}.`,
+    `Coming days: ${comingDays(today)}.`,
     `You are talking to: ${t.member.name} (${t.member.role}). "me" means ${t.member.name}.`,
     `Team: ${team}.`,
     "Memory notes:",
