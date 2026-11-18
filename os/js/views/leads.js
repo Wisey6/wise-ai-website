@@ -136,7 +136,10 @@ export default function leadsView(ctx) {
   const chips = el('div', { class: 'leads-chips', role: 'group', 'aria-label': 'Filter by status' });
   const bulk = el('div');
   const content = el('div');
-  root.append(head, toolbar, chips, bulk, content);
+  // Wide screens: a summary beside the table (hidden by CSS below 2200px).
+  const aside = el('aside', { class: 'leads-aside', 'aria-label': 'Leads at a glance' });
+  root.classList.add('has-aside');
+  root.append(head, toolbar, chips, bulk, content, aside);
 
   function drawCampaigns() {
     const opts = [{ id: '', label: 'All campaigns' }, ...st.campaigns.map((c) => ({ id: c.id, label: c.name })), { id: 'none', label: 'No campaign' }];
@@ -313,8 +316,32 @@ export default function leadsView(ctx) {
     }));
   }
 
+  function drawAside() {
+    const live = st.leads.filter((l) => !l.archived && matchesOwner(ui.owner, l));
+    const total = live.filter((l) => !['lost', 'dnc'].includes(l.status)).reduce((t, l) => t + (Number(l.est_monthly_value) || 0), 0);
+    const max = Math.max(1, ...STATUSES.map((x) => live.filter((l) => l.status === x.id).length));
+    const unread = live.filter((l) => l.unread).sort((a, b) => String(b.last_reply_at).localeCompare(String(a.last_reply_at))).slice(0, 6);
+    const due = live.filter((l) => l.next_followup_at && Date.parse(l.next_followup_at) <= Date.now() && !['dnc', 'lost', 'won'].includes(l.status));
+    fill(aside,
+      el('div', { class: 'la-total' }, el('p', { class: 'eyebrow' }, 'Open value'), el('span', { class: 'kpi-value tnum' }, `${money(total)}`), el('span', { class: 'small muted' }, `a month across ${plural(live.length, 'lead')}`)),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'By status'),
+        el('ul', { class: 'la-list' }, STATUSES.map((x) => {
+          const n = live.filter((l) => l.status === x.id).length;
+          return el('li', {},
+            el('button', { type: 'button', onClick: () => { ui.status = x.id; ui.special = ''; ui.selected.clear(); paint(); } }, statusBadge(x.id)),
+            el('span', { class: 'num' }, num(n)),
+            el('span', { class: 'la-bar', 'aria-hidden': 'true' }, el('i', { style: `width:${Math.round((n / max) * 100)}%` })));
+        }))),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Replies waiting'),
+        unread.length ? el('ul', { class: 'la-list' }, unread.map((l) => el('li', {}, el('a', { href: `#inbox/${l.id}` }, leadName(l)), el('span', { class: 'small muted' }, timeAgo(l.last_reply_at)))))
+          : el('p', { class: 'small muted' }, 'None right now.')),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Follow-ups due'),
+        el('p', { class: 'small' }, due.length ? el('a', { href: '#campaigns/followups' }, `${plural(due.length, 'follow-up')} ready to send`) : el('span', { class: 'muted' }, 'Nothing due.'))));
+  }
+
   function paint() {
     drawCampaigns();
+    drawAside();
     if (document.activeElement !== ownerBox.firstChild) fill(ownerBox, ownerFilterSelect(ui.owner, (v) => { ui.owner = v; ui.selected.clear(); paint(); }, { label: 'Owner' }));
     drawChips();
     const all = st.leads.filter(matches);

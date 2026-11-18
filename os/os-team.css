@@ -317,3 +317,64 @@
   .today-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
   .today-col.c3 { display: contents; }
 }
+
+/* Wide: more columns for lists of work and money sections. */
+@media (min-width: 1800px) {
+  .board-col { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-content: start; column-gap: var(--space-2); }
+  .board-col > :not(.board-card):not(.deal-card) { grid-column: 1 / -1; }
+  .prop-split { grid-template-columns: minmax(420px, 760px) 860px; justify-content: center; }
+  .rr-split { grid-template-columns: minmax(420px, 760px) minmax(0, 860px); justify-content: center; }
+  .lib-wrap { grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
+}
+@media (min-width: 2200px) {
+  /* money pages: the headline row across, then sections two by two */
+  .money-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-7) var(--space-8); align-items: start; }
+  .money-body > :first-child { grid-column: 1 / -1; }
+  .money-body > .money-section { margin: 0; }
+  .runway-page .money-input-grid { grid-template-columns: repeat(6, minmax(0, 260px)); }
+  /* agents: the four side by side in pairs */
+  .page.ag[data-tab=overview] .ag-main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-7) var(--space-8); align-items: start; }
+  .page.ag[data-tab=overview] .ag-main > :not(.ag-agent) { grid-column: 1 / -1; }
+  .page.ag .ag-grid { grid-template-columns: minmax(0, 1fr) 380px; }
+  /* projects: groups of projects and tasks become columns */
+  .dl-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(860px, 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
+  .dl-taskgroups:not(:has(.dl-ttable)), .dl-tasks-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(760px, 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
+  .dl-taskgroups > .dl-none { grid-column: 1 / -1; }
+  .dl-split { grid-template-columns: minmax(0, 1fr) 420px; }
+  /* a client page: work on the left, proof and history on the right */
+  .cl-page .dl-main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--space-7) var(--space-8); align-items: start; }
+  .cl-page .dl-main > :nth-child(1) { grid-column: 1; grid-row: 1; }
+  .cl-page .dl-main > :nth-child(2) { grid-column: 1; grid-row: 2; }
+  .cl-page .dl-main > :nth-child(3) { grid-column: 2; grid-row: 1; }
+  .cl-page .dl-main > :nth-child(4) { grid-column: 2; grid-row: 2; }
+  /* the client roster: numbers in a side column beside the table */
+  .page.dl-page:has(.cl-table) { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: var(--space-8); align-items: start; }
+  .page.dl-page:has(.cl-table) > * { grid-column: 1; }
+  .page.dl-page:has(.cl-table) > .page-head { grid-column: 1 / -1; }
+  .page.dl-page:has(.cl-table) > :nth-child(2) { grid-column: 2; grid-row: 2 / span 3; position: sticky; top: var(--space-5); }
+  .page.dl-page:has(.cl-table) > :nth-child(2) .dl-kpis { grid-template-columns: minmax(0, 1fr); }
+  /* settings: two columns of groups */
+  .page.set { max-width: none; display: block; column-count: 2; column-gap: var(--space-8); }
+  .page.set > .page-head { column-span: all; margin-bottom: var(--space-5); }
+  .page.set .set-sec { break-inside: avoid; }
+  .page.set > * + * { margin-top: 0; }
+  /* leads: the table with its summary beside it */
+  .leads-page.has-aside { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: var(--space-8); align-items: start; }
+  .leads-page.has-aside > * { grid-column: 1; }
+  .leads-page.has-aside > .page-head { grid-column: 1 / -1; }
+  .leads-page.has-aside > .leads-aside { display: flex; grid-column: 2; grid-row: 2 / span 4; position: sticky; top: var(--space-5); }
+  /* an inbox thread with its lead beside it */
+  .page.inbox { grid-template-columns: minmax(360px, 420px) minmax(0, 1fr); }
+}
+.leads-aside { display: none; flex-direction: column; gap: var(--space-5); }
+.leads-aside .eyebrow { margin-bottom: var(--space-2); }
+.la-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ink); }
+.la-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: center; min-height: 40px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.la-list li .num { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.la-list li .badge { color: var(--ink); }
+.la-list a, .la-list button { color: var(--ink); background: none; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.la-list a:hover, .la-list button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.la-bar { grid-column: 1 / -1; height: 3px; background: var(--mist-2); border-radius: 3px; overflow: hidden; margin: -8px 0 8px; }
+.la-bar i { display: block; height: 100%; background: var(--ink); }
+.la-total { display: flex; flex-direction: column; gap: 4px; }
+.la-total .kpi-value { font-size: 40px; }
