@@ -236,6 +236,13 @@ test("links, titles and search terms", () => {
   assert.deepEqual(links.map((l) => l.hash), ["#pipeline/2", "#clients/3", "#leads/4"]);
 });
 
+test("links fall back to the few records a lookup found when the reply names none", () => {
+  const few = pickLinks([{ label: "Money", hash: "#income", weight: 1.5 }, { label: "Some deal - long title", hash: "#pipeline/9", weight: 1 }], "It is worth $2,000.");
+  assert.deepEqual(few.map((l) => l.hash), ["#income", "#pipeline/9"]);
+  const many = pickLinks([1, 2, 3, 4].map((i) => ({ label: `Lead ${i}`, hash: `#leads/${i}`, weight: 1 })), "Four leads.");
+  assert.deepEqual(many, []);
+});
+
 // ------------------------------------------------------------------ history
 
 test("history is rebuilt from stored text with what-I-did lines", () => {

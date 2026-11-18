@@ -554,6 +554,13 @@ export function pickLinks(cands: LinkCandidate[], finalText: string, max = 6): {
     seen.add(c.hash);
     out.push({ label: c.label.slice(0, 80), hash: c.hash });
   }
+  // Nothing opened, changed or named in the reply: when the lookups found only a few records (or a
+  // figures section), offer those, so a short answer still links to what it was drawn from.
+  if (!out.length) {
+    const valid = cands.filter((c) => c.hash && c.hash.startsWith("#") && c.label);
+    const distinct = [...new Map(valid.map((c) => [c.hash, c])).values()].sort((a, b) => b.weight - a.weight);
+    if (distinct.length && distinct.length <= 3) return distinct.map((c) => ({ label: c.label.slice(0, 80), hash: c.hash }));
+  }
   return out;
 }
 
