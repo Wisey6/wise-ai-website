@@ -570,16 +570,17 @@ a.cx-tile-main:hover .cx-tile-title .icon { color: var(--ink); transform: transl
 
 /* the action in the tile's top-right corner, outside the link: Undo, or a quiet state word */
 .cx-tile-undo, .cx-tile-state {
-  position: absolute; top: 5px; right: 5px; z-index: 1; display: inline-flex; align-items: center; height: 30px; padding: 0 9px;
+  position: absolute; top: 7px; right: 6px; z-index: 1; display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
   border-radius: var(--radius-s); font-size: var(--fs-meta); white-space: nowrap;
 }
 .cx-tile:has(> .cx-tile-undo, > .cx-tile-state) .cx-tile-title { padding-right: 62px; }
 .cx-tile-undo {
-  border: 0; background: var(--paper); font-family: inherit; font-weight: 500; color: var(--muted); cursor: pointer;
+  border: 0; background: transparent; font-family: inherit; font-weight: 500; color: var(--muted); cursor: pointer;
   text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px;
   transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
-.cx-tile-undo:hover { color: var(--ink); text-decoration-color: currentColor; background: var(--hover); }
+.cx-tile-undo:hover { color: var(--ink); text-decoration-color: currentColor; }
+.cx-tile-undo::before { content: ''; position: absolute; inset: -7px -6px -2px; }   /* a bigger target, mostly above */
 .cx-tile-undo:focus-visible { outline: var(--focus-ring); outline-offset: 0; }
 .cx-tile-undo:disabled { cursor: progress; text-decoration: none; }
 .cx-tile-state { color: var(--faint); cursor: default; }
@@ -608,7 +609,7 @@ a.cx-tile-main:hover .cx-tile-title .icon { color: var(--ink); transform: transl
 
 @media (max-width: 760px) {
   .cx-tile { min-height: 56px; }
-  .cx-tile-undo { top: 3px; right: 3px; height: 36px; padding: 0 11px; }
+  .cx-tile-undo::before { inset: -9px -8px -3px; }
   .cx-tile:has(> .cx-tile-undo, > .cx-tile-state) .cx-tile-title { padding-right: 66px; }
 }
 

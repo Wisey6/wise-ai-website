@@ -17,6 +17,7 @@ import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118e';
 import { agentsInfo, usd } from './views/agents.js?v=20261118e';
 import { ownerName } from './owners.js?v=20261118e';
 import { spotRecord } from './spot.js?v=20261118e';
+import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261118e';
 
 export const MAX_MESSAGE = 4000;
 
@@ -79,6 +80,8 @@ function emit() {
 
 /** Follow the assistant's own changes (a send starting or finishing, an undo). */
 export function onChatChange(fn) { subs.add(() => { fn(); return true; }); }
+// An email draft sent or discarded (or the email connection changing) redraws the conversation.
+onMailChange(() => emit());
 
 /** Is a reply on its way in any conversation? (The launcher speeds up.) */
 export const chatBusy = () => S.pending.size > 0;
@@ -336,12 +339,13 @@ function changesOf(m) {
     return out;
   });
 }
-const isDraftStep = (s) => s && !s.change_id && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
+// An email draft step (s.email) is shown as its own card (mail-card.js), not as a tile.
+const isDraftStep = (s) => s && !s.change_id && !s.email && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
 const isFailedStep = (s) => s && s.ok === false && s.kind !== 'read';
 const isPlainWrite = (s) => s && !s.change_id && s.ok !== false && s.kind === 'write';
-const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && !(s.kind === 'memory' && s.ok !== false) && (stepText(s) || str(s.tool)));
+const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !s.email && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && !(s.kind === 'memory' && s.ok !== false) && (stepText(s) || str(s.tool)));
 const linkOf = (c) => safeHash(c.open) || safeHash(c.link) || hashFor(c.table_name, c.row_id);
-const OP = { insert: 'New', update: 'Edit', archive: 'Archive', memory: 'Note', move: 'Move', rename: 'Rename', create_folder: 'Folder', link: 'Link' };
+const OP = { insert: 'New', update: 'Edit', delete: 'Remove', archive: 'Archive', memory: 'Note', move: 'Move', rename: 'Rename', create_folder: 'Folder', link: 'Link' };
 const opWord = (c) => OP[c.op] || (/remember|memory/.test(String(c.tool || '')) ? 'Note' : /archive/.test(String(c.tool || '')) ? 'Archive'
   : /folder/.test(String(c.tool || '')) ? 'Folder' : /move/.test(String(c.tool || '')) ? 'Move' : /rename/.test(String(c.tool || '')) ? 'Rename' : /link/.test(String(c.tool || '')) ? 'Link' : 'Done');
 const humanTool = (t) => String(t || 'step').replace(/_/g, ' ').replace(/^\w/, (x) => x.toUpperCase());
@@ -621,6 +625,7 @@ function agentMsg(m) {
     draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
       el('span', {}, 'Draft is in the inbox reply box. Nothing was sent.'),
       el('a', { href: draftHash }, 'Open the inbox', icon('arrow', 12))) : null,
+    emailCards(m, [...S.msgs.values()].flatMap((e) => e.list || [])),
     tilesBlock(m),
     reads.length || meta
       ? el('div', { class: 'cx-foot' },
@@ -861,10 +866,11 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   }
 
   function emptyConv() {
-    const ex = dock ? CHAT_EXAMPLES.slice(0, 4) : CHAT_EXAMPLES;
+    mailBoot();
+    const ex = [...(dock ? CHAT_EXAMPLES.slice(0, 4) : CHAT_EXAMPLES), ...(mailConnected() ? [MAIL_EXAMPLE] : [])];
     return el('li', { class: 'cx-empty', dataset: { chatEmpty: '' } },
       el('p', { class: 'cx-empty-h' }, 'Ask it, or tell it what to do.'),
-      el('p', { class: 'cx-empty-p' }, 'It reads every part of the hub and makes the changes you ask for. Each change is listed under its reply with an Undo. It never sends anything to anyone.'),
+      el('p', { class: 'cx-empty-p' }, `It reads every part of the hub and makes the changes you ask for. Each change is listed under its reply with an Undo. ${mailConnected() ? 'It can read your email and write drafts; nothing is sent until you press Send.' : 'It never sends anything to anyone.'}`),
       el('ul', { class: 'cx-examples', 'aria-label': 'Examples' }, ex.map((t) => el('li', {},
         el('button', { type: 'button', class: 'cx-example', dataset: { example: '' }, onClick: () => { box.value = t; S.drafts.set(keyOf(), t); grow(); drawCount(); paintSend(); box.focus(); box.setSelectionRange(t.length, t.length); } },
           el('span', {}, t), icon('arrow', 13))))));
@@ -878,7 +884,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     const msgs = entry?.list || [];
     const pend = S.pending.get(k);
     const changeStamp = msgs.map((m) => (m.role === 'user' ? '' : tilesStamp(m))).join(',');
-    const lk = JSON.stringify([k, entry?.status, msgs.map((m) => m.id), Boolean(pend), changeStamp]);
+    const lk = JSON.stringify([k, entry?.status, msgs.map((m) => m.id), Boolean(pend), changeStamp, mailStamp()]);
     if (!force && lk === logKey) return;
     logKey = lk;
     const atBottom = dock ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40 : true;

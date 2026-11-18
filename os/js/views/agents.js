@@ -585,7 +585,7 @@ export default function agentsView(ctx) {
   root.append(
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Assistants'), el('h1', { class: 'h1' }, 'Agents'),
-        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything to anyone.'))),
+        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything on its own: an email it drafts goes only when you press Send.'))),
     head, tabsBox, body);
 
   const updaters = [];
@@ -883,7 +883,7 @@ export function rulesPanel({ compact = false } = {}) {
       rule('It makes the changes you ask for.', 'Asking is the go-ahead: no button in between. It says plainly what it did.'),
       rule('Every change can be undone.', 'Each one is listed under its reply, and here, with a link to the record and an Undo.'),
       rule('It asks before it guesses.', 'If something that matters is missing, or two records could be the one you mean, it asks one short question first.'),
-      rule('It never sends.', 'No text, email, invoice or booking goes to anyone. A message it writes waits as a draft in your inbox reply box.'),
+      rule('It never sends on its own.', 'No text, email, invoice or booking goes out by itself. A text it writes waits in your inbox reply box; an email waits as a draft until you press Send.'),
       rule('It never deletes.', 'It can archive, end a recurring cost or mark a task done. Deleting stays yours.'),
       rule('Some things stay yours.', 'Settings, the team, sign-in and anyone’s do-not-contact status. It cannot touch them.'),
       rule('Spending is capped and logged.', `${usd(info.cap)} a month across all agents, and up to ${num(info.limit('chat'))} messages a day. Every run is in the run log with what it cost.`)),
