@@ -3,13 +3,13 @@
 import {
   el, fill, icon, badge, toast, modal, confirmDialog, field, input, select, textarea, emptyState,
   money, num, plural, downloadFile, toCsv, busy
-} from '../ui.js?v=20261118f';
-import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118f';
+} from '../ui.js?v=20261119a';
+import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261119a';
 import {
   n0, r2, todayIso, monthKey, monthStart, monthLabel, daysBetween, isRecurring, isRunning, monthlyEquivalent,
   monthlyBurn, oneOffs, dueState, rollNextDue, biggestRecurring, clientMargins
-} from './money-math.js?v=20261118f';
-import { money2, dateFmt, how, kpiStrip, clientLink, pageHead, sectionHead, iconAction, clientOptions } from './money-ui.js?v=20261118f';
+} from './money-math.js?v=20261119a';
+import { money2, dateFmt, how, kpiStrip, clientLink, pageHead, sectionHead, iconAction, clientOptions } from './money-ui.js?v=20261119a';
 
 export const CATEGORIES = ['Software', 'AI and APIs', 'Telephony', 'Insurance', 'Accounting', 'Marketing', 'Contractors', 'Other'];
 const CADENCE = { monthly: 'Monthly', yearly: 'Yearly', one_off: 'One-off' };

@@ -1,5 +1,5 @@
 // Wise AI OS: small presentation helpers shared by Income, Costs and Runway.
-import { el, icon, money } from '../ui.js?v=20261118f';
+import { el, icon, money } from '../ui.js?v=20261119a';
 
 const AUD2 = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** Dollars, with cents only when there are cents: "$2,400", "$218.18". */

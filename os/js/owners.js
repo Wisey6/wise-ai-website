@@ -5,8 +5,8 @@
 //   saveOwner(table, id, ownerId)  saves the owner through the data layer
 //   scopeToggle / readScope        the calm "Mine / Everyone" switch, remembered per person
 // Names come from state.team (text only, never innerHTML).
-import { el, icon, toast } from './ui.js?v=20261118f';
-import { state, sb, notify, saveRow, memberById, isMine } from './api.js?v=20261118f';
+import { el, icon, toast } from './ui.js?v=20261119a';
+import { state, sb, notify, saveRow, memberById, isMine } from './api.js?v=20261119a';
 
 const TONES = ['blue', 'teal', 'violet', 'amber', 'rose', 'up'];
 

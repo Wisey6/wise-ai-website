@@ -4,8 +4,8 @@
 import {
   el, clear, fill, icon, badge, toast, modal, confirmDialog, field, input, select, textarea, emptyState,
   money, num, plural, go, copyText, busy, dayKey
-} from '../ui.js?v=20261118f';
-import { state, saveRow, deleteRow, rowById, ai } from '../api.js?v=20261118f';
+} from '../ui.js?v=20261119a';
+import { state, saveRow, deleteRow, rowById, ai } from '../api.js?v=20261119a';
 
 /* ================================================================ dates
    Dates are YYYY-MM-DD strings; maths is done in UTC so a day is a day. */
