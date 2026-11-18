@@ -282,3 +282,38 @@
 .set-pin-once { font-family: var(--font-display); font-weight: 900; font-size: 40px; letter-spacing: .12em; color: var(--ink); }
 @media (max-width: 760px) { .set-person-acts { width: 100%; padding-left: 52px; } }
 .set-team > .row { margin-top: var(--space-2); }
+
+/* =============================================================================
+   Wide screens (1920, 2560, 3440). Pages fill the viewport with gutters that grow
+   modestly; extra width becomes more columns, never stretched lines. Reading text
+   keeps its measure (60–80 characters).
+   ========================================================================== */
+@media (min-width: 761px) {
+  .main { padding-left: clamp(16px, 2.4vw, 80px); padding-right: clamp(16px, 2.4vw, 80px); }
+  .page, .page.today, .page.inbox, .page.prop-edit-page { max-width: none; }
+}
+/* Pages that are mostly a form or reading keep a comfortable column on laptops. */
+.page.set { max-width: 1240px; }
+.page.play { max-width: 1120px; }
+
+/* Boards: every column side by side; cards keep a sensible width. */
+@media (min-width: 1800px) {
+  .board { grid-auto-columns: minmax(236px, 380px); overflow-x: visible; }
+  .board { grid-auto-flow: column; grid-template-columns: none; }
+  .board:has(> .board-col:nth-child(7)) { grid-auto-columns: minmax(200px, 1fr); }
+  .pipe-board { grid-auto-columns: minmax(260px, 1fr); }
+  .inbox-msgs { padding-left: max(var(--space-5), calc((100% - 960px) / 2)); padding-right: max(var(--space-5), calc((100% - 960px) / 2)); }
+  .page.inbox { grid-template-columns: minmax(340px, 420px) minmax(0, 1fr); }
+}
+
+/* Today: strips side by side, four columns of work. */
+@media (min-width: 2200px) {
+  .page.today:has(> .kpi-strip.biz) { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); column-gap: var(--space-7); }
+  .page.today:has(> .kpi-strip.biz) > * { grid-column: 1 / -1; }
+  .page.today:has(> .kpi-strip.biz) > .kpi-strip { grid-column: auto; }
+  .page.today > .kpi-strip.funnel:first-of-type { order: 0; }
+}
+@container today (min-width: 2000px) {
+  .today-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .today-col.c3 { display: contents; }
+}
