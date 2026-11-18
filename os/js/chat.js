@@ -63,6 +63,7 @@ const S = {
   previews: new Map(),    // chatId → first line of the first message
   undoing: new Set(),
   undoErr: new Map(),
+  undoneLocal: new Map(), // change id → undone_at, from undo results (file changes are not in agent_changes)
   seq: 0
 };
 const keyOf = (id = S.current) => id || 'new';
@@ -184,7 +185,8 @@ async function doUndo(changeId) {
   emit();
   const r = await undoChange(changeId);
   S.undoing.delete(changeId);
-  if (r.ok) toast('Undone. The record is back the way it was.');
+  if (r.ok) { S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast(r.kind === 'file' ? 'Undone. The file is back the way it was.' : r.kind === 'file_link' ? 'Undone. The file is no longer linked.' : 'Undone. The record is back the way it was.'); }
+  else if (r.error === 'already_undone') { S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast('That change was already undone.'); }
   else { S.undoErr.set(changeId, r.detail || r.message || 'Could not undo that.'); toast(r.detail || r.message || 'Could not undo that.', 'bad'); }
   emit();
 }
@@ -284,29 +286,54 @@ export function richText(text) {
 }
 
 const ROUTE_OF = { leads: 'leads', clients: 'clients', deals: 'pipeline', projects: 'projects', income: 'income', costs: 'costs', library: 'library', proposals: 'proposals', roi_reports: 'roi-reports' };
-/** The hub page for a changed record. */
+const FILE_TABLES = new Set(['file_changes', 'file_links']);
+/** The hub page for a changed record (a file opens on the Files page). */
 export function hashFor(table, id) {
   if (!table || !id) return null;
   if (table === 'tasks') { const t = rowById('tasks', id); return t?.project_id ? safeHash(`#projects/${t.project_id}`) : '#projects/tasks'; }
+  if (FILE_TABLES.has(table) || table === 'files') return safeHash(`#files/${encodeURIComponent(String(id))}`);
   return ROUTE_OF[table] ? safeHash(`#${ROUTE_OF[table]}/${id}`) : null;
 }
 
-/** Changes in one reply: its steps that carry a change_id, plus the response's changes, with live undo state. */
+const stepText = (s) => (str(s?.text) ? s.text.trim() : str(s?.summary) ? s.summary.trim() : '');
+const changeKind = (c) => (['record', 'file', 'file_link'].includes(c.kind) ? c.kind : c.table_name === 'file_changes' ? 'file' : c.table_name === 'file_links' ? 'file_link' : 'record');
+/**
+ * Changes in one reply: its steps that carry a change_id, plus the response's changes
+ * (`id` or `change_id`), merged by id, with live undo state from state.agent_changes and
+ * from undo results this session (file changes are not in agent_changes).
+ */
 function changesOf(m) {
   const by = new Map();
-  for (const s of arr(m.steps)) if (s && s.change_id) by.set(String(s.change_id), { ...s, id: s.change_id });
-  for (const c of arr(m.changes)) if (c && c.id) by.set(String(c.id), { ...(by.get(String(c.id)) || {}), ...c });
+  for (const s of arr(m.steps)) {
+    if (!s || !s.change_id || s.ok === false) continue;
+    const { kind: _k, text: _t, ...rest } = s;
+    by.set(String(s.change_id), { ...rest, id: String(s.change_id), summary: stepText(s), link: s.link });
+  }
+  for (const c of arr(m.changes)) {
+    const id = c && (c.change_id || c.id);
+    if (!id) continue;
+    const prev = by.get(String(id)) || {};
+    by.set(String(id), { ...prev, ...c, id: String(id), summary: str(c.summary) ? c.summary : prev.summary });
+  }
   return [...by.values()].map((c) => {
     const live = state.agent_changes.find((x) => x.id === c.id);
-    return live ? { ...live, ...c, summary: c.summary || live.summary, undone_at: live.undone_at || c.undone_at || null } : c;
+    const mine = S.undoneLocal.get(c.id) || null;
+    const out = live ? { ...live, ...c, summary: c.summary || live.summary, undone_at: live.undone_at || c.undone_at || mine } : { ...c, undone_at: c.undone_at || mine };
+    out.kind = changeKind(out);
+    return out;
   });
 }
-const isDraftStep = (s) => s && !s.change_id && /draft/i.test(String(s.tool || ''));
-const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !isDraftStep(s) && (str(s.summary) || str(s.tool)));
-const linkOf = (c) => safeHash(c.link) || safeHash(c.open) || hashFor(c.table_name, c.row_id);
-const OP = { insert: 'New', update: 'Edit', archive: 'Archive', memory: 'Note' };
-const opWord = (c) => OP[c.op] || (/remember|memory/.test(String(c.tool || '')) ? 'Note' : /archive/.test(String(c.tool || '')) ? 'Archive' : 'Done');
+const isDraftStep = (s) => s && !s.change_id && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
+const isFailedStep = (s) => s && s.ok === false && s.kind !== 'read';
+const isPlainWrite = (s) => s && !s.change_id && s.ok !== false && s.kind === 'write';
+const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && (stepText(s) || str(s.tool)));
+const linkOf = (c) => safeHash(c.open) || safeHash(c.link) || hashFor(c.table_name, c.row_id);
+const OP = { insert: 'New', update: 'Edit', archive: 'Archive', memory: 'Note', move: 'Move', rename: 'Rename', create_folder: 'Folder', link: 'Link' };
+const opWord = (c) => OP[c.op] || (/remember|memory/.test(String(c.tool || '')) ? 'Note' : /archive/.test(String(c.tool || '')) ? 'Archive'
+  : /folder/.test(String(c.tool || '')) ? 'Folder' : /move/.test(String(c.tool || '')) ? 'Move' : /rename/.test(String(c.tool || '')) ? 'Rename' : /link/.test(String(c.tool || '')) ? 'Link' : 'Done');
 const humanTool = (t) => String(t || 'step').replace(/_/g, ' ').replace(/^\w/, (x) => x.toUpperCase());
+/** A new folder cannot be undone from the chat (the backend says so); everything else can. */
+const canUndo = (c) => Boolean(c.id) && c.undoable !== false && c.op !== 'create_folder' && !/new_folder|create_folder/.test(String(c.tool || ''));
 
 /** One "what I did" line: what changed, a link to it, and Undo (struck through once undone). */
 export function changeLine(c, { when = false } = {}) {
@@ -315,7 +342,8 @@ export function changeLine(c, { when = false } = {}) {
   const busyU = S.undoing.has(c.id);
   const err = S.undoErr.get(c.id);
   const sum = str(c.summary) ? c.summary.trim() : `${humanTool(c.tool)}${c.table_name ? ` (${c.table_name})` : ''}`;
-  return el('li', { class: `cx-change${undone ? ' is-undone' : ''}`, dataset: { change: c.id || '', op: c.op || '' } },
+  const kind = c.kind || changeKind(c);
+  return el('li', { class: `cx-change${undone ? ' is-undone' : ''}${kind !== 'record' ? ' is-file' : ''}`, dataset: { change: c.id || '', op: c.op || '', kind } },
     el('span', { class: 'cx-op' }, opWord(c)),
     el('span', { class: 'cx-change-main' },
       el('span', { class: 'cx-change-sum' }, sum),
@@ -325,7 +353,18 @@ export function changeLine(c, { when = false } = {}) {
       h && !undone ? el('a', { class: 'cx-open', href: h, dataset: { act: 'open-change' } }, 'Open', icon('arrow', 12)) : null,
       !c.id ? null : undone
         ? el('span', { class: 'cx-undone', dataset: { undone: '' } }, 'Undone')
-        : el('button', { type: 'button', class: 'cx-undo', dataset: { act: 'undo' }, disabled: busyU || null, 'aria-label': `Undo: ${sum}`, onClick: () => doUndo(c.id) }, busyU ? 'Undoing…' : 'Undo')));
+        : canUndo(c)
+          ? el('button', { type: 'button', class: 'cx-undo', dataset: { act: 'undo' }, disabled: busyU || null, 'aria-label': `Undo: ${sum}`, onClick: () => doUndo(c.id) }, busyU ? 'Undoing…' : 'Undo')
+          : el('span', { class: 'cx-keep', title: 'This one cannot be undone from here.' }, 'Kept')));
+}
+
+/** A write that did not happen, or happened without an undo record: said plainly, no Undo. */
+function noteLine(s, failed) {
+  const h = safeHash(s.link) || hashFor(s.table_name, s.row_id);
+  return el('li', { class: `cx-change${failed ? ' is-failed' : ''}`, dataset: { step: failed ? 'failed' : 'write' } },
+    el('span', { class: 'cx-op' }, failed ? 'Not done' : opWord(s)),
+    el('span', { class: 'cx-change-main' }, el('span', { class: 'cx-change-sum' }, stepText(s) || humanTool(s.tool))),
+    el('span', { class: 'cx-change-acts' }, h && !failed ? el('a', { class: 'cx-open', href: h }, 'Open', icon('arrow', 12)) : null));
 }
 
 function draftLine(s) {
@@ -333,7 +372,7 @@ function draftLine(s) {
   const h = safeHash(s.link) || (lead ? safeHash(`#inbox/${lead}`) : null);
   return el('li', { class: 'cx-change is-draft' },
     el('span', { class: 'cx-op' }, 'Draft'),
-    el('span', { class: 'cx-change-main' }, el('span', { class: 'cx-change-sum' }, str(s.summary) ? s.summary.trim() : 'Wrote a draft reply. Nothing was sent.')),
+    el('span', { class: 'cx-change-main' }, el('span', { class: 'cx-change-sum' }, stepText(s) || 'Wrote a draft reply. Nothing was sent.')),
     el('span', { class: 'cx-change-acts' }, h ? el('a', { class: 'cx-open', href: h }, 'Inbox', icon('arrow', 12)) : null));
 }
 
@@ -345,6 +384,7 @@ function youMsg(m, { pending = false } = {}) {
 function agentMsg(m) {
   const changes = changesOf(m);
   const drafts = m.draft ? [] : arr(m.steps).filter(isDraftStep);
+  const notes = arr(m.steps).filter((s) => isFailedStep(s) || isPlainWrite(s));
   const reads = readsOf(m);
   const seen = new Set(changes.map(linkOf).filter(Boolean));
   const links = arr(m.links).map((l) => ({ label: str(l?.label) ? l.label.trim().slice(0, 80) : '', hash: safeHash(l?.hash) }))
@@ -354,10 +394,10 @@ function agentMsg(m) {
   return el('li', { class: 'cx-msg is-agent', dataset: { msg: String(m.id ?? ''), role: 'assistant' } },
     el('p', { class: 'cx-by' }, el('span', { class: 'cx-by-name' }, 'Wise AI'), m.at ? el('span', { class: 'cx-by-time' }, timeOnly(m.at)) : null),
     el('div', { class: 'cx-text' }, m.text.trim() ? richText(m.text) : el('p', { class: 'muted' }, 'No reply came back.')),
-    changes.length || drafts.length
+    changes.length || drafts.length || notes.length
       ? el('div', { class: 'cx-did', dataset: { did: '' } },
         el('p', { class: 'cx-did-h' }, 'What I did'),
-        el('ul', { class: 'cx-changes' }, changes.map((c) => changeLine(c)), drafts.map(draftLine)))
+        el('ul', { class: 'cx-changes' }, changes.map((c) => changeLine(c)), drafts.map(draftLine), notes.map((s) => noteLine(s, isFailedStep(s)))))
       : null,
     draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
       el('span', {}, 'Draft is in the inbox reply box. Nothing was sent.'),
@@ -366,7 +406,7 @@ function agentMsg(m) {
     reads.length || meta
       ? el('div', { class: 'cx-foot' },
         reads.length ? el('details', { class: 'cx-reads' }, el('summary', {}, `Looked up ${plural(reads.length, 'thing')}`),
-          el('ul', {}, reads.map((s) => el('li', {}, str(s.summary) ? s.summary.trim() : humanTool(s.tool))))) : null,
+          el('ul', {}, reads.map((s) => el('li', {}, stepText(s) || humanTool(s.tool))))) : null,
         meta ? el('span', { class: 'cx-cost tnum' }, meta) : null)
       : null);
 }

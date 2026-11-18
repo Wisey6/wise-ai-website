@@ -304,7 +304,9 @@
 }
 .cx-undo:hover { color: var(--ink); text-decoration-color: currentColor; }
 .cx-undo:disabled { cursor: progress; text-decoration: none; }
-.cx-undone { font-size: var(--fs-meta); color: var(--faint); }
+.cx-undone, .cx-keep { font-size: var(--fs-meta); color: var(--faint); }
+.cx-change.is-failed .cx-op { color: var(--rose-t); }
+.cx-change.is-failed .cx-change-sum { color: var(--body); }
 
 .cx-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-2); padding: 2px 0 2px var(--space-3); border-left: 2px solid var(--ink); font-size: var(--fs-sm); color: var(--body); }
 .cx-draft .icon { color: var(--muted); }
