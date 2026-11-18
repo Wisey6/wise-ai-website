@@ -247,6 +247,10 @@ body:has(.modal-backdrop) .agd-dock, body:has(.pal) .agd-dock, body:has(.gate) .
   body:has(.agd-dock:not([hidden])) .page.inbox { height: calc(100dvh - 56px - 63px - 64px - env(safe-area-inset-bottom)); }
   body:has(.agd-dock:not([hidden])) .set-savebar.is-dirty { bottom: 64px; }
   body:has(.more-layer) .agd-dock { visibility: hidden; }
+  /* narrow ledger lines: the change, then its actions; the op word goes */
+  .agd-dock .cx-change { grid-template-columns: minmax(0, 1fr) auto; }
+  .agd-dock .cx-op { display: none; }
+  .agd-dock .cx-input::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
 @media (prefers-reduced-motion: reduce) {

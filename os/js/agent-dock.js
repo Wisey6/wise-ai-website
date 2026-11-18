@@ -209,8 +209,11 @@ export function mountAgentDock() {
       });
       chat.scroller.addEventListener('scroll', () => { if (!expanded && chat.scroller.scrollTop < 4 && chat.scroller.scrollHeight > chat.scroller.clientHeight + 8) earlier.classList.add('is-top'); else earlier.classList.remove('is-top'); }, { passive: true });
     }
+    const late = !barSlot.contains(chat.composer);
     fill(body, chat.node);
     fill(barSlot, chat.composer);
+    // The agents came online after the bar was opened: put the cursor in the bar.
+    if (late && isOpen()) chat.focus();
   }
 
   function setExpanded(v) {
