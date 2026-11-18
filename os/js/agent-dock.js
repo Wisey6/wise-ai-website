@@ -7,10 +7,10 @@
 // conversation is kept on the server, the unsent text is kept here). A reply that lands
 // while it is folded shows for a few seconds above the pill, and a dot stays until it is
 // opened. It makes the changes you ask for, lists each with an Undo, and never sends.
-import { el, icon, fill, busy, plural } from './ui.js?v=20261118f';
-import { state, onChange } from './api.js?v=20261118f';
-import { chatSurface, chatBusy, onChatChange, lastReply } from './chat.js?v=20261118f';
-import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261118f';
+import { el, icon, fill, busy, plural } from './ui.js?v=20261119a';
+import { state, onChange } from './api.js?v=20261119a';
+import { chatSurface, chatBusy, onChatChange, lastReply } from './chat.js?v=20261119a';
+import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261119a';
 
 const LOGO = '../logo.svg';
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
@@ -95,25 +95,29 @@ export function mountAgentDock() {
     return chatBusy() || Boolean(document.querySelector('.ag-working, [data-act=brief-write][disabled], [data-act=brief-refresh][disabled]'));
   }
   /** Name, label, tooltip and state in one place. */
+  // Only touch the page when something actually changed: these run several times a second.
+  const setText = (node, v) => { if (node.textContent !== v) node.textContent = v; };
+  const setAttr = (node, k, v) => { if (node.getAttribute(k) !== v) node.setAttribute(k, v); };
+  const setHidden = (node, v) => { if (node.hidden !== v) node.hidden = v; };
   function paint() {
     const n = pendingActions().length;
     const w = working();
     const st = isOpen() ? 'open' : w ? 'working' : ready ? 'ready' : 'idle';
-    launch.dataset.state = st;
+    if (launch.dataset.state !== st) launch.dataset.state = st;
     launch.classList.toggle('is-busy', w);
     barOrb.classList.toggle('is-busy', w);
     launch.classList.toggle('is-ready', ready && !isOpen());
-    badge.hidden = !n;
-    badge.textContent = n > 99 ? '99+' : String(n);
+    setHidden(badge, !n);
+    setText(badge, n > 99 ? '99+' : String(n));
     const words = st === 'working' ? 'Working on it' : st === 'ready' ? 'Answer ready' : 'Ask Wise AI';
     if (label.textContent !== words) label.textContent = words;
     const waiting = n ? `, ${plural(n, 'suggestion')} waiting for your approval` : '';
     const name = st === 'working' ? 'Wise AI is working on your request. Open it'
       : st === 'ready' ? 'Wise AI has an answer ready. Open it' : 'Ask Wise AI';
-    launch.setAttribute('aria-label', name + waiting);
-    tip.textContent = `${words}  ·  ${AGENT_SHORTCUT}`;
-    root.hidden = onAgentsPage() && !isOpen();
-    launch.hidden = root.hidden;
+    setAttr(launch, 'aria-label', name + waiting);
+    setText(tip, `${words}  ·  ${AGENT_SHORTCUT}`);
+    setHidden(root, onAgentsPage() && !isOpen());
+    setHidden(launch, root.hidden);
   }
   const paintBusy = () => {
     const w = chatBusy();
@@ -150,13 +154,14 @@ export function mountAgentDock() {
     const info = agentsInfo();
     const on = info.connected && info.master;
     const inHist = on && chat?.view === 'history';
-    histBtn.setAttribute('aria-pressed', String(inHist));
+    setAttr(histBtn, 'aria-pressed', String(inHist));
     histBtn.classList.toggle('is-on', inHist);
-    expandBtn.setAttribute('aria-pressed', String(expanded));
+    setAttr(expandBtn, 'aria-pressed', String(expanded));
     expandBtn.classList.toggle('is-on', expanded);
-    headSub.textContent = !on ? (state.me?.name ? `Working for ${state.me.name}` : 'Working for you') : inHist ? 'Conversations' : chat ? chat.title() : 'New conversation';
-    headSub.title = headSub.textContent;
-    root.dataset.view = inHist ? 'history' : 'chat';
+    setText(headSub, !on ? (state.me?.name ? `Working for ${state.me.name}` : 'Working for you') : inHist ? 'Conversations' : chat ? chat.title() : 'New conversation');
+    if (headSub.title !== headSub.textContent) headSub.title = headSub.textContent;
+    const v = inHist ? 'history' : 'chat';
+    if (root.dataset.view !== v) root.dataset.view = v;
     root.classList.toggle('is-expanded', expanded || inHist || !on);
     requestAnimationFrame(paintEarlier);
   }
@@ -165,14 +170,18 @@ export function mountAgentDock() {
     const sc = chat?.scroller;
     const more = Boolean(isOpen() && sc && chat.view === 'chat' && sc.scrollHeight > sc.clientHeight + 8);
     root.classList.toggle('has-more', more);
-    earlier.hidden = !(more && !expanded);
+    setHidden(earlier, !(more && !expanded));
   }
 
+  let quickKey = '';
   function drawQuick() {
     const n = pendingActions().length;
     const b = todaysBriefing();
     const headline = b?.out?.headline ? String(b.out.headline).trim() : '';
     const info = agentsInfo();
+    const qk = `${n}|${headline}|${info.ready('briefing')}|${(state.agent_memory || []).length}|${state.me?.name || ''}|${info.reachable}|${usd(info.spent)}|${usd(info.cap)}`;
+    if (qk === quickKey && quick.childNodes.length) return;
+    quickKey = qk;
     fill(quick,
       el('li', {}, el('a', { href: '#agents/approvals', dataset: { quick: 'approvals' } }, icon('check', 15), el('span', {}, 'Waiting for your approval'), el('b', { class: 'tnum' }, String(n)))),
       el('li', {}, headline

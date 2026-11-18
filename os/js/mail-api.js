@@ -5,7 +5,7 @@
 //
 // Sending happens only here, when the person presses Send on a draft card: the assistant has no
 // way to send.
-import { fn, sb, state } from './api.js?v=20261118f';
+import { fn, sb, state } from './api.js?v=20261119a';
 
 const SETTINGS_PATH = 'Settings, under Your sign-in';
 

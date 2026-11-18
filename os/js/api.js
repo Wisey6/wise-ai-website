@@ -9,7 +9,7 @@
 //    try/catch and toast the error.
 //  - fn() and sendSms() never throw on HTTP errors.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118f';
+import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261119a';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }

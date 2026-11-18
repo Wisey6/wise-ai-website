@@ -3,14 +3,14 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
-} from '../ui.js?v=20261118f';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118f';
-import { FUNCTIONS_URL } from '../config.js?v=20261118f';
-import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261118f';
-import { chatModelPicker } from '../chat.js?v=20261118f';
-import { setMyEmail, teamSave } from '../api.js?v=20261118f';
-import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118f';
-import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261118f';
+} from '../ui.js?v=20261119a';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261119a';
+import { FUNCTIONS_URL } from '../config.js?v=20261119a';
+import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261119a';
+import { chatModelPicker } from '../chat.js?v=20261119a';
+import { setMyEmail, teamSave } from '../api.js?v=20261119a';
+import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261119a';
+import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261119a';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -715,11 +715,11 @@ function teamGroup() {
 
 /** A small modal with a form; resolves the values or null. */
 function modal2(title, body, confirmLabel) {
-  return import('../ui.js?v=20261118f').then(({ modal }) => modal({ title, body, confirmLabel }));
+  return import('../ui.js?v=20261119a').then(({ modal }) => modal({ title, body, confirmLabel }));
 }
 /** Show a PIN the owner just set, once. */
 function showOnce(name, pin) {
-  return import('../ui.js?v=20261118f').then(({ modal }) => modal({
+  return import('../ui.js?v=20261119a').then(({ modal }) => modal({
     title: `${name}'s PIN`, hideConfirm: true, cancelLabel: 'Done',
     body: el('div', { class: 'stack' },
       el('p', {}, `Tell ${name} this PIN in person. It is not shown again.`),

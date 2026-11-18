@@ -1,6 +1,6 @@
 // Playbook: how Tyler runs outreach and the business, plus the campaign-maths calculator.
 // Static, trusted copy only. Nothing from the database is rendered as HTML.
-import { el, icon } from '../ui.js?v=20261118f';
+import { el, icon } from '../ui.js?v=20261119a';
 
 /* ------------------------------------------------------------ calculator */
 

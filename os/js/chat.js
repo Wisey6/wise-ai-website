@@ -8,16 +8,16 @@
 import {
   el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural,
   money, titleCase, STATUS
-} from './ui.js?v=20261118f';
+} from './ui.js?v=20261119a';
 import {
   state, chatSend, chatMessages, chatRename, chatArchive, chatDelete, undoChange, memoryDelete,
   agentStatus, saveSettings, rowById, sb
-} from './api.js?v=20261118f';
-import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118f';
-import { agentsInfo, usd } from './views/agents.js?v=20261118f';
-import { ownerName } from './owners.js?v=20261118f';
-import { spotRecord } from './spot.js?v=20261118f';
-import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261118f';
+} from './api.js?v=20261119a';
+import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261119a';
+import { agentsInfo, usd } from './views/agents.js?v=20261119a';
+import { ownerName } from './owners.js?v=20261119a';
+import { spotRecord } from './spot.js?v=20261119a';
+import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261119a';
 
 export const MAX_MESSAGE = 4000;
 
@@ -748,7 +748,12 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     notice,
     el('div', { class: 'cx-box' }, lead, box, tools, sendBtn),
     el('div', { class: 'cx-under' }, el('span', { class: 'cx-hint' }, el('kbd', {}, 'Enter'), 'to send', el('span', { class: 'cx-hint-sep', 'aria-hidden': 'true' }, '·'), el('kbd', {}, 'Shift'), el('kbd', {}, 'Enter'), 'for a new line'), count));
+  let grownFor = null;
   const grow = () => {
+    // Re-measuring collapses the box for a moment: only do it when the text or width changed.
+    const key = `${box.value.length}|${box.value.split('\n').length}|${box.clientWidth}|${box.value.slice(-24)}`;
+    if (key === grownFor) return;
+    grownFor = key;
     box.style.height = 'auto';
     const max = dock ? 168 : 240;
     box.style.height = `${Math.min(max, Math.max(24, box.scrollHeight))}px`;
@@ -756,8 +761,10 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   };
   const drawCount = () => {
     const n = box.value.length;
-    count.hidden = n < MAX_MESSAGE - 600;
-    count.textContent = `${n.toLocaleString('en-AU')} / ${MAX_MESSAGE.toLocaleString('en-AU')}`;
+    const hide = n < MAX_MESSAGE - 600;
+    if (count.hidden !== hide) count.hidden = hide;
+    const words = hide ? '' : `${n.toLocaleString('en-AU')} / ${MAX_MESSAGE.toLocaleString('en-AU')}`;
+    if (count.textContent !== words) count.textContent = words;
   };
   box.addEventListener('input', () => { S.drafts.set(keyOf(), box.value); grow(); drawCount(); paintSend(); });
   box.addEventListener('keydown', (e) => {

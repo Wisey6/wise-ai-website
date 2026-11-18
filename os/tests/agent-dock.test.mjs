@@ -95,7 +95,7 @@ try {
     await shot(page, 'open-convo-1440');
 
     await page.fill('.agd-dock .cx-input', 'half typed');
-    await page.mouse.click(300, 300);
+    await page.mouse.click(820, 70);
     await page.waitForTimeout(500);
     const l2 = await box(page, '.agd-launch');
     check(await page.locator('.agd-panel').isHidden() && l2 && l2.width < 280, 'clicking off folds it back to the small pill');
@@ -107,7 +107,7 @@ try {
     await page.fill('.agd-dock .cx-input', 'And the total?');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(150);
-    await page.mouse.click(300, 300);
+    await page.mouse.click(820, 70);
     await page.waitForSelector('.agd-peek.is-in', { timeout: 8000 });
     const pk = await box(page, '.agd-peek');
     const l3 = await box(page, '.agd-launch');

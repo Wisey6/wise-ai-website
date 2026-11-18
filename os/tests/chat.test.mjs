@@ -543,7 +543,7 @@ try {
       if (sz.name === '1440') {
         check(JSON.stringify(tiles.filter((t) => t.type === 'change').map((t) => t.kind)) === JSON.stringify(['lead', 'task', 'deal', 'file', 'task', 'cost']), `tiles: a kind for each change (${tiles.map((t) => t.kind).join(' ')})`);
         const lead = by(X.CH_LEAD);
-        check(lead.name === 'Bayside Dental' && /^Leads · New · follow-up \w{3} \d{1,2} \w{3}$/.test(lead.where) && lead.verb === 'Added' && lead.href === `#leads/${X.L3}`, `lead: named from the hub, with status and follow-up (${lead.name} | ${lead.where})`);
+        check(lead.name === 'Bayside Dental' && /^Leads · New · follow-up (today|tomorrow|\w{3} \d{1,2} \w{3})$/.test(lead.where) && lead.verb === 'Added' && lead.href === `#leads/${X.L3}`, `lead: named from the hub, with status and follow-up (${lead.name} | ${lead.where})`);
         const task = by(X.CH_TASK2);
         check(task.name === 'Call Sam back' && /^Tasks · You · due \w{3}$/.test(task.where), `task: named, with who and when it is due (${task.name} | ${task.where})`);
         const deal = by(X.CH_DEAL);

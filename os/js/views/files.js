@@ -10,12 +10,12 @@
 // Deep links: #files/<itemId> opens a folder, or a file's folder with the file in preview.
 import {
   el, icon, toast, modal, fill, clear, busy, timeAgo, dateTime, plural, trapFocus
-} from '../ui.js?v=20261118f';
-import { state, memberName, saveSettings } from '../api.js?v=20261118f';
+} from '../ui.js?v=20261119a';
+import { state, memberName, saveSettings } from '../api.js?v=20261119a';
 import {
   od, detectProvider, provider, recentChanges, watchFiles, LINK_KINDS, KIND, recordLabel, recordFor, recordHash, pickRecords,
   fileSize, baseName, nameProblem, kindLabel
-} from '../files-api.js?v=20261118f';
+} from '../files-api.js?v=20261119a';
 const P = () => provider();
 /** A folder's display name: the drive root reads as the provider's root (OneDrive / My Drive). */
 const rootName = (f) => (f?.is_root && !f.parent_id ? P().root : f?.name || P().root);
