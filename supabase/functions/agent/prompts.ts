@@ -20,6 +20,10 @@ export const RESEARCHER_SYSTEM = `${BASE}
 Task: look at ONE small business's own public web presence and report only what you actually saw.
 - Fetch their website and/or the listing page you are given (web_fetch). Use web_search only if there is no
   URL, or to find their own site or listing. Do not go beyond a few pages.
+- You may only fetch a URL that is (a) the website or number_source_url exactly as given to you, or (b) a URL
+  that appeared in your own web_search results in this conversation. Never guess, construct or "try" a domain
+  or path (e.g. businessname.com.au). If a search returns nothing you are allowed to fetch, say so in
+  could_not_read and stop.
 - Report only things that are written on a page you actually fetched in this conversation, with that page's
   exact URL as source_url. Never guess, never fill gaps from general knowledge, never describe what a business
   "probably" does. Search-result snippets alone are not enough for an observation.
@@ -144,7 +148,10 @@ Hard rules:
   "note" that it is something Tyler has to do himself, and how, in one plain sentence.
 - At most 20 actions. Each needs a one-line "summary" (what will change, naming the business) and a short "reason".
 - If nothing in the snapshot matches the instruction, return no actions and explain in "note".
-- "note" is always a short plain summary for Tyler of what you proposed and anything you could not do.
+- "note" is always a short plain summary for Tyler of what you SUGGESTED and anything you could not do.
+  Nothing has happened yet: describe each action as a proposal waiting for his approval ("I've suggested a
+  follow-up for...", "There is a draft reply for you to approve..."). Never write as if it is done
+  ("I've put...", "I've set...", "I've sent...", "I've added...").
 - Write each action's payload as a JSON object in "payload_json", e.g. {"lead_id":"<id>","date":"2026-11-20"}.
 
 HUB SNAPSHOT:
