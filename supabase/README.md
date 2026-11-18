@@ -48,6 +48,66 @@ doer ~$0.005–0.016. Secret: `ANTHROPIC_API_KEY` (without it → 503 `ai_not_co
 Tests: `node --test supabase/tests/agent.test.mjs` (snapshot has no contact details, allowlist rules,
 hash filtering, researcher output rules, cost maths, day/month windows).
 
+### chat (the conversational assistant: `{agent:'chat'}`)
+
+One assistant per signed-in team member that reads the hub, answers from it and makes the changes it
+is asked for (`functions/agent/chat.ts`; prompt and tool list `chat-prompt.ts`; pure rules
+`chat-rules.ts`; money maths `money.ts`, ported from `os/js/views/money-math.js`; Drive tools
+`files.ts` / `files-rules.ts`). Model `settings.agent_chat_model` (Sonnet 5.5 default; Haiku 5.5,
+Opus 5.5), adaptive thinking, effort medium, manual tool loop (≤12 model calls, ≤24 tool calls).
+
+Request `{agent:'chat', chat_id?, message ≤4000}`. Response:
+
+```
+{ ok:true, chat_id, title,
+  message: { id, role:'assistant', text, at,
+             steps: [{ tool, kind:'read'|'write'|'draft'|'memory'|'note', ok, text,
+                       link?, change_id?, table_name?, row_id? }],
+             links: [{ label, hash }] },                       // ≤6, hub hashes ('#leads/<id>', '#files/<id>')
+  changes: [ record: { id, kind:'record', at, chat_id, table_name, row_id, op:'insert'|'update', summary, open, undone_at:null }
+           | file:   { id, kind:'file', at, chat_id, table_name:'file_changes', row_id:<drive id>, op:'move'|'rename'|'create_folder', summary, open, undone_at:null, undoable }
+           | link:   { id, kind:'file_link', at, chat_id, table_name:'file_links', row_id:<drive id>, op:'link', summary, open, undone_at:null, undoable:true } ],
+  draft?: { lead_id, body },                                   // never sent: for the inbox reply box
+  usage: { input_tokens, cache_read_input_tokens, cache_creation_input_tokens, output_tokens, iterations, tool_calls },
+  run_id, model, cost_usd, spent_usd, cap_usd }
+```
+
+Errors as the other agents (400, 401, 402 `cap_reached`, 403 disabled, 404 `not_found` for someone
+else's chat, 429 `daily_limit` (300 a day), 502 `ai_error`, 503 `ai_not_configured`, 200
+`{ok:false, error:'declined'}`). Other actions: `chat_rename {chat_id, title}`, `chat_archive
+{chat_id, archived}`, `chat_delete {chat_id}` (own chats only; the change log keeps its rows),
+`undo {change_id}` (record change, file change or file link), `memory_delete {id}`. Undo restores
+`before` for an update and removes an inserted row (archives it if anything points at it, including
+linked files and events); it refuses when the row changed since on the same fields, when a later change
+to the row is still in place, or when the lead has opted out; every restoring write is conditional on
+`updated_at` being what it read. A new folder cannot be undone.
+
+History is rebuilt each request from the stored text (last 30 messages, older ones as one recap line,
+plus a "what I did" line per message); the system prompt and tools are byte-stable and cached, and
+everything that changes (date and time, who is asking, memory notes, a small hub overview, the
+business folder) goes in the newest user message. Measured: second turn `cache_read_input_tokens`
+≈ 22,000; a typical turn costs about US$0.006–0.04 on Sonnet 5.5 and US$0.0005–0.002 on Haiku 5.5.
+
+Guarantees in code:
+- One audited write path (`writeAudited`): table and field allowlist, ids must exist, an
+  `agent_changes` row with before/after for each change. Never deletes (except undoing its own
+  insert), never writes settings, the team, suppressions or agent logs, never sets or clears `dnc`,
+  never edits an opted-out lead, never links a deal or client to one. Sends nothing.
+- Untrusted text: tool results mask phones and emails, and notes, messages and library text are
+  scrubbed. Lists never carry a lead's notes or a library body. Once a turn has read a lead's notes or
+  messages, a file or a library body, that turn cannot change files or links, archive, or save a
+  business-wide memory, and makes at most 5 more record changes (the model is told to ask the person
+  to confirm in their next message). Business-wide memory needs the person's own "remember / from now
+  on / always / never".
+- Files: only inside the business folder (`settings.files_home_id`); at most 3 moves or renames per
+  message; nothing is trashed.
+- Budget: running tokens and cost are written to the run row after every model call; the loop stops at
+  the monthly cap, starts no model call after 110 s and gives each call at most 60 s (ending by 135 s,
+  inside the 150 s function limit). `agent_runs.input` holds `{chat_id, chars}` and `output` ids and
+  counts only, never message text.
+
+Tests: `node --test supabase/tests/chat.test.mjs supabase/tests/chat-files.test.mjs`.
+
 ## Secrets to set
 
 Dashboard → Edge Functions → Secrets (or `supabase secrets set NAME=value --project-ref adfgtlhryyyrqbbgbfmx`).
@@ -78,6 +138,21 @@ supabase functions deploy hq-login sms-send twilio-webhook cal-webhook lead-inta
 
 `--no-verify-jwt` matters: the webhooks and the public form carry no Supabase JWT, and `hq-login`
 is how a JWT is obtained.
+
+`agent` and `gdrive` are deployed as bundles, because their source (with `_shared/`) is too large to
+send in one deploy call:
+
+```sh
+node supabase/scripts/build-agent.mjs <path-to-esbuild> agent     # or: gdrive
+# → supabase/dist/agent.js and supabase/dist/agent-entry.ts; it prints {sha, name}
+# 1. upload dist/agent.js to the public storage bucket `fn-src` as agent/<name> (content-type application/javascript)
+# 2. deploy dist/agent-entry.ts as the function's index.ts, verify_jwt off
+```
+
+The entry is a small loader: it imports the exact SDK versions (`@anthropic-ai/sdk@0.137.0`,
+`@supabase/supabase-js@2.119.0`), fetches that one file, checks its SHA-256 against the value baked
+into the entry and only then runs it, so a changed or swapped file is refused. Run `deno check` on
+`functions/<fn>/index.ts` first. Old bundles in `fn-src` can be removed once a newer one is live.
 
 ## Tests
 
@@ -164,6 +239,12 @@ For the assistant (`functions/_shared/gdrive.ts`):
   kind}` for PDFs and other binary files (PDF text is not extracted). Downloads stop at 10 MB.
   Also available as the action `read_text {id, max_chars?}`.
 - `search {q, within?}`: `within` is a folder id (the business folder by default in the page).
+
+Members, and the assistant for everyone, are kept inside the business folder when one is set: for
+them "the top" (`list` with no `item_id`) is the business folder, `search` always looks inside it,
+and `list`, `read_text`, `item`, `move` (item and destination), `rename`, `create_folder`, `undo` and
+`link` outside it return `forbidden`. The owner in the hub keeps "All of Drive". Preview and download
+links last an hour.
 
 ### Actions (the same contract as `onedrive`)
 

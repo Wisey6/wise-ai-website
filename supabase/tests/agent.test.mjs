@@ -27,7 +27,7 @@ const TODAY = "2026-11-17";
 
 const SECRETS = [
   "+61412345678", "0412 345 678", "0412345678", "412345678", "(07) 3123 4567", "07 3123 4567",
-  "jess@acmeplumbing.com.au", "owner@example.com", "tyler@wise-ai.au",
+  "jess@acmeplumbing.com.au", "owner@example.com", "team@business.example",
   "https://acmeplumbing.com.au", "acmeplumbing.com.au", "www.acmeplumbing.com.au", "https://maps.google.com/?cid=123",
   "https://cal.com/meet/xyz", "yellowpages.com.au",
 ];
@@ -37,7 +37,7 @@ function fixtureRows() {
     settings: {
       timezone: "Australia/Brisbane", business_name: "Wise AI", monthly_target: 10000, owner_draw: 4300, cash_on_hand: 5200,
       cash_as_of: "2026-11-10", tax_rate: 0.25, gst_registered: false, avg_deal_value: 3000,
-      notify_email: "tyler@wise-ai.au", booking_url: "https://wise-ai.au/book.html", abn: "12345678901",
+      notify_email: "team@business.example", booking_url: "https://wise-ai.au/book.html", abn: "12345678901",
     },
     leadStatuses: ["new", "contacted", "replied", "dnc", "new"],
     leads: [

@@ -234,6 +234,16 @@ async function deleteChat(c) {
   emit();
 }
 
+/** The newest reply in the current conversation (for a brief line under the launcher), or a send error. */
+export function lastReply() {
+  const err = S.errors.get(keyOf());
+  if (err) return { error: true, text: `Not sent. ${err.message}` };
+  const list = S.current ? S.msgs.get(S.current)?.list || [] : [];
+  const m = [...list].reverse().find((x) => x.role === 'assistant');
+  if (!m) return null;
+  return { id: m.id, text: String(m.text || '').replace(/\*\*/g, '').replace(/^\s*(?:[-•*]|\d{1,2}[.)])\s+/gm, '').trim(), changes: changesOf(m).length };
+}
+
 /** A question handed over by the palette ("Ask the hub: …?") starts a new conversation. */
 export function takeChatPrefill() {
   try {
@@ -505,7 +515,7 @@ export function chatModelPicker() {
  * conversation) or 'page' (Agents page: history · conversation · memory and changes).
  * → { node, update, focus, onOpen, setView, view, title }
  */
-export function chatSurface({ mode = 'page', active = () => true, side = [], footer = null, onUpdate = null } = {}) {
+export function chatSurface({ mode = 'page', active = () => true, side = [], footer = null, onUpdate = null, lead = null, tools = null } = {}) {
   const dock = mode === 'dock';
   let view = 'chat';
   let boundKey = null;
@@ -522,7 +532,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   const notice = el('div', { class: 'cx-notice' });
   const form = el('form', { class: 'cx-composer', novalidate: true },
     notice,
-    el('div', { class: 'cx-box' }, box, sendBtn),
+    el('div', { class: 'cx-box' }, lead, box, tools, sendBtn),
     el('div', { class: 'cx-under' }, el('span', { class: 'cx-hint' }, el('kbd', {}, 'Enter'), 'to send', el('span', { class: 'cx-hint-sep', 'aria-hidden': 'true' }, '·'), el('kbd', {}, 'Shift'), el('kbd', {}, 'Enter'), 'for a new line'), count));
   const grow = () => {
     box.style.height = 'auto';
@@ -778,7 +788,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   }
 
   function focus() {
-    if (view !== 'chat' && dock) return;
+    if (view !== 'chat' && dock && node.contains(form)) return;   // the composer is hidden with the conversation
     setTimeout(() => { box.focus({ preventScroll: true }); const n = box.value.length; box.setSelectionRange(n, n); }, 20);
   }
 
@@ -802,7 +812,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   grow();
   update();
   return {
-    node, update, focus, onOpen, setView,
+    node, update, focus, onOpen, setView, composer: form, input: box, scroller,
     get view() { return view; },
     title: () => (S.current ? chatById(S.current)?.title || 'Conversation' : 'New conversation'),
     newChat: () => { newChat(); setView('chat'); focus(); },
