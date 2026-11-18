@@ -85,6 +85,80 @@ Pure helpers (phone normalisation, template rendering, opt-out tail, Twilio/Cal 
 timezone maths) have unit checks with dummy secrets: `node --test supabase/tests/shared.test.mjs`
 (Node 22.18+, which runs the `.ts` files directly).
 
+## onedrive (the Files page)
+
+A live window onto the business OneDrive (a **personal** Microsoft account) through Microsoft
+Graph. Nothing is copied: every folder is read when it is opened. The hub keeps only its own
+additions: `public.file_links` (a OneDrive item linked to a client, project, deal or lead) and
+`public.file_changes` (every move, rename and new folder, with before/after, for Undo). Both are
+readable by anyone signed in and written only by the function. The sign-in itself (refresh token,
+cached access token, account name, who connected it and when) is one row in
+`private.onedrive_connection`, which the API cannot reach; the function reads and writes it through
+`onedrive_get / onedrive_save / onedrive_clear` (service role only). Migration `0010_onedrive.sql`.
+
+**There is no delete.** The function has no code path that deletes anything in OneDrive. Undo
+works for moves and renames; a new folder cannot be removed from the hub (remove it in OneDrive).
+Undo is refused (`changed_since`) when the item has since been moved or renamed again, in the hub
+or in OneDrive itself. Items shared into the drive from other people's drives are never shown.
+
+### Set it up (once)
+
+1. In the Microsoft Entra admin centre (entra.microsoft.com) → App registrations → New
+   registration. Supported account types: **Personal Microsoft accounts only** (or "any
+   organisational directory and personal Microsoft accounts"). Redirect URI: platform **Web**,
+   exactly `https://adfgtlhryyyrqbbgbfmx.supabase.co/functions/v1/onedrive`.
+2. API permissions → Microsoft Graph → Delegated: `Files.ReadWrite`, `offline_access`, `User.Read`.
+3. Certificates & secrets → New client secret. Note when it expires (24 months at most) and put a
+   reminder in the calendar: when it expires, Files shows "not set up" until a new one is added.
+4. Edge Functions → Secrets: `MS_CLIENT_ID` (the Application (client) ID) and `MS_CLIENT_SECRET`
+   (the secret's **value**, not its ID). Until both are set, every action answers
+   `{configured:false}` / `not_configured` and the page says so.
+5. The owner opens Files in the hub and presses **Connect OneDrive**. One connection serves the
+   whole team. Optional secret `ONEDRIVE_STATE_SECRET` (32+ random characters) signs the sign-in
+   `state`; without it a key is derived from the service-role key.
+
+How long the connection lasts: Microsoft's refresh tokens default to 90 days and are replaced with
+a fresh one every time they are used, so the connection keeps going as long as Files (or the
+assistant) is used at least once in any 90 days. Microsoft can still revoke it earlier (the
+account's password or security changes, or the app is removed under the Microsoft account's
+"Apps and services"); the page then shows a "Sign in again" banner to the owner.
+
+### Actions (POST, JSON, with a signed-in team member's JWT)
+
+All actions live in `functions/_shared/onedrive.ts` (`runAction(ctx, body)`), so the chat assistant
+can call the same code server-side with `source: 'assistant'` and its `chatId`.
+
+| Action | Body | Answer (`ok:true` plus) |
+| --- | --- | --- |
+| `status` | | `configured, connected, needs_reconnect, can_connect (owner), owner_name, account {name, connected_at, connected_by, root_id}` — never contacts Microsoft, never returns a token |
+| `connect_url` (owner) | | `url` (Microsoft sign-in, signed `state` valid 10 minutes, PKCE), `expires_in` |
+| `disconnect` (owner) | | `connected:false` (links and the change log stay) |
+| `list` / `folders` | `item_id?` (default root), `cursor?`, `with_path?` | `folder, items[], cursor, path[]` (`folders` returns folders only, always with path) |
+| `search` | `q` | `q, items[]` (this drive only, top 100) |
+| `item` | `id`, `with_path?` | `item, download_url` (short-lived, about an hour), `path, links[]` |
+| `move` | `id, parent_id` | `item, change` (`unchanged:true` if already there) |
+| `rename` | `id, name` | `item, change` |
+| `create_folder` | `parent_id?, name` | `item, change` |
+| `undo` | `change_id` | `item, change` |
+| `link` | `item_id, kind` (`client`/`project`/`deal`/`lead`), `record_id` | `link` |
+| `unlink` | `link_id` | `unlinked` (the file is untouched) |
+
+An item is `{id, name, folder, child_count, size, mime, kind (folder|word|excel|powerpoint|pdf|image|video|audio|text|archive|file), ext, modified, created, modified_by, web_url, parent_id, parent_path, is_root, thumb {small, medium, large}}`.
+Failures are `{ok:false, error, message}` with a plain-English `message`; `error` is one of
+`not_configured, not_connected, reconnect_needed, busy (+retry_after_s), not_found, name_taken,
+bad_name, changed_since, already_undone, not_undoable, outside_drive, bad_move, locked, drive_full,
+forbidden, owner_only, bad_request, ms_error, unauthorized, server_error`. Access tokens are cached
+in the connection row until a minute or two before expiry; a 401 from Graph refreshes once; a 429
+waits the `Retry-After` once (up to 8 seconds) and then answers `busy`.
+
+`GET ?code&state` (or `?error&state`) is Microsoft's redirect: the state is checked (signature,
+10-minute expiry, used once, still the owner), the code is exchanged, and the browser is sent to
+`https://wise-ai.au/os/?onedrive=<result>#files` (`connected`, `denied`, `expired`, `bad_state`,
+`not_owner`, `not_configured`, `busy`, `error`).
+
+Unit tests (fake Microsoft, fake database): `node --test supabase/tests/onedrive.test.mjs`.
+Page tests (fake drive): `os/tests/files.test.mjs`.
+
 ## Reset a PIN lockout
 
 ```sql

@@ -16,6 +16,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const BASE = process.env.BASE || 'http://127.0.0.1:8152/os/';
 const PASSWORD = process.env.OS_TEST_PASSWORD;
+// The operator sign-in address: from the environment, or the one the existing suites use (not repeated here).
+const EMAIL = process.env.OS_TEST_EMAIL || (readFileSync(join(ROOT, 'os', 'tests', 'views.test.mjs'), 'utf8').match(/email: '([^']+)'/) || [])[1];
 const SHOTS = process.argv[2] || null;
 if (!PASSWORD) { console.error('Set OS_TEST_PASSWORD'); process.exit(2); }
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
@@ -219,11 +221,11 @@ async function openApp({ viewport = { width: 1440, height: 900 }, cfg = { connec
   });
   page.on('pageerror', (e) => page.errors.push(`pageerror: ${e.message}`));
   await page.goto(BASE);
-  await page.evaluate(async (pw) => {
+  await page.evaluate(async ([email, pw]) => {
     const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
-    const { error } = await sb.auth.signInWithPassword({ email: 'hq@wise-ai.au', password: pw });
+    const { error } = await sb.auth.signInWithPassword({ email, password: pw });
     if (error) throw new Error(error.message);
-  }, PASSWORD);
+  }, [EMAIL, PASSWORD]);
   await page.waitForFunction(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.loaded, null, { timeout: 30000 });
   await page.evaluate((h) => { location.hash = h; }, hash);
   await page.waitForSelector('#view .files-page', { timeout: 15000 });
