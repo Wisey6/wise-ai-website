@@ -13,3 +13,6 @@ package-lock.json
 shot-*.png
 feat-*.png
 resp-*.png
+
+# build output of supabase/scripts/build-agent.mjs
+supabase/dist/

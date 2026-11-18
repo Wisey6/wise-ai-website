@@ -734,12 +734,16 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       let items: Item[];
       if (within && within !== rootId) {
         // Search directly inside every folder of the business folder's tree, 40 folders a query.
+        // Batches run six at a time; the first 150 matches are kept.
         const ids = [...await foldersUnder(d, within)];
+        const batches: string[] = [];
+        for (let i = 0; i < ids.length; i += 40) batches.push(ids.slice(i, i + 40).map((id) => `'${qv(id)}' in parents`).join(" or "));
         items = [];
-        for (let i = 0; i < ids.length && items.length < 200; i += 40) {
-          const parents = ids.slice(i, i + 40).map((id) => `'${qv(id)}' in parents`).join(" or ");
-          items.push(...await searchDrive(d, `${q} and (${parents})`, rootId));
+        for (let i = 0; i < batches.length && items.length < 150; i += 6) {
+          const found = await Promise.all(batches.slice(i, i + 6).map((parents) => searchDrive(d, `${q} and (${parents})`, rootId)));
+          for (const f of found) items.push(...f);
         }
+        items = items.slice(0, 150);
       } else items = await searchDrive(d, q, rootId);
       return ok({ q: String(body.q).trim(), within, items: await signItems(ctx.env, items) });
     }

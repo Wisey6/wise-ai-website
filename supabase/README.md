@@ -141,6 +141,30 @@ OAuth client is deleted (Google deletes clients unused for six months). If any o
 page shows the owner a "Sign in again" banner. Disconnecting from the hub also revokes the token at
 Google.
 
+### The business folder
+
+`settings.files_home_id` / `files_home_name` (migration `0012_files_home.sql`) name the business's
+files folder, today `My Drive / WiseAI / WiseAI`. Files opens there, its breadcrumbs start there
+(with a quiet "All of Drive" link above it), and search looks inside it by default (a chip switches
+to all of Drive). The owner can make any folder the business folder from the folder's menu or the
+"Make this the business folder" link; members cannot change it. `status` returns `home: {id, name}`.
+
+Drive cannot search "anywhere under a folder", so the function first maps every folder inside the
+business folder (a few queries, level by level, cached five minutes per warm function instance)
+and then searches inside those folders directly (40 folders a query, six queries at a time, first
+150 matches). A warm search takes 2 to 3 seconds; the first one after a cold start rebuilds the
+map and can take about 10 seconds.
+
+For the assistant (`functions/_shared/gdrive.ts`):
+- `isInside(ctx, itemId, homeId, drive?)` → true when the item is the folder or anywhere inside it.
+- `homeFolder(db)` → `{id, name}` or null.
+- `readText(ctx, id, maxChars = 20000, drive?)` → `{ok:true, item:{id,name,kind,web_url}, format,
+  text, truncated}` for Google Docs and Slides (exported as text), Google Sheets (CSV, first sheet
+  only) and text, CSV, Markdown and JSON files; `{ok:false, error:'unsupported', unsupported:'pdf' |
+  kind}` for PDFs and other binary files (PDF text is not extracted). Downloads stop at 10 MB.
+  Also available as the action `read_text {id, max_chars?}`.
+- `search {q, within?}`: `within` is a folder id (the business folder by default in the page).
+
 ### Actions (the same contract as `onedrive`)
 
 POST JSON with a signed-in team member's JWT. Same actions, request bodies, item shape and error

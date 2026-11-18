@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { deflateRawSync } from "node:zlib";
 import * as R from "../functions/agent/files-rules.ts";
 import { CHAT_SYSTEM, CHAT_TOOLS } from "../functions/agent/chat-prompt.ts";
 
@@ -127,4 +128,35 @@ test("the prompt knows the business folder and the file tools are defined and st
   // Nothing in the file tools deletes or trashes.
   const src = readFileSync(new URL("../functions/agent/files.ts", import.meta.url), "utf8");
   assert.doesNotMatch(src, /trashed\s*[:=]\s*true|\.delete\(|"DELETE"/);
+});
+
+// A minimal zip (one deflated entry, one stored entry) built here, like a .docx.
+function zip(entries) {
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const [name, text, deflate] of entries) {
+    const raw = Buffer.from(text, "utf8");
+    const data = deflate ? deflateRawSync(raw) : raw;
+    const n = Buffer.from(name);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(deflate ? 8 : 0, 8); lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(raw.length, 22); lh.writeUInt16LE(n.length, 26);
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(deflate ? 8 : 0, 10); ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(raw.length, 24); ch.writeUInt16LE(n.length, 28); ch.writeUInt32LE(offset, 42);
+    locals.push(lh, n, data); centrals.push(ch, n);
+    offset += 30 + n.length + data.length;
+  }
+  const cd = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10); end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  return new Uint8Array(Buffer.concat([...locals, cd, end]));
+}
+
+test("Word .docx text comes out of word/document.xml; other zips give null", async () => {
+  const xml = '<w:document><w:body><w:p><w:r><w:t>Scope &amp; price</w:t></w:r></w:p><w:p><w:r><w:t>Setup</w:t><w:tab/><w:t>$1,500</w:t></w:r><w:br/><w:r><w:t xml:space="preserve">Monthly &#x2014; $300</w:t></w:r></w:p></w:body></w:document>';
+  const docx = zip([["[Content_Types].xml", "<Types/>", false], ["word/document.xml", xml, true]]);
+  assert.equal(await R.docxText(docx), "Scope & price\nSetup\t$1,500\nMonthly \u2014 $300");
+  assert.equal(await R.docxText(zip([["a.txt", "hi", true]])), null);
+  assert.equal(await R.docxText(new Uint8Array([1, 2, 3])), null);
+  assert.deepEqual(R.readPlan("word", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 1000), { how: "docx" });
+  assert.equal(R.readPlan("word", "application/msword", 1000).how, "unsupported");
 });

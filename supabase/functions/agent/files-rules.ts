@@ -119,13 +119,17 @@ export function bulkCheck(doneThisTurn: number, confirmed: boolean): { ok: true 
 }
 
 /** How to get plain text out of a file, by kind. */
-export type ReadPlan = { how: "export"; mime: string } | { how: "media" } | { how: "unsupported"; reason: string };
+export type ReadPlan = { how: "export"; mime: string } | { how: "media" } | { how: "docx" } | { how: "unsupported"; reason: string };
 export function readPlan(kind: string, mime: string | null, size: number | null): ReadPlan {
   if (kind === "folder") return { how: "unsupported", reason: "It is a folder. Use find_files with this folder to list what is in it." };
   if (kind === "gdoc") return { how: "export", mime: "text/plain" };
   if (kind === "gslide") return { how: "export", mime: "text/plain" };
   if (kind === "gsheet") return { how: "export", mime: "text/csv" };
   const m = mime || "";
+  if (kind === "word" && /wordprocessingml/.test(m)) {
+    if (size !== null && size > 15_000_000) return { how: "unsupported", reason: "It is a Word file over 15 MB, too big to read here. Give the person the Open link." };
+    return { how: "docx" };
+  }
   const texty = kind === "text" || /^text\//.test(m) || /(json|xml|csv|markdown|yaml)/.test(m);
   if (texty) {
     if (size !== null && size > 5_000_000) return { how: "unsupported", reason: "It is a text file over 5 MB, too big to read here. Open it instead." };
@@ -133,7 +137,7 @@ export function readPlan(kind: string, mime: string | null, size: number | null)
   }
   if (kind === "pdf") return { how: "unsupported", reason: "PDFs cannot be read here yet. Give the person the Open link instead." };
   if (kind === "word" || kind === "excel" || kind === "powerpoint") {
-    return { how: "unsupported", reason: "Word, Excel and PowerPoint files cannot be read here (only Google Docs, Sheets, Slides and text files). Give the person the Open link." };
+    return { how: "unsupported", reason: "Older Word (.doc), Excel and PowerPoint files cannot be read here (Google Docs, Sheets, Slides, .docx and text files can). Give the person the Open link." };
   }
   if (kind === "image" || kind === "video" || kind === "audio") return { how: "unsupported", reason: `It is ${kind === "image" ? "an image" : `a ${kind} file`}; there is no text to read. Give the person the Open link.` };
   return { how: "unsupported", reason: "That type of file cannot be read here. Give the person the Open link." };
@@ -175,4 +179,57 @@ export function orientation(o: { connected: boolean; reconnect?: boolean; homeNa
   const where = o.homeName ? `the "${o.homeName}" folder${o.homePath ? ` (${o.homePath})` : ""}` : "the top level of the Drive (no business folder chosen)";
   const list = o.folders.length ? o.folders.slice(0, 30).join(", ") + (o.folders.length > 30 ? `, and ${o.folders.length - 30} more` : "") : "none";
   return `Business files (Google Drive): all work lives in ${where}. Its top-level folders: ${list}. Loose files at its top level: ${o.looseFiles}.`;
+}
+
+// ------------------------------------------------------------------ .docx text (Word files)
+
+const u16 = (b: Uint8Array, o: number) => b[o] | (b[o + 1] << 8);
+const u32 = (b: Uint8Array, o: number) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+
+/** One file out of a zip archive (stored or deflated), or null. Uses the central directory. */
+export async function unzipEntry(zip: Uint8Array, want: string, maxOut = 20 * 1024 * 1024): Promise<Uint8Array | null> {
+  let eocd = -1;
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 65_535); i--) {
+    if (u32(zip, i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) return null;
+  const count = u16(zip, eocd + 10);
+  let p = u32(zip, eocd + 16);
+  const dec = new TextDecoder();
+  for (let n = 0; n < count && p + 46 <= zip.length; n++) {
+    if (u32(zip, p) !== 0x02014b50) return null;
+    const method = u16(zip, p + 10), csize = u32(zip, p + 20), usize = u32(zip, p + 24);
+    const nameLen = u16(zip, p + 28), extraLen = u16(zip, p + 30), commentLen = u16(zip, p + 32), local = u32(zip, p + 42);
+    const name = dec.decode(zip.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + extraLen + commentLen;
+    if (name !== want) continue;
+    if (usize > maxOut || u32(zip, local) !== 0x04034b50) return null;
+    const start = local + 30 + u16(zip, local + 26) + u16(zip, local + 28);
+    const data = zip.subarray(start, start + csize);
+    if (method === 0) return data.slice();
+    if (method !== 8) return null;
+    const out = new Response(new Blob([data as unknown as BlobPart]).stream().pipeThrough(new DecompressionStream("deflate-raw")));
+    return new Uint8Array(await out.arrayBuffer());
+  }
+  return null;
+}
+
+const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+/** Plain text of a Word document's main XML: paragraphs on their own lines, tabs and breaks kept. */
+export function docxXmlText(xml: string): string {
+  return xml
+    .replace(/<w:tab\/>/g, "\t").replace(/<w:(br|cr)\b[^>]*\/>/g, "\n")
+    .replace(/<\/w:p>/g, "\n").replace(/<\/w:tr>/g, "\n").replace(/<\/w:tc>/g, "\t")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+      if (e[0] === "#") { const c = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10); return Number.isFinite(c) ? String.fromCodePoint(c) : m; }
+      return ENT[e.toLowerCase()] ?? m;
+    })
+    .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Text of a .docx file's bytes, or null when it is not a readable Word document. */
+export async function docxText(bytes: Uint8Array): Promise<string | null> {
+  const xml = await unzipEntry(bytes, "word/document.xml");
+  return xml ? docxXmlText(new TextDecoder().decode(xml)) : null;
 }

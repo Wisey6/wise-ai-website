@@ -13,7 +13,7 @@
 import * as G from "../_shared/gdrive.ts";
 import { Refusal } from "./chat-rules.ts";
 import {
-  FILE_KINDS, ORIENT_TTL_MS, bulkCheck, buildQuery, capText, fileChange, fileRow, hubLink, matchFolder, orientation, placeOf,
+  FILE_KINDS, ORIENT_TTL_MS, bulkCheck, docxText, buildQuery, capText, fileChange, fileRow, hubLink, matchFolder, orientation, placeOf,
   readPlan, scoreItem, searchWords, splitPath,
 } from "./files-rules.ts";
 
@@ -177,7 +177,7 @@ export const FILE_TOOLS: Record<string, (t: FileTurn, input: Row) => Promise<Row
       const filtered = kind === "any" ? items : items.filter((i) => (kind === "folder" ? i.folder : !i.folder && kindMatches(kind, i)));
       const rows = filtered.slice(0, 40).map((i) => fileRow(i, `${scope.path} / ${i.name}`));
       t.steps.push({ tool: "find_files", kind: "read", ok: true, text: `Listed ${scope.path}: ${filtered.length} item${filtered.length === 1 ? "" : "s"}`, link: hubLink(scope.id) });
-      t.links.push({ label: scope.name, hash: hubLink(scope.id), weight: 2 });
+      t.links.push({ label: scope.name, hash: hubLink(scope.id), weight: 1 });
       for (const r of rows) t.links.push({ label: r.name, hash: r.open, weight: 1 });
       return {
         folder: scope.path, folder_open: hubLink(scope.id), count: filtered.length, more_available: filtered.length > 40 || Boolean(cursor), items: rows,
@@ -233,7 +233,12 @@ export const FILE_TOOLS: Record<string, (t: FileTurn, input: Row) => Promise<Row
     const base = { id: it.id, name: it.name, kind: it.kind, open: hubLink(it.id), ...(it.web_url ? { drive_url: it.web_url } : {}) };
     t.links.push({ label: it.name, hash: hubLink(it.id), weight: 2 });
     // The shared reader (gdrive.ts readText): Docs/Slides as text, Sheets as CSV (first tab), text files.
-    const r = await call(G.readText(gctx(t), it.id, 25_000, s.d));
+    let r: G.TextResult;
+    if (plan.how === "docx") { // Word: download (capped) and pull the text out of word/document.xml
+      const res = await call(s.d.raw("GET", `/files/${encodeURIComponent(it.id)}?alt=media&supportsAllDrives=true`));
+      const text = await docxText(new Uint8Array(await res.arrayBuffer())).catch(() => null);
+      r = text === null ? { ok: false, error: "unsupported" } : { ok: true, item: { id: it.id, name: it.name, kind: it.kind, web_url: it.web_url }, format: "docx", text, truncated: false };
+    } else r = await call(G.readText(gctx(t), it.id, 25_000, s.d));
     if (!r.ok) {
       if (r.error !== "unsupported" && r.error !== "too_large") driveFailure(r.error);
       const reason = r.error === "too_large" ? "It is over 10 MB, too big to read here. Give the person the Open link." : plan.how === "unsupported" ? plan.reason : "That type of file cannot be read here. Give the person the Open link.";
