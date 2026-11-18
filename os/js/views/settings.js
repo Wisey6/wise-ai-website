@@ -584,8 +584,15 @@ function teamGroup() {
     const i = list.findIndex((x) => x.id === m.id);
     const j = i + dir;
     if (i < 0 || j < 0 || j >= list.length) return;
-    [list[i], list[j]] = [list[j], list[i]];
-    const changes = list.map((x, k) => ({ x, sort: k * 10 })).filter(({ x, sort }) => Number(x.sort) !== sort);
+    const a = list[i]; const b = list[j];
+    // Swap the two places; only renumber when they share a sort value.
+    let changes = Number(a.sort) !== Number(b.sort)
+      ? [{ x: a, sort: Number(b.sort) }, { x: b, sort: Number(a.sort) }]
+      : null;
+    if (!changes) {
+      [list[i], list[j]] = [list[j], list[i]];
+      changes = list.map((x, k) => ({ x, sort: k * 10 })).filter(({ x, sort }) => Number(x.sort) !== sort);
+    }
     for (const { x, sort } of changes) { if (!await save({ member: { id: x.id, sort } })) return; }
     body.querySelector(`[data-member="${m.id}"] [data-act="${dir < 0 ? 'up' : 'down'}"]`)?.focus();
   }

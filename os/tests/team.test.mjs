@@ -597,7 +597,7 @@ try {
   check(await page.locator('.modal input[name=pin]').isHidden(), 'a PIN is only asked for when the person can sign in');
   await page.click('.modal-foot button[type=submit]');
   const sam = await waitFor(page, async (m, P) => m.state.team.find((x) => x.name === `${P} Sam Lee`) || null, P, 'added person');
-  check(sam.initials === 'SL' && !sam.can_sign_in && sam.role === 'member', `add a person without a login (initials ${sam.initials})`);
+  check(sam.initials === 'ZL' && !sam.can_sign_in && sam.role === 'member', `add a person without a login (initials ${sam.initials})`);
   await page.waitForSelector(`.set-person[data-member="${sam.id}"]`);
   await page.click(`.set-person[data-member="${sam.id}"] [data-act=edit]`);
   await page.fill('.modal input[name=name]', `${P} Sam Leigh`);
@@ -605,9 +605,16 @@ try {
   await page.click('.modal-foot button[type=submit]');
   const sam2 = await waitFor(page, async (m, id) => { const x = m.state.team.find((t) => t.id === id); return x && x.name.endsWith('Leigh') ? x : null; }, sam.id, 'renamed person');
   check(sam2.initials === 'SX', 'rename and initials save');
-  await page.click(`.set-person[data-member="${sam.id}"] [data-act=up]`);
-  const order = await waitFor(page, async (m, id) => { const i = m.state.team.findIndex((t) => t.id === id); return i === m.state.team.length - 2 ? m.state.team.map((t) => t.name) : null; }, sam.id, 'reordered');
-  check(order.length >= 3, `reorder moves a person up (${order.join(', ')})`);
+  // Reorder between two test people only (Tyler and Jay keep their places).
+  await page.click('[data-act=add-person]');
+  await page.fill('.modal input[name=name]', `${P} Alex`);
+  await page.click('.modal-foot button[type=submit]');
+  const alex = await waitFor(page, async (m, P) => m.state.team.find((x) => x.name === `${P} Alex`) || null, P, 'second person');
+  await page.waitForSelector(`.set-person[data-member="${alex.id}"] [data-act=up]`);
+  await page.click(`.set-person[data-member="${alex.id}"] [data-act=up]`);
+  const order = await waitFor(page, async (m, { a, s }) => { const n = m.state.team.map((t) => t.id); return n.indexOf(a) < n.indexOf(s) ? m.state.team.map((t) => t.name) : null; }, { a: alex.id, s: sam.id }, 'reordered');
+  const fixed = await api(page, async (m) => m.state.team.filter((t) => !t.name.startsWith('ZZTEAM')).map((t) => `${t.name}:${t.sort}`).join(','));
+  check(order.indexOf(`${P} Alex`) < order.indexOf(`${P} Sam Leigh`), `reorder moves a person up (${order.join(', ')}; others ${fixed})`);
   // Owner picker now offers Sam.
   await nav(page, `#projects/${ids.project}`, '.dl-headsub .own-pick');
   await page.locator('.dl-headsub .own-pick').click();

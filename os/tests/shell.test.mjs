@@ -81,8 +81,12 @@ try {
   check(/\d/.test(await page.locator('.gate-clock').textContent()), 'gate shows a clock');
   check(await page.locator('.gate .pin-input').count() === 0, 'gate rests with no PIN field until the lock is clicked');
   await page.locator('.gate .gate-unlock').click();
+  // More than one person can sign in: a fresh device asks who first (the owner is listed first).
+  await page.waitForSelector('.gate .gate-person, .gate .pin-input');
+  const pickOwner = async () => { if (await page.locator('.gate .gate-person').count()) await page.locator('.gate .gate-person').first().click(); };
+  await pickOwner();
   await page.waitForSelector('.gate .pin-input');
-  check(await page.evaluate(() => document.activeElement?.classList.contains('pin-input')), 'clicking the lock opens and focuses the PIN field');
+  check(await page.evaluate(() => document.activeElement?.classList.contains('pin-input')), 'clicking the lock (and choosing who) opens and focuses the PIN field');
   check(await page.locator('.gate .pin-input').getAttribute('inputmode') === 'numeric'
     && await page.locator('.gate .pin-input').getAttribute('type') === 'password', 'PIN field is masked and numeric');
   await page.keyboard.type('a1b-2 c');
@@ -90,6 +94,7 @@ try {
   await page.locator('.gate .pin-input').evaluate((n) => { n.value = '12x34'; n.dispatchEvent(new Event('input', { bubbles: true })); });
   check(await page.locator('.gate .pin-input').inputValue() === '1234', 'pasted text is stripped to digits');
   await page.keyboard.press('Escape');
+  if (await page.locator('.gate .gate-person').count()) await page.keyboard.press('Escape');   // PIN → people → resting
   check(await page.locator('.gate .pin-input').count() === 0 && await page.locator('.gate .gate-unlock').count() === 1, 'Escape returns to the resting lock');
   await page.keyboard.press('7');
   check(await page.locator('.gate .pin-input').inputValue() === '7', 'typing a digit on the resting screen opens the field with it');
