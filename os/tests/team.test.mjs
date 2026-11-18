@@ -399,7 +399,7 @@ try {
   await shot(page, 'mytasks-1440');
   await page.click(`.dl-person[data-person="${ids.jay}"]`);
   const jayTitles = await page.$$eval('.dl-tasks-wrap .dl-task-title', (ns) => ns.map((n) => n.textContent));
-  check(jayTitles.length >= 3 && jayTitles.filter((t) => t.startsWith(P)).length === 3 && (await page.locator('h1').innerText()) === "Jay's tasks", `the switcher shows Jay's tasks (${jayTitles.filter((t) => t.startsWith(P)).length} ZZTEAM)`);
+  check(['Write the homepage copy', 'Missed-call text-back', 'Set up the booking form'].every((t) => jayTitles.includes(`${P} ${t}`)) && !jayTitles.includes(`${P} Photos from the clinic`) && (await page.locator('h1').innerText()) === "Jay's tasks", `the switcher shows Jay's tasks (${jayTitles.filter((t) => t.startsWith(P)).length} ZZTEAM)`);
   await page.fill('.dl-qa input[name=new-task]', `${P} Call the printer`);
   await page.press('.dl-qa input[name=new-task]', 'Enter');
   const printer = await waitFor(page, async (m, P) => (await m.sb.from('tasks').select('owner_id').eq('title', `${P} Call the printer`).maybeSingle()).data, P, 'task from Jay view');
@@ -465,12 +465,12 @@ try {
   await page.locator('.drawer select[name=status]').selectOption('interested');
   await page.waitForSelector('.drawer [data-act=create-deal]');
   await page.click('.drawer [data-act=create-deal]');
-  const dealFromLead = await waitFor(page, async (m, id) => (await m.sb.from('deals').select('id,owner_id').eq('lead_id', id).maybeSingle()).data, newLead.id, 'deal from lead');
+  const dealFromLead = await waitFor(page, async (m, id) => (await m.sb.from('deals').select('id,owner_id').eq('lead_id', id).not('owner_id', 'is', null).maybeSingle()).data, newLead.id, 'deal from lead');
   check(dealFromLead.owner_id === ids.jay, 'converting a lead to a deal carries the lead\'s owner');
   await page.keyboard.press('Escape');
   await nav(page, `#leads/${newLead.id}`, '.drawer [data-act=make-client]');
   await page.click('.drawer [data-act=make-client]');
-  const clientFromLead = await waitFor(page, async (m, id) => (await m.sb.from('clients').select('id,owner_id').eq('lead_id', id).maybeSingle()).data, newLead.id, 'client from lead');
+  const clientFromLead = await waitFor(page, async (m, id) => (await m.sb.from('clients').select('id,owner_id').eq('lead_id', id).not('owner_id', 'is', null).maybeSingle()).data, newLead.id, 'client from lead');
   check(clientFromLead.owner_id === ids.jay, 'converting a lead to a client carries the lead\'s owner');
   ids.extraDeal = dealFromLead.id; ids.extraClient = clientFromLead.id; ids.lead2 = newLead.id;
 
@@ -503,12 +503,16 @@ try {
 
   /* ============================================== Inbox badge per person */
   const leadsSeed = await api(page, async (m, { P, ty, j }) => {
-    const mk = async (b, owner) => { const l = await m.saveLead(null, { business: `${P} ${b}`, status: 'replied', source: 'manual', unread: true, last_reply_at: new Date().toISOString() }); await m.sb.from('leads').update({ owner_id: owner }).eq('id', l.id); return l.id; };
+    const o = await window.__mod('owners.js');
+    const mk = async (b, owner) => { const l = await m.saveLead(null, { business: `${P} ${b}`, status: 'replied', source: 'manual', unread: true, last_reply_at: new Date().toISOString() }); if (owner) await o.saveLeadOwners([l.id], owner); return l.id; };
     return { tyl: await mk('Reply for Tyler', ty), jayl: await mk('Reply for Jay', j), none: await mk('Reply for nobody', null) };
   }, { P, ty: ids.ty, j: ids.jay });
   Object.assign(ids, leadsSeed);
   const badgeFor = async (pg) => {
-    await waitFor(pg, async (m, ids) => (['tyl', 'jayl', 'none'].every((k) => m.state.leads.find((l) => l.id === ids[k] && l.owner_id !== undefined && l.unread)) && m.state.leads.find((l) => l.id === ids.jayl)?.owner_id ? true : null), leadsSeed, 'unread leads in state');
+    await waitFor(pg, async (m, ids) => {
+      const f = (k) => m.state.leads.find((l) => l.id === ids[k]);
+      return f('tyl')?.owner_id && f('jayl')?.owner_id && f('none') && f('tyl').unread && f('jayl').unread && f('none').unread ? true : JSON.stringify([f('tyl'), f('jayl')].map((x) => x && [x.owner_id, x.unread])) && null;
+    }, leadsSeed, 'unread leads in state');
     await pg.waitForTimeout(500);
     const expected = await api(pg, async (m) => m.state.leads.filter((l) => l.unread && !l.archived && m.isMine(l)).length);
     const shown = await pg.evaluate(() => Number(document.querySelector('.nav-item[data-route=inbox] .nav-count')?.textContent || 0));
