@@ -3,14 +3,14 @@ import {
   el, $, $$, clear, fill, icon, badge, statusBadge, toast, modal, confirmDialog, field, input, select, textarea,
   timeAgo, dateTime, dayLabel, go, copyText, STATUSES, STATUS, prettyPhone, num, plural, money, busy, trapFocus,
   emptyState, downloadFile, toCsv
-} from '../ui.js?v=20261118c';
+} from '../ui.js?v=20261118d';
 import {
   state, saveLead, saveLeads, addLeads, deleteLead, logEvent, addMessage, suppress, messagesFor, onMessage, onChange,
   normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms,
   leadToDeal, leadToClient, ai, saveRow
-} from '../api.js?v=20261118c';
-import { ownerPicker, ownerBadge, saveOwner, saveLeadOwners, meId, ownerFilterSelect, matchesOwner, activeTeam, ownerName } from '../owners.js?v=20261118c';
-import { agentsInfo, latestResearch, isResearching, runResearch, researchCard, canResearch } from './agents.js?v=20261118c';
+} from '../api.js?v=20261118d';
+import { ownerPicker, ownerBadge, saveOwner, saveLeadOwners, meId, ownerFilterSelect, matchesOwner, activeTeam, ownerName } from '../owners.js?v=20261118d';
+import { agentsInfo, latestResearch, isResearching, runResearch, researchCard, canResearch } from './agents.js?v=20261118d';
 
 /* ------------------------------------------------------------ view state */
 const VIEW_KEY = 'wiseos.leads.view';

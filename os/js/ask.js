@@ -2,8 +2,8 @@
 // The conversation lives in memory for this session only and is sent back as
 // `history` so follow-up questions make sense. Answers and their links reach the
 // page as text nodes through el(); links are hub hashes only.
-import { el, icon, fill, toast, busy } from './ui.js?v=20261118c';
-import { agentRun, agentStatus, notify } from './api.js?v=20261118c';
+import { el, icon, fill, toast, busy } from './ui.js?v=20261118d';
+import { agentRun, agentStatus, notify } from './api.js?v=20261118d';
 
 /** sessionStorage key the palette uses to hand over a question ("Ask the hub: …?"). */
 export const ASK_PREFILL_KEY = 'wiseos.ask.q';

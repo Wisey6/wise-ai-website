@@ -2,10 +2,10 @@
 import {
   el, clear, fill, icon, badge, toast, modal, confirmDialog, field, input, select, textarea, emptyState,
   money, num, plural, go, busy
-} from '../ui.js?v=20261118c';
-import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118c';
-import { today, addDays, fmtDate, keyOf } from './roi-reports.js?v=20261118c';
-import { ownerPicker, ownerBadge, ownerLabel, ownerName, saveOwner, activeTeam, meId, isMe } from '../owners.js?v=20261118c';
+} from '../ui.js?v=20261118d';
+import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118d';
+import { today, addDays, fmtDate, keyOf } from './roi-reports.js?v=20261118d';
+import { ownerPicker, ownerBadge, ownerLabel, ownerName, saveOwner, activeTeam, meId, isMe } from '../owners.js?v=20261118d';
 
 /* ============================================================ constants */
 export const PROJECT_STATUSES = [

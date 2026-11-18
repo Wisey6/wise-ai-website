@@ -2,14 +2,14 @@
 import {
   el, clear, fill, icon, badge, toast, modal, confirmDialog, field, input, select, textarea, emptyState,
   money, num, plural, go, copyText, busy, prettyPhone
-} from '../ui.js?v=20261118c';
-import { state, saveRow, deleteRow, rowById, leadById, leadName, normalisePhone } from '../api.js?v=20261118c';
-import { today, addDays, fmtDate, keyOf, periodLabel, reportTotals } from './roi-reports.js?v=20261118c';
+} from '../ui.js?v=20261118d';
+import { state, saveRow, deleteRow, rowById, leadById, leadName, normalisePhone } from '../api.js?v=20261118d';
+import { today, addDays, fmtDate, keyOf, periodLabel, reportTotals } from './roi-reports.js?v=20261118d';
 import {
   taskRow, quickAdd, progressBar, projectProgress, projectBadge, isOpenProject, isOverdue, taskClientId,
   openProjectForm, guardedPaint, keepFocus, sortMyTasks
-} from './projects.js?v=20261118c';
-import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner, ownerName } from '../owners.js?v=20261118c';
+} from './projects.js?v=20261118d';
+import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner, ownerName } from '../owners.js?v=20261118d';
 
 /* ============================================================ constants */
 export const CLIENT_STATUSES = [

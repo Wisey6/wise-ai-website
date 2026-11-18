@@ -4,10 +4,10 @@
 import {
   el, fill, clear, icon, badge, toast, modal, confirmDialog, field, input, select, textarea,
   emptyState, money, num, plural, timeAgo, dayKey, go, busy, trapFocus
-} from '../ui.js?v=20261118c';
-import { state, saveRow, deleteRow, rowById, leadById, leadName, leadToClient, onChange } from '../api.js?v=20261118c';
-import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner } from '../owners.js?v=20261118c';
-import { createProposalFromDeal, proposalTotals, effectiveStatus, PROPOSAL_STATUS } from './proposals.js?v=20261118c';
+} from '../ui.js?v=20261118d';
+import { state, saveRow, deleteRow, rowById, leadById, leadName, leadToClient, onChange } from '../api.js?v=20261118d';
+import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner } from '../owners.js?v=20261118d';
+import { createProposalFromDeal, proposalTotals, effectiveStatus, PROPOSAL_STATUS } from './proposals.js?v=20261118d';
 
 /* ------------------------------------------------------------- constants */
 export const STAGES = [

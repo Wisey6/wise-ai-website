@@ -3,14 +3,14 @@
 import {
   el, fill, icon, badge, toast, modal, confirmDialog, field, input, select, textarea, emptyState,
   money, num, plural, downloadFile, toCsv, busy
-} from '../ui.js?v=20261118c';
-import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118c';
+} from '../ui.js?v=20261118d';
+import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118d';
 import {
   n0, r2, todayIso, monthKey, monthStart, monthEnd, addMonths, addDays, daysBetween, inRange, monthRange, fyRange,
   quarterRange, monthLabel, monthShort, issuedOf, isPaid, isOverdue, gstPart, netAmount, suggestGst, moneyIn,
   receivables, incomeByMonth, suggestInvoiceNo, nextInvoiceNos, dueRetainers, retainerInvoice, monthsBetween
-} from './money-math.js?v=20261118c';
-import { money2, dateFmt, how, kpiStrip, clientLink, pageHead, sectionHead, iconAction, toolSelect, setOptions, clientOptions } from './money-ui.js?v=20261118c';
+} from './money-math.js?v=20261118d';
+import { money2, dateFmt, how, kpiStrip, clientLink, pageHead, sectionHead, iconAction, toolSelect, setOptions, clientOptions } from './money-ui.js?v=20261118d';
 
 /* ------------------------------------------------------------ view state */
 const ui = { head: 'month', status: 'all', client: '', range: 'all', q: '' };

@@ -1,13 +1,13 @@
 // Runway: the "bleed" view. Am I OK, and for how long? Inputs saved to settings,
 // then this month, average in, burn, draw, net position, runway, break-even,
 // retainers vs need, tax and GST to set aside, a 6-month projection and a what-if.
-import { el, fill, icon, toast, money, num, plural } from '../ui.js?v=20261118c';
-import { saveSettings } from '../api.js?v=20261118c';
+import { el, fill, icon, toast, money, num, plural } from '../ui.js?v=20261118d';
+import { saveSettings } from '../api.js?v=20261118d';
 import {
   n0, r2, todayIso, monthKey, addDays, monthLabel, monthlyBurn, monthSoFar, averageIn, recurringRevenue,
   runway, projection, quarterToDate, isActiveClient, daysBetween
-} from './money-math.js?v=20261118c';
-import { money2, dateFmt, how, pageHead, sectionHead } from './money-ui.js?v=20261118c';
+} from './money-math.js?v=20261118d';
+import { money2, dateFmt, how, pageHead, sectionHead } from './money-ui.js?v=20261118d';
 
 const signed = (n) => `${n < 0 ? '−' : '+'}${money(Math.abs(n))}`;
 const neg = (n) => (n < 0 ? `−${money(-n)}` : money(n));

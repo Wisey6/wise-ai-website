@@ -3,10 +3,10 @@
 // moving black-and-blue "paint splodge", and a dropdown panel with Ask, the Doer and
 // a few quick rows. Same rules as the Agents page: nothing here sends or changes
 // anything; the Doer only proposes, and proposals wait in #agents/approvals.
-import { el, icon, fill, clear, toast, busy, plural } from './ui.js?v=20261118c';
-import { state, agentRun, agentStatus, onChange } from './api.js?v=20261118c';
-import { askPanel } from './ask.js?v=20261118c';
-import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd, unwrap } from './views/agents.js?v=20261118c';
+import { el, icon, fill, clear, toast, busy, plural } from './ui.js?v=20261118d';
+import { state, agentRun, agentStatus, onChange } from './api.js?v=20261118d';
+import { askPanel } from './ask.js?v=20261118d';
+import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd, unwrap } from './views/agents.js?v=20261118d';
 
 const LOGO = '../logo.svg';
 const MAX_DOER = 600;
