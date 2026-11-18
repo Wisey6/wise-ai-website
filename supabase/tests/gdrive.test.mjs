@@ -403,3 +403,11 @@ test("readText: Docs as text, Sheets as CSV, Markdown as is; PDFs unsupported; c
   assert.equal(act.status, 415);
   assert.match(act.body.message, /PDF/);
 });
+
+test("members and the assistant are confined to the business folder; the owner in the hub is not", async () => {
+  const G = await import("../functions/_shared/gdrive.ts");
+  assert.equal(G.confined({ member: { role: "owner" }, source: "hub" }), false);
+  assert.equal(G.confined({ member: { role: "owner" } }), false);
+  assert.equal(G.confined({ member: { role: "owner" }, source: "assistant" }), true);
+  assert.equal(G.confined({ member: { role: "member" }, source: "hub" }), true);
+});

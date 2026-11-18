@@ -24,7 +24,7 @@ import {
 import {
   ARCHIVE_TABLES, KINDS, type LinkCandidate, Refusal, type Step, TABLE_KIND, buildHistory, buildPatch, checkChatRequest, checkPatch,
   diffPatch, fallbackTitle, labelFor, resultJson, linkFor, maskPhone, maskRow, ownsChat, pickLinks, searchTerm, splitTitle, trimText,
-  undoConflicts, undoInsertPlan,
+  undoConflicts, undoInsertPlan, undoBlocked, FILE_LINK_KIND, RECORD_WRITE_TOOLS, businessMemoryAllowed, callTimeout, taintCheck, taints,
 } from "./chat-rules.ts";
 import { CHAT_SYSTEM, CHAT_TOOLS } from "./chat-prompt.ts";
 import { FILE_TOOLS, fileOrientation, undoFileChange } from "./files.ts";
@@ -41,6 +41,11 @@ const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 const MAX_ITERATIONS = 12;
 const MAX_TOOL_CALLS = 24;
 const MAX_TOKENS = 16000;
+// Supabase edge functions are cut off at 150 s of wall clock: no new model call starts after
+// TURN_SOFT_MS, each call gets at most CALL_TIMEOUT_MS and never runs past TURN_HARD_MS.
+const TURN_SOFT_MS = 110_000;
+const TURN_HARD_MS = 135_000;
+const CALL_TIMEOUT_MS = 60_000;
 
 export type Member = { id: string; name: string; role: string };
 export type ChatCtx = {
@@ -51,6 +56,7 @@ export type ChatCtx = {
 type Turn = ChatCtx & {
   today: string; chatId: string; runId: string | null; team: Row[];
   steps: Step[]; changes: Row[]; links: LinkCandidate[]; draft: { lead_id: string; body: string } | null;
+  userMessage: string; tainted: boolean; writesAfterTaint: number;
 };
 
 const must = <T>(res: { data: T | null; error: { message: string } | null }): T => {
@@ -92,7 +98,7 @@ export async function chatAction(ctx: ChatCtx, body: Row): Promise<Response> {
 }
 
 const REFERENCES: Record<string, [string, string][]> = {
-  leads: [["deals", "lead_id"], ["clients", "lead_id"], ["proposals", "lead_id"], ["bookings", "lead_id"], ["messages", "lead_id"]],
+  leads: [["deals", "lead_id"], ["clients", "lead_id"], ["proposals", "lead_id"], ["bookings", "lead_id"], ["messages", "lead_id"], ["events", "lead_id"]],
   clients: [["deals", "client_id"], ["projects", "client_id"], ["tasks", "client_id"], ["income", "client_id"], ["costs", "client_id"], ["proposals", "client_id"], ["roi_reports", "client_id"], ["library", "client_id"]],
   deals: [["projects", "deal_id"], ["proposals", "deal_id"]],
   projects: [["tasks", "project_id"], ["income", "project_id"]],
@@ -115,6 +121,12 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
   if (!(ch.table_name in REFERENCES)) return json(req, 400, { ok: false, error: "bad_request", detail: "That change cannot be undone here." });
   const current = must<Row | null>(await db.from(ch.table_name).select("*").eq("id", ch.row_id).maybeSingle());
   if (!current) return json(req, 200, { ok: false, error: "gone", detail: "That record no longer exists." });
+  const blockedWhy = undoBlocked(ch.table_name, current);
+  if (blockedWhy) return json(req, 200, { ok: false, error: "not_undoable", detail: blockedWhy });
+  // Every restoring write is conditional on the row being exactly as read here (else it changed since).
+  // deno-lint-ignore no-explicit-any
+  const sameRow = (q: any) => (current.updated_at ? q.eq("updated_at", current.updated_at) : q);
+  const changedSince = () => json(req, 200, { ok: false, error: "conflict", detail: "It was changed while undoing. Look at the record and change it there." });
   const conflicts = undoConflicts(ch.after, current);
   if (conflicts.length) {
     return json(req, 200, {
@@ -127,7 +139,10 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
     const before = (ch.before ?? {}) as Row;
     const err = checkPatch(ch.table_name, before, "update");
     if (err && err !== "nothing to change") return json(req, 400, { ok: false, error: "bad_request", detail: err });
-    if (Object.keys(before).length) must(await db.from(ch.table_name).update(before).eq("id", ch.row_id));
+    if (Object.keys(before).length) {
+      const n = must<Row[]>(await sameRow(db.from(ch.table_name).update(before).eq("id", ch.row_id)).select("id"));
+      if (!n.length) return changedSince();
+    }
   } else {
     const refs: string[] = [];
     for (const [t, col] of REFERENCES[ch.table_name] ?? []) {
@@ -135,14 +150,27 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
       if (r.error) throw new Error(r.error.message);
       if ((r.count ?? 0) > 0) refs.push(t);
     }
+    const linkKind = FILE_LINK_KIND[ch.table_name];
+    if (linkKind) {
+      const r = await db.from("file_links").select("id", { count: "exact", head: true }).eq("kind", linkKind).eq("record_id", ch.row_id);
+      if (r.error) throw new Error(r.error.message);
+      if ((r.count ?? 0) > 0) refs.push("file_links");
+    }
     const later = must<Row[]>(await db.from("agent_changes").select("id").eq("row_id", ch.row_id).neq("id", ch.id).is("undone_at", null));
     if (later.length) return json(req, 200, { ok: false, error: "conflict", detail: "Undo the later changes to this record first." });
     const plan = undoInsertPlan(ch.table_name, refs);
     if (plan === "blocked") {
       return json(req, 200, { ok: false, error: "in_use", detail: `Other records now point at it (${refs.join(", ")}), so it cannot be removed.` });
     }
-    if (plan === "delete") { must(await db.from(ch.table_name).delete().eq("id", ch.row_id)); result = "removed"; }
-    else { must(await db.from(ch.table_name).update({ archived: true }).eq("id", ch.row_id)); result = "archived"; }
+    if (plan === "delete") {
+      const n = must<Row[]>(await sameRow(db.from(ch.table_name).delete().eq("id", ch.row_id)).select("id"));
+      if (!n.length) return changedSince();
+      result = "removed";
+    } else {
+      const n = must<Row[]>(await sameRow(db.from(ch.table_name).update({ archived: true }).eq("id", ch.row_id)).select("id"));
+      if (!n.length) return changedSince();
+      result = "archived";
+    }
   }
   const undoneAt = new Date().toISOString();
   must(await db.from("agent_changes").update({ undone_at: undoneAt }).eq("id", ch.id));
@@ -223,11 +251,12 @@ async function contextBlock(t: Turn, first: boolean): Promise<string> {
 
 // ------------------------------------------------------------------ the turn
 
-function client() {
-  return new Anthropic({ maxRetries: 1, timeout: 150_000 });
+function client(timeout: number) {
+  return new Anthropic({ maxRetries: 0, timeout });
 }
 
-async function callModel(model: string, messages: Msg[]): Promise<Msg> {
+
+async function callModel(model: string, messages: Msg[], timeout: number): Promise<Msg> {
   const params: Row = {
     model, max_tokens: MAX_TOKENS,
     system: [{ type: "text", text: CHAT_SYSTEM, cache_control: { type: "ephemeral" } }],
@@ -238,7 +267,7 @@ async function callModel(model: string, messages: Msg[]): Promise<Msg> {
     cache_control: { type: "ephemeral" },
     messages,
   };
-  const c = client();
+  const c = client(timeout);
   // Sonnet and Opus opt in to the server-side refusal fallback; Haiku has none.
   // deno-lint-ignore no-explicit-any
   if (model !== HAIKU) return await c.beta.messages.create({ ...params, betas: [FALLBACK_BETA], fallbacks: "default" } as any);
@@ -277,10 +306,11 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   const prior = must<Row[]>(await db.from("agent_chat_messages").select("role, text, steps, model").eq("chat_id", chat.id).order("id").limit(2000));
   const first = !prior.some((m) => m.role === "assistant" && m.model !== "recap");
   must(await db.from("agent_chat_messages").insert({ chat_id: chat.id, role: "user", text: check.message }));
-  const runId = await insertRun(ctx, { status: "error", input: { chat_id: chat.id, message: scrubText(check.message, 600) }, error: "running" });
+  const runId = await insertRun(ctx, { status: "error", input: { chat_id: chat.id, chars: check.message.length }, error: "running" });
 
   const t: Turn = {
     ...ctx, today, chatId: chat.id, runId, team: await loadTeam(db), steps: [], changes: [], links: [], draft: null,
+    userMessage: check.message, tainted: false, writesAfterTaint: 0,
   };
   const history = buildHistory(prior as never);
   const messages: Msg[] = [
@@ -302,9 +332,18 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   let declined = false;
   try {
     for (; iterations < MAX_ITERATIONS; iterations++) {
-      const res = await callModel(model, messages);
+      const elapsed = Date.now() - ctx.started;
+      if (iterations > 0 && elapsed > TURN_SOFT_MS) { stopNote = "I ran out of time for one message before finishing."; break; }
+      const res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS));
       totals = addUsage(totals, res.usage);
       usedModel = String(res.model ?? model);
+      // Running cost on the run row after every call, so a cut-off turn is still counted.
+      const soFar = costOf(usedModel, totals);
+      await updateRun(t, { status: "error", model: usedModel, totals, cost: soFar, error: "running", output: { chat_id: t.chatId, iterations: iterations + 1, tool_calls: toolCalls } });
+      if (overBudget(ctx.spent + soFar, ctx.cap) && res.stop_reason === "tool_use") {
+        stopNote = "I reached the monthly AI spending limit partway through, so I stopped.";
+        break;
+      }
       if (res.stop_reason === "refusal") { declined = true; break; }
       if (res.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: res.content }); continue; }
       const uses = (res.content as Msg[]).filter((b) => b.type === "tool_use");
@@ -349,15 +388,23 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   if (!text) text = t.steps.some((s) => s.ok && s.kind !== "read") ? t.steps.filter((s) => s.ok && s.kind !== "read").map((s) => s.text).join("\n") : "Sorry, I have nothing to add to that.";
 
   const newTitle = first ? (title || fallbackTitle(check.message)) : null;
-  const msg = await saveAssistant(t, text, usedModel, cost);
-  must(await db.from("agent_chats").update({ updated_at: new Date().toISOString(), ...(newTitle ? { title: newTitle } : {}), ...(chat.archived ? { archived: false } : {}) }).eq("id", t.chatId));
-  await updateRun(t, {
-    status: "ok", model: usedModel, totals, cost,
-    output: {
-      chat_id: t.chatId, message_id: msg.id, iterations: iterations + 1, tool_calls: toolCalls, changes: t.changes.map((c) => c.id),
-      draft: Boolean(t.draft), cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, input_tokens: totals.input, output_tokens: totals.output,
-    },
-  });
+  let msg: Row | null = null;
+  let saved = false;
+  try {
+    msg = await saveAssistant(t, text, usedModel, cost);
+    must(await db.from("agent_chats").update({ updated_at: new Date().toISOString(), ...(newTitle ? { title: newTitle } : {}), ...(chat.archived ? { archived: false } : {}) }).eq("id", t.chatId));
+    saved = true;
+  } finally {
+    // The cost is recorded even when saving the reply fails. Ids and counts only, never message text.
+    await updateRun(t, {
+      status: saved ? "ok" : "error", model: usedModel, totals, cost, ...(saved ? {} : { error: "save_failed" }),
+      output: {
+        chat_id: t.chatId, message_id: msg?.id ?? null, iterations: iterations + 1, tool_calls: toolCalls, changes: t.changes.map((c) => c.id),
+        draft: Boolean(t.draft), cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, input_tokens: totals.input, output_tokens: totals.output,
+      },
+    });
+  }
+  msg = msg!;
   return json(req, 200, {
     ok: true, chat_id: t.chatId, title: newTitle ?? chat.title,
     message: { id: msg.id, role: "assistant", text, steps: t.steps, links: msg.links, at: msg.at },
@@ -418,10 +465,16 @@ const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_f
 
 async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
   try {
+    // Prompt-injection containment: once this turn has read untrusted text, risky writes wait for the person.
+    const blocked = taintCheck(name, input, t);
+    if (blocked) refuse(blocked);
+    const wasTainted = t.tainted;
     const out = await TOOLS[name]?.(t, input);
     if (!out) {
       return { is_error: true, content: `Unknown tool "${name}". The tools are: ${CHAT_TOOLS.map((x) => x.name).join(", ")}.` };
     }
+    if (wasTainted && RECORD_WRITE_TOOLS.includes(name) && !out.unchanged) t.writesAfterTaint++;
+    if (taints(name, input, out)) t.tainted = true;
     return { content: resultJson(out, t.tz) };
   } catch (e) {
     if (e instanceof Refusal) {
@@ -465,7 +518,9 @@ function compact(table: string, r: Row, names: { team: Row[]; clients: Record<st
   const pick = (...keys: string[]) => { for (const k of keys) if (r[k] !== null && r[k] !== undefined && r[k] !== "") base[k] = r[k]; };
   switch (table) {
     case "leads":
-      pick("contact_name", "suburb", "industry", "status", "est_monthly_value", "hook", "pain", "last_contacted_at", "last_reply_at", "next_followup_at", "unread", "source");
+      // No free text from leads in a list (their notes, hook and pain can hold outside text): get shows it.
+      pick("contact_name", "suburb", "industry", "status", "est_monthly_value", "last_contacted_at", "last_reply_at", "next_followup_at", "unread", "source");
+      if (r.notes || r.hook || r.pain) base.has_notes = true;
       if (r.phone) base.phone = maskPhone(r.phone);
       if (r.status === "dnc") base.opted_out = true;
       break;
@@ -493,12 +548,12 @@ function compact(table: string, r: Row, names: { team: Row[]; clients: Record<st
       break;
     }
     case "roi_reports": pick("status", "period_start", "period_end", "fee", "sent_on"); break;
-    case "library": pick("kind", "tags", "pinned"); if (r.body) base.excerpt = trimText(r.body, 200); break;
+    case "library": pick("kind", "tags", "pinned"); if (r.body) base.has_body = true; break;
     case "team_members": pick("role", "active", "can_sign_in"); break;
   }
   if (owner) base.owner = owner;
   if (client) base.client = client;
-  if (r.notes) base.notes = trimText(r.notes, 300);
+  if (r.notes && table !== "leads") base.notes = scrubText(r.notes, 300);
   if (r.archived) base.archived = true;
   base.link = linkFor(table, r);
   return base;
@@ -664,7 +719,9 @@ async function saveTool(t: Turn, tool: string, input: Row): Promise<Row> {
   }
   if (has(input.lead)) {
     const l = await resolveRef(t, "lead", input.lead);
-    if (l?.status === "dnc" && tool === "save_deal") refuse("that lead has opted out (do not contact); the assistant will not open a deal for them");
+    if (l?.status === "dnc" && (tool === "save_deal" || tool === "save_client")) {
+      refuse(`that lead has opted out (do not contact); the assistant will not ${tool === "save_deal" ? "open a deal for them" : "link a client to them"}`);
+    }
     refs.lead_id = l?.id ?? null;
   }
   let nextInvoiceNo: string | undefined;
@@ -773,7 +830,7 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
     const r = must<Row | null>(await t.db.from(table).select(sel).eq("id", input.id).maybeSingle());
     if (!r) refuse(`no ${kind} with that id`);
     const rec: Row = maskRow(r!);
-    for (const k of ["notes", "description", "body", "summary", "problem", "solution", "terms", "next_steps"]) if (typeof rec[k] === "string") rec[k] = trimText(rec[k], 2000);
+    for (const k of ["notes", "description", "body", "summary", "problem", "solution", "terms", "next_steps", "hook", "pain"]) if (typeof rec[k] === "string") rec[k] = scrubText(rec[k], 2000);
     for (const k of ["number_source_url", "meeting_url"]) delete rec[k];
     const extra: Row = {};
     const db = t.db;
@@ -785,7 +842,7 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
         db.from("bookings").select("id, title, starts_at, status").eq("lead_id", r!.id).order("starts_at", { ascending: false }).limit(5),
         phone ? db.from("suppressions").select("phone").eq("phone", phone).maybeSingle() : Promise.resolve({ data: null, error: null }),
       ]);
-      extra.last_messages = must<Row[]>(msgs).reverse().map((m) => ({ ...m, body: trimText(m.body, 300) }));
+      extra.last_messages = must<Row[]>(msgs).reverse().map((m) => ({ ...m, body: scrubText(m.body, 300) }));
       extra.deals = must<Row[]>(deals).map((d) => ({ ...d, link: `#pipeline/${d.id}` }));
       extra.bookings = must<Row[]>(bookings);
       extra.opted_out = r!.status === "dnc";
@@ -888,6 +945,9 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
     if (!text) refuse("nothing to remember");
     if (text.length > 300) refuse("keep a memory note to 300 characters");
     const scope = input.scope === "business" ? "business" : "me";
+    if (scope === "business" && !businessMemoryAllowed(t.userMessage)) {
+      refuse("A note for the whole business is saved only when the person asks for it in their own words (\"remember...\", \"from now on...\"). Save it for them (scope me), or ask.");
+    }
     const row = must<Row>(await t.db.from("agent_memory").insert({
       member_id: scope === "me" ? t.member.id : null, text, source_chat_id: t.chatId,
     }).select("id").single());

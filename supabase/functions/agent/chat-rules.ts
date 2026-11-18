@@ -576,3 +576,58 @@ export function checkChatRequest(body: Row): { ok: true; message: string; chatId
 export function ownsChat(chat: Row | null, memberId: string | null): boolean {
   return Boolean(chat && memberId && chat.member_id === memberId);
 }
+
+// ------------------------------------------------------------------ prompt-injection containment
+
+/** Writes refused for the rest of a turn once untrusted text (a lead's notes or messages, a file, a library body) was read. */
+export const TAINT_BLOCKED = ["organise_file", "new_folder", "link_file", "archive"];
+/** Record writes still allowed after untrusted text was read in the same turn. */
+export const TAINT_WRITE_CAP = 5;
+export const RECORD_WRITE_TOOLS = ["save_lead", "save_task", "save_deal", "save_client", "save_project", "save_invoice", "save_cost", "add_library_entry"];
+
+const nonEmpty = (v: unknown) => (typeof v === "string" ? v.trim().length > 0 : Array.isArray(v) ? v.length > 0 : false);
+
+/** Did this tool result put untrusted free text in front of the model? */
+export function taints(tool: string, input: Row, out: Row | null | undefined): boolean {
+  if (!out) return false;
+  if (tool === "read_file") return out.readable === true;
+  if (tool === "get") {
+    const kind = String(input?.kind ?? "");
+    const rec = (out.record ?? {}) as Row;
+    if (kind === "leads") return nonEmpty(rec.notes) || nonEmpty(out.last_messages) || nonEmpty(rec.hook) || nonEmpty(rec.pain);
+    if (kind === "library") return nonEmpty(rec.body);
+  }
+  return false;
+}
+
+/** Null when the call may run; else the model-readable reason it may not (this turn read untrusted text). */
+export function taintCheck(tool: string, input: Row, s: { tainted: boolean; writesAfterTaint: number }): string | null {
+  if (!s.tainted) return null;
+  const why = "This message's work read text from outside the business (a lead's notes or messages, a file or a library entry), so to be safe";
+  const ask = "Summarise what you found and what you would change, and ask the person to confirm in their next message.";
+  if (TAINT_BLOCKED.includes(tool)) return `${why} files, links and archiving cannot be changed in the same message. ${ask}`;
+  if (tool === "remember" && input?.scope === "business") return `${why} no business-wide memory can be saved in the same message. ${ask}`;
+  if (RECORD_WRITE_TOOLS.includes(tool) && s.writesAfterTaint >= TAINT_WRITE_CAP) {
+    return `${why} at most ${TAINT_WRITE_CAP} record changes can be made in the same message. ${ask}`;
+  }
+  return null;
+}
+
+/** A business-wide memory note only when the person's own message asks for one. */
+export function businessMemoryAllowed(userMessage: string): boolean {
+  return /\b(remember|from now on|always|never)\b/i.test(userMessage ?? "");
+}
+
+/** Per-call model timeout: at most perCall, cut so the call ends before the turn's hard limit (never under 5 s). */
+export function callTimeout(elapsedMs: number, perCall: number, hardMs: number): number {
+  return Math.max(5_000, Math.min(perCall, hardMs - elapsedMs));
+}
+
+/** file_links.kind for a table whose rows files can be linked to. */
+export const FILE_LINK_KIND: Record<string, string> = { leads: "lead", clients: "client", deals: "deal", projects: "project" };
+
+/** Why a change to this row cannot be undone at all (null when it can). */
+export function undoBlocked(table: string, current: Row): string | null {
+  if (table === "leads" && current?.status === "dnc") return "That lead has since opted out (do not contact), so the assistant will not change it. Change it on the lead's page if needed.";
+  return null;
+}

@@ -110,12 +110,19 @@ export function placeOf(chain: { id: string; name: string }[], homeId: string | 
 }
 
 /** Whether another move/rename is allowed this turn. */
-export function bulkCheck(doneThisTurn: number, confirmed: boolean): { ok: true } | { ok: false; message: string } {
-  if (!confirmed && doneThisTurn >= BULK_LIMIT) {
-    return { ok: false, message: `That would be more than ${BULK_LIMIT} files moved or renamed in one go. Stop, list the whole plan (each file and where it goes or its new name) and ask the person to confirm. Only after they say yes, redo it with confirmed: true.` };
+export function bulkCheck(doneThisTurn: number, _confirmed?: boolean): { ok: true } | { ok: false; message: string } {
+  // A hard cap: the model's own "confirmed" is not a gate, so more than BULK_LIMIT moves or renames
+  // always take another message from the person.
+  if (doneThisTurn >= BULK_LIMIT) {
+    return { ok: false, message: `At most ${BULK_LIMIT} files can be moved or renamed in one message. Stop now: say what you did, list the rest of the plan (each file and where it goes or its new name) and ask the person to say go in their next message.` };
   }
-  if (doneThisTurn >= BULK_CONFIRMED_LIMIT) return { ok: false, message: `At most ${BULK_CONFIRMED_LIMIT} file changes per message. Stop and tell the person what is left.` };
   return { ok: true };
+}
+
+/** True when an item (its own id plus its ancestors' ids) sits inside the home folder (or is it). No home: anything goes. */
+export function insideHome(ids: string[], homeId: string | null): boolean {
+  if (!homeId) return true;
+  return ids.includes(homeId);
 }
 
 /** How to get plain text out of a file, by kind. */
@@ -208,8 +215,21 @@ export async function unzipEntry(zip: Uint8Array, want: string, maxOut = 20 * 10
     const data = zip.subarray(start, start + csize);
     if (method === 0) return data.slice();
     if (method !== 8) return null;
-    const out = new Response(new Blob([data as unknown as BlobPart]).stream().pipeThrough(new DecompressionStream("deflate-raw")));
-    return new Uint8Array(await out.arrayBuffer());
+    // Streamed, and stopped at maxOut whatever the header claims (a zip bomb lies about usize).
+    const reader = new Blob([data as unknown as BlobPart]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+    const parts: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > maxOut) { await reader.cancel().catch(() => {}); return null; }
+      parts.push(value);
+    }
+    const all = new Uint8Array(total);
+    let o = 0;
+    for (const v of parts) { all.set(v, o); o += v.length; }
+    return all;
   }
   return null;
 }

@@ -671,6 +671,9 @@ async function logChange(ctx: Ctx, row: Row) {
   return data;
 }
 
+/** Is this caller kept inside the business folder? Everyone but the owner in the hub UI. */
+export const confined = (ctx: { member: { role: string }; source?: string }) => ctx.member.role !== "owner" || ctx.source === "assistant";
+
 /** Run one action. Same actions and shapes as onedrive.ts. */
 export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
   const action = String(body.action ?? "");
@@ -698,7 +701,12 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
     if ("body" in open) return open;
     const { d, conn } = open;
     const rootId = conn.root_id;
-    const resolve = (v: unknown) => (v === "root" || v === undefined || v === null || v === "" ? rootId : v === SHARED ? SHARED : itemId(v));
+    // Members (not the owner) and the assistant are confined to the business folder when one is set:
+    // "the top" means the business folder, and anything outside it is refused as forbidden.
+    const home = confined(ctx) ? await homeFolder(ctx.db) : null;
+    const top = home ? home.id : rootId;
+    const resolve = (v: unknown) => (v === "root" || v === undefined || v === null || v === "" ? top : v === SHARED ? SHARED : itemId(v));
+    const allowed = async (id: string | null) => !home || (id !== null && id !== SHARED && await isInside(ctx, id, home.id, d));
     const get = async (id: string, strict = false) => {
       if (id === SHARED) return sharedFolder(0);
       const raw = await getFile(d, id);
@@ -709,6 +717,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
     if (action === "list" || action === "folders") {
       const id = resolve(body.item_id);
       if (!id) return fail("bad_request");
+      if (!await allowed(id)) return fail("forbidden");
       if (id === SHARED) {
         const drives = await sharedDrives(d);
         const items = drives.map((x) => ({ ...sharedFolder(0), id: x.id, name: x.name, is_root: true, drive_id: x.id, parent_id: SHARED, web_url: `https://drive.google.com/drive/folders/${x.id}` }));
@@ -730,7 +739,8 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       const q = searchQuery(body.q);
       if (!q) return fail("bad_request");
       // Drive cannot search "anywhere under a folder", so search the drive and keep what is inside it.
-      const within = body.within === undefined || body.within === null || body.within === "" ? null : resolve(body.within);
+      let within = body.within === undefined || body.within === null || body.within === "" ? null : resolve(body.within);
+      if (home && (!within || !await allowed(within))) within = home.id;
       let items: Item[];
       if (within && within !== rootId) {
         // Search directly inside every folder of the business folder's tree, 40 folders a query.
@@ -749,6 +759,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
     }
 
     if (action === "read_text") {
+      if (!await allowed(itemId(body.id))) return fail("forbidden");
       const r = await readText(ctx, String(body.id ?? ""), Number(body.max_chars) || 20000, d);
       return r.ok ? ok(r as unknown as Row) : fail(r.error, { ...(r.unsupported ? { unsupported: r.unsupported } : {}), ...(r.item ? { item: r.item } : {}),
         ...(r.error === "unsupported" ? { message: r.unsupported === "pdf" ? "Reading PDFs is not available yet. Open it to read it." : "That kind of file has no text to read." } : {}) });
@@ -757,6 +768,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
     if (action === "item") {
       const id = itemId(body.id);
       if (!id) return fail("bad_request");
+      if (!await allowed(id)) return fail("forbidden");
       const it = await get(id, true);
       if (!it) return fail("outside_drive");
       const [signed] = await signItems(ctx.env, [it], { big: true });
@@ -771,6 +783,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       if (!id || !parent) return fail("bad_request");
       if (id === parent) return fail("bad_move");
       if (parent === SHARED) return fail("cross_drive");
+      if (!await allowed(id) || !await allowed(parent)) return fail("forbidden");
       const [cur, dest] = await Promise.all([get(id), get(parent)]);
       if (!cur || !dest) return fail("outside_drive");
       if (!dest.folder) return fail("bad_request", { message: "You can only move things into a folder." });
@@ -795,6 +808,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       const nm = cleanName(body.name);
       if (!id) return fail("bad_request");
       if (!nm.ok) return fail("bad_name");
+      if (!await allowed(id)) return fail("forbidden");
       const cur = await get(id);
       if (!cur) return fail("outside_drive");
       if (cur.is_root) return fail("bad_request");
@@ -815,6 +829,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       const nm = cleanName(body.name);
       if (!parent || parent === SHARED) return fail("bad_request");
       if (!nm.ok) return fail("bad_name");
+      if (!await allowed(parent)) return fail("forbidden");
       const dest = await get(parent);
       if (!dest) return fail("outside_drive");
       if (!dest.folder) return fail("bad_request");
@@ -833,6 +848,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       const { data: ch, error } = await ctx.db.from("file_changes").select("*").eq("id", body.change_id).maybeSingle();
       if (error) throw new Error(error.message);
       if (!ch || (ch.provider && ch.provider !== "gdrive")) return fail("not_found", { message: "That change is not in the log." });
+      if (ch.op !== "create_folder" && !await allowed(ch.item_id)) return fail("forbidden");
       let current: Item | null = null;
       if (ch.op !== "create_folder" && !ch.undone_at) {
         try { current = await get(ch.item_id); } catch (e) { if (!(e instanceof DriveError && e.code === "not_found")) throw e; }
@@ -852,6 +868,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       if (!id || !(LINK_KINDS as readonly string[]).includes(kind) || !isUuid(body.record_id)) return fail("bad_request");
       const { data: rec } = await ctx.db.from(LINK_TABLES[kind]).select("id").eq("id", body.record_id).maybeSingle();
       if (!rec) return fail("not_found", { message: `That ${kind} is not in the hub.` });
+      if (!await allowed(id)) return fail("forbidden");
       const it = await get(id, true);
       if (!it) return fail("outside_drive");
       const row = { item_id: it.id, name: it.name, web_url: it.web_url, mime: it.mime, is_folder: it.folder, kind, record_id: body.record_id, created_by: ctx.member.member_id, provider: "gdrive" };

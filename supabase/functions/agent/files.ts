@@ -5,15 +5,15 @@
 //  1. Nothing is deleted or trashed: the only writes are gdrive.ts runAction move, rename,
 //     create_folder and link, which log every file change in public.file_changes
 //     (source 'assistant', chat_id). Nothing here writes agent_changes for files.
-//  2. More than 3 files moved or renamed in one turn needs `confirmed: true`, which the prompt
-//     allows only after the person said yes to a listed plan (bulkCheck).
+//  2. At most 3 files moved or renamed per turn (bulkCheck, a hard cap). Everything is confined to
+//     the business folder (settings.files_home_id) when one is set (getItem / resolveFolder).
 //  3. File text reaches the model capped (20,000 characters) and wrapped as data.
 //  4. Only the connected account's own drives (gdrive.ts drops "shared with me" items).
 // ────────────────────────────────────────────────────────────────────────────────────────────
 import * as G from "../_shared/gdrive.ts";
 import { Refusal } from "./chat-rules.ts";
 import {
-  FILE_KINDS, ORIENT_TTL_MS, bulkCheck, docxText, buildQuery, capText, fileChange, fileRow, hubLink, matchFolder, orientation, placeOf,
+  FILE_KINDS, ORIENT_TTL_MS, bulkCheck, insideHome, docxText, buildQuery, capText, fileChange, fileRow, hubLink, matchFolder, orientation, placeOf,
   readPlan, scoreItem, searchWords, splitPath,
 } from "./files-rules.ts";
 
@@ -103,6 +103,13 @@ async function getItem(s: FileState, id: unknown): Promise<G.Item> {
   const raw = await call(G.getFile(s.d, fid));
   const it = G.shapeFile(raw, { rootId: s.rootId, strict: true });
   if (!it) refuse("No such file or folder in the business's Drive.");
+  // Confined to the business folder: the assistant reads and changes nothing outside it.
+  if (s.homeId && it!.id !== s.homeId) {
+    const chain = await chainOf(s, it!.parent_id);
+    if (!insideHome(chain.map((c) => c.id), s.homeId)) {
+      refuse("That item is outside the business folder. The assistant only works inside the business folder; the person can open the rest of Drive on the Files page.");
+    }
+  }
   return it!;
 }
 
@@ -125,7 +132,9 @@ async function resolveFolder(t: FileTurn, s: FileState, v: unknown): Promise<{ i
     const { chain } = await placeFor(s, it.parent_id);
     return { id: it.id, name: it.name, path: pathLabel(s, chain, it) };
   }
-  const { fromRoot, parts } = splitPath(raw, s.homeName);
+  const split = splitPath(raw, s.homeName);
+  const parts = split.parts;
+  const fromRoot = split.fromRoot && !s.homeId; // with a business folder, paths are always read inside it
   let cur = { id: fromRoot ? (s.rootId ?? "root") : start, name: fromRoot ? "My Drive" : (s.homeName ?? "My Drive") };
   const trail = [cur.name];
   for (const part of parts) {
@@ -167,8 +176,10 @@ export const FILE_TOOLS: Record<string, (t: FileTurn, input: Row) => Promise<Row
   async find_files(t, input) {
     const s = await drive(t);
     const kind = (FILE_KINDS as readonly string[]).includes(input.kind) ? input.kind : "any";
-    const anywhere = typeof input.folder === "string" && /^(anywhere|everywhere|whole drive|all|my drive|\/)$/i.test(input.folder.trim());
-    const scope = anywhere ? { id: s.rootId ?? "root", name: "My Drive", path: "My Drive" } : await resolveFolder(t, s, input.folder);
+    const anywhereAsked = typeof input.folder === "string" && /^(anywhere|everywhere|whole drive|all|my drive|\/)$/i.test(input.folder.trim());
+    // With a business folder, the search never leaves it ("anywhere" means the whole business folder).
+    const anywhere = anywhereAsked && !s.homeId;
+    const scope = anywhere ? { id: s.rootId ?? "root", name: "My Drive", path: "My Drive" } : await resolveFolder(t, s, anywhereAsked ? "" : input.folder);
     const limit = Math.min(30, Math.max(1, Number.isInteger(input.limit) ? input.limit : 15));
     const words = searchWords(input.query);
 
@@ -206,7 +217,7 @@ export const FILE_TOOLS: Record<string, (t: FileTurn, input: Row) => Promise<Row
     return {
       searched: scope.path, words, count: found.length, more_available: found.length > limit, items: rows,
       ...(loose ? { note: "No file matched every word; these match some of them. Say so if you are not sure it is the right one." } : {}),
-      ...(found.length ? {} : { note: `Nothing in ${scope.path} matched. Try other words${anywhere ? "" : ', or folder "anywhere" to search the whole Drive'}.` }),
+      ...(found.length ? {} : { note: `Nothing in ${scope.path} matched. Try other words${anywhere || s.homeId ? "" : ', or folder "anywhere" to search the whole Drive'}.` }),
     };
   },
 
@@ -264,10 +275,9 @@ export const FILE_TOOLS: Record<string, (t: FileTurn, input: Row) => Promise<Row
     const newName = typeof input.new_name === "string" ? input.new_name.trim() : "";
     const dest = typeof input.move_to_folder === "string" && input.move_to_folder.trim() ? input.move_to_folder : null;
     if (!newName && !dest) refuse("Give new_name, move_to_folder, or both.");
-    const confirmed = input.confirmed === true;
     const done: Row[] = [];
     if (dest) {
-      const ok = bulkCheck(t.fileOps ?? 0, confirmed);
+      const ok = bulkCheck(t.fileOps ?? 0);
       if (!ok.ok) refuse(ok.message);
       const folder = await resolveFolder(t, s, dest);
       if (folder.id === it.id) refuse("A folder cannot be moved into itself.");
@@ -279,7 +289,7 @@ export const FILE_TOOLS: Record<string, (t: FileTurn, input: Row) => Promise<Row
       }
     }
     if (newName) {
-      const ok = bulkCheck(t.fileOps ?? 0, confirmed);
+      const ok = bulkCheck(t.fileOps ?? 0);
       if (!ok.ok) refuse(ok.message);
       const r = await act(t, { action: "rename", id: it.id, name: newName });
       if (r.unchanged) done.push({ unchanged: true, note: "It already has that name." });

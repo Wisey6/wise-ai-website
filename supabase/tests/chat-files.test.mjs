@@ -64,9 +64,15 @@ test("more than 3 file moves or renames in one turn needs a confirmed plan", () 
   assert.equal(R.bulkCheck(2, false).ok, true);
   const no = R.bulkCheck(3, false);
   assert.equal(no.ok, false);
-  assert.match(no.message, /list the whole plan/);
-  assert.equal(R.bulkCheck(3, true).ok, true);
-  assert.equal(R.bulkCheck(R.BULK_CONFIRMED_LIMIT, true).ok, false);
+  assert.match(no.message, /list the rest of the plan/);
+  assert.equal(R.bulkCheck(3, true).ok, false, "the model's confirmed flag is not a gate");
+});
+
+test("home folder confinement: only the home folder and what is under it", () => {
+  assert.equal(R.insideHome(["a", "home", "root"], "home"), true);
+  assert.equal(R.insideHome(["home"], "home"), true);
+  assert.equal(R.insideHome(["a", "root"], "home"), false);
+  assert.equal(R.insideHome(["a"], null), true);
 });
 
 test("read plans: Google files export, text downloads, the rest is said plainly", () => {
@@ -118,7 +124,7 @@ test("orientation line: connected, not connected, needs reconnecting", () => {
 test("the prompt knows the business folder and the file tools are defined and strict-safe", () => {
   assert.match(CHAT_SYSTEM, /ONE Google Drive folder/);
   assert.match(CHAT_SYSTEM, /never delete or trash a file/);
-  assert.match(CHAT_SYSTEM, /more than 3 files/i);
+  assert.match(CHAT_SYSTEM, /at most 3 files/i);
   const names = CHAT_TOOLS.map((t) => t.name);
   for (const n of ["find_files", "open_file", "read_file", "organise_file", "new_folder", "link_file"]) assert.ok(names.includes(n), n);
   assert.deepEqual(names, [...names].sort(), "tools sorted for a stable prompt cache");
@@ -159,6 +165,15 @@ test("Word .docx text comes out of word/document.xml; other zips give null", asy
   assert.equal(await R.docxText(new Uint8Array([1, 2, 3])), null);
   assert.deepEqual(R.readPlan("word", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 1000), { how: "docx" });
   assert.equal(R.readPlan("word", "application/msword", 1000).how, "unsupported");
+});
+
+test("a zip entry that inflates past the cap is refused even when its header lies", async () => {
+  const big = zip([["word/document.xml", "a".repeat(50_000), true]]);
+  const buf = Buffer.from(big);
+  const cd = buf.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+  buf.writeUInt32LE(10, cd + 24); // claims 10 bytes uncompressed
+  assert.equal(await R.unzipEntry(new Uint8Array(buf), "word/document.xml", 1000), null);
+  assert.equal((await R.unzipEntry(new Uint8Array(buf), "word/document.xml", 100_000)).length, 50_000);
 });
 
 test("tool results show timestamps in local time, never UTC", async () => {
