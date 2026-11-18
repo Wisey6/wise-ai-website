@@ -9,7 +9,7 @@
 //    try/catch and toast the error.
 //  - fn() and sendSms() never throw on HTTP errors.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118d';
+import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118e';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
@@ -244,6 +244,9 @@ export const state = {
   agents: null,
   agent_runs: [],
   agent_actions: [],
+  agent_chats: [],
+  agent_changes: [],
+  agent_memory: [],
   sms: null,
   smsChecked: false,
   loaded: false,
@@ -354,6 +357,7 @@ export const BUSINESS_TABLES = ['clients', 'deals', 'proposals', 'projects', 'ta
 const TABLE_KEY = {
   leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events',
   agent_runs: 'agent_runs', agent_actions: 'agent_actions', team_members: 'team',
+  agent_chats: 'agent_chats', agent_changes: 'agent_changes', agent_memory: 'agent_memory',
   ...Object.fromEntries(BUSINESS_TABLES.map((t) => [t, t]))
 };
 
@@ -378,9 +382,18 @@ function applyChange(table, type, row, old) {
   if (table === 'events') {
     upsertInto(list, row, { prepend: true });
     if (list.length > 200) list.length = 200;
-  } else if (table === 'agent_runs' || table === 'agent_actions') {
+  } else if (table === 'agent_runs' || table === 'agent_actions' || table === 'agent_changes') {
     upsertInto(list, row, { prepend: true });
     if (list.length > 200) list.length = 200;
+  } else if (table === 'agent_chats') {
+    // Realtime also delivers rows this person may not read back; keep only their own.
+    if (state.me && row.member_id !== state.me.id) return;
+    upsertInto(list, row, { prepend: true });
+    list.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+  } else if (table === 'agent_memory') {
+    const i = list.findIndex((r) => r.id === row.id);
+    if (!row.active) { if (i >= 0) list.splice(i, 1); }
+    else upsertInto(list, row, { prepend: true });
   } else if (table === 'leads' || BUSINESS_TABLES.includes(table)) {
     upsertInto(list, row, { prepend: true });
   } else if (table === 'bookings') {
@@ -728,6 +741,7 @@ export async function loadAgents() {
     if (!runs.error) state.agent_runs = runs.data;
     if (!actions.error) state.agent_actions = actions.data;
   } catch { /* the agents area simply stays empty */ }
+  loadChats();
   notify();
   return agentStatus();
 }
@@ -746,6 +760,91 @@ export async function agentRun(agent, input = {}) {
   if (status === 200 && res.ok) return res;
   const error = res.error || (status === 0 ? 'network' : 'ai_error');
   return { ...res, ok: false, error, message: res.detail || AGENT_ERRORS[error] || AGENT_ERRORS.ai_error };
+}
+
+/* ------------------------------------------------------------ the assistant
+   One conversation-based assistant (`agent` function, agent 'chat'). It reads the hub and
+   makes the changes it is asked for; every change is an agent_changes row that can be undone.
+     state.agent_chats    this person's conversations, most recent first, live
+     state.agent_changes  latest 200 changes it made, newest first, live
+     state.agent_memory   what it remembers (this person's notes + the business's), live
+   Every call below never throws: {ok:true, ...} or {ok:false, error, message}. */
+export async function loadChats() {
+  try {
+    const [chats, changes, memory] = await Promise.all([
+      sb.from('agent_chats').select('*').order('updated_at', { ascending: false }).limit(200),
+      sb.from('agent_changes').select('*').order('at', { ascending: false }).limit(200),
+      sb.from('agent_memory').select('*').eq('active', true).order('created_at', { ascending: false }).limit(200)
+    ]);
+    if (!chats.error) state.agent_chats = chats.data;
+    if (!changes.error) state.agent_changes = changes.data;
+    if (!memory.error) state.agent_memory = memory.data;
+  } catch { /* the assistant simply starts with no history */ }
+  notify();
+}
+
+async function agentCall(body) {
+  const { status, data } = await fn('agent', body);
+  const res = data && typeof data === 'object' ? data : {};
+  if (state.agents && typeof res.spent_usd === 'number') state.agents = { ...state.agents, spent_usd: res.spent_usd };
+  if (status === 200 && res.ok) return res;
+  const error = res.error || (status === 0 ? 'network' : 'ai_error');
+  return { ...res, ok: false, error, message: res.detail || AGENT_ERRORS[error] || AGENT_ERRORS.ai_error };
+}
+
+/** Send one message. No chat_id starts a new conversation. */
+export async function chatSend({ chat_id, message }) {
+  const res = await agentCall({ agent: 'chat', ...(chat_id ? { chat_id } : {}), message });
+  if (res.ok) {
+    upsertInto(state.agent_chats, { id: res.chat_id, title: res.title || 'New conversation', member_id: state.me?.id || null, archived: false, updated_at: new Date().toISOString() }, { prepend: true });
+    state.agent_chats.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+    for (const c of res.changes || []) if (c && c.id && !state.agent_changes.some((x) => x.id === c.id)) state.agent_changes.unshift(c);
+    if (res.draft && res.draft.lead_id && res.draft.body) {
+      try { sessionStorage.setItem('wiseos.draft.' + res.draft.lead_id, res.draft.body); } catch { /* private window */ }
+    }
+    notify();
+  }
+  return res;
+}
+
+/** The messages of one conversation, oldest first. */
+export async function chatMessages(chatId) {
+  try {
+    const { data, error } = await sb.from('agent_chat_messages').select('*').eq('chat_id', chatId).order('id', { ascending: true }).limit(500);
+    if (error) return { ok: false, error: 'load', message: 'Could not load that conversation.' };
+    return { ok: true, messages: (data || []).filter((m) => m.model !== 'recap') };
+  } catch { return { ok: false, error: 'network', message: 'Could not load that conversation.' }; }
+}
+
+export async function chatRename(chatId, title) {
+  const res = await agentCall({ action: 'chat_rename', chat_id: chatId, title });
+  if (res.ok) { upsertInto(state.agent_chats, { id: chatId, title: res.title || title }); notify(); }
+  return res;
+}
+
+export async function chatArchive(chatId, archived = true) {
+  const res = await agentCall({ action: 'chat_archive', chat_id: chatId, archived });
+  if (res.ok) { upsertInto(state.agent_chats, { id: chatId, archived }); notify(); }
+  return res;
+}
+
+export async function chatDelete(chatId) {
+  const res = await agentCall({ action: 'chat_delete', chat_id: chatId });
+  if (res.ok) { state.agent_chats = state.agent_chats.filter((c) => c.id !== chatId); notify(); }
+  return res;
+}
+
+/** Put one change the assistant made back the way it was. */
+export async function undoChange(changeId) {
+  const res = await agentCall({ action: 'undo', change_id: changeId });
+  if (res.ok) { upsertInto(state.agent_changes, { id: changeId, undone_at: res.undone_at || new Date().toISOString() }); notify(); }
+  return res;
+}
+
+export async function memoryDelete(id) {
+  const res = await agentCall({ action: 'memory_delete', id });
+  if (res.ok) { state.agent_memory = state.agent_memory.filter((m) => m.id !== id); notify(); }
+  return res;
 }
 
 const LEAD_STATUSES_AGENT = ['new', 'queued', 'contacted', 'replied', 'interested', 'booked', 'won', 'lost'];

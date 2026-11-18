@@ -3,8 +3,8 @@
 // Bodies are plain text with a small, safe formatter (built with el(), never innerHTML).
 import {
   el, icon, toast, confirmDialog, field, input, select, emptyState, copyText, busy, timeAgo, plural, go
-} from '../ui.js?v=20261118d';
-import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118d';
+} from '../ui.js?v=20261118e';
+import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118e';
 
 export const KINDS = [
   { id: 'playbook', label: 'Playbook' },

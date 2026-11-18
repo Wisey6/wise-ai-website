@@ -2,18 +2,22 @@
 // and the allowlist validator for proposed actions. No Deno APIs, so Node can unit-test it.
 import { localParts, startOfLocalDay } from "../_shared/time.ts";
 
-export const AGENTS = ["researcher", "briefing", "ask", "doer"] as const;
+export const AGENTS = ["researcher", "briefing", "ask", "doer", "chat"] as const;
 export type AgentName = typeof AGENTS[number];
 
 /** Runs per local day, per agent. */
-export const DAILY_LIMITS: Record<AgentName, number> = { researcher: 40, briefing: 4, ask: 150, doer: 30 };
-export const MAX_TOKENS: Record<AgentName, number> = { researcher: 6000, briefing: 4000, ask: 3000, doer: 6000 };
+export const DAILY_LIMITS: Record<AgentName, number> = { researcher: 40, briefing: 4, ask: 150, doer: 30, chat: 300 };
+export const MAX_TOKENS: Record<AgentName, number> = { researcher: 6000, briefing: 4000, ask: 3000, doer: 6000, chat: 16000 };
 
 export const SONNET = "claude-sonnet-5-5";
 export const HAIKU = "claude-haiku-5-5";
 
-// US$ per million tokens [input, output]; cache reads at 10% of input; web search $0.01 each.
-const PRICE: Record<string, [number, number]> = { haiku: [0.10, 0.50], sonnet: [2, 10], opus: [5, 25] };
+// US$ per million tokens: [input, output, cache read, 5-minute cache write]. Web search $0.01 each.
+const PRICE: Record<string, [number, number, number, number]> = {
+  haiku: [0.10, 0.50, 0.01, 0.125],
+  sonnet: [2, 10, 0.10, 2.50],
+  opus: [4, 20, 0.20, 5],
+};
 export const SEARCH_PRICE = 0.01;
 
 export type Usage = {
@@ -46,10 +50,10 @@ function priceKey(model: string): string {
   return model.includes("haiku") ? "haiku" : model.includes("opus") ? "opus" : "sonnet";
 }
 
-/** US dollars for the totals at list price (cache writes billed as input, close enough for logging). */
+/** US dollars for the totals at list price (cache reads and writes at their own rates). */
 export function costOf(model: string, t: Totals): number {
-  const [pin, pout] = PRICE[priceKey(model)];
-  const tokens = ((t.input + t.cacheWrite) * pin + t.cacheRead * pin * 0.1 + t.output * pout) / 1_000_000;
+  const [pin, pout, pread, pwrite] = PRICE[priceKey(model)];
+  const tokens = (t.input * pin + t.cacheWrite * pwrite + t.cacheRead * pread + t.output * pout) / 1_000_000;
   return Math.round((tokens + t.searches * SEARCH_PRICE) * 1_000_000) / 1_000_000;
 }
 

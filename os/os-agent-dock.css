@@ -1,97 +1,196 @@
 /* =============================================================================
-   Wise AI agent launcher: the white owl on a slow "paint splodge" (near-black with
-   a blue hue), and the dropdown panel. Floats, so it carries --shadow-float. Sits
-   above pages and the rail, below drawers (80/90), modals (100), the palette (150)
-   and toasts (200). Hidden while a modal or the palette is open.
+   Wise AI assistant: a command bar at the bottom centre (think of a CAD command line).
+   At rest, a small "Ask Wise AI" pill: the white owl in a navy circle, the label and
+   the shortcut, with a breathing ring, a turning arc while it works and a dot when an
+   answer is waiting. Focused, it widens in place into a long bar that is the composer,
+   and the conversation stacks up above it: the newest next to the bar, the older part
+   fading out at the top, the whole thing one click away. A reply that lands while it is
+   folded shows briefly above the pill. Sits above pages and the rail, below drawers
+   (80/90), modals (100), the palette (150) and toasts (200). Pages keep a band at the
+   bottom free for it (end of this file).
    ========================================================================== */
-:root { --agd-size: 52px; --agd-top: 16px; --agd-right: 20px; --agd-ink: #0A0E11; --agd-blue: #2563EB; --agd-navy: #0B1E4D; }
-
-.agd-launch {
-  position: fixed; top: var(--agd-top); right: var(--agd-right); z-index: 60;
-  width: var(--agd-size); height: var(--agd-size); padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer;
-  display: grid; place-items: center; -webkit-tap-highlight-color: transparent;
-  transition: transform 180ms var(--ease);
+:root {
+  --agd-h: 46px; --agd-orb: 34px; --agd-gap: 16px; --agd-rest: 212px; --agd-wide: 720px;
+  --agd-band: calc(var(--agd-h) + var(--agd-gap) + 24px); --agd-off: var(--dock, 64px);
+  --agd-navy: #0B1E4D; --agd-blue: #2563EB; --agd-shadow: 0 1px 2px rgba(10,14,17,.06), 0 10px 30px rgba(10,14,17,.12);
 }
-.agd-launch:hover { transform: scale(1.04); }
-.agd-launch:active { transform: scale(.97); }
-.agd-launch:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 50%; }
-.agd-launch[aria-expanded="true"] .agd-mark { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--agd-blue), 0 10px 30px rgba(37,99,235,.28); }
-body:has(.modal-backdrop) .agd-launch, body:has(.pal) .agd-launch, body:has(.gate) .agd-launch,
-body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hidden; }
+body:has(.shell.nav-pinned) { --agd-off: var(--rail-w, 240px); }
 
-/* -- the mark: blob + hues + owl */
+.agd-dock {
+  position: fixed; z-index: 60; left: var(--agd-off); right: 0; bottom: calc(var(--agd-gap) + var(--agd-kb, 0px)); margin: 0 auto;
+  width: var(--agd-rest); max-width: calc(100vw - var(--agd-off) - 32px);
+  display: flex; flex-direction: column; align-items: stretch;
+  transition: width 260ms var(--ease), left var(--dur-slow) var(--ease);
+}
+.agd-dock[hidden] { display: none; }
+.agd-dock[data-agd-state=open] { width: min(var(--agd-wide), 92vw, calc(100vw - var(--agd-off) - 48px)); }
+
+/* -- the small pill */
+.agd-launch {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: var(--agd-h); padding: 0 12px 0 6px;
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill); background: var(--paper); color: var(--ink);
+  font: inherit; font-size: var(--fs-sm); font-weight: 500; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--agd-shadow);
+  transition: box-shadow var(--dur-slow) var(--ease), border-color var(--dur) var(--ease), transform 140ms var(--ease);
+}
+.agd-launch[hidden], .agd-dock[data-agd-state=open] .agd-launch { display: none; }
+.agd-launch:hover { border-color: var(--ink); box-shadow: 0 1px 2px rgba(10,14,17,.08), 0 14px 36px rgba(10,14,17,.18); }
+.agd-launch:active { transform: scale(.97); }
+.agd-launch:focus-visible { outline: 2px solid var(--agd-blue); outline-offset: 3px; }
+
+.agd-orb, .agd-bar-orb { position: relative; flex: none; display: grid; place-items: center; width: var(--agd-orb); height: var(--agd-orb); }
+.agd-launch .agd-orb { margin-right: auto; }
 .agd-mark {
   position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%;
-  isolation: isolate; transition: box-shadow var(--dur-slow) var(--ease);
+  background: var(--agd-navy); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
-.agd-mark.is-sm { width: var(--agd-size); height: var(--agd-size); }
-.agd-mark.is-lg { width: 56px; height: 56px; flex: none; }
-.agd-blob {
-  position: absolute; inset: 0; overflow: hidden; z-index: 0;
-  background: radial-gradient(120% 120% at 30% 25%, #141B26 0%, var(--agd-ink) 55%);
-  border-radius: 46% 54% 52% 48% / 50% 44% 56% 50%;
-  box-shadow: 0 4px 12px rgba(10,14,17,.22);
-  animation: agd-morph 10s cubic-bezier(.45,.05,.55,.95) infinite alternate, agd-glow 6s ease-in-out infinite;
-}
-.agd-hue { position: absolute; border-radius: 50%; filter: blur(7px); mix-blend-mode: screen; pointer-events: none; }
-.agd-hue.is-a { width: 70%; height: 70%; left: -10%; top: 38%; background: radial-gradient(circle at 50% 50%, rgba(37,99,235,.78), rgba(37,99,235,0) 66%); animation: agd-drift-a 9s ease-in-out infinite alternate; }
-.agd-hue.is-b { width: 64%; height: 64%; right: -18%; top: -16%; background: radial-gradient(circle at 50% 50%, rgba(30,64,175,.6), rgba(11,30,77,0) 70%); animation: agd-drift-b 13s ease-in-out infinite alternate; }
-.agd-hue.is-c { width: 40%; height: 40%; left: 36%; top: 52%; background: radial-gradient(circle at 50% 50%, rgba(147,197,253,.26), rgba(147,197,253,0) 70%); animation: agd-drift-c 8s ease-in-out infinite alternate; }
-.is-lg .agd-hue { filter: blur(9px); }
-.agd-owl { position: relative; z-index: 1; display: block; width: 20px; height: 26px; overflow: hidden; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
-.agd-owl img { height: 26px; width: auto; max-width: none; filter: brightness(0) invert(1); }
-.is-lg .agd-owl { width: 22px; height: 29px; }
-.is-lg .agd-owl img { height: 29px; }
+.agd-mark.is-lg { width: 34px; height: 34px; flex: none; }
+.agd-owl { display: block; width: 15px; height: 20px; overflow: hidden; }
+.agd-owl img { height: 20px; width: auto; max-width: none; filter: brightness(0) invert(1); }
+.agd-launch:hover .agd-mark { background: #0E2766; }
 
-@keyframes agd-morph {
-  0%   { border-radius: 46% 54% 52% 48% / 50% 44% 56% 50%; transform: rotate(0deg) scale(1); }
-  25%  { border-radius: 60% 40% 38% 62% / 44% 60% 40% 56%; transform: rotate(18deg) scale(1.02); }
-  50%  { border-radius: 38% 62% 63% 37% / 60% 43% 57% 40%; transform: rotate(-10deg) scale(.985); }
-  75%  { border-radius: 62% 38% 46% 54% / 39% 58% 42% 61%; transform: rotate(12deg) scale(1.025); }
-  100% { border-radius: 49% 51% 38% 62% / 55% 40% 60% 45%; transform: rotate(-12deg) scale(1); }
+/* alive: a soft breathing ring at rest, a turning arc while it works */
+.agd-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(37,99,235,0); pointer-events: none; }
+.agd-launch[data-state=idle] .agd-ring { animation: agd-breathe 4.8s ease-in-out infinite; }
+.agd-launch.is-busy .agd-ring, .agd-bar-orb.is-busy .agd-ring {
+  border-color: rgba(37,99,235,.16); border-top-color: var(--agd-blue); border-right-color: var(--agd-blue);
+  animation: agd-turn 1.1s linear infinite;
 }
-@keyframes agd-drift-a { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(18%, -14%) scale(1.12); } 100% { transform: translate(34%, -30%) scale(.92); } }
-@keyframes agd-drift-b { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-22%, 26%) scale(1.15); } 100% { transform: translate(-8%, 40%) scale(.95); } }
-@keyframes agd-drift-c { 0% { transform: translate(0, 0); opacity: .6; } 100% { transform: translate(-30%, -40%); opacity: 1; } }
-@keyframes agd-glow {
-  0%, 100% { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 6px 0 rgba(37,99,235,.16); }
-  50% { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 14px 1px rgba(37,99,235,.32); }
-}
-/* An agent at work: a little faster, a little brighter. */
-.agd-launch.is-busy .agd-blob { animation-duration: 4.5s, 2.2s; }
-.agd-launch.is-busy .agd-hue.is-a { animation-duration: 3.6s; }
-.agd-launch.is-busy .agd-hue.is-b { animation-duration: 5s; }
-.agd-launch.is-busy .agd-hue.is-c { animation-duration: 3s; }
-.agd-launch.is-busy .agd-blob { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 20px 3px rgba(37,99,235,.42); }
+@keyframes agd-breathe { 0%, 100% { border-color: rgba(37,99,235,0); transform: scale(.92); } 50% { border-color: rgba(37,99,235,.32); transform: scale(1); } }
+@keyframes agd-turn { to { transform: rotate(360deg); } }
 
+.agd-dot {
+  position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--agd-blue); box-shadow: 0 0 0 2px var(--paper); transform: scale(0); transition: transform var(--dur-slow) var(--ease);
+}
+.agd-launch.is-ready .agd-dot { transform: scale(1); }
+.agd-launch.is-ready { border-color: var(--agd-blue); }
+.agd-launch.is-ready .agd-label { color: var(--agd-blue); }
 .agd-count {
-  position: absolute; top: -2px; right: -2px; z-index: 2; min-width: 19px; height: 19px; padding: 0 5px; border-radius: var(--radius-pill);
-  background: var(--paper); color: var(--ink); font-size: 10.5px; font-weight: 600; line-height: 19px; text-align: center; font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 1.5px var(--ink), 0 2px 6px rgba(10,14,17,.2);
+  position: absolute; bottom: -4px; right: -6px; z-index: 2; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
+  background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--paper);
 }
+.agd-words { display: inline-flex; align-items: center; gap: 10px; flex: 1; justify-content: space-between; min-width: 0; white-space: nowrap; }
+.agd-label { letter-spacing: -.005em; }
+.agd-kbd {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--mist);
+  font-family: inherit; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: .01em;
+}
+.agd-tip {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); padding: 6px 10px; border-radius: var(--radius-s); transform: translate(-50%, 3px);
+  background: var(--ink); color: #fff; font-size: var(--fs-meta); font-weight: 500; white-space: pre; pointer-events: none;
+  opacity: 0; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.agd-launch:focus-visible .agd-tip { opacity: 1; transform: translate(-50%, 0); }
+.agd-dock:has(.agd-peek:not([hidden])) .agd-tip { display: none; }
 
-/* -- the panel */
+/* -- the bar: the chat composer, moved here */
+.agd-barslot { display: none; }
+.agd-dock[data-agd-state=open] .agd-barslot { display: block; animation: agd-fade 180ms var(--ease) both; }
+@keyframes agd-fade { from { opacity: 0; } }
+.agd-dock .cx-composer { gap: 8px; padding: 0; background: none; border: 0; }
+.agd-dock .cx-under { display: none; }
+.agd-dock .cx-box {
+  align-items: flex-end; gap: 6px; min-height: var(--agd-h); padding: 5px 5px 5px 5px; border-radius: 23px; border-color: var(--ink);
+  box-shadow: 0 1px 2px rgba(10,14,17,.08), 0 16px 40px rgba(10,14,17,.18);
+}
+.agd-dock .cx-box:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(37,99,235,.14), 0 16px 40px rgba(10,14,17,.18); }
+.agd-dock .cx-input { min-height: 34px; padding: 6px 4px 6px 6px; font-size: var(--fs-body); line-height: 22px; }
+.agd-dock .cx-send { width: 34px; height: 34px; }
+.agd-tools { display: inline-flex; align-items: center; gap: 0; flex: none; }
+.agd-tool, .agd-hbtn {
+  width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted);
+  display: grid; place-items: center; cursor: pointer; transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.agd-tool:hover, .agd-hbtn:hover { background: var(--mist); color: var(--ink); }
+.agd-tool.is-on { background: var(--mist-2); color: var(--ink); }
+.agd-tool:focus-visible, .agd-hbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.agd-tool[data-act=agd-expand].is-on .icon { transform: rotate(180deg); }
+.agd-flip { display: grid; transform: rotate(180deg); }
+
+/* -- above the bar: the conversation, going up */
 .agd-panel {
-  position: fixed; top: calc(var(--agd-top) + var(--agd-size) + 10px); right: var(--agd-right); z-index: 61;
-  width: min(420px, calc(100vw - 32px)); max-height: min(70vh, 760px); display: flex; flex-direction: column;
-  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--shadow-float); overflow: hidden;
-  transform-origin: top right; opacity: 0; transform: translateY(-6px) scale(.985);
-  transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); display: flex; flex-direction: column; justify-content: flex-end;
+  max-height: min(45vh, calc(100dvh - var(--agd-gap) - var(--agd-h) - var(--agd-kb, 0px) - 40px));
+  opacity: 0; transform: translateY(8px); transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
 }
 .agd-panel.is-in { opacity: 1; transform: none; }
-.agd-head {
-  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5); flex: none;
-  background: var(--void) radial-gradient(120% 140% at 0% 0%, #111A2A, var(--void) 60%); color: #fff;
+.agd-head { display: none; }
+.agd-body { min-height: 0; display: flex; flex-direction: column; }
+.agd-dock .cx.is-dock { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.agd-dock .cx.is-dock[data-view=chat] .cx-hist, .agd-dock .cx.is-dock[data-view=history] .cx-conv { display: none; }
+.agd-dock .cx.is-dock .cx-conv { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.agd-dock .cx.is-dock .cx-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4) var(--space-5);
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--agd-shadow);
+  scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
 }
+/* only the most recent part shows; the top edge fades out when there is more */
+.agd-dock.has-more:not(.is-expanded) .cx-scroll {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 72px); mask-image: linear-gradient(to bottom, transparent 0, #000 72px);
+  padding-top: 56px; border-top-color: transparent;
+}
+.agd-earlier {
+  position: absolute; top: 6px; left: 50%; z-index: 2; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px;
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill); background: var(--paper); color: var(--ink); font: inherit; font-size: var(--fs-meta); font-weight: 500; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(10,14,17,.08);
+}
+.agd-earlier[hidden] { display: none; }
+.agd-earlier:hover { border-color: var(--ink); }
+
+.agd-dock .cx-log { gap: var(--space-4); }
+.agd-dock .cx-msg.is-agent { max-width: none; }
+.agd-dock .cx-change { grid-template-columns: 58px minmax(0, 1fr) auto; gap: var(--space-2); padding: 7px 0; }
+.agd-dock .cx-change-acts { gap: var(--space-3); }
+.agd-dock .cx-empty { gap: var(--space-2); }
+.agd-dock .cx-empty-h { font-size: var(--fs-h2); line-height: var(--lh-snug); }
+.agd-dock .cx-empty-p { font-size: var(--fs-sm); }
+.agd-dock .cx-examples { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-4); }
+
+/* expanded (the whole conversation) and history: one quiet sheet with a header, up to 80vh */
+.agd-dock.is-expanded .agd-panel {
+  max-height: min(80vh, calc(100dvh - var(--agd-gap) - var(--agd-h) - var(--agd-kb, 0px) - 40px)); height: min(80vh, calc(100dvh - var(--agd-gap) - var(--agd-h) - var(--agd-kb, 0px) - 40px));
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--shadow-float); overflow: hidden;
+}
+.agd-dock.is-off .agd-panel, .agd-dock[data-view=history] .agd-panel { height: auto; }
+.agd-dock.is-expanded .agd-head {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); flex: none; border-bottom: 1px solid var(--line);
+}
+.agd-dock.is-expanded .agd-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.agd-dock.is-expanded .cx-scroll { background: none; border: 0; border-radius: 0; box-shadow: none; padding: var(--space-5); }
+.agd-dock .cx.is-dock .cx-hist { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4) var(--space-5) var(--space-3); scrollbar-width: thin; }
+.agd-dock.is-off .agd-head { display: flex; }
 .agd-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.agd-title { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; }
-.agd-for { font-size: var(--fs-meta); color: var(--platinum); }
-.agd-spend { font-size: 11.5px; color: var(--silver); }
-.agd-close { align-self: flex-start; width: 32px; height: 32px; border-radius: var(--radius-s); border: 0; background: transparent; color: var(--chrome); display: grid; place-items: center; cursor: pointer; }
-.agd-close:hover { background: rgba(255,255,255,.08); color: #fff; }
-.agd-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-.agd-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
-.agd-body { display: flex; flex-direction: column; }
+.agd-title { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: 17px; letter-spacing: -.02em; line-height: 1.15; }
+.agd-for { font-size: var(--fs-meta); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-head-acts { display: flex; align-items: center; gap: 2px; flex: none; }
+.agd-hbtn { width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.agd-hbtn:hover { background: var(--mist); color: var(--ink); }
+.agd-hbtn.is-on { background: var(--mist-2); color: var(--ink); }
+.agd-hbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* -- the brief line: the newest reply, shown for a moment above the small pill */
+.agd-peek {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); width: min(440px, calc(100vw - 32px)); transform: translate(-50%, 6px);
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "by meta" "text text"; gap: 4px var(--space-3); padding: 10px 14px 12px; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--paper); color: var(--ink); font: inherit; cursor: pointer;
+  box-shadow: var(--agd-shadow); opacity: 0; transition: opacity 200ms var(--ease), transform 220ms var(--ease);
+}
+.agd-peek[hidden] { display: none; }
+.agd-peek.is-in { opacity: 1; transform: translate(-50%, 0); }
+.agd-peek:hover { border-color: var(--ink); }
+.agd-peek:focus-visible { outline: 2px solid var(--agd-blue); outline-offset: 2px; }
+.agd-peek-by { grid-area: by; font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--ink); }
+.agd-peek-meta { grid-area: meta; justify-self: end; font-size: var(--fs-meta); color: var(--muted); }
+.agd-peek-text { grid-area: text; font-size: var(--fs-sm); line-height: 1.45; color: var(--body); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.agd-peek.is-error .agd-peek-by { color: var(--rose-t); }
+
+body:has(.modal-backdrop) .agd-dock, body:has(.pal) .agd-dock, body:has(.gate) .agd-dock, body:has(.drawer) .agd-dock { visibility: hidden; }
+
+.agd-foot { margin-top: auto; padding-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.agd-foot .agd-quick { border-top: 1px solid var(--ink); }
+.agd-meta { padding-top: var(--space-1); }
 .agd-sec { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--line); }
 .agd-sec:first-child { border-top: 0; }
 .agd-sec-h { margin: 0; font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--muted); }
@@ -120,27 +219,43 @@ body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hi
 .agd-brief-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agd-off { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5); font-size: var(--fs-sm); color: var(--body); }
 
-/* Clear room for the launcher on desktop: the top row of each page stops short of it,
-   and toasts start below it. */
+/* Room for the bar: every page ends with a free band at the bottom, so the last rows and
+   buttons can always be scrolled clear of it; full-height and sticky panes stop above it.
+   On the Agents page the assistant is the page, so the bar steps aside. */
 @media (min-width: 761px) {
-  body:has(.agd-launch) .page > :first-child:not(.inbox-side) { margin-right: calc(var(--agd-size) + 12px); }
-  body:has(.agd-launch) .page.inbox { margin-right: calc(var(--agd-size) + 12px); }
-  body:has(.agd-launch) .toast-wrap { top: calc(var(--agd-top) + var(--agd-size) + 12px); }
+  body:has(.agd-dock:not([hidden])) .main { padding-bottom: calc(var(--agd-band) + var(--space-3)); }
+  body:has(.agd-dock:not([hidden])) .page.inbox { height: calc(100dvh - var(--space-6) - var(--agd-band)); margin-bottom: 0; }
+  body:has(.agd-dock:not([hidden])) .fl-pane,
+  body:has(.agd-dock:not([hidden])) .fl-col-tree { max-height: calc(100dvh - var(--space-6) - var(--agd-band)); }
+  body:has(.agd-dock:not([hidden])) .lib-side { max-height: calc(100dvh - var(--space-7) - var(--agd-band)); }
+  body:has(.agd-dock:not([hidden])) .prop-preview { max-height: calc(100vh - 32px - var(--agd-band)); }
+  body:has(.agd-dock:not([hidden])) .set-savebar.is-dirty { bottom: var(--agd-band); }
 }
 
-/* Phones: bottom right above the tab bar; the panel is a sheet from the bottom. */
+/* Phones: the pill sits just above the tab bar; focused, the bar spans the width and rides
+   above the on-screen keyboard. */
 @media (max-width: 760px) {
-  :root { --agd-size: 48px; }
-  .agd-launch { top: auto; right: 16px; bottom: calc(62px + 14px + env(safe-area-inset-bottom)); z-index: 34; }
-  .agd-panel {
-    top: auto; left: 0; right: 0; bottom: calc(63px + env(safe-area-inset-bottom)); width: auto; max-height: calc(100dvh - 62px - 72px - env(safe-area-inset-bottom));
-    border-radius: var(--radius-l) var(--radius-l) 0 0; border-bottom: 0; transform-origin: bottom center; transform: translateY(16px);
-  }
-  .agd-panel.is-in { transform: none; }
-  body:has(.more-layer) .agd-launch { visibility: hidden; }
+  :root { --agd-off: 0px; --agd-gap: calc(62px + 10px + env(safe-area-inset-bottom)); --agd-rest: 172px; --agd-h: 46px; }
+  .agd-dock { left: 0; z-index: 34; }
+  .agd-dock.is-kb { bottom: calc(8px + var(--agd-kb)); z-index: 61; }
+  .agd-dock[data-agd-state=open] { width: calc(100vw - 16px); z-index: 61; }
+  .agd-kbd { display: none; }
+  .agd-tip { display: none; }
+  .agd-dock .cx-examples { grid-template-columns: 1fr; }
+  .agd-dock .cx.is-dock .cx-scroll { padding: var(--space-4); }
+  body:has(.agd-dock:not([hidden])) .main { padding-bottom: calc(96px + 64px + env(safe-area-inset-bottom)); }
+  body:has(.agd-dock:not([hidden])) .page.inbox { height: calc(100dvh - 56px - 63px - 64px - env(safe-area-inset-bottom)); }
+  body:has(.agd-dock:not([hidden])) .set-savebar.is-dirty { bottom: 64px; }
+  body:has(.more-layer) .agd-dock { visibility: hidden; }
+  /* narrow ledger lines: the change, then its actions; the op word goes */
+  .agd-dock .cx-change { grid-template-columns: minmax(0, 1fr) auto; }
+  .agd-dock .cx-op { display: none; }
+  .agd-dock .cx-input::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agd-blob, .agd-hue, .agd-launch.is-busy .agd-blob, .agd-launch.is-busy .agd-hue { animation: none !important; }
-  .agd-panel { transition: none; }
+  .agd-launch[data-state=idle] .agd-ring { animation: none; }
+  .agd-launch.is-busy .agd-ring, .agd-bar-orb.is-busy .agd-ring { animation: none; border-color: var(--agd-blue); }
+  .agd-dock, .agd-launch, .agd-dot, .agd-tip, .agd-panel, .agd-peek { transition: none; }
+  .agd-dock[data-agd-state=open] .agd-barslot { animation: none; }
 }

@@ -1,8 +1,8 @@
 // Wise AI OS command palette: "Search or jump to…" (Ctrl+K / ⌘K).
 // Sections, quick actions and a live search of leads, clients, deals, projects
 // and library entries. Record data only ever reaches the page as text nodes through el().
-import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js?v=20261118d';
-import { state, leadName } from './api.js?v=20261118d';
+import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js?v=20261118e';
+import { state, leadName } from './api.js?v=20261118e';
 
 const MAX_LEADS = 8;
 const MAX_RECORDS = 4;

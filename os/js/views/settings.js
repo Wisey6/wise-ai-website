@@ -3,12 +3,13 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
-} from '../ui.js?v=20261118d';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118d';
-import { FUNCTIONS_URL } from '../config.js?v=20261118d';
-import { AGENTS, agentsInfo, settingSwitch } from './agents.js?v=20261118d';
-import { setMyEmail, teamSave } from '../api.js?v=20261118d';
-import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118d';
+} from '../ui.js?v=20261118e';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118e';
+import { FUNCTIONS_URL } from '../config.js?v=20261118e';
+import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261118e';
+import { chatModelPicker } from '../chat.js?v=20261118e';
+import { setMyEmail, teamSave } from '../api.js?v=20261118e';
+import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118e';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -375,9 +376,12 @@ export default function settings() {
   return root;
 }
 
-/** The Agents group: master switch, monthly budget, the four switches, spend. Saves at once. */
+/** The Agents group: master switch, the assistant (on/off and model), the Researcher and
+ *  briefing switches, monthly budget, spend. Saves at once. */
 function agentsGroup() {
   const master = settingSwitch('agents_enabled', 'Agents');
+  const chatSw = settingSwitch(CHAT_AGENT.col, 'The assistant');
+  const models = chatModelPicker();
   const switches = AGENTS.map((a) => ({ a, sw: settingSwitch(a.col, a.name) }));
   const cap = input('agent_monthly_cap_usd', { type: 'number', min: 0, max: 100, step: 1, value: state.settings?.agent_monthly_cap_usd ?? 25, inputmode: 'decimal' });
   const saveCap = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'save-agent-cap' } }, 'Save budget');
@@ -391,6 +395,8 @@ function agentsGroup() {
   const live = el('div', { class: 'set-agents-spend', dataset: { agentsSpend: '' } });
   const update = () => {
     master.update();
+    chatSw.update();
+    models.update();
     switches.forEach((x) => x.sw.update());
     if (document.activeElement !== cap) cap.value = String(state.settings?.agent_monthly_cap_usd ?? 25);
     const info = agentsInfo();
@@ -403,16 +409,18 @@ function agentsGroup() {
       el('span', { class: `ag-meter${pctUsed >= 90 ? ' is-high' : ''}`, role: 'img', 'aria-label': `${pctUsed}% of the monthly agent budget used` }, el('i', { style: `width:${pctUsed}%` })));
   };
   update();
-  const node = group('Agents', 'Agents', 'Four assistants that read, research and suggest. They never send anything, and nothing they suggest happens until you approve it.',
+  const node = group('Agents', 'Agents', 'The assistant you talk to, plus the Researcher and the morning briefing. The assistant makes the changes you ask for and lists each with an Undo. None of them ever sends anything.',
     el('div', { class: 'set-agents', dataset: { setAgents: '' } },
       live,
       el('ul', { class: 'set-agents-list' },
-        el('li', { dataset: { sw: 'agents_enabled' } }, el('span', {}, el('strong', {}, 'Agents on'), el('span', { class: 'set-toggle-hint' }, 'Off stops all four at once.')), master),
+        el('li', { dataset: { sw: 'agents_enabled' } }, el('span', {}, el('strong', {}, 'Agents on'), el('span', { class: 'set-toggle-hint' }, 'Off stops all of them at once.')), master),
+        el('li', { dataset: { sw: CHAT_AGENT.col } }, el('span', {}, el('strong', {}, 'The assistant'), el('span', { class: 'set-toggle-hint' }, CHAT_AGENT.does)), chatSw),
+        el('li', { class: 'set-agents-model' }, models.node),
         switches.map(({ a, sw }) => el('li', { dataset: { sw: a.col } }, el('span', {}, el('strong', {}, a.name), el('span', { class: 'set-toggle-hint' }, a.does)), sw))),
       el('div', { class: 'set-agents-budget' },
-        field('Monthly agent budget (US$)', cap, 'All four stop for the month once this is spent. 0 to 100.'),
+        field('Monthly agent budget (US$)', cap, 'All of them stop for the month once this is spent. 0 to 100.'),
         saveCap),
-      el('p', { class: 'small muted' }, 'Separate from AI drafting above: drafting has its own monthly cap, and this budget covers only the four agents.'),
+      el('p', { class: 'small muted' }, 'Separate from AI drafting above: drafting has its own monthly cap, and this budget covers only the agents.'),
       el('div', { class: 'row' },
         el('a', { class: 'btn btn-ghost btn-sm', href: '#agents' }, icon('agents', 14), 'Open Agents'),
         el('a', { class: 'btn btn-ghost btn-sm', href: '#agents/runs' }, icon('list', 14), 'Run log'))));
@@ -643,11 +651,11 @@ function teamGroup() {
 
 /** A small modal with a form; resolves the values or null. */
 function modal2(title, body, confirmLabel) {
-  return import('../ui.js?v=20261118d').then(({ modal }) => modal({ title, body, confirmLabel }));
+  return import('../ui.js?v=20261118e').then(({ modal }) => modal({ title, body, confirmLabel }));
 }
 /** Show a PIN the owner just set, once. */
 function showOnce(name, pin) {
-  return import('../ui.js?v=20261118d').then(({ modal }) => modal({
+  return import('../ui.js?v=20261118e').then(({ modal }) => modal({
     title: `${name}'s PIN`, hideConfirm: true, cancelLabel: 'Done',
     body: el('div', { class: 'stack' },
       el('p', {}, `Tell ${name} this PIN in person. It is not shown again.`),

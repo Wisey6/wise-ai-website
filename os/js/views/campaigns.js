@@ -4,11 +4,11 @@
 import {
   el, icon, go, badge, toast, modal, confirmDialog, field, input, select, textarea,
   emptyState, timeAgo, prettyPhone, copyText, busy, plural, money, num
-} from '../ui.js?v=20261118d';
+} from '../ui.js?v=20261118e';
 import {
   sb, state, saveTemplate, deleteTemplate, saveCampaign, sendSms, refreshSmsStatus,
   renderTemplate, leadName, saveLead, logEvent
-} from '../api.js?v=20261118d';
+} from '../api.js?v=20261118e';
 
 /** append / replaceChildren that skip null and false children (native ones would print "null"). */
 const keep = (c) => c.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false);
