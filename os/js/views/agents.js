@@ -779,7 +779,7 @@ function briefingControl() {
 
 /* ---------------------------------------------------------------- doer */
 function doerControl() {
-  const box = el('textarea', { class: 'input ag-doer-input', name: 'instruction', rows: 3, maxlength: '600', placeholder: 'Tell it what you want set up, in plain words', 'aria-label': 'Tell it what you want set up, in plain words' });
+  const box = el('textarea', { class: 'input ag-doer-input', name: 'instruction', rows: 3, maxlength: '600', placeholder: 'e.g. Set a follow-up for Friday for everyone who went quiet after my last text', 'aria-label': 'Tell it what you want set up, in plain words' });
   box.value = doerDraft;
   const count = el('span', { class: 'small faint tnum ag-count' });
   const drawCount = () => { count.textContent = `${box.value.length}/600`; };

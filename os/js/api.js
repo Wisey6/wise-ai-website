@@ -845,7 +845,7 @@ const AGENT_APPLY = {
 };
 
 async function decideAction(id, patch) {
-  const { data, error } = await sb.from('agent_actions').update({ ...patch, decided_at: new Date().toISOString() }).eq('id', id).select().single();
+  const { data, error } = await sb.from('agent_actions').update({ ...patch, decided_at: new Date().toISOString(), decided_by: state.me?.id || null }).eq('id', id).select().single();
   fail(error, 'Could not record the decision');
   upsertInto(state.agent_actions, data, { prepend: true });
   notify();

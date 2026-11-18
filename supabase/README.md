@@ -14,6 +14,40 @@ Functions base URL: `https://adfgtlhryyyrqbbgbfmx.supabase.co/functions/v1/`
 | `cal-webhook` | Cal.com | Validates `X-Cal-Signature-256`. Booking created / rescheduled / cancelled → `bookings` row, lead matched by phone then email (or created), lead status `booked` (back to `interested` on cancel), event + email. |
 | `lead-intake` | public website form | `{name, email?, phone?, business?, source?, summary?, website?}` (`website` is a honeypot). Creates or updates the lead (`source 'website'`, `status 'interested'` if new), appends the summary to notes, event + email. More than 20 new website leads in an hour → 429. |
 
+## agent (the four hub assistants)
+
+`functions/agent/` (deployed `verify_jwt = false`; operator JWT checked by `requireOperator`). One
+endpoint, four tightly scoped agents. Contract: request `{agent, …}` → `{ok, result, run_id, model,
+cost_usd, spent_usd, cap_usd}`; `{action:'status'}` → switches, spend, `runs_today`, `limits`.
+
+| Agent | Input | Model / effort | What it does |
+| --- | --- | --- | --- |
+| `researcher` | `{lead_id}` | Sonnet 5.5, low; `web_fetch` (≤4, limited to the lead's website/listing hosts) + `web_search` (≤2) | Reads one lead's own public pages → `{observations[{text, source_url}], hooks[], pain, opted_out, opted_out_evidence, number_published, number_evidence_url, could_not_read}` plus `sources`. Writes nothing to the lead. |
+| `briefing` | `{refresh?}` | Sonnet 5.5, low | Morning briefing `{headline, do_first[{text,hash}], watch[], numbers}`. One per local day (cached, no cost) unless `refresh`; empty hub → `{ok:false, error:'empty'}` without a model call. |
+| `ask` | `{question ≤600, history? ≤10×2,000}` | Haiku 5.5, low | `{answer, links[{label,hash}], cannot_answer}` from the hub snapshot only. Snapshot sits in a cached system block (`usage.cache_read_input_tokens` > 0 on follow-ups). |
+| `doer` | `{instruction ≤600}` | Sonnet 5.5, medium | Turns an instruction into PROPOSALS (`agent_actions`, status `proposed`): `{note, actions[], dropped, rejected[]}`. Send/delete/pay/settings requests come back in `note`. |
+
+Guarantees (in code, see the header of `functions/agent/index.ts`):
+- Writes only `agent_runs` and `agent_actions`; every other table is read-only to it. Sends nothing.
+- Phone numbers and emails never reach the model: the snapshot never reads contact columns and
+  scrubs every free-text field (and the operator's question/instruction) of emails, URLs and
+  phone-like numbers. The researcher sees the lead's website/listing URL and the mobile's last 3 digits only.
+- Every doer action passes an allowlist (9 kinds; ids must exist; never a dnc lead, never a suppressed
+  lead for drafts; length, date (today..+90 for follow-ups), amount (0 < x ≤ 50,000) and stage rules; ≤20)
+  or is dropped and counted. Approved proposals are applied by the browser (`applyAgentAction`), never here.
+- Briefing/ask hashes not offered by the snapshot are dropped; researcher observations must cite a page
+  it actually fetched in that run, and hooks are emptied when none survive.
+- Off switches (`settings.agents_enabled`, `agent_researcher|briefing|ask|doer`) → 403; monthly budget
+  (`agent_runs.cost_usd` this UTC month vs `settings.agent_monthly_cap_usd`) → 402; daily limits per local
+  day (researcher 40, briefing 4, ask 150, doer 30) → 429 — all checked before any model call. Blocked
+  attempts are logged as `capped`; every other outcome (`ok`, `error`, `declined`, `empty`) is logged with
+  tokens, searches, cost (list price; cache reads at 10%; $0.01 per search) and duration.
+
+Measured cost per run (Nov 2026 test data): researcher US$0.03–0.08, briefing ~$0.013, ask ~$0.0002–0.0004,
+doer ~$0.005–0.016. Secret: `ANTHROPIC_API_KEY` (without it → 503 `ai_not_configured`).
+Tests: `node --test supabase/tests/agent.test.mjs` (snapshot has no contact details, allowlist rules,
+hash filtering, researcher output rules, cost maths, day/month windows).
+
 ## Secrets to set
 
 Dashboard → Edge Functions → Secrets (or `supabase secrets set NAME=value --project-ref adfgtlhryyyrqbbgbfmx`).
