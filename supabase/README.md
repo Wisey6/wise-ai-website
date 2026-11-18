@@ -265,6 +265,80 @@ not_configured | busy | error`.
 Unit tests: `node --test supabase/tests/gdrive.test.mjs`. Page tests (fake Google Drive and fake
 OneDrive): `os/tests/files.test.mjs`.
 
+## Email and calendar (each person's own Google account)
+
+Each team member can connect their OWN Google Workspace account (Gmail and Google Calendar) in
+**Settings, Your sign-in, Email and calendar**. It is separate from the business Drive connection:
+one row per person in `private.gmail_connection` (migration `0014_gmail.sql`), reached only through
+`gmail_get / gmail_save / gmail_clear / gmail_email_in_use` (service role only). A person only ever
+reaches their own mailbox and calendar; the owner cannot read a member's and a member cannot read
+the owner's. Shared code `functions/_shared/gmail.ts`; assistant tools `functions/agent/mail.ts`
+(pure helpers `mail-rules.ts`).
+
+Scopes (one consent): `gmail.readonly` (search and read), `gmail.compose` (write drafts, and send a
+draft when the person presses Send), `calendar.events` (their own calendar), plus `openid email`.
+Nothing that labels, archives, trashes or deletes received mail. The sign-in does not use
+`include_granted_scopes`, so this token never carries the Drive scope.
+
+**What the assistant can do:** search the person's mailbox (`search_email`: words, from, to, subject,
+last N days, unread, attachments; Gmail operators are built from these fields only, every value
+quoted), read one email (`read_email`: text up to 12,000 characters, attachment names and sizes
+only) or a conversation (`read_thread`), and write DRAFTS (`draft_email`, `update_draft`) that sit in
+Gmail's Drafts and under its reply as a card. **It cannot send.** There is no send tool; the only
+way an email leaves the hub is the person pressing **Send** on the card, which calls `mail_send`.
+Reading email marks the turn as having read outside text: in that same message nothing in the hub
+(records, files, links, archiving, memory) can change; the assistant proposes and does it after the
+person's next message. Drafting is still allowed. Email text is never stored server-side except in
+the assistant's own reply in the person's own chat; `agent_runs` holds counts only.
+
+**Drafts:** `public.mail_drafts` (id, member_id, chat_id, gmail_draft_id, to_addrs, cc_addrs,
+subject, status `draft|sending|sent|discarded`, created_at, sent_at, gmail_message_id, ...; never the
+body), readable by its owner only, written only by the functions. Checks in code: real addresses,
+at most 10 recipients, subject at most 200, body at most 8,000, no attachments, never to an address
+of a lead who opted out (status `dnc`) or whose number is suppressed (suppressions are kept by phone,
+so an address is matched through the lead).
+
+Actions on the `gdrive` function (POST with the person's JWT; the redirect URI is shared):
+
+| Action | Answer (`ok:true` plus) |
+| --- | --- |
+| `mail_status` | `configured, connected, needs_reconnect, email, connected_at, can_read, can_draft, can_calendar` (the caller's own) |
+| `mail_connect_url` | `url` (Google sign-in, signed state with purpose `gmail`, PKCE, one-use nonce, 10 minutes), `scopes` |
+| `mail_disconnect` | `connected:false, revoked_at_google` |
+| `mail_send {draft_id}` | `draft {id, to, cc, subject, status:'sent', sent_at, ...}` |
+| `mail_discard {draft_id}` | `draft {..., status:'discarded'}` (deletes the unsent Gmail draft: the only Gmail delete) |
+
+`mail_send` sends only a draft in `mail_drafts` made for the caller, reads its current recipients
+from Gmail (the person may have edited it with Edit in Gmail), re-checks them, refuses more than 10,
+claims the row (a double press cannot send twice) and allows 30 sends per person per local day
+(429 `daily_limit`). Errors: `not_connected, reconnect_needed, mail_api_off` ("Gmail API is not
+switched on in Google Cloud yet"), `scope_missing, blocked (+blocked[])`, `too_many, no_recipients,
+gone, already_sent, discarded, not_found, busy`.
+
+`GET ?code&state` with a Gmail state sends the browser to `https://wise-ai.au/os/?mail=<result>#settings`,
+result `connected | connected_read_only | denied | expired | bad_state | not_in_org | no_refresh |
+scope_missing | api_off | in_use | not_configured | busy | error`.
+
+Revoking: Google revokes every scope an account gave the Google project at once. So when the
+mailbox is the same Google account as the business Drive connection, Disconnect only makes the hub
+forget it (no revoke), and disconnecting Drive does not revoke while that account is someone's
+email connection.
+
+### Set it up (the owner, once)
+
+1. console.cloud.google.com, the same project as Drive ("Wise AI OS"): **APIs & Services > Library**,
+   search **Gmail API**, open it, **Enable**. Then the same for **Google Calendar API**.
+2. Optional (records what the hub asks for): **Google Auth platform > Data access > Add or remove
+   scopes**, tick `.../auth/gmail.readonly`, `.../auth/gmail.compose` and `.../auth/calendar.events`,
+   **Update**, **Save**. The client and its redirect URI stay exactly as they are.
+3. In the hub: **Settings > Your sign-in > Email and calendar > Connect**, sign in with your own
+   wise-ai.au account and tick every box. Each team member does the same for their own account.
+
+These scopes are "restricted" (Gmail) or "sensitive" (Calendar); an app whose audience is Internal to
+the Workspace organisation needs no Google verification, as for Drive.
+
+Unit tests: `node --test supabase/tests/mail.test.mjs`. Page tests (mocked): `os/tests/mail.test.mjs`.
+
 ## onedrive (the Files page, OneDrive: built, dormant)
 
 A live window onto the business OneDrive (a **personal** Microsoft account) through Microsoft
