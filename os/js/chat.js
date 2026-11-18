@@ -529,7 +529,9 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   const archivedBox = el('div', { class: 'cx-archived' });
   const newBtn = el('button', { type: 'button', class: 'btn btn-ghost btn-sm cx-new', dataset: { act: 'chat-new' } }, icon('plus', 14), 'New conversation');
   newBtn.addEventListener('click', () => { newChat(); setView('chat'); focus(); });
+  const backBtn = dock ? null : el('button', { type: 'button', class: 'btn btn-ghost btn-sm cx-back', dataset: { act: 'chat-back' }, onClick: () => { setView('chat'); focus(); } }, 'Back to the conversation');
   const hist = el('section', { class: 'cx-hist', 'aria-labelledby': `cx-hist-h-${mode}` },
+    backBtn,
     el('div', { class: 'cx-hist-head' }, el('h2', { class: 'cx-side-h', id: `cx-hist-h-${mode}` }, 'Conversations'), newBtn),
     list, archivedBox, footer);
 
