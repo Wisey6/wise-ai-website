@@ -892,10 +892,16 @@ async function render({ navigated = false } = {}) {
   }
 }
 
-function onStateChange() {
+// Changes that only concern the assistant (its runs, chats, change log, memory, status).
+// The command bar listens for these itself; the page behind it must not be rebuilt for
+// them, or it flickers while the assistant works.
+const ASSISTANT_ONLY = new Set(['agent_runs', 'agent_chats', 'agent_changes', 'agent_memory', 'agents']);
+const ASSISTANT_PAGES = new Set(['agents', 'home', 'settings']);
+function onStateChange(_state, changed) {
   updateBadges();
   updateMe();
   if (!current.node || !state.loaded) return;
+  if (changed && changed.size && !changed.has('*') && [...changed].every((t) => ASSISTANT_ONLY.has(t)) && !ASSISTANT_PAGES.has(current.route)) return;
   if (typeof current.node.onState === 'function') {
     try { current.node.onState(); } catch (err) { setTimeout(() => { throw err; }, 0); }
   } else if (!document.querySelector('.modal-backdrop')) {
