@@ -1,7 +1,6 @@
-// Agents: four tightly scoped assistants (Researcher, Morning briefing, Ask the hub,
-// Doer), the approvals they wait on, the run log that audits them, and the rules.
-// They read, research, draft and propose. A proposed change is applied only when
-// Tyler presses Approve (applyAgentAction, in the browser, with his own session).
+// Agents: the assistant you talk to (chat.js: it makes the changes you ask for and
+// lists each with an Undo), the Researcher and the morning briefing, the approvals
+// still waiting from the old Doer, the run log that audits them all, and the rules.
 // Nothing an agent returns ever goes through innerHTML: it reaches the page as text
 // nodes through el(), links are hub hashes or plain http(s) URLs.
 import {
@@ -12,7 +11,8 @@ import {
   state, notify, saveLead, saveSettings, agentRun, agentStatus, applyAgentAction, rejectAgentAction,
   leadById, leadName, rowById
 } from '../api.js?v=20261118d';
-import { askPanel, safeHash } from '../ask.js?v=20261118d';
+import { safeHash } from '../ask.js?v=20261118d';
+import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261118d';
 
 /* ================================================================ shared bits */
 
@@ -27,19 +27,16 @@ export const AGENTS = [
     does: 'Reads the whole hub and writes a short note on what matters today, most valuable first.',
     never: 'Never acts on what it finds. Every item is a link for you to open.'
   },
-  {
-    k: 'ask', name: 'Ask the hub', col: 'agent_ask', eyebrow: 'Questions',
-    does: 'Answers questions about your business from the hub’s own records, with links to them.',
-    never: 'Never changes anything, and says so plainly when your data cannot answer.'
-  },
-  {
-    k: 'doer', name: 'Doer', col: 'agent_doer', eyebrow: 'Set-up work',
-    does: 'Turns a plain instruction into suggested changes that you approve or reject one by one.',
-    never: 'Never sends, deletes or pays. Nothing happens until you press Approve.'
-  }
 ];
-const AGENT = Object.fromEntries(AGENTS.map((a) => [a.k, a]));
-const DEFAULT_LIMITS = { researcher: 40, briefing: 4, ask: 150, doer: 30 };
+/** The assistant you talk to. Its switch and model live in Settings → Agents. */
+export const CHAT_AGENT = {
+  k: 'chat', name: 'Assistant', col: 'agent_chat', eyebrow: 'Talk to it',
+  does: 'Looks things up across the hub and makes the changes you ask for. Every change is listed with an Undo.',
+  never: 'Never sends anything, never deletes, and never touches settings, the team or opt-outs.'
+};
+// Earlier agents still appear in the run log and approvals.
+const AGENT = Object.fromEntries([...AGENTS, CHAT_AGENT, { k: 'ask', name: 'Ask the hub' }, { k: 'doer', name: 'Doer' }].map((a) => [a.k, a]));
+const DEFAULT_LIMITS = { researcher: 40, briefing: 4, ask: 150, doer: 30, chat: 300 };
 
 /** US dollars to the cent; a tiny non-zero amount reads "under 1 cent". */
 export function usd(n) {
@@ -536,6 +533,7 @@ export function askedText(r) {
   if (r.agent === 'briefing') return i.refresh ? 'Morning briefing, refreshed' : 'Morning briefing';
   if (r.agent === 'ask') return str(i.question) ? i.question.trim() : 'A question';
   if (r.agent === 'doer') return str(i.instruction) ? i.instruction.trim() : 'An instruction';
+  if (r.agent === 'chat') return str(i.message) ? i.message.trim() : 'A message to the assistant';
   return 'A run';
 }
 const short = (t, n = 90) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
@@ -568,31 +566,26 @@ function readable(v, key = '') {
 /* ============================================================ the page */
 
 const ui = { runFilter: 'all', research: null, researchQ: '' };
-let doerDraft = '';
-let doerLast = null;   // {run_id, note, dropped, actions, at, error}
-let doerBusy = false;
-const DOER_EXAMPLES = [
-  'Set a follow-up for next Tuesday for everyone who went quiet last week',
-  'Draft a reply to my newest unread lead offering a call on Thursday',
-  'Make a task to send this month’s retainer invoices'
-];
-
-const TABS = [['', 'Overview'], ['approvals', 'Approvals'], ['runs', 'Run log'], ['ask', 'Ask'], ['doer', 'Doer']];
+// Tabs: the assistant (default), the Researcher and briefing, approvals, run log.
+// Old links keep working: #agents/ask and #agents/doer open the assistant.
+const TABS = [['', 'Assistant'], ['research', 'Research and briefing'], ['approvals', 'Approvals'], ['runs', 'Run log']];
 
 export default function agentsView(ctx) {
   const parts = String(ctx.param || '').split('/');
-  const tab = ['approvals', 'runs', 'ask', 'doer'].includes(parts[0]) ? parts[0] : '';
+  const tab = ['approvals', 'runs', 'research'].includes(parts[0]) ? parts[0] : '';
   if (parts[0] === 'research' && parts[1]) ui.research = parts[1];
   const runId = tab === 'runs' && parts[1] ? parts[1] : null;
+  if (parts[0] === 'ask' || parts[0] === 'doer') takeChatPrefill();
+  if (parts[0] === 'chat' && parts[1]) selectChat(parts[1]);
 
-  const root = el('div', { class: 'page ag', dataset: { tab: tab || 'overview' } });
+  const root = el('div', { class: 'page ag', dataset: { tab: tab || 'chat' } });
   const head = el('div', { class: 'ag-statusbar' });
   const tabsBox = el('div');
   const body = el('div', { class: 'ag-body' });
   root.append(
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Assistants'), el('h1', { class: 'h1' }, 'Agents'),
-        el('p', { class: 'lede ag-lede' }, 'Four assistants on a short leash. They read, research and suggest. Nothing they suggest happens until you approve it, and they never send anything.'))),
+        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything to anyone.'))),
     head, tabsBox, body);
 
   const updaters = [];
@@ -615,22 +608,22 @@ export default function agentsView(ctx) {
 
   if (tab === 'approvals') body.append(approvalsView(updaters));
   else if (tab === 'runs') body.append(runId ? runDetail(runId, updaters) : runsView(updaters));
-  else if (tab === 'ask' || tab === 'doer') {
-    body.append(el('div', { class: 'ag-grid' },
-      el('div', { class: 'ag-main' }, gate(updaters), agentSection(AGENT[tab], updaters, { focus: true })),
-      el('aside', { class: 'ag-aside' }, rulesPanel())));
-  } else {
+  else if (tab === 'research') {
     body.append(el('div', { class: 'ag-grid' },
       el('div', { class: 'ag-main' }, gate(updaters), AGENTS.map((a) => agentSection(a, updaters))),
       el('aside', { class: 'ag-aside' }, rulesPanel())));
-    if (parts[0] === 'research') setTimeout(() => root.querySelector('[data-agent-section="researcher"]')?.scrollIntoView({ block: 'start' }), 60);
+    if (parts[1]) setTimeout(() => root.querySelector('[data-agent-section="researcher"]')?.scrollIntoView({ block: 'start' }), 60);
+  } else {
+    const chat = chatSurface({ mode: 'page', side: [rulesPanel({ compact: true })] });
+    body.append(chat.node);
+    updaters.push(chat.update);
+    if (parts[0] === 'memory') setTimeout(() => chat.showMemory(), 80);
+    else setTimeout(() => { if (root.isConnected) chat.focus(); }, 80);
   }
 
   const paint = () => updaters.forEach((u) => { try { u(); } catch (e) { setTimeout(() => { throw e; }, 0); } });
   paint();
   root.onState = paint;
-  if (tab === 'ask') setTimeout(() => root.querySelector('.ag-ask-input')?.focus(), 80);
-  if (tab === 'doer') setTimeout(() => root.querySelector('.ag-doer-input')?.focus(), 80);
   return root;
 }
 
@@ -705,9 +698,7 @@ function agentSection(def, updaters, { focus = false } = {}) {
 
 function buildControl(k) {
   if (k === 'researcher') return researcherControl();
-  if (k === 'briefing') return briefingControl();
-  if (k === 'ask') return askPanel({ costLabel: usd });
-  return doerControl();
+  return briefingControl();
 }
 
 /* ---------------------------------------------------------------- researcher */
@@ -777,66 +768,6 @@ function briefingControl() {
   };
 }
 
-/* ---------------------------------------------------------------- doer */
-function doerControl() {
-  const box = el('textarea', { class: 'input ag-doer-input', name: 'instruction', rows: 3, maxlength: '600', placeholder: 'e.g. Set a follow-up for Friday for everyone who went quiet after my last text', 'aria-label': 'Tell it what you want set up, in plain words' });
-  box.value = doerDraft;
-  const count = el('span', { class: 'small faint tnum ag-count' });
-  const drawCount = () => { count.textContent = `${box.value.length}/600`; };
-  box.addEventListener('input', () => { doerDraft = box.value; drawCount(); });
-  const chips = el('div', { class: 'ag-chips', role: 'group', 'aria-label': 'Examples' },
-    DOER_EXAMPLES.map((t) => el('button', { type: 'button', class: 'chip', onClick: () => { box.value = t; doerDraft = t; drawCount(); box.focus(); } }, t)));
-  const send = el('button', { type: 'submit', class: 'btn btn-primary btn-sm', dataset: { act: 'doer' } }, 'Suggest changes');
-  const form = el('form', { class: 'ag-doer-form', novalidate: true }, el('label', { class: 'field' }, el('span', { class: 'field-label' }, 'Tell it what you want set up, in plain words'), box), chips,
-    el('div', { class: 'row' }, el('span', { class: 'small muted' }, 'It only suggests. You approve each change.'), el('span', { class: 'spacer' }), count, send));
-  const out = el('div', { class: 'ag-doer-out', 'aria-live': 'polite' });
-  let key = null;
-
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const instruction = box.value.trim();
-    if (!instruction) { box.focus(); return; }
-    busy(send, async () => {
-      doerBusy = true; draw(true);
-      const res = await agentRun('doer', { instruction });
-      doerBusy = false;
-      if (!res.ok) {
-        doerLast = { error: res.message, at: new Date().toISOString() };
-        toast(res.message, 'bad');
-      } else {
-        const o = unwrap(res);
-        doerLast = { run_id: res.run_id, note: o.note, dropped: Number(res.dropped ?? o.dropped ?? 0) || 0, actions: arr(res.actions ?? o.actions), at: new Date().toISOString(), instruction };
-        box.value = ''; doerDraft = ''; drawCount();
-      }
-      agentStatus();
-      draw(true);
-    });
-  });
-
-  function draw(force = false) {
-    const mine = doerLast?.run_id ? state.agent_actions.filter((a) => a.run_id === doerLast.run_id) : [];
-    const list = mine.length ? mine : arr(doerLast?.actions).filter((a) => a && a.id);
-    const k = `${doerBusy}|${doerLast?.at}|${list.map((a) => `${a.id}:${a.status}`).join(',')}`;
-    if (!force && k === key) return;
-    key = k;
-    if (doerBusy) { fill(out, el('p', { class: 'small muted ag-working' }, 'Reading your hub and working out the changes…')); return; }
-    if (!doerLast) { clear(out); return; }
-    if (doerLast.error) { fill(out, el('p', { class: 'callout is-warn' }, icon('alert', 15), el('span', {}, doerLast.error))); return; }
-    const proposed = list.filter((a) => a.status === 'proposed' || !a.status);
-    const decided = list.filter((a) => a.status && a.status !== 'proposed');
-    fill(out,
-      str(doerLast.note) ? el('div', { class: 'ag-note', dataset: { doerNote: '' } }, el('p', { class: 'ag-rc-label' }, 'Its note'), el('p', {}, doerLast.note.trim())) : null,
-      doerLast.dropped ? el('p', { class: 'small muted', dataset: { dropped: String(doerLast.dropped) } }, `${plural(doerLast.dropped, 'suggestion')} broke the rules and ${doerLast.dropped === 1 ? 'was' : 'were'} dropped before reaching you.`) : null,
-      !list.length ? el('p', { class: 'small muted' }, 'No changes suggested.') : null,
-      proposed.length ? proposalGroup(doerLast.run_id, proposed.map((a) => ({ status: 'proposed', ...a })), { showHead: false }) : null,
-      decided.length ? el('ul', { class: 'ag-decided-list' }, decided.map(actionCard)) : null);
-  }
-
-  drawCount();
-  const node = el('div', { class: 'ag-doer', dataset: { agent: 'doer' } }, form, out);
-  return { node, update: () => draw() };
-}
-
 /* ---------------------------------------------------------------- approvals */
 function approvalsView(updaters) {
   const node = el('div', { class: 'ag-approvals' });
@@ -855,7 +786,7 @@ function approvalsView(updaters) {
         ? el('div', { class: 'stack loose' },
           el('p', { class: 'small muted' }, 'Newest first. Approving makes exactly the change shown, with your own access, and nothing else. Rejecting changes nothing.'),
           [...groups.entries()].map(([runId, list]) => proposalGroup(runId === 'none' ? null : runId, list)))
-        : emptyState({ icon: 'check', title: 'Nothing waiting for you', text: 'When the Doer suggests changes they wait here until you approve or reject each one.', action: el('a', { class: 'btn btn-ghost btn-sm', href: '#agents/doer' }, 'Tell the Doer what to set up') }),
+        : emptyState({ icon: 'check', title: 'Nothing waiting for you', text: 'The assistant now makes the changes you ask for straight away, each with an Undo, so nothing new lands here. Anything an earlier agent suggested would wait here for you.', action: el('a', { class: 'btn btn-ghost btn-sm', href: '#agents' }, 'Talk to the assistant') }),
       decided.length ? el('details', { class: 'ag-decided-wrap' },
         el('summary', {}, `Decided (${num(decided.length)})`),
         el('ul', { class: 'ag-decided-list' }, decided.slice(0, 100).map(actionCard))) : null);
@@ -871,7 +802,8 @@ function runsView(updaters) {
   const node = el('div', { class: 'stack' }, el('div', { class: 'row' }, chips, el('span', { class: 'spacer' }), totals), table);
   const draw = () => {
     const all = state.agent_runs;
-    fill(chips, [['all', 'All'], ...AGENTS.map((a) => [a.k, a.name])].map(([k, label]) => el('button', {
+    const kinds = ['chat', 'researcher', 'briefing', ...['ask', 'doer'].filter((k) => all.some((r) => r.agent === k))];
+    fill(chips, [['all', 'All'], ...kinds.map((k) => [k, AGENT[k]?.name || k])].map(([k, label]) => el('button', {
       type: 'button', class: `chip${ui.runFilter === k ? ' is-active' : ''}`, 'aria-pressed': String(ui.runFilter === k), dataset: { filter: k },
       onClick: () => { ui.runFilter = k; draw(); }
     }, label, el('span', { class: 'count' }, ` ${num(k === 'all' ? all.length : all.filter((r) => r.agent === k).length)}`))));
@@ -941,19 +873,19 @@ function runDetail(id, updaters) {
 }
 
 /* ---------------------------------------------------------------- rules */
-export function rulesPanel() {
+export function rulesPanel({ compact = false } = {}) {
   const info = agentsInfo();
   const rule = (title, text) => el('li', {}, el('strong', {}, title), el('span', {}, text));
-  return el('section', { class: 'ag-rules', 'aria-labelledby': 'ag-rules-h', dataset: { rules: '' } },
+  return el('section', { class: `ag-rules${compact ? ' is-compact' : ''}`, 'aria-labelledby': `ag-rules-h${compact ? '-c' : ''}`, dataset: { rules: '' } },
     el('p', { class: 'eyebrow' }, 'Fixed, not settings'),
-    el('h2', { class: 'h2', id: 'ag-rules-h' }, 'The rules'),
+    el('h2', { class: compact ? 'cx-side-h' : 'h2', id: `ag-rules-h${compact ? '-c' : ''}` }, 'The rules'),
     el('ol', {},
-      rule('They never send.', 'No agent can send a text, an email or an invoice. A drafted reply waits in your inbox reply box for you to read.'),
-      rule('Nothing changes without you.', 'An agent can only suggest. A change happens when you press Approve, made with your own access.'),
-      rule('Only nine kinds of change.', 'A lead’s status, its follow-up date or personal line, a note, a new task, a new deal, a deal’s stage or next step, a reply draft, a draft invoice.'),
-      rule('Never allowed.', 'Sending, deleting, paying, changing settings, marking someone do not contact, or closing a deal as won or lost. Those stay yours.'),
-      rule('Contact details stay here.', 'Phone numbers and email addresses are never sent to the AI.'),
-      rule('Spending is capped.', `${usd(info.cap)} a month for all four, then they stop until next month. Daily limits: Researcher ${info.limit('researcher')}, Briefing ${info.limit('briefing')}, Ask ${info.limit('ask')}, Doer ${info.limit('doer')}.`),
-      rule('Everything is logged.', 'Every run, what it was asked, what it said, what it read and what it cost, including failed runs.')),
+      rule('It makes the changes you ask for.', 'Asking is the go-ahead: no button in between. It says plainly what it did.'),
+      rule('Every change can be undone.', 'Each one is listed under its reply, and here, with a link to the record and an Undo.'),
+      rule('It asks before it guesses.', 'If something that matters is missing, or two records could be the one you mean, it asks one short question first.'),
+      rule('It never sends.', 'No text, email, invoice or booking goes to anyone. A message it writes waits as a draft in your inbox reply box.'),
+      rule('It never deletes.', 'It can archive, end a recurring cost or mark a task done. Deleting stays yours.'),
+      rule('Some things stay yours.', 'Settings, the team, sign-in and anyone’s do-not-contact status. It cannot touch them.'),
+      rule('Spending is capped and logged.', `${usd(info.cap)} a month across all agents, and up to ${num(info.limit('chat'))} messages a day. Every run is in the run log with what it cost.`)),
     el('a', { class: 'card-link', href: '#agents/runs' }, 'Open the run log', icon('arrow', 14)));
 }
