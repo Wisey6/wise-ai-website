@@ -10,9 +10,13 @@
 //   POST {action, ...} with a signed-in team member's JWT: the same actions and shapes as the
 //       onedrive function (status, connect_url, disconnect, list, folders, search, item, move,
 //       rename, create_folder, undo, link, unlink). See ../_shared/gdrive.ts and supabase/README.md.
+//   POST {action:'mail_status'|'mail_connect_url'|'mail_disconnect'|'mail_send'|'mail_discard', ...}:
+//       the CALLER's own Google account (Gmail and calendar), see ../_shared/gmail.ts. The redirect
+//       URI is shared: a state signed with purpose 'gmail' comes back to /os/?mail=<result>#settings.
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { adminClient, bearer } from "../_shared/admin.ts";
-import { handleCallback, handleFile, runAction, type Member } from "../_shared/gdrive.ts";
+import { handleFile, runAction, type Member } from "../_shared/gdrive.ts";
+import { MAIL_ACTIONS, routeCallback, runMailAction } from "../_shared/gmail.ts";
 
 const env = (k: string) => Deno.env.get(k);
 
@@ -40,7 +44,7 @@ Deno.serve(async (req) => {
     if (!params.has("state") && !params.has("code") && !params.has("error")) {
       return new Response("Not found", { status: 404, headers: { "content-type": "text/plain" } });
     }
-    const to = await handleCallback({ db, env, params });
+    const to = await routeCallback({ db, env, params });
     return new Response(null, { status: 302, headers: { location: to, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
   }
 
@@ -50,7 +54,10 @@ Deno.serve(async (req) => {
     if (!member) return json(req, 401, { ok: false, error: "unauthorized", message: "Sign in again." });
     const body = await req.json().catch(() => ({}));
     if (!body || typeof body !== "object") return json(req, 400, { ok: false, error: "bad_request" });
-    const r = await runAction({ db, env, member, source: "hub" }, body as Record<string, unknown>);
+    const action = String((body as Record<string, unknown>).action ?? "");
+    const r = MAIL_ACTIONS.includes(action)
+      ? await runMailAction({ db, env, member }, body as Record<string, unknown>)
+      : await runAction({ db, env, member, source: "hub" }, body as Record<string, unknown>);
     return json(req, r.status, r.body);
   } catch (e) {
     console.error("gdrive", (e as Error).message);

@@ -25,9 +25,11 @@ import {
   ARCHIVE_TABLES, KINDS, type LinkCandidate, Refusal, type Step, TABLE_KIND, buildHistory, buildPatch, checkChatRequest, checkPatch,
   diffPatch, fallbackTitle, labelFor, resultJson, linkFor, maskPhone, maskRow, ownsChat, pickLinks, searchTerm, splitTitle, trimText,
   undoConflicts, undoInsertPlan, undoBlocked, FILE_LINK_KIND, RECORD_WRITE_TOOLS, businessMemoryAllowed, callTimeout, taintCheck, taints,
+  MAIL_READ_TOOLS,
 } from "./chat-rules.ts";
 import { CHAT_SYSTEM, CHAT_TOOLS } from "./chat-prompt.ts";
 import { FILE_TOOLS, fileOrientation, undoFileChange } from "./files.ts";
+import { type EmailDraft, MAIL_TOOL_DEFS, MAIL_TOOL_NAMES, MAIL_TOOLS, mailContext } from "./mail.ts";
 import { type NumberTopic, NUMBER_TOPICS, computeNumbers, monthlyEquivalent, isRunning, suggestInvoiceNo } from "./money.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -57,6 +59,10 @@ type Turn = ChatCtx & {
   today: string; chatId: string; runId: string | null; team: Row[];
   steps: Step[]; changes: Row[]; links: LinkCandidate[]; draft: { lead_id: string; body: string } | null;
   userMessage: string; tainted: boolean; writesAfterTaint: number;
+  // Email (the person's own Gmail): offered only when connected; a mail read sets mailTainted.
+  mailTools: boolean; mailLine: string; mailTainted: boolean; emailDrafts: EmailDraft[];
+  // deno-lint-ignore no-explicit-any
+  mailState?: any;
 };
 
 const must = <T>(res: { data: T | null; error: { message: string } | null }): T => {
@@ -244,6 +250,7 @@ async function contextBlock(t: Turn, first: boolean): Promise<string> {
     "Hub overview:",
     ...lines,
     files,
+    t.mailLine,
     first ? 'This is the first message of a new conversation: after your reply, add a final line "TITLE: <a 3-6 word title for this conversation>".' : "",
     "</hub_context>",
   ].filter(Boolean).join("\n");
@@ -256,11 +263,13 @@ function client(timeout: number) {
 }
 
 
-async function callModel(model: string, messages: Msg[], timeout: number): Promise<Msg> {
+async function callModel(model: string, messages: Msg[], timeout: number, withMail: boolean): Promise<Msg> {
   const params: Row = {
     model, max_tokens: MAX_TOKENS,
     system: [{ type: "text", text: CHAT_SYSTEM, cache_control: { type: "ephemeral" } }],
-    tools: CHAT_TOOLS,
+    // The email tools come last and only for someone whose email is connected, so each of the two
+    // tool lists is byte-stable (and cached) on its own.
+    tools: withMail ? [...CHAT_TOOLS, ...MAIL_TOOL_DEFS] : CHAT_TOOLS,
     tool_choice: { type: "auto" },
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
@@ -311,7 +320,11 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   const t: Turn = {
     ...ctx, today, chatId: chat.id, runId, team: await loadTeam(db), steps: [], changes: [], links: [], draft: null,
     userMessage: check.message, tainted: false, writesAfterTaint: 0,
+    mailTools: false, mailLine: "", mailTainted: false, emailDrafts: [],
   };
+  const mc = await mailContext({ db, member: ctx.member, chatId: chat.id });
+  t.mailTools = mc.tools;
+  t.mailLine = mc.text;
   const history = buildHistory(prior as never);
   const messages: Msg[] = [
     ...history,
@@ -334,7 +347,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     for (; iterations < MAX_ITERATIONS; iterations++) {
       const elapsed = Date.now() - ctx.started;
       if (iterations > 0 && elapsed > TURN_SOFT_MS) { stopNote = "I ran out of time for one message before finishing."; break; }
-      const res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS));
+      const res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS), t.mailTools);
       totals = addUsage(totals, res.usage);
       usedModel = String(res.model ?? model);
       // Running cost on the run row after every call, so a cut-off turn is still counted.
@@ -376,7 +389,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   const cost = costOf(usedModel, totals);
   if (declined) {
     await updateRun(t, { status: "declined", model: usedModel, totals, cost, error: "refusal", output: { chat_id: t.chatId } });
-    if (t.changes.length) await saveAssistant(t, "I stopped partway through that request.", usedModel, cost);
+    if (t.changes.length || t.emailDrafts.length) await saveAssistant(t, "I stopped partway through that request.", usedModel, cost);
     return json(req, 200, { ok: false, error: "declined", chat_id: t.chatId, changes: t.changes, run_id: t.runId, model: usedModel, cost_usd: cost, spent_usd: ctx.spent + cost, cap_usd: ctx.cap });
   }
 
@@ -400,7 +413,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
       status: saved ? "ok" : "error", model: usedModel, totals, cost, ...(saved ? {} : { error: "save_failed" }),
       output: {
         chat_id: t.chatId, message_id: msg?.id ?? null, iterations: iterations + 1, tool_calls: toolCalls, changes: t.changes.map((c) => c.id),
-        draft: Boolean(t.draft), cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, input_tokens: totals.input, output_tokens: totals.output,
+        draft: Boolean(t.draft), email_drafts: t.emailDrafts.length, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, input_tokens: totals.input, output_tokens: totals.output,
       },
     });
   }
@@ -408,7 +421,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   return json(req, 200, {
     ok: true, chat_id: t.chatId, title: newTitle ?? chat.title,
     message: { id: msg.id, role: "assistant", text, steps: t.steps, links: msg.links, at: msg.at },
-    changes: t.changes, ...(t.draft ? { draft: t.draft } : {}),
+    changes: t.changes, ...(t.draft ? { draft: t.draft } : {}), ...(t.emailDrafts.length ? { email_drafts: t.emailDrafts } : {}),
     usage: { input_tokens: totals.input, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, output_tokens: totals.output, iterations: iterations + 1, tool_calls: toolCalls },
     run_id: t.runId, model: usedModel, cost_usd: cost, spent_usd: ctx.spent + cost, cap_usd: ctx.cap,
   });
@@ -429,12 +442,12 @@ async function chatFailure(t: Turn, e: unknown, totals: Totals, model: string): 
   else if (e instanceof Anthropic.APIError) { detail = `The AI service returned an error (${e.status ?? "network"}).`; console.error("anthropic error", e.status, e.message); }
   else throw e;
   await updateRun(t, { status: "error", model, totals, cost, error: `${error}: ${(e as Error).message}`.slice(0, 500), output: { chat_id: t.chatId } });
-  if (t.changes.length || t.draft) {
+  if (t.changes.length || t.draft || t.emailDrafts.length) {
     const did = t.steps.filter((s) => s.ok && s.kind !== "read").map((s) => `- ${s.text}`).join("\n");
     await saveAssistant(t, `The AI service failed partway through. What I had already done:\n${did}`, model, cost);
   }
   return json(t.req, status, {
-    ok: false, error, detail, chat_id: t.chatId, changes: t.changes, ...(t.draft ? { draft: t.draft } : {}),
+    ok: false, error, detail, chat_id: t.chatId, changes: t.changes, ...(t.draft ? { draft: t.draft } : {}), ...(t.emailDrafts.length ? { email_drafts: t.emailDrafts } : {}),
     run_id: t.runId, model, cost_usd: cost, spent_usd: t.spent + cost, cap_usd: t.cap,
   });
 }
@@ -461,7 +474,7 @@ async function updateRun(t: Turn, r: { status: string; model: string; totals: To
 // ------------------------------------------------------------------ tools
 
 type ToolOut = { content: string; is_error?: boolean };
-const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_file"];
+const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_file", ...MAIL_READ_TOOLS];
 
 async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
   try {
@@ -469,12 +482,15 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
     const blocked = taintCheck(name, input, t);
     if (blocked) refuse(blocked);
     const wasTainted = t.tainted;
-    const out = await TOOLS[name]?.(t, input);
+    // The email tools exist for this turn only when the person's own email is connected.
+    const fn = MAIL_TOOL_NAMES.includes(name) ? (t.mailTools ? MAIL_TOOLS[name] : undefined) : TOOLS[name];
+    const out = await fn?.(t, input);
     if (!out) {
-      return { is_error: true, content: `Unknown tool "${name}". The tools are: ${CHAT_TOOLS.map((x) => x.name).join(", ")}.` };
+      const names = [...CHAT_TOOLS, ...(t.mailTools ? MAIL_TOOL_DEFS : [])].map((x) => x.name);
+      return { is_error: true, content: `Unknown tool "${name}". The tools are: ${names.join(", ")}.` };
     }
     if (wasTainted && RECORD_WRITE_TOOLS.includes(name) && !out.unchanged) t.writesAfterTaint++;
-    if (taints(name, input, out)) t.tainted = true;
+    if (taints(name, input, out)) { t.tainted = true; if (MAIL_READ_TOOLS.includes(name)) t.mailTainted = true; }
     return { content: resultJson(out, t.tz) };
   } catch (e) {
     if (e instanceof Refusal) {
