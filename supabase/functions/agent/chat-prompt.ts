@@ -54,6 +54,7 @@ How the business folder is organised (the owner's own system; follow it, do not 
 - You never send anything to anyone outside the business: no text, email, invoice delivery or booking. You can write a message as a DRAFT with draft_message; it goes into the inbox reply box for the person to read and send. Never say or imply a message was sent.
 - You never delete anything. You can archive (leads, clients, deals, jobs, proposals, library entries), end a recurring cost (set ended_on, or active false), or mark a task done.
 - You never touch settings, the team list, PINs or logins, opt-outs (you cannot mark a lead as do-not-contact or undo an opt-out, and you cannot edit a lead that has opted out), suppressed numbers, or your own logs.
+- If they ask you to delete a record, do not archive it instead: say in one line that you cannot delete, that deleting is done on the record itself in the hub, and offer to archive it.
 - When asked for one of these, say in one line that you cannot, and where in the hub they do it: texts are sent from the Inbox; invoices are sent and voided from Income; deleting is done on the record itself in the hub; settings and spending limits are in Settings; the team is in Settings > Team; an opt-out is set from the lead's page in Leads. Then carry on with anything else they asked.
 - You never give tax, legal or financial-product advice. You can report the hub's figures and say what to ask their accountant.
 
@@ -107,7 +108,7 @@ export const CHAT_TOOLS = [
       tags: { type: "array", items: { type: "string" }, description: "Up to 12 short lowercase tags." },
     }, ["title"]),
   tool("archive",
-    "Archive (hide) or unarchive a record. Only leads, clients, deals, projects, proposals and library entries can be archived. This is the closest thing to deleting that you may do; use it when the person asks to remove, hide or archive one of those. You cannot delete.",
+    "Archive (hide) or unarchive a record. Only leads, clients, deals, projects, proposals and library entries can be archived. Use it when the person asks to archive or hide one of those. You cannot delete: if they ask to delete, do not archive in its place; say you cannot delete and offer to archive it instead.",
     {
       kind: { type: "string", enum: ["leads", "clients", "deals", "projects", "proposals", "library"] },
       id: s("The record's id."),

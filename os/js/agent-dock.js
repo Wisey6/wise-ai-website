@@ -1,51 +1,89 @@
-// The Wise AI agent, reachable from anywhere: a round launcher at the top right
-// (bottom right above the tab bar on phones) carrying the white owl on a slowly
-// moving black-and-blue "paint splodge", and a dropdown with the assistant itself:
-// the conversation (it opens on the most recent one), its history, and a few quick
-// rows. It makes the changes you ask for, lists each with an Undo, and never sends.
+// The Wise AI assistant, reachable from anywhere: an "Ask Wise AI" pill at the bottom
+// right (the white owl in a small navy circle, the label and its shortcut), which folds
+// to the owl circle on phones, while the page is scrolled down and while the dropdown is
+// open. It shows when the assistant is working and when an answer is waiting. The
+// dropdown is the assistant itself: the conversation (it opens on the most recent one),
+// its history, and a few quick rows. It makes the changes you ask for, lists each with
+// an Undo, and never sends.
 import { el, icon, fill, busy, plural } from './ui.js?v=20261118d';
 import { state, onChange } from './api.js?v=20261118d';
 import { chatSurface, chatBusy, onChatChange } from './chat.js?v=20261118d';
 import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261118d';
 
 const LOGO = '../logo.svg';
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+/** The shortcut that opens and closes it (Ctrl+J, ⌘J on a Mac). The palette has Ctrl+K. */
+export const AGENT_SHORTCUT = IS_MAC ? '⌘J' : 'Ctrl J';
 let mounted = null;
 
-/** The splodge + owl mark. size: 'sm' (launcher) | 'lg' (panel header). */
+/** The mark: the white owl in a navy circle. size: 'sm' (launcher) | 'lg' (panel header). */
 export function agentMark(size = 'sm') {
   return el('span', { class: `agd-mark is-${size}`, 'aria-hidden': 'true' },
-    el('span', { class: 'agd-blob' },
-      el('span', { class: 'agd-hue is-a' }), el('span', { class: 'agd-hue is-b' }), el('span', { class: 'agd-hue is-c' })),
     el('span', { class: 'agd-owl' }, el('img', { src: LOGO, alt: '' })));
 }
 
 const editable = (t) => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+const onAgentsPage = () => /^#agents(\/|$)/.test(location.hash);
 
 export function mountAgentDock() {
   if (mounted) return mounted;
   const badge = el('span', { class: 'agd-count', hidden: true, 'aria-hidden': 'true' });
+  const label = el('span', { class: 'agd-label' }, 'Ask Wise AI');
+  const kbd = el('kbd', { class: 'agd-kbd', 'aria-hidden': 'true' }, AGENT_SHORTCUT);
+  const tip = el('span', { class: 'agd-tip', role: 'tooltip', id: 'agd-tip' });
+  const orb = el('span', { class: 'agd-orb', 'aria-hidden': 'true' }, el('span', { class: 'agd-ring' }), agentMark('sm'), el('span', { class: 'agd-dot' }), badge);
   const launch = el('button', {
-    type: 'button', class: 'agd-launch', 'aria-label': 'Wise AI agent', 'aria-expanded': 'false', 'aria-controls': 'agd-panel',
-    'aria-keyshortcuts': '.', title: 'Wise AI agent  ( . )', dataset: { agentDock: '' }
-  }, agentMark('sm'), badge);
+    type: 'button', class: 'agd-launch', 'aria-label': 'Ask Wise AI', 'aria-expanded': 'false', 'aria-controls': 'agd-panel',
+    'aria-keyshortcuts': 'Control+J Meta+J', 'aria-describedby': 'agd-tip', dataset: { agentDock: '', state: 'idle' }
+  }, orb, el('span', { class: 'agd-words' }, label, kbd), tip);
 
   let panel = null;
   let chat = null;
   let busyTimer = 0;
+  let ready = false;      // an answer arrived while the dropdown was closed
+  let wasBusy = false;
 
   const isOpen = () => Boolean(panel && !panel.hidden);
-
-  function setBadge() {
-    const n = pendingActions().length;
-    badge.hidden = !n;
-    badge.textContent = n > 99 ? '99+' : String(n);
-    launch.setAttribute('aria-label', n ? `Wise AI agent, ${plural(n, 'suggestion')} waiting for your approval` : 'Wise AI agent');
-  }
 
   function working() {
     return chatBusy() || Boolean(document.querySelector('.ag-working, [data-act=brief-write][disabled], [data-act=brief-refresh][disabled]'));
   }
-  const paintBusy = () => launch.classList.toggle('is-busy', working());
+  /** Name, label, tooltip and state in one place. */
+  function paint() {
+    const n = pendingActions().length;
+    const w = working();
+    const st = isOpen() ? 'open' : w ? 'working' : ready ? 'ready' : 'idle';
+    launch.dataset.state = st;
+    launch.classList.toggle('is-busy', w);
+    launch.classList.toggle('is-ready', ready && !isOpen());
+    badge.hidden = !n;
+    badge.textContent = n > 99 ? '99+' : String(n);
+    const words = st === 'working' ? 'Working on it' : st === 'ready' ? 'Answer ready' : 'Ask Wise AI';
+    if (label.textContent !== words) label.textContent = words;
+    const waiting = n ? `, ${plural(n, 'suggestion')} waiting for your approval` : '';
+    const name = st === 'open' ? 'Close Wise AI'
+      : st === 'working' ? 'Wise AI is working on your request. Open it'
+        : st === 'ready' ? 'Wise AI has an answer ready. Open it' : 'Ask Wise AI';
+    launch.setAttribute('aria-label', name + waiting);
+    tip.textContent = st === 'open' ? 'Close  ·  Esc' : `${words}  ·  ${AGENT_SHORTCUT}`;
+    launch.hidden = onAgentsPage() && !isOpen();
+  }
+  const paintBusy = () => {
+    const w = chatBusy();
+    if (wasBusy && !w && !isOpen() && !onAgentsPage()) ready = true;   // the reply came in while it was closed
+    wasBusy = w;
+    paint();
+  };
+
+  /* folded to the owl circle while the page is scrolled down (desktop); open again on the way up */
+  let lastY = window.scrollY;
+  function onScroll() {
+    const y = window.scrollY;
+    if (Math.abs(y - lastY) < 6) return;
+    launch.classList.toggle('is-folded', y > lastY && y > 160);
+    lastY = y;
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
 
   /* ------------------------------------------------------------ panel */
   const head = el('div', { class: 'agd-head' });
@@ -134,6 +172,8 @@ export function mountAgentDock() {
     chat?.onOpen();
     drawHead();
     launch.setAttribute('aria-expanded', 'true');
+    ready = false;
+    paint();
     document.body.classList.add('agd-open');
     requestAnimationFrame(() => panel.classList.add('is-in'));
     setTimeout(() => {
@@ -147,6 +187,7 @@ export function mountAgentDock() {
     panel.hidden = true;
     launch.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('agd-open');
+    paint();
     if (focusBack) launch.focus({ preventScroll: true });
   }
   const toggle = () => (isOpen() ? close() : open());
@@ -159,6 +200,13 @@ export function mountAgentDock() {
       close();
       return;
     }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j') {
+      if (document.querySelector('.modal-backdrop, .pal, .gate')) return;
+      e.preventDefault();
+      if (onAgentsPage() && !isOpen()) { document.querySelector('.cx.is-page .cx-input')?.focus(); return; }
+      toggle();
+      return;
+    }
     if (e.key === '.' && !e.metaKey && !e.ctrlKey && !e.altKey && !editable(e.target) && !document.querySelector('.modal-backdrop, .pal, .drawer, .gate')) {
       e.preventDefault();
       toggle();
@@ -167,10 +215,10 @@ export function mountAgentDock() {
   document.addEventListener('pointerdown', (e) => {
     if (isOpen() && !panel.contains(e.target) && !launch.contains(e.target) && !e.target.closest('.toast-wrap, .modal-backdrop, .own-menu')) close(false);
   });
-  window.addEventListener('hashchange', () => close(false));
+  window.addEventListener('hashchange', () => { close(false); paint(); });
 
   onChange(() => {
-    setBadge();
+    paint();
     paintBusy();
     if (isOpen()) {
       drawBody(); drawQuick();
@@ -181,7 +229,8 @@ export function mountAgentDock() {
   onChatChange(paintBusy);
   busyTimer = setInterval(paintBusy, 700);
   document.body.append(launch);
-  setBadge();
-  mounted = { launch, open, close, isOpen, destroy() { clearInterval(busyTimer); launch.remove(); panel?.remove(); mounted = null; } };
+  paint();
+  paint();
+  mounted = { launch, open, close, isOpen, destroy() { clearInterval(busyTimer); window.removeEventListener('scroll', onScroll); launch.remove(); panel?.remove(); mounted = null; } };
   return mounted;
 }

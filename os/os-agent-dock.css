@@ -1,99 +1,117 @@
 /* =============================================================================
-   Wise AI agent launcher: the white owl on a slow "paint splodge" (near-black with
-   a blue hue), and the dropdown panel. Floats, so it carries --shadow-float. Sits
-   above pages and the rail, below drawers (80/90), modals (100), the palette (150)
-   and toasts (200). Hidden while a modal or the palette is open.
+   Wise AI assistant launcher: an "Ask Wise AI" pill at the bottom right (the white owl
+   in a small navy circle, the label, the shortcut). It folds to the owl circle on
+   phones, while the page is scrolled down and while the dropdown is open; it says when
+   it is working (a turning ring) and when an answer is waiting (a blue dot and
+   "Answer ready"). Floats, so it carries a shadow. Sits above pages and the rail, below
+   drawers (80/90), modals (100), the palette (150) and toasts (200). The pages keep a
+   band at the bottom free for it (see the end of this file), so it never sits on
+   content that cannot be scrolled out from under it.
    ========================================================================== */
-:root { --agd-size: 52px; --agd-top: 16px; --agd-right: 20px; --agd-ink: #0A0E11; --agd-blue: #2563EB; --agd-navy: #0B1E4D; }
+:root {
+  --agd-h: 48px; --agd-orb: 36px; --agd-gap: 20px; --agd-band: calc(var(--agd-h) + var(--agd-gap) + 16px);
+  --agd-navy: #0B1E4D; --agd-blue: #2563EB; --agd-ok: #2563EB;
+}
 
 .agd-launch {
-  position: fixed; top: var(--agd-top); right: var(--agd-right); z-index: 60;
-  width: var(--agd-size); height: var(--agd-size); padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer;
-  display: grid; place-items: center; -webkit-tap-highlight-color: transparent;
-  transition: transform 180ms var(--ease);
+  position: fixed; right: var(--agd-gap); bottom: var(--agd-gap); z-index: 60;
+  display: inline-flex; align-items: center; gap: 10px; height: var(--agd-h); max-width: 260px; padding: 0 14px 0 6px;
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill); background: var(--paper); color: var(--ink);
+  font: inherit; font-size: var(--fs-sm); font-weight: 500; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 2px rgba(10,14,17,.06), 0 10px 28px rgba(10,14,17,.12);
+  transition: box-shadow var(--dur-slow) var(--ease), border-color var(--dur) var(--ease), transform 140ms var(--ease), padding var(--dur-slow) var(--ease), gap var(--dur-slow) var(--ease);
 }
-.agd-launch:hover { transform: scale(1.04); }
+.agd-launch[hidden] { display: none; }
+.agd-launch:hover { border-color: var(--ink); box-shadow: 0 1px 2px rgba(10,14,17,.08), 0 14px 36px rgba(10,14,17,.18); }
 .agd-launch:active { transform: scale(.97); }
-.agd-launch:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 50%; }
-.agd-launch[aria-expanded="true"] .agd-mark { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--agd-blue), 0 10px 30px rgba(37,99,235,.28); }
-body:has(.modal-backdrop) .agd-launch, body:has(.pal) .agd-launch, body:has(.gate) .agd-launch,
-body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hidden; }
+.agd-launch:focus-visible { outline: 2px solid var(--agd-blue); outline-offset: 3px; }
 
-/* -- the mark: blob + hues + owl */
+/* the owl circle */
+.agd-orb { position: relative; flex: none; display: grid; place-items: center; width: var(--agd-orb); height: var(--agd-orb); }
 .agd-mark {
   position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%;
-  isolation: isolate; transition: box-shadow var(--dur-slow) var(--ease);
+  background: var(--agd-navy); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
-.agd-mark.is-sm { width: var(--agd-size); height: var(--agd-size); }
-.agd-mark.is-lg { width: 56px; height: 56px; flex: none; }
-.agd-blob {
-  position: absolute; inset: 0; overflow: hidden; z-index: 0;
-  background: radial-gradient(120% 120% at 30% 25%, #141B26 0%, var(--agd-ink) 55%);
-  border-radius: 46% 54% 52% 48% / 50% 44% 56% 50%;
-  box-shadow: 0 4px 12px rgba(10,14,17,.22);
-  animation: agd-morph 10s cubic-bezier(.45,.05,.55,.95) infinite alternate, agd-glow 6s ease-in-out infinite;
-}
-.agd-hue { position: absolute; border-radius: 50%; filter: blur(7px); mix-blend-mode: screen; pointer-events: none; }
-.agd-hue.is-a { width: 70%; height: 70%; left: -10%; top: 38%; background: radial-gradient(circle at 50% 50%, rgba(37,99,235,.78), rgba(37,99,235,0) 66%); animation: agd-drift-a 9s ease-in-out infinite alternate; }
-.agd-hue.is-b { width: 64%; height: 64%; right: -18%; top: -16%; background: radial-gradient(circle at 50% 50%, rgba(30,64,175,.6), rgba(11,30,77,0) 70%); animation: agd-drift-b 13s ease-in-out infinite alternate; }
-.agd-hue.is-c { width: 40%; height: 40%; left: 36%; top: 52%; background: radial-gradient(circle at 50% 50%, rgba(147,197,253,.26), rgba(147,197,253,0) 70%); animation: agd-drift-c 8s ease-in-out infinite alternate; }
-.is-lg .agd-hue { filter: blur(9px); }
-.agd-owl { position: relative; z-index: 1; display: block; width: 20px; height: 26px; overflow: hidden; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
-.agd-owl img { height: 26px; width: auto; max-width: none; filter: brightness(0) invert(1); }
-.is-lg .agd-owl { width: 22px; height: 29px; }
-.is-lg .agd-owl img { height: 29px; }
+.agd-mark.is-lg { width: 36px; height: 36px; flex: none; }
+.agd-owl { display: block; width: 15px; height: 20px; overflow: hidden; }
+.agd-owl img { height: 20px; width: auto; max-width: none; filter: brightness(0) invert(1); }
+.agd-launch:hover .agd-mark { background: #0E2766; }
 
-@keyframes agd-morph {
-  0%   { border-radius: 46% 54% 52% 48% / 50% 44% 56% 50%; transform: rotate(0deg) scale(1); }
-  25%  { border-radius: 60% 40% 38% 62% / 44% 60% 40% 56%; transform: rotate(18deg) scale(1.02); }
-  50%  { border-radius: 38% 62% 63% 37% / 60% 43% 57% 40%; transform: rotate(-10deg) scale(.985); }
-  75%  { border-radius: 62% 38% 46% 54% / 39% 58% 42% 61%; transform: rotate(12deg) scale(1.025); }
-  100% { border-radius: 49% 51% 38% 62% / 55% 40% 60% 45%; transform: rotate(-12deg) scale(1); }
+/* alive: a soft breathing ring at rest, a turning arc while it works */
+.agd-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(37,99,235,0); pointer-events: none; }
+.agd-launch[data-state=idle] .agd-ring { animation: agd-breathe 4.8s ease-in-out infinite; }
+.agd-launch.is-busy .agd-ring {
+  border-color: rgba(37,99,235,.16); border-top-color: var(--agd-blue); border-right-color: var(--agd-blue);
+  animation: agd-turn 1.1s linear infinite;
 }
-@keyframes agd-drift-a { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(18%, -14%) scale(1.12); } 100% { transform: translate(34%, -30%) scale(.92); } }
-@keyframes agd-drift-b { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-22%, 26%) scale(1.15); } 100% { transform: translate(-8%, 40%) scale(.95); } }
-@keyframes agd-drift-c { 0% { transform: translate(0, 0); opacity: .6; } 100% { transform: translate(-30%, -40%); opacity: 1; } }
-@keyframes agd-glow {
-  0%, 100% { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 6px 0 rgba(37,99,235,.16); }
-  50% { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 14px 1px rgba(37,99,235,.32); }
-}
-/* An agent at work: a little faster, a little brighter. */
-.agd-launch.is-busy .agd-blob { animation-duration: 4.5s, 2.2s; }
-.agd-launch.is-busy .agd-hue.is-a { animation-duration: 3.6s; }
-.agd-launch.is-busy .agd-hue.is-b { animation-duration: 5s; }
-.agd-launch.is-busy .agd-hue.is-c { animation-duration: 3s; }
-.agd-launch.is-busy .agd-blob { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 20px 3px rgba(37,99,235,.42); }
+@keyframes agd-breathe { 0%, 100% { border-color: rgba(37,99,235,0); transform: scale(.92); } 50% { border-color: rgba(37,99,235,.32); transform: scale(1); } }
+@keyframes agd-turn { to { transform: rotate(360deg); } }
 
+/* answer ready: a dot on the owl, the label says so */
+.agd-dot {
+  position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--agd-ok); box-shadow: 0 0 0 2px var(--paper); transform: scale(0); transition: transform var(--dur-slow) var(--ease);
+}
+.agd-launch.is-ready .agd-dot { transform: scale(1); }
+.agd-launch.is-ready { border-color: var(--agd-blue); }
+.agd-launch.is-ready .agd-label { color: var(--agd-blue); }
+
+/* approvals waiting: a small count on the circle */
 .agd-count {
-  position: absolute; top: -2px; right: -2px; z-index: 2; min-width: 19px; height: 19px; padding: 0 5px; border-radius: var(--radius-pill);
-  background: var(--paper); color: var(--ink); font-size: 10.5px; font-weight: 600; line-height: 19px; text-align: center; font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 1.5px var(--ink), 0 2px 6px rgba(10,14,17,.2);
+  position: absolute; bottom: -4px; right: -6px; z-index: 2; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
+  background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--paper);
 }
+
+.agd-words { display: inline-flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; white-space: nowrap; transition: opacity var(--dur) var(--ease); }
+.agd-label { letter-spacing: -.005em; }
+.agd-kbd {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--mist);
+  font-family: inherit; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: .01em;
+}
+
+/* folded: the owl circle alone (while scrolled down, while the dropdown is open, on phones) */
+.agd-launch.is-folded, .agd-launch[aria-expanded="true"] { gap: 0; padding: 0 5px; }
+.agd-launch.is-folded .agd-words, .agd-launch[aria-expanded="true"] .agd-words { width: 0; opacity: 0; }
+.agd-launch.is-folded.is-ready .agd-words { width: auto; opacity: 1; }
+.agd-launch.is-folded.is-ready { gap: 10px; padding: 0 14px 0 6px; }
+.agd-launch[aria-expanded="true"] { border-color: var(--ink); }
+.agd-launch[aria-expanded="true"] .agd-ring { border-color: var(--ink); animation: none; transform: none; }
+
+/* tooltip: the name and shortcut, shown on hover and keyboard focus */
+.agd-tip {
+  position: absolute; right: 0; bottom: calc(100% + 10px); padding: 6px 10px; border-radius: var(--radius-s);
+  background: var(--ink); color: #fff; font-size: var(--fs-meta); font-weight: 500; white-space: pre; pointer-events: none;
+  opacity: 0; transform: translateY(3px); transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.agd-launch.is-folded:not(.is-ready):hover .agd-tip, .agd-launch.is-folded:not(.is-ready):focus-visible .agd-tip { opacity: 1; transform: none; transition-delay: 350ms; }
+.agd-launch[aria-expanded="true"] .agd-tip { display: none; }
+@media (hover: none) { .agd-tip { display: none; } }
+
+body:has(.modal-backdrop) .agd-launch, body:has(.pal) .agd-launch, body:has(.gate) .agd-launch, body:has(.drawer) .agd-launch,
+body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hidden; }
 
 /* -- the panel */
 .agd-panel {
-  position: fixed; top: calc(var(--agd-top) + var(--agd-size) + 10px); right: var(--agd-right); z-index: 61;
-  width: min(460px, calc(100vw - 32px)); height: min(740px, calc(100vh - var(--agd-top) - var(--agd-size) - 28px)); display: flex; flex-direction: column;
+  position: fixed; bottom: calc(var(--agd-gap) + var(--agd-h) + 12px); right: var(--agd-gap); z-index: 61;
+  width: min(460px, calc(100vw - 32px)); height: min(740px, calc(100vh - var(--agd-gap) - var(--agd-h) - 12px - 20px)); display: flex; flex-direction: column;
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--shadow-float); overflow: hidden;
-  transform-origin: top right; opacity: 0; transform: translateY(-6px) scale(.985);
+  transform-origin: bottom right; opacity: 0; transform: translateY(8px) scale(.985);
   transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
 }
 .agd-panel.is-in { opacity: 1; transform: none; }
 .agd-head {
   display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); flex: none;
-  background: var(--void) radial-gradient(120% 140% at 0% 0%, #111A2A, var(--void) 60%); color: #fff;
+  background: var(--paper); color: var(--ink); border-bottom: 1px solid var(--line);
 }
 .agd-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .agd-title { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: 17px; letter-spacing: -.02em; line-height: 1.15; }
-.agd-for { font-size: var(--fs-meta); color: var(--chrome); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.agd-head .agd-mark.is-lg { width: 44px; height: 44px; }
-.agd-head .is-lg .agd-owl { width: 18px; height: 24px; }
-.agd-head .is-lg .agd-owl img { height: 24px; }
+.agd-for { font-size: var(--fs-meta); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agd-head-acts { display: flex; align-items: center; gap: 2px; flex: none; }
-.agd-hbtn { width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--chrome); display: grid; place-items: center; cursor: pointer; transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
-.agd-hbtn:hover { background: rgba(255,255,255,.08); color: #fff; }
-.agd-hbtn.is-on { background: rgba(255,255,255,.14); color: #fff; }
-.agd-hbtn:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.agd-hbtn { width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.agd-hbtn:hover { background: var(--mist); color: var(--ink); }
+.agd-hbtn.is-on { background: var(--mist-2); color: var(--ink); }
+.agd-hbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 .agd-spend { font-size: 11.5px; color: var(--silver); }
 .agd-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
 /* the assistant inside the dropdown: one pane at a time */
@@ -104,7 +122,7 @@ body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hi
 .cx.is-dock .cx-log { gap: var(--space-5); }
 .cx.is-dock .cx-msg { scroll-margin-bottom: 0; }
 .cx.is-dock .cx-msg.is-agent { max-width: none; }
-.cx.is-dock .cx-change { grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--space-2); }
+.cx.is-dock .cx-change { grid-template-columns: 58px minmax(0, 1fr) auto; gap: var(--space-2); }
 .cx.is-dock .cx-change-acts { gap: var(--space-3); }
 .cx.is-dock .cx-empty-h { font-size: var(--fs-h2); line-height: var(--lh-snug); }
 .cx.is-dock .cx-empty-p { font-size: var(--fs-sm); }
@@ -141,28 +159,40 @@ body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hi
 .agd-brief-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agd-off { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5); font-size: var(--fs-sm); color: var(--body); }
 
-/* Clear room for the launcher on desktop: the top row of each page stops short of it,
-   and toasts start below it. */
+/* Room for the launcher: every page ends with a free band at the bottom, so the last
+   rows and buttons can always be scrolled clear of it; full-height and sticky panes stop
+   above it. Toasts stay top right, where nothing floats now. On the Agents page the
+   assistant is the page, so the launcher steps aside. */
 @media (min-width: 761px) {
-  body:has(.agd-launch) .page > :first-child:not(.inbox-side) { margin-right: calc(var(--agd-size) + 12px); }
-  body:has(.agd-launch) .page.inbox { margin-right: calc(var(--agd-size) + 12px); }
-  body:has(.agd-launch) .toast-wrap { top: calc(var(--agd-top) + var(--agd-size) + 12px); }
+  body:has(.agd-launch:not([hidden])) .main { padding-bottom: calc(var(--agd-band) + var(--space-3)); }
+  body:has(.agd-launch:not([hidden])) .page.inbox { height: calc(100dvh - var(--space-6) - var(--agd-band)); margin-bottom: 0; }
+  body:has(.agd-launch:not([hidden])) .fl-pane,
+  body:has(.agd-launch:not([hidden])) .fl-col-tree { max-height: calc(100dvh - var(--space-6) - var(--agd-band)); }
+  body:has(.agd-launch:not([hidden])) .lib-side { max-height: calc(100dvh - var(--space-7) - var(--agd-band)); }
+  body:has(.agd-launch:not([hidden])) .prop-preview { max-height: calc(100vh - 32px - var(--agd-band)); }
 }
 
-/* Phones: bottom right above the tab bar; the panel is a sheet from the bottom. */
+/* Phones: the owl circle alone, bottom right above the tab bar; the panel is a sheet from the bottom. */
 @media (max-width: 760px) {
-  :root { --agd-size: 48px; }
-  .agd-launch { top: auto; right: 16px; bottom: calc(62px + 14px + env(safe-area-inset-bottom)); z-index: 34; }
+  :root { --agd-h: 52px; --agd-orb: 40px; --agd-gap: 16px; }
+  .agd-launch { right: 16px; bottom: calc(62px + 14px + env(safe-area-inset-bottom)); z-index: 34; gap: 0; padding: 0 5px; }
+  .agd-launch .agd-words { width: 0; opacity: 0; }
+  .agd-launch.is-ready .agd-words, .agd-launch.is-folded.is-ready .agd-words { width: 0; opacity: 0; }
+  .agd-launch.is-ready, .agd-launch.is-folded.is-ready { gap: 0; padding: 0 5px; }
+  .agd-owl { width: 17px; height: 22px; } .agd-owl img { height: 22px; }
+  body:has(.agd-launch:not([hidden])) .main { padding-bottom: calc(96px + 70px + env(safe-area-inset-bottom)); }
   .agd-panel {
     top: auto; left: 0; right: 0; bottom: calc(63px + env(safe-area-inset-bottom)); width: auto; height: calc(100dvh - 63px - 64px - env(safe-area-inset-bottom));
     border-radius: var(--radius-l) var(--radius-l) 0 0; border-bottom: 0; transform-origin: bottom center; transform: translateY(16px);
   }
   .agd-panel.is-in { transform: none; }
-  body:has(.more-layer) .agd-launch { visibility: hidden; }
+  body:has(.more-layer) .agd-launch, body.agd-open .agd-launch { visibility: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agd-blob, .agd-hue, .agd-launch.is-busy .agd-blob, .agd-launch.is-busy .agd-hue { animation: none !important; }
+  .agd-launch[data-state=idle] .agd-ring { animation: none; }
+  .agd-launch.is-busy .agd-ring { animation: none; border-color: var(--agd-blue); }
+  .agd-launch, .agd-words, .agd-dot, .agd-tip { transition: none; }
   .agd-panel { transition: none; }
 }
 .agd-panel:has([data-agd-off]) { height: auto; }

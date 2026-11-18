@@ -34,6 +34,7 @@ const NEW1 = U(11); const NEW2 = U(12); const NEW3 = U(13);
 const L1 = U(21); const L2 = U(22); const T1 = U(23);
 const CH0 = U(30); const CH1 = U(31); const CH_NEW = U(32); const CH_BAD = U(33); const CH_TASK = U(34);
 const M1 = U(41); const M2 = U(42);
+const FC_MOVE = U(51); const FC_DIR = U(52); const FC_LINK = U(53);
 
 function populated() {
   return {
@@ -111,11 +112,28 @@ async function session(viewport, { data = emptyData(), scale = 1, connected = tr
       if (/^Draft a reply/.test(msg)) {
         return json(r, 200, { ...base, chat_id: body.chat_id || NEW3, title: 'Reply to Bayside Dental', changes: [], draft: { lead_id: L1, body: 'Hi Sam, Thursday at 10 works for a quick call. Does that suit?' }, message: { id: 9301, role: 'assistant', at: now, text: 'I wrote a reply offering Thursday at 10. It is waiting in the inbox for you to read and send.', steps: [{ tool: 'draft_message', summary: 'Drafted a reply to Bayside Dental' }], links: [{ label: 'Bayside Dental', hash: `#leads/${L1}` }] } });
       }
+      if (/^Tidy the files/.test(msg)) {
+        // the backend's exact shapes: steps {tool, kind, ok, text, link?, change_id?, table_name?, row_id?};
+        // changes {id, kind:'file'|'file_link'|'record', at, chat_id, table_name, row_id, op, summary, open, undone_at, undoable}
+        const F1 = '1AbCdEfGhIjKlMnOp_q-r'; const F2 = '1ZyXwVuT_sr-QpOn'; const F3 = '1NewFolderId_x';
+        return json(r, 200, { ...base, chat_id: body.chat_id || U(14), title: 'Tidy the client files', changes: [
+          { id: FC_MOVE, kind: 'file', at: now, table_name: 'file_changes', row_id: F1, op: 'move', summary: 'Moved Harbour Dental proposal.pdf to Clients / Harbour Dental', open: `#files/${F1}`, undone_at: null, undoable: true },
+          { id: FC_DIR, kind: 'file', at: now, table_name: 'file_changes', row_id: F3, op: 'create_folder', summary: 'Made a folder Archive in Clients', open: `#files/${F3}`, undone_at: null, undoable: false },
+          { id: FC_LINK, kind: 'file_link', at: now, table_name: 'file_links', row_id: F2, op: 'link', summary: 'Linked Scope.docx to client Harbour Dental', open: `#clients/${U(60)}`, undone_at: null, undoable: true }
+        ], message: { id: 9401, role: 'assistant', at: now, text: 'Moved the proposal into the Harbour Dental folder, made an Archive folder and linked the scope to the client. The rename did not go through.', steps: [
+          { tool: 'find_files', kind: 'read', ok: true, text: 'Listed Clients: 12 items', link: `#files/${F1}` },
+          { tool: 'move_file', kind: 'write', ok: true, text: 'Moved Harbour Dental proposal.pdf to Clients / Harbour Dental', link: `#files/${F1}`, change_id: FC_MOVE, table_name: 'file_changes', row_id: F1 },
+          { tool: 'new_folder', kind: 'write', ok: true, text: 'Made a folder Archive in Clients', link: `#files/${F3}`, change_id: FC_DIR, table_name: 'file_changes', row_id: F3 },
+          { tool: 'link_file', kind: 'write', ok: true, text: 'Linked Scope.docx to client Harbour Dental', link: `#clients/${U(60)}`, change_id: FC_LINK, table_name: 'file_links', row_id: F2 },
+          { tool: 'rename_file', kind: 'write', ok: false, text: 'Rename Scope.docx to Scope v2.docx' }
+        ], links: [{ label: 'Harbour Dental proposal.pdf', hash: `#files/${F1}` }, { label: 'Clients', hash: '#files/1ClientsFolder' }] } });
+      }
       // default: add a lead
       return json(r, 200, { ...base, chat_id: body.chat_id || NEW1, title: 'New lead, dental clinic in Manly', changes: [{ id: CH_NEW, table_name: 'leads', row_id: L2, op: 'insert', summary: 'Added lead Manly Smile Studio', open: `#leads/${L2}` }], message: { id: 9101, role: 'assistant', at: now, text: `Added Manly Smile Studio as a new lead from the website, owned by you. ${msg.includes('<img') ? '<img src=x onerror="window.__xss=1">' : ''}\n\nWant me to open a deal for it?`, steps: [{ tool: 'find', summary: 'Checked for an existing lead with that name' }, { tool: 'save_lead', summary: 'Added lead Manly Smile Studio', change_id: CH_NEW, table_name: 'leads', row_id: L2 }], links: [{ label: 'Manly Smile Studio', hash: `#leads/${L2}` }, { label: 'Leads', hash: '#leads' }] } });
     }
     if (body.action === 'undo') {
       if (body.change_id === CH_BAD) return json(r, 409, { ok: false, error: 'changed_since', detail: 'That deal has been edited since, so undoing it would lose the newer change.' });
+      if ([FC_MOVE, FC_LINK].includes(body.change_id)) return json(r, 200, { ok: true, change_id: body.change_id, kind: body.change_id === FC_MOVE ? 'file' : 'file_link', undone_at: now, result: 'restored' });
       return json(r, 200, { ok: true, undone_at: now });
     }
     if (body.action === 'chat_rename') return json(r, 200, { ok: true, title: body.title });
@@ -191,7 +209,7 @@ try {
     check(await page.locator('.cx.is-page [data-working]').isVisible() && /Reading your hub/.test(await page.locator('.cx.is-page [data-working]').innerText()), 'a working line says what it is doing');
     check((await page.inputValue('.cx.is-page .cx-input')) === '', 'the composer clears');
     const busyNow = await page.locator('.agd-launch').evaluate((n) => n.classList.contains('is-busy'));
-    check(busyNow, 'the owl launcher speeds up while the assistant works');
+    check(busyNow, 'the launcher shows the assistant is working');
     await page.waitForSelector('.cx.is-page .cx-msg.is-agent');
     const sent = lastCall(page, (c) => c.agent === 'chat');
     check(sent && !('chat_id' in sent) && sent.message.startsWith('Add a lead'), 'a new conversation is sent without a chat_id');
@@ -270,6 +288,36 @@ try {
     await page.waitForTimeout(250);
     check((await page.inputValue('.cx.is-page .cx-input')) === 'half typed message' && await page.locator('[data-recent]').innerText().then((t) => t.includes('A change from elsewhere')), 'typed text survives a live update while the panels refresh');
     await page.evaluate(async () => { const m = await window.__mod('api.js'); m.state.agent_changes = m.state.agent_changes.filter((c) => c.id !== 'zz-live'); m.notify(); });
+    check(page.errors.length === 0, `no page errors ${page.errors.join(' | ')}`);
+    await ctx.close();
+  }
+
+  /* ============================================ files: file changes, links, undo */
+  if (run('files')) {
+    const { ctx, page } = await session({ width: 1440, height: 900 }, { scale: 2 });
+    await nav(page, '#agents');
+    await page.fill('.cx.is-page .cx-input', 'Tidy the files for Harbour Dental');
+    await page.locator('.cx.is-page .cx-input').press('Enter');
+    await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9401"]');
+    const m = page.locator('.cx.is-page .cx-msg[data-msg="9401"]');
+    const rows = await m.locator('.cx-change').evaluateAll((ns) => ns.map((n) => ({ op: n.querySelector('.cx-op').textContent, kind: n.dataset.kind || '', open: n.querySelector('.cx-open')?.getAttribute('href') || '', undo: !!n.querySelector('.cx-undo'), kept: !!n.querySelector('.cx-keep'), failed: n.classList.contains('is-failed') })));
+    check(rows.length === 4, `what I did: three file changes and one that did not happen (${rows.length})`);
+    check(rows[0]?.op === 'Move' && rows[0].kind === 'file' && rows[0].open === '#files/1AbCdEfGhIjKlMnOp_q-r' && rows[0].undo, 'a moved file: "Move", opens #files/<id>, with Undo');
+    check(rows[1]?.op === 'Folder' && rows[1].kept && !rows[1].undo, 'a new folder: no Undo, marked Kept (it cannot be undone from the chat)');
+    check(rows[2]?.op === 'Link' && rows[2].kind === 'file_link' && rows[2].open.startsWith('#clients/') && rows[2].undo, 'a file linked to a client: opens the client, with Undo');
+    check(rows[3]?.op === 'Not done' && rows[3].failed && !rows[3].undo, 'a step that failed is said plainly, with no Undo');
+    const links = await m.locator('.cx-link').evaluateAll((ns) => ns.map((n) => n.getAttribute('href')));
+    check(links.length === 1 && links[0] === '#files/1ClientsFolder', `links: file links open the Files page, no repeats of a change's own link (${links})`);
+    await m.locator('.cx-reads summary').click();
+    check((await m.locator('.cx-reads li').allInnerTexts()).join('|') === 'Listed Clients: 12 items', 'what it looked up uses the step text');
+    await m.locator('.cx-change[data-op=move] .cx-undo').click();
+    await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9401"] .cx-change[data-op=move].is-undone');
+    const u = lastCall(page, (c) => c.action === 'undo');
+    check(u && u.change_id === FC_MOVE, 'Undo on a file change calls undo with its change_id');
+    check(await m.locator('.cx-change[data-op=move] [data-undone]').count() === 1 && await m.locator('.cx-change[data-op=move] .cx-open').count() === 0, 'it is struck through and marked Undone');
+    await shot(page, 'page-files-1440');
+    await page.locator('.cx-change[data-op=move] .cx-op').first().scrollIntoViewIfNeeded();
+    await m.locator('.cx-change[data-kind=file] .cx-open').first().click().catch(() => {});
     check(page.errors.length === 0, `no page errors ${page.errors.join(' | ')}`);
     await ctx.close();
   }
@@ -468,6 +516,8 @@ try {
     check(m.log.w <= 900, `3440: the conversation keeps its measure (${m.log.w}px)`);
     check(m.mem.t === m.recent.t && m.mem.r <= m.recent.l, '3440: memory and recent changes sit side by side');
     await shot(page, 'page-populated-3440');
+    check(await page.locator('.agd-launch').isHidden(), '3440: on the Agents page the launcher steps aside');
+    await nav(page, '#home');
     await page.click('.agd-launch');
     await page.waitForSelector('.agd-panel.is-in .cx-msg');
     await page.waitForTimeout(350);
