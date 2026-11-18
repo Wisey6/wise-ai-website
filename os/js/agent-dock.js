@@ -5,7 +5,7 @@
 // rows. It makes the changes you ask for, lists each with an Undo, and never sends.
 import { el, icon, fill, busy, plural } from './ui.js?v=20261118d';
 import { state, onChange } from './api.js?v=20261118d';
-import { chatSurface, chatBusy } from './chat.js?v=20261118d';
+import { chatSurface, chatBusy, onChatChange } from './chat.js?v=20261118d';
 import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261118d';
 
 const LOGO = '../logo.svg';
@@ -178,6 +178,7 @@ export function mountAgentDock() {
       drawHead();
     }
   });
+  onChatChange(paintBusy);
   busyTimer = setInterval(paintBusy, 700);
   document.body.append(launch);
   setBadge();

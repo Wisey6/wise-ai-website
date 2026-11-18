@@ -18,7 +18,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "../_shared/cors.ts";
 import { startOfLocalDay } from "../_shared/time.ts";
 import {
-  DAILY_LIMITS, HAIKU, SONNET, type Totals, addDays, addUsage, costOf, dayWindowStart, emptyTotals, inputTokens, isUuid,
+  DAILY_LIMITS, HAIKU, SONNET, type Totals, addUsage, costOf, dayWindowStart, emptyTotals, inputTokens, isUuid,
   localDate, overBudget, overDailyLimit, scrubText,
 } from "./validate.ts";
 import {
@@ -415,7 +415,7 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
 }
 
 const refuse = (m: string): never => { throw new Refusal(m); };
-const has = (v: unknown) => v !== undefined;
+const has = (v: unknown) => v !== undefined && v !== null;
 
 const SELECT: Record<string, string> = {
   leads: "id, business, contact_name, phone, email, suburb, industry, status, hook, pain, est_monthly_value, next_followup_at, last_contacted_at, last_reply_at, unread, source, owner_id, notes, archived, updated_at",
@@ -516,6 +516,7 @@ const REF_TABLE: Record<string, { table: string; name: string; detail: string }>
 async function resolveRef(t: Turn, kind: "client" | "project" | "lead", v: unknown): Promise<Row | null> {
   const k = REF_TABLE[kind];
   const raw = String(v ?? "").trim();
+  const lower = raw.toLowerCase();
   if (!raw) return null;
   const cols = kind === "lead" ? "id, business, contact_name, suburb, status, phone, archived" : kind === "project" ? "id, name, status, client_id, archived" : "id, name, suburb, status, archived";
   if (isUuid(raw)) {
@@ -526,7 +527,7 @@ async function resolveRef(t: Turn, kind: "client" | "project" | "lead", v: unkno
   if (!q) return refuse(`no ${kind} matches "${raw}"`);
   const or = kind === "lead" ? `business.ilike.%${q}%,contact_name.ilike.%${q}%` : `name.ilike.%${q}%`;
   const rows = must<Row[]>(await t.db.from(k.table).select(cols).eq("archived", false).or(or).limit(8));
-  const exact = rows.filter((r) => [r.name, r.business, r.contact_name].some((x) => String(x ?? "").toLowerCase() === raw.toLowerCase()));
+  const exact = rows.filter((r) => [r.name, r.business, r.contact_name].some((x) => String(x ?? "").toLowerCase() === lower));
   if (exact.length === 1) return exact[0];
   if (rows.length === 1) return rows[0];
   if (!rows.length) return refuse(`no ${kind} matches "${raw}". Check with find, or ask the person.`);
@@ -663,13 +664,15 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
     const info = KINDS[kind] ?? refuse(`kind must be one of: ${Object.keys(KINDS).join(", ")}`);
     const table = info.table;
     const limit = Math.min(40, Math.max(1, Number.isInteger(input.limit) ? input.limit : 10));
-    let q = t.db.from(table).select(SELECT[table]);
+    // deno-lint-ignore no-explicit-any
+    let q: any = t.db.from(table).select(SELECT[table]);
     if (info.archived && input.include_archived !== true) q = q.eq("archived", false);
     const term = searchTerm(input.query);
     if (term) {
       const cols = [...info.search];
-      const digits = String(input.query ?? "").replace(/\D/g, "");
-      if ((table === "leads" || table === "clients") && digits.length >= 3 && digits.length === String(input.query).replace(/[\s•.]/g, "").length) {
+      const rawQ = String(input.query ?? "");
+      const digits = rawQ.replace(/\D/g, "");
+      if ((table === "leads" || table === "clients") && digits.length >= 3 && /^[\d\s•.+()-]+$/.test(rawQ)) {
         q = q.ilike("phone", `%${digits.slice(-9)}`);
       } else {
         q = q.or(cols.map((c) => `${c}.ilike.%${term}%`).join(","));
@@ -881,4 +884,3 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
   },
 };
 
-export { addDays };

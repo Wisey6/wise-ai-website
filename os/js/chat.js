@@ -73,6 +73,9 @@ function emit() {
   }
 }
 
+/** Follow the assistant's own changes (a send starting or finishing, an undo). */
+export function onChatChange(fn) { subs.add(() => { fn(); return true; }); }
+
 /** Is a reply on its way in any conversation? (The launcher speeds up.) */
 export const chatBusy = () => S.pending.size > 0;
 

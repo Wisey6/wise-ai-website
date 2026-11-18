@@ -150,8 +150,10 @@ test("snapshot of an empty hub is empty", () => {
   const rows = { settings: {}, leadStatuses: [], leads: [], lastInbound: {}, deals: [], clients: [], tasks: [], projects: [], invoices: [], costs: [], bookings: [], proposals: [] };
   const snap = buildSnapshot(rows, NOW);
   assert.equal(isEmptyHub(snap), true);
-  // costs alone do not make a hub non-empty
-  assert.equal(isEmptyHub(buildSnapshot({ ...rows, costs: [{ name: "x", amount: 1, cadence: "monthly" }] }, NOW)), true);
+  // costs alone make a hub non-empty (the briefing has something to say about them)
+  assert.equal(isEmptyHub(buildSnapshot({ ...rows, costs: [{ name: "x", amount: 1, cadence: "monthly" }] }, NOW)), false);
+  // ...even when none of them is in the snapshot's cost list (only old one-offs)
+  assert.equal(isEmptyHub(buildSnapshot({ ...rows, costCount: 16 }, NOW)), false);
   assert.equal(isEmptyHub(buildSnapshot({ ...rows, leadStatuses: ["dnc"] }, NOW)), false);
 });
 
@@ -414,16 +416,20 @@ test("cost maths", () => {
   t = addUsage(t, { input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 10000, cache_creation_input_tokens: 2000, server_tool_use: { web_search_requests: 2 } });
   t = addUsage(t, { input_tokens: 1000, output_tokens: 500 });
   assert.deepEqual(t, { input: 2000, cacheWrite: 2000, cacheRead: 10000, output: 1000, searches: 2 });
-  // Sonnet: (4000*2 + 10000*0.2 + 1000*10)/1e6 + 2*0.01 = 0.008 + 0.002 + 0.01 + 0.02
+  // Sonnet 5.5: (2000*2 + 2000*2.5 (cache write) + 10000*0.1 (cache read) + 1000*10)/1e6 + 2*0.01 = 0.02 + 0.02
   assert.equal(costOf("claude-sonnet-5-5", t), 0.04);
-  // Haiku: (4000*0.1 + 10000*0.01 + 1000*0.5)/1e6 = 0.0004+0.0001+0.0005 + searches 0.02
-  assert.equal(costOf("claude-haiku-5-5", t), 0.021);
+  // Haiku 5.5: (2000*0.1 + 2000*0.125 + 10000*0.01 + 1000*0.5)/1e6 = 0.00105 + searches 0.02
+  assert.equal(costOf("claude-haiku-5-5", t), 0.02105);
+  // Opus 5.5: (2000*4 + 2000*5 + 10000*0.2 + 1000*20)/1e6 = 0.04 + 0.02
+  assert.equal(costOf("claude-opus-5-5", t), 0.06);
   assert.equal(costOf("claude-sonnet-5", emptyTotals()), 0);
   assert.equal(addUsage(emptyTotals(), null).input, 0);
 });
 
 test("budget and daily limits", () => {
-  assert.deepEqual(DAILY_LIMITS, { researcher: 40, briefing: 4, ask: 150, doer: 30 });
+  assert.deepEqual(DAILY_LIMITS, { researcher: 40, briefing: 4, ask: 150, doer: 30, chat: 300 });
+  assert.equal(overDailyLimit("chat", 299), false);
+  assert.equal(overDailyLimit("chat", 300), true);
   assert.equal(overDailyLimit("briefing", 3), false);
   assert.equal(overDailyLimit("briefing", 4), true);
   assert.equal(overDailyLimit("researcher", 39), false);

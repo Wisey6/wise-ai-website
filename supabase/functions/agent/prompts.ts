@@ -73,7 +73,9 @@ export const RESEARCHER_SCHEMA = {
 const SNAPSHOT_RULES = `The hub snapshot below is JSON. "today" and "timezone" are Tyler's local date and zone; times are
 local. Each record carries a "link" (and leads with a conversation an "inbox" link); "links" lists the hub sections.
 Those are the ONLY hashes you may cite. Contact details (phone numbers, emails, websites) are deliberately not
-included. Amounts are Australian dollars.`;
+included. Amounts are Australian dollars. "owner" is the team member a record belongs to. Costs: a monthly or yearly
+cost stops counting after its ended_on date; active false means switched off; one_off costs count once on incurred_on;
+read each cost's notes (e.g. one being cancelled).`;
 
 export const BRIEFING_SYSTEM = `${BASE}
 

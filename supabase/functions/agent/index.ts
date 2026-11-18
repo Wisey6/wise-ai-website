@@ -31,6 +31,10 @@
 //   POST {agent:'briefing', refresh?}                  → result {headline, do_first, watch, numbers}, cached
 //   POST {agent:'ask', question, history?}             → result {answer, links, cannot_answer}
 //   POST {agent:'doer', instruction}                   → result {note, actions[], dropped, rejected[]}
+//   POST {agent:'chat', chat_id?, message}             → the conversational assistant (chat.ts): it DOES write,
+//        through one audited, allowlisted helper that records every change in agent_changes (undoable).
+//        Guarantees 1 and 4 above apply to the four older agents; chat.ts lists its own.
+//   POST {action:'chat_rename'|'chat_archive'|'chat_delete', chat_id, …} · {action:'undo', change_id} · {action:'memory_delete', id}
 //   Every run response: {ok, result?, run_id, model, cost_usd, spent_usd, cap_usd}
 //   Errors: 401 unauthorized · 400 bad_request · 402 cap_reached · 403 disabled · 429 daily_limit
 //           503 ai_not_configured · 200 {ok:false, error:'declined'|'too_long'|'bad_output'|'empty'}
@@ -46,6 +50,8 @@ import {
   overDailyLimit, decodeActions, referencedIds, scrubText, validateActions,
 } from "./validate.ts";
 import { allowedHashes, buildSnapshot, isEmptyHub, serialiseSnapshot, type SnapshotRows } from "./snapshot.ts";
+import { CHAT_MODELS, type Member, chatAction, runChat } from "./chat.ts";
+import { checkChatRequest } from "./chat-rules.ts";
 import {
   ASK_SCHEMA, ASK_SYSTEM, BRIEFING_SCHEMA, BRIEFING_SYSTEM, DOER_SCHEMA, DOER_SYSTEM,
   RESEARCHER_JSON_TAIL, RESEARCHER_SCHEMA, RESEARCHER_SYSTEM,
@@ -100,7 +106,7 @@ async function monthSpend(db: SupabaseClient, now: Date): Promise<number> {
 async function runsToday(ctx: Ctx): Promise<Record<AgentName, number>> {
   const { data, error } = await ctx.db.from("agent_runs").select("agent, status").gte("at", dayWindowStart(ctx.now, ctx.tz));
   if (error) throw error;
-  const out = { researcher: 0, briefing: 0, ask: 0, doer: 0 } as Record<AgentName, number>;
+  const out = { researcher: 0, briefing: 0, ask: 0, doer: 0, chat: 0 } as Record<AgentName, number>;
   for (const r of data ?? []) if (r.status !== "capped" && r.agent in out) out[r.agent as AgentName]++;
   return out;
 }
@@ -115,23 +121,29 @@ async function loadSnapshot(ctx: Ctx) {
   const { db, now } = ctx;
   const today = localDate(now, ctx.tz);
   const since = addDays(today, -120);
-  const [statuses, leads, deals, clients, tasks, projects, invoices, costs, bookings, proposals] = await Promise.all([
+  const costSince = addDays(today, -60);
+  const oneOffSince = addDays(today, -90);
+  const [statuses, leads, deals, clients, tasks, projects, invoices, costs, bookings, proposals, costCount, team] = await Promise.all([
     db.from("leads").select("status").eq("archived", false).limit(20000),
-    db.from("leads").select("id, business, contact_name, suburb, industry, status, hook, est_monthly_value, last_contacted_at, last_reply_at, next_followup_at, unread, updated_at")
+    db.from("leads").select("id, business, contact_name, suburb, industry, status, hook, est_monthly_value, last_contacted_at, last_reply_at, next_followup_at, unread, owner_id, updated_at")
       .eq("archived", false).neq("status", "dnc").order("updated_at", { ascending: false }).limit(300),
-    db.from("deals").select("id, title, stage, value, monthly_value, probability, expected_close, next_step, next_step_on, lead_id, client_id, updated_at")
+    db.from("deals").select("id, title, stage, value, monthly_value, probability, expected_close, next_step, next_step_on, lead_id, client_id, owner_id, updated_at")
       .eq("archived", false).not("stage", "in", "(won,lost)").limit(200),
-    db.from("clients").select("id, name, contact_name, status, industry, suburb, monthly_value, started_on").eq("archived", false).limit(200),
-    db.from("tasks").select("id, title, state, priority, due_on, client_id, project_id").neq("state", "done").limit(200),
-    db.from("projects").select("id, name, status, due_on, value, client_id").eq("archived", false).not("status", "in", "(done,cancelled)").limit(100),
+    db.from("clients").select("id, name, contact_name, status, industry, suburb, monthly_value, started_on, owner_id").eq("archived", false).limit(200),
+    db.from("tasks").select("id, title, state, priority, due_on, client_id, project_id, owner_id").neq("state", "done").limit(200),
+    db.from("projects").select("id, name, status, due_on, value, client_id, owner_id").eq("archived", false).not("status", "in", "(done,cancelled)").limit(100),
     db.from("income").select("id, client_id, description, amount, kind, status, invoice_no, issued_on, due_on, paid_on")
       .or(`issued_on.gte.${since},status.eq.invoiced,status.eq.draft`).neq("status", "void").limit(300),
-    db.from("costs").select("name, vendor, category, amount, cadence, next_due").eq("active", true).in("cadence", ["monthly", "yearly"]).limit(100),
+    db.from("costs").select("id, name, vendor, category, amount, cadence, started_on, ended_on, incurred_on, next_due, active, notes")
+      .or(`and(cadence.in.(monthly,yearly),active.eq.true),and(cadence.in.(monthly,yearly),ended_on.gte.${costSince}),and(cadence.eq.one_off,incurred_on.gte.${oneOffSince})`).limit(100),
     db.from("bookings").select("id, title, starts_at, status, attendee_name, lead_id")
       .gte("starts_at", now.toISOString()).lte("starts_at", new Date(now.getTime() + 14 * 86_400_000).toISOString()).neq("status", "cancelled").limit(100),
     db.from("proposals").select("id, number, title, status, recipient_business, line_items, sent_on, valid_until, deal_id, client_id, lead_id, updated_at")
       .eq("archived", false).in("status", ["draft", "sent"]).limit(100),
+    db.from("costs").select("id", { count: "exact", head: true }),
+    db.from("team_members").select("id, name").limit(50),
   ]);
+  if (costCount.error) throw new Error(costCount.error.message);
   const leadRows = must<Row[]>(leads);
   const lastInbound: Record<string, string> = {};
   const ids = leadRows.map((l) => String(l.id));
@@ -146,6 +158,7 @@ async function loadSnapshot(ctx: Ctx) {
     leads: leadRows, lastInbound,
     deals: must<Row[]>(deals), clients: must<Row[]>(clients), tasks: must<Row[]>(tasks), projects: must<Row[]>(projects),
     invoices: must<Row[]>(invoices), costs: must<Row[]>(costs), bookings: must<Row[]>(bookings), proposals: must<Row[]>(proposals),
+    costCount: costCount.count ?? 0, team: must<Row[]>(team),
   };
   return buildSnapshot(rows, now);
 }
@@ -446,7 +459,8 @@ Deno.serve(async (req) => {
   const early = preflight(req);
   if (early) return early;
   try {
-    if (!(await requireOperator(req))) return json(req, 401, { ok: false, error: "unauthorized" });
+    const userId = await requireOperator(req);
+    if (!userId) return json(req, 401, { ok: false, error: "unauthorized" });
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json(req, 400, { ok: false, error: "bad_request" });
     const db = adminClient();
@@ -466,7 +480,26 @@ Deno.serve(async (req) => {
         configured, enabled,
         agents: Object.fromEntries(AGENTS.map((a) => [a, agentOn(a)])),
         spent_usd: ctx.spent, cap_usd: ctx.cap, runs_today: await runsToday(ctx), limits: DAILY_LIMITS,
+        chat_model: CHAT_MODELS.includes(String(settings.agent_chat_model)) ? settings.agent_chat_model : SONNET,
       });
+    }
+
+    // The assistant's own actions and turns need to know who is asking.
+    const isChat = body.agent === "chat" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete"].includes(String(body.action));
+    let member: Member | null = null;
+    if (isChat) {
+      const { data: m, error: mErr } = await db.rpc("hq_member_for_user", { p_user_id: userId });
+      if (mErr) throw mErr;
+      if (!m?.member_id) return json(req, 401, { ok: false, error: "unauthorized" });
+      member = { id: String(m.member_id), name: String(m.name), role: String(m.role) };
+    }
+    if (body.action !== undefined && isChat) return await chatAction({ ...ctx, member: member! }, body);
+    if (body.agent === "chat") {
+      const c = checkChatRequest(body);
+      if (!c.ok) return json(req, 400, { ok: false, error: "bad_request", detail: c.detail });
+      if (!configured) return json(req, 503, { ok: false, error: "ai_not_configured" });
+      if (!enabled || !agentOn("chat")) return json(req, 403, { ok: false, error: "disabled" });
+      return await runChat({ ...ctx, member: member! }, body);
     }
 
     const agent = String(body.agent ?? "") as AgentName;

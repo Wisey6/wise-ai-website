@@ -73,25 +73,46 @@ body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hi
 /* -- the panel */
 .agd-panel {
   position: fixed; top: calc(var(--agd-top) + var(--agd-size) + 10px); right: var(--agd-right); z-index: 61;
-  width: min(420px, calc(100vw - 32px)); max-height: min(70vh, 760px); display: flex; flex-direction: column;
+  width: min(460px, calc(100vw - 32px)); height: min(740px, calc(100vh - var(--agd-top) - var(--agd-size) - 28px)); display: flex; flex-direction: column;
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--shadow-float); overflow: hidden;
   transform-origin: top right; opacity: 0; transform: translateY(-6px) scale(.985);
   transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
 }
 .agd-panel.is-in { opacity: 1; transform: none; }
 .agd-head {
-  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5); flex: none;
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); flex: none;
   background: var(--void) radial-gradient(120% 140% at 0% 0%, #111A2A, var(--void) 60%); color: #fff;
 }
 .agd-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.agd-title { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; }
-.agd-for { font-size: var(--fs-meta); color: var(--platinum); }
+.agd-title { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: 17px; letter-spacing: -.02em; line-height: 1.15; }
+.agd-for { font-size: var(--fs-meta); color: var(--chrome); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-head .agd-mark.is-lg { width: 44px; height: 44px; }
+.agd-head .is-lg .agd-owl { width: 18px; height: 24px; }
+.agd-head .is-lg .agd-owl img { height: 24px; }
+.agd-head-acts { display: flex; align-items: center; gap: 2px; flex: none; }
+.agd-hbtn { width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-s); background: transparent; color: var(--chrome); display: grid; place-items: center; cursor: pointer; transition: background var(--dur) var(--ease), color var(--dur) var(--ease); }
+.agd-hbtn:hover { background: rgba(255,255,255,.08); color: #fff; }
+.agd-hbtn.is-on { background: rgba(255,255,255,.14); color: #fff; }
+.agd-hbtn:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
 .agd-spend { font-size: 11.5px; color: var(--silver); }
-.agd-close { align-self: flex-start; width: 32px; height: 32px; border-radius: var(--radius-s); border: 0; background: transparent; color: var(--chrome); display: grid; place-items: center; cursor: pointer; }
-.agd-close:hover { background: rgba(255,255,255,.08); color: #fff; }
-.agd-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-.agd-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
-.agd-body { display: flex; flex-direction: column; }
+.agd-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+/* the assistant inside the dropdown: one pane at a time */
+.cx.is-dock { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cx.is-dock[data-view=chat] .cx-hist, .cx.is-dock[data-view=history] .cx-conv { display: none; }
+.cx.is-dock .cx-conv { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cx.is-dock .cx-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-5) var(--space-5) var(--space-5); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+.cx.is-dock .cx-log { gap: var(--space-5); }
+.cx.is-dock .cx-msg { scroll-margin-bottom: 0; }
+.cx.is-dock .cx-msg.is-agent { max-width: none; }
+.cx.is-dock .cx-change { grid-template-columns: 40px minmax(0, 1fr) auto; gap: var(--space-2); }
+.cx.is-dock .cx-change-acts { gap: var(--space-3); }
+.cx.is-dock .cx-empty-h { font-size: var(--fs-h2); line-height: var(--lh-snug); }
+.cx.is-dock .cx-empty-p { font-size: var(--fs-sm); }
+.cx.is-dock .cx-composer { flex: none; padding: var(--space-3) var(--space-4) var(--space-2); border-top: 1px solid var(--line); background: var(--paper); }
+.cx.is-dock .cx-hist { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4) var(--space-5) var(--space-3); scrollbar-width: thin; }
+.agd-foot { margin-top: auto; padding-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.agd-foot .agd-quick { border-top: 1px solid var(--ink); }
+.agd-meta { padding-top: var(--space-1); }
 .agd-sec { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--line); }
 .agd-sec:first-child { border-top: 0; }
 .agd-sec-h { margin: 0; font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--muted); }
@@ -133,7 +154,7 @@ body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hi
   :root { --agd-size: 48px; }
   .agd-launch { top: auto; right: 16px; bottom: calc(62px + 14px + env(safe-area-inset-bottom)); z-index: 34; }
   .agd-panel {
-    top: auto; left: 0; right: 0; bottom: calc(63px + env(safe-area-inset-bottom)); width: auto; max-height: calc(100dvh - 62px - 72px - env(safe-area-inset-bottom));
+    top: auto; left: 0; right: 0; bottom: calc(63px + env(safe-area-inset-bottom)); width: auto; height: calc(100dvh - 63px - 64px - env(safe-area-inset-bottom));
     border-radius: var(--radius-l) var(--radius-l) 0 0; border-bottom: 0; transform-origin: bottom center; transform: translateY(16px);
   }
   .agd-panel.is-in { transform: none; }
@@ -144,3 +165,4 @@ body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hi
   .agd-blob, .agd-hue, .agd-launch.is-busy .agd-blob, .agd-launch.is-busy .agd-hue { animation: none !important; }
   .agd-panel { transition: none; }
 }
+.agd-panel:has([data-agd-off]) { height: auto; }

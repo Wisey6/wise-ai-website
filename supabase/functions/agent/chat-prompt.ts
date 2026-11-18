@@ -57,9 +57,14 @@ const id = s("The record's id (from find or get). Leave out to create a new reco
 const owner = s('Who it is for: a team member\'s name, "me" for the person you are talking to, or "" for nobody.');
 const dateOrTbc = (what: string) => s(`${what} as YYYY-MM-DD, or "tbc" / "" for none.`);
 
+// strict: true (grammar-constrained inputs) only where a tool has few optional parameters: the API
+// allows at most 24 optional parameters across all strict tools in a request, and the save_* and
+// find tools have far more. Every input is validated in code (chat-rules.ts buildPatch, chat.ts) anyway.
+const STRICT = new Set(["add_library_entry", "archive", "draft_message", "forget", "get", "numbers", "remember"]);
+
 function tool(name: string, description: string, properties: Record<string, unknown>, required: string[] = []) {
   return {
-    name, description, strict: true,
+    name, description, ...(STRICT.has(name) ? { strict: true } : {}),
     input_schema: { type: "object", properties, required, additionalProperties: false },
   };
 }

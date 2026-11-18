@@ -20,7 +20,9 @@ export type SnapshotRows = {
   tasks: Row[];                  // not done
   projects: Row[];
   invoices: Row[];               // last 120 days + all unpaid
-  costs: Row[];                  // active recurring
+  costs: Row[];                  // recurring (running or ended in the last 60 days) + one-offs in the last 90 days
+  costCount?: number;            // every cost record (for the empty-hub check)
+  team?: Row[];                  // team members {id, name} for owner names
   bookings: Row[];               // next 14 days
   proposals: Row[];              // draft or sent
 };
@@ -71,14 +73,16 @@ export function buildSnapshot(rows: SnapshotRows, now: Date) {
   const today = localDate(now, tz);
   const weekday = new Intl.DateTimeFormat("en-AU", { timeZone: tz, weekday: "long" }).format(now);
 
+  const ownerName = (id: unknown) => (id ? s((rows.team ?? []).find((m) => m.id === id)?.name, 40) ?? "former member" : undefined);
+
   const byStatus: Record<string, number> = {};
   for (const status of [...rows.leadStatuses].sort()) byStatus[status] = (byStatus[status] ?? 0) + 1;
 
   const leads = [...rows.leads]
-    .map((l) => ({ ...l, _active: [l.last_reply_at, l.last_contacted_at, l.updated_at].map((x) => String(x ?? "")).sort().pop() }))
+    .map((l): Row => ({ ...l, _active: [l.last_reply_at, l.last_contacted_at, l.updated_at].map((x) => String(x ?? "")).sort().pop() }))
     .sort(byKey("_active", -1))
     .slice(0, 150)
-    .map((l) => {
+    .map((l: Row) => {
       const id = String(l.id);
       const inbound = rows.lastInbound[id];
       return tidy({
@@ -90,6 +94,7 @@ export function buildSnapshot(rows: SnapshotRows, now: Date) {
         status: String(l.status),
         has_hook: Boolean(l.hook && String(l.hook).trim()),
         est_monthly_value: n(l.est_monthly_value),
+        owner: ownerName(l.owner_id),
         last_contacted_at: when(l.last_contacted_at, tz),
         last_reply_at: when(l.last_reply_at, tz),
         next_followup_at: when(l.next_followup_at, tz),
@@ -104,24 +109,24 @@ export function buildSnapshot(rows: SnapshotRows, now: Date) {
     id: String(x.id), title: s(x.title, 100), stage: String(x.stage), value: n(x.value), monthly_value: n(x.monthly_value),
     probability: n(x.probability), expected_close: d(x.expected_close), next_step: s(x.next_step, 160), next_step_on: d(x.next_step_on),
     lead_id: x.lead_id ? String(x.lead_id) : undefined, client_id: x.client_id ? String(x.client_id) : undefined,
-    updated: when(x.updated_at, tz), link: `#pipeline/${x.id}`,
+    owner: ownerName(x.owner_id), updated: when(x.updated_at, tz), link: `#pipeline/${x.id}`,
   }));
 
   const clients = [...rows.clients].sort(byKey("name")).slice(0, 100).map((x) => tidy({
     id: String(x.id), name: s(x.name, 80), first_name: firstName(x.contact_name), status: String(x.status),
     industry: s(x.industry, 40), suburb: s(x.suburb, 40), monthly_value: n(x.monthly_value), started_on: d(x.started_on),
-    link: `#clients/${x.id}`,
+    owner: ownerName(x.owner_id), link: `#clients/${x.id}`,
   }));
 
   const tasks = [...rows.tasks].sort(byKey("due_on")).slice(0, 100).map((x) => tidy({
     id: String(x.id), title: s(x.title, 120), state: String(x.state), priority: String(x.priority), due_on: d(x.due_on),
     client_id: x.client_id ? String(x.client_id) : undefined, project_id: x.project_id ? String(x.project_id) : undefined,
-    link: SECTION_LINKS.tasks,
+    owner: ownerName(x.owner_id), link: x.project_id ? `#projects/${x.project_id}` : SECTION_LINKS.tasks,
   }));
 
   const projects = [...rows.projects].sort(byKey("name")).slice(0, 60).map((x) => tidy({
     id: String(x.id), name: s(x.name, 100), status: String(x.status), due_on: d(x.due_on), value: n(x.value),
-    client_id: x.client_id ? String(x.client_id) : undefined, link: `#projects/${x.id}`,
+    client_id: x.client_id ? String(x.client_id) : undefined, owner: ownerName(x.owner_id), link: `#projects/${x.id}`,
   }));
 
   const invoices = [...rows.invoices].sort(byKey("issued_on", -1)).slice(0, 150).map((x) => tidy({
@@ -134,7 +139,9 @@ export function buildSnapshot(rows: SnapshotRows, now: Date) {
 
   const costs = [...rows.costs].sort(byKey("name")).slice(0, 60).map((x) => tidy({
     name: s(x.name, 60), vendor: s(x.vendor, 60), category: s(x.category, 30), amount: n(x.amount), cadence: String(x.cadence),
-    next_due: d(x.next_due),
+    active: x.active === false ? false : true, started_on: d(x.started_on), ended_on: d(x.ended_on), incurred_on: d(x.incurred_on),
+    next_due: d(x.next_due), notes: s(x.notes, 300),
+    link: x.id ? `#costs/${x.id}` : SECTION_LINKS.costs,
   }));
 
   const bookings = [...rows.bookings].sort(byKey("starts_at")).slice(0, 50).map((x) => tidy({
@@ -165,6 +172,7 @@ export function buildSnapshot(rows: SnapshotRows, now: Date) {
     open_tasks: tasks.length,
     unpaid_invoices: invoices.filter((i) => i.status === "invoiced").length,
     upcoming_bookings: bookings.length,
+    costs_total: rows.costCount ?? rows.costs.length,
   };
 
   return {
@@ -184,16 +192,17 @@ export function buildSnapshot(rows: SnapshotRows, now: Date) {
 
 export type Snapshot = ReturnType<typeof buildSnapshot>;
 
-/** True when there is nothing in the hub for an agent to work from. */
+/** True only when the hub has no leads, clients, deals, jobs, tasks, invoices AND no costs (nor bookings/proposals). */
 export function isEmptyHub(snap: Snapshot): boolean {
   return snap.counts.leads_total === 0 && !snap.leads.length && !snap.deals.length && !snap.clients.length &&
-    !snap.tasks.length && !snap.projects.length && !snap.invoices.length && !snap.bookings.length && !snap.proposals.length;
+    !snap.tasks.length && !snap.projects.length && !snap.invoices.length && !snap.bookings.length && !snap.proposals.length &&
+    !snap.counts.costs_total && !snap.costs.length;
 }
 
 /** Every hub hash the snapshot offers (section links plus each row's link / inbox link). */
 export function allowedHashes(snap: Snapshot): Set<string> {
   const out = new Set<string>(Object.values(snap.links));
-  for (const list of [snap.leads, snap.deals, snap.clients, snap.tasks, snap.projects, snap.invoices, snap.bookings, snap.proposals]) {
+  for (const list of [snap.leads, snap.deals, snap.clients, snap.tasks, snap.projects, snap.invoices, snap.bookings, snap.proposals, snap.costs]) {
     for (const r of list as Row[]) {
       if (typeof r.link === "string") out.add(r.link);
       if (typeof r.inbox === "string") out.add(r.inbox);

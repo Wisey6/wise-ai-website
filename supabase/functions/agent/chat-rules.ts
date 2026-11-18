@@ -112,8 +112,8 @@ const MAX_MONEY = 1_000_000;
 export class Refusal extends Error {}
 const fail = (msg: string): never => { throw new Refusal(msg); };
 
-/** "" means clear the field (null); undefined means leave it alone. */
-const has = (v: unknown) => v !== undefined;
+/** "" means clear the field (null); undefined or null means leave it alone (a model may send null for "not given"). */
+const has = (v: unknown) => v !== undefined && v !== null;
 const blank = (v: unknown) => v === "" || v === null;
 
 function str(v: unknown, field: string, max: number, required = false): string | null {
