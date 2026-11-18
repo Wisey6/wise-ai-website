@@ -300,7 +300,7 @@
 @media (min-width: 1800px) {
   .board { grid-auto-columns: minmax(236px, 380px); overflow-x: visible; }
   .board { grid-auto-flow: column; grid-template-columns: none; }
-  .board:has(> .board-col:nth-child(7)) { grid-auto-columns: minmax(200px, 1fr); }
+  .board:has(> .board-col:nth-child(7)) { grid-auto-columns: minmax(170px, 1fr); }
   .pipe-board { grid-auto-columns: minmax(260px, 1fr); }
   .inbox-msgs { padding-left: max(var(--space-5), calc((100% - 960px) / 2)); padding-right: max(var(--space-5), calc((100% - 960px) / 2)); }
   .page.inbox { grid-template-columns: minmax(340px, 420px) minmax(0, 1fr); }
@@ -320,7 +320,7 @@
 
 /* Wide: more columns for lists of work and money sections. */
 @media (min-width: 1800px) {
-  .board-col { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-content: start; column-gap: var(--space-2); }
+  .board-col { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); align-content: start; column-gap: var(--space-2); }
   .board-col > :not(.board-card):not(.deal-card) { grid-column: 1 / -1; }
   .prop-split { grid-template-columns: minmax(420px, 760px) 860px; justify-content: center; }
   .rr-split { grid-template-columns: minmax(420px, 760px) minmax(0, 860px); justify-content: center; }

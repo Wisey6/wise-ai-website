@@ -947,6 +947,8 @@ async function boot(gate) {
   booted = true;
   gate?.destroy();
   renderShell();
+  // The Wise AI agent launcher (top right; above the tab bar on phones). Loaded after the shell.
+  import('./agent-dock.js?v=20261118c').then((m) => m.mountAgentDock()).catch((e) => setTimeout(() => { throw e; }, 0));
   palette = createPalette({ routes: ROUTES, onLock: () => lock(), onTogglePin: () => rail.togglePin() });
   shellKeys();
   window.addEventListener('hashchange', () => render({ navigated: true }));
