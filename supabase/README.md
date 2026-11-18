@@ -43,7 +43,7 @@ Guarantees (in code, see the header of `functions/agent/index.ts`):
   attempts are logged as `capped`; every other outcome (`ok`, `error`, `declined`, `empty`) is logged with
   tokens, searches, cost (list price; cache reads at 10%; $0.01 per search) and duration.
 
-Measured cost per run (Nov 2026 test data): researcher US$0.03–0.08, briefing ~$0.013, ask ~$0.0002–0.0004,
+Measured cost per run (Nov 2026 test data): researcher US$0.03–0.14 (a no-URL lead that needs a search and two fetches is the dear end), briefing ~$0.013, ask ~$0.0002–0.0004,
 doer ~$0.005–0.016. Secret: `ANTHROPIC_API_KEY` (without it → 503 `ai_not_configured`).
 Tests: `node --test supabase/tests/agent.test.mjs` (snapshot has no contact details, allowlist rules,
 hash filtering, researcher output rules, cost maths, day/month windows).

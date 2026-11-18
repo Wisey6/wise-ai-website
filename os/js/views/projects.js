@@ -5,6 +5,7 @@ import {
 } from '../ui.js?v=20261118c';
 import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118c';
 import { today, addDays, fmtDate, keyOf } from './roi-reports.js?v=20261118c';
+import { ownerPicker, ownerBadge, ownerLabel, ownerName, saveOwner, activeTeam, meId, isMe } from '../owners.js?v=20261118c';
 
 /* ============================================================ constants */
 export const PROJECT_STATUSES = [
@@ -161,8 +162,8 @@ export function taskRow(t, { group = null, showProject = false, showClient = fal
   pri.dataset.fk = `${t.id}-pri`;
   pri.addEventListener('change', async () => { try { await saveRow('tasks', { id: t.id, priority: pri.value }); } catch (e) { toast(e.message, 'bad'); } });
 
-  const due = el('input', { type: 'date', class: `input sm dl-due${!done && isOverdue(t.due_on) ? ' is-overdue' : ''}`, value: t.due_on || '', 'aria-label': `Due date: ${t.title}`, dataset: { fk: `${t.id}-due` } });
-  due.addEventListener('change', async () => { try { await saveRow('tasks', { id: t.id, due_on: due.value || null }); } catch (e) { toast(e.message, 'bad'); } });
+  const due = dueControl(t);
+  const owner = taskOwner(t);
 
   const st = select('state', TASK_STATES.map((s) => ({ id: s.id, label: s.label })), t.state);
   st.classList.add('sm', 'dl-state');
@@ -191,16 +192,52 @@ export function taskRow(t, { group = null, showProject = false, showClient = fal
 
   return el('li', { class: `dl-task${done ? ' is-done' : ''}`, dataset: { id: t.id, state: t.state } },
     check, titleWrap,
-    el('div', { class: 'dl-task-ctl' }, nextBtn, due, pri, st, order, del));
+    el('div', { class: 'dl-task-ctl' }, nextBtn, el('span', { class: 'dl-od' }, owner, due), pri, st, order, del));
+}
+
+/** The task's owner: one click to change. */
+export function taskOwner(t) {
+  const p = ownerPicker({
+    value: t.owner_id || null, compact: true, label: `Owner: ${t.title}`,
+    onChange: (id) => saveOwner('tasks', t.id, id)
+  });
+  p.dataset.fk = `${t.id}-owner`;
+  return p;
+}
+
+/**
+ * The due date as a word ("Today", "12 Dec") or "TBC" when there is none. The real
+ * date input sits over the label: one click opens the date picker; focused, it shows
+ * the date fields for typing.
+ */
+export function dueControl(t, { onSave = null } = {}) {
+  const done = t.state === 'done';
+  const over = !done && isOverdue(t.due_on);
+  const label = el('span', { class: 'dl-due-label', 'aria-hidden': 'true' }, t.due_on ? dueLabel(t.due_on) : 'TBC');
+  const inp = el('input', { type: 'date', class: 'dl-due-input', value: t.due_on || '', 'aria-label': `Due date: ${t.title}${t.due_on ? '' : ' (to be confirmed)'}`, dataset: { fk: `${t.id}-due` } });
+  inp.addEventListener('click', () => { try { inp.showPicker?.(); } catch { /* not allowed here */ } });
+  inp.addEventListener('change', async () => {
+    const v = inp.value || null;
+    label.textContent = v ? dueLabel(v) : 'TBC';
+    wrap.classList.toggle('is-tbc', !v);
+    try { if (onSave) await onSave(v); else await saveRow('tasks', { id: t.id, due_on: v }); } catch (e) { toast(e.message, 'bad'); }
+  });
+  const wrap = el('span', { class: `dl-due-wrap${t.due_on ? '' : ' is-tbc'}${over ? ' is-overdue' : ''}`, title: t.due_on ? `Due ${fmtDate(t.due_on)}` : 'Date to be confirmed. Click to set one' }, label, inp);
+  return wrap;
 }
 
 /** Quick-add: type a task and press Enter. `defaults` sets project/client/state. */
-export function quickAdd(defaults = {}, { placeholder = 'Add a task and press Enter', clientPicker = false } = {}) {
+export function quickAdd(defaults = {}, { placeholder = 'Add a task and press Enter', clientPicker = false, ownerDefault = null } = {}) {
   const inp = input('new-task', { placeholder, 'aria-label': 'New task', autocomplete: 'off' });
   inp.dataset.fk = 'quick-add';
   const cSel = clientPicker ? select('new-task-client', [{ id: '', label: 'No client' }, ...state.clients.filter((c) => !c.archived).sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ id: c.id, label: c.name }))], defaults.client_id || '') : null;
   if (cSel) { cSel.setAttribute('aria-label', 'Client for the new task'); cSel.classList.add('dl-qa-client'); }
-  const dueIn = el('input', { type: 'date', class: 'input dl-qa-due', 'aria-label': 'Due date for the new task' });
+  const dueIn = el('input', { type: 'date', class: 'input dl-qa-due', 'aria-label': 'Due date for the new task (leave empty for TBC)', title: 'Leave empty for TBC' });
+  // New tasks go to the project's owner, else the person adding them (or whoever My tasks is showing).
+  const defOwner = () => (ownerDefault ? ownerDefault() : undefined) ?? (defaults.project_id ? rowById('projects', defaults.project_id)?.owner_id : null) ?? meId();
+  let ownerTouched = false;
+  const ownPick = ownerPicker({ value: defOwner(), compact: true, label: 'Owner of the new task', onChange: () => { ownerTouched = true; } });
+  ownPick.classList.add('dl-qa-owner');
   inp.addEventListener('keydown', async (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -214,13 +251,18 @@ export function quickAdd(defaults = {}, { placeholder = 'Add a task and press En
         title, state: 'todo', priority: 'medium', sort,
         project_id: defaults.project_id || null,
         client_id: (cSel ? cSel.value : defaults.client_id) || null,
-        due_on: dueIn.value || null
+        due_on: dueIn.value || null,
+        owner_id: ownPick.value || null
       });
       dueIn.value = '';
+      ownerTouched = false;
+      ownPick.setValue(defOwner());
     } catch (err) { inp.value = title; toast(err.message, 'bad'); }
     inp.focus();
   });
-  return el('div', { class: 'dl-qa' }, el('span', { class: 'dl-qa-icon', 'aria-hidden': 'true' }, icon('plus', 16)), inp, cSel, dueIn);
+  const node = el('div', { class: 'dl-qa' }, el('span', { class: 'dl-qa-icon', 'aria-hidden': 'true' }, icon('plus', 16)), inp, cSel, ownPick, dueIn);
+  node.syncOwner = () => { if (!ownerTouched) ownPick.setValue(defOwner()); };
+  return node;
 }
 
 /* ======================================================== project forms */
@@ -231,6 +273,7 @@ export async function openProjectForm(clientId = '') {
     body: el('div', { class: 'form-grid' },
       el('div', { class: 'full' }, field('Name', input('name', { required: true, placeholder: 'e.g. Missed-call text-back', autocomplete: 'off' }))),
       field('Client', select('client_id', [{ id: '', label: 'No client yet' }, ...clients.map((c) => ({ id: c.id, label: c.name }))], clientId)),
+      el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Owner'), ownerPicker({ value: meId(), name: 'owner_id', label: 'Project owner' })),
       field('Status', select('status', PROJECT_STATUSES.filter((s) => s.id !== 'cancelled').map((s) => ({ id: s.id, label: s.label })), 'active')),
       field('Start', input('started_on', { type: 'date', value: today() })),
       field('Due', input('due_on', { type: 'date' })),
@@ -241,7 +284,8 @@ export async function openProjectForm(clientId = '') {
   try {
     const row = await saveRow('projects', {
       name: v.name.trim(), client_id: v.client_id || null, status: v.status, started_on: v.started_on || null,
-      due_on: v.due_on || null, value: Number(v.value) || 0, description: v.description.trim() || null
+      due_on: v.due_on || null, value: Number(v.value) || 0, description: v.description.trim() || null,
+      owner_id: v.owner_id || null
     });
     toast('Project created');
     go(`projects/${row.id}`);
@@ -272,7 +316,52 @@ export async function setProjectStatus(p, status) {
 }
 
 /* ================================================================ view */
-const ui = { q: '', client: '', archived: false, taskClient: '' };
+const TV_KEY = 'wiseos.tasks.view';
+const storeGet = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+const storeSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
+const ui = {
+  q: '', client: '', archived: false, taskClient: '',
+  taskView: storeGet(TV_KEY, 'list'),          // project tasks: 'list' | 'table'
+  groupBy: storeGet(`${TV_KEY}.group`, 'status'), // list grouping: 'status' | 'person'
+  tsort: { key: 'due', dir: 1 },                // table sort
+  person: 'me'                                  // My tasks: 'me' | <member id> | 'all' | 'none'
+};
+
+/** Which tasks a My tasks person choice shows. */
+export function tasksFor(person, tasks, me = meId()) {
+  if (person === 'all') return tasks;
+  if (person === 'none') return tasks.filter((t) => !t.owner_id);
+  const id = person === 'me' ? me : person;
+  return tasks.filter((t) => t.owner_id === id);
+}
+
+/** Open and overdue counts per owner (null = nobody yet). Pure. */
+export function workload(tasks, t0 = today()) {
+  const out = new Map();
+  for (const t of tasks) {
+    if (t.state === 'done') continue;
+    const k = t.owner_id || null;
+    const w = out.get(k) || { open: 0, overdue: 0, blocked: 0 };
+    w.open++;
+    if (t.due_on && t.due_on < t0) w.overdue++;
+    if (t.state === 'blocked') w.blocked++;
+    out.set(k, w);
+  }
+  return out;
+}
+
+const TABLE_SORT = {
+  title: (a, b) => a.title.localeCompare(b.title),
+  owner: (a, b) => ownerName(a.owner_id).localeCompare(ownerName(b.owner_id)),
+  state: (a, b) => TASK_STATES.findIndex((s) => s.id === a.state) - TASK_STATES.findIndex((s) => s.id === b.state),
+  due: (a, b) => String(a.due_on || '9999').localeCompare(String(b.due_on || '9999')),
+  priority: (a, b) => PRANK[a.priority] - PRANK[b.priority]
+};
+/** Sort tasks for the table: by a column, then due date, then manual order. Pure. */
+export function sortTaskTable(tasks, key = 'due', dir = 1) {
+  const f = TABLE_SORT[key] || TABLE_SORT.due;
+  return [...tasks].sort((a, b) => (f(a, b) * dir) || TABLE_SORT.due(a, b) || bySort(a, b));
+}
 
 export default function projectsView(ctx) {
   const { param } = ctx;
@@ -292,7 +381,7 @@ function areaTabs(active) {
   return el('nav', { class: 'tabs dl-tabs', 'aria-label': 'Projects or tasks' },
     el('a', { class: `tab${active === 'projects' ? ' is-active' : ''}`, href: '#projects', 'aria-current': active === 'projects' ? 'page' : null }, 'Projects'),
     el('a', { class: `tab${active === 'tasks' ? ' is-active' : ''}`, href: '#projects/tasks', 'aria-current': active === 'tasks' ? 'page' : null }, 'My tasks',
-      el('span', { class: 'count' }, num(state.tasks.filter((t) => t.state !== 'done').length))));
+      el('span', { class: 'count' }, num(tasksFor('me', state.tasks.filter((t) => t.state !== 'done')).length))));
 }
 
 function overview() {
@@ -369,6 +458,7 @@ function projectLine(p) {
     el('div', { class: 'dl-pline-main' },
       el('a', { class: 'dl-name', href: `#projects/${p.id}` }, p.name),
       el('span', { class: 'dl-sub' }, c ? el('a', { href: `#clients/${c.id}` }, c.name) : el('span', { class: 'faint' }, 'No client'))),
+    el('span', { class: 'dl-pline-owner' }, ownerBadge(p.owner_id, { size: 'md' })),
     el('span', { class: `dl-pline-due small${over ? ' dl-warn' : ''}` }, p.due_on ? [over ? 'Overdue · ' : 'Due ', fmtDate(p.due_on, { day: 'numeric', month: 'short' })] : el('span', { class: 'faint' }, 'No due date')),
     el('span', { class: 'dl-pline-val tnum' }, p.value ? money(p.value) : el('span', { class: 'faint' }, '—')),
     progressBar(prog));
@@ -438,16 +528,19 @@ function projectPage(id) {
   const eyebrow = el('p', { class: 'eyebrow' });
   const h1 = el('h1', { class: 'h1' });
   const sub = el('div', { class: 'dl-headsub' });
+  const ownerBox = el('span', { class: 'dl-powner' });
   const actions = el('div', { class: 'row' });
   const head = el('div', { class: 'page-head' },
     el('div', { class: 'stack' }, el('a', { href: '#projects', class: 'dl-back' }, icon('chevron-left', 15), 'Projects'), eyebrow, h1, sub), actions);
   const tasksBox = el('div', { class: 'dl-taskgroups' });
+  const viewBar = el('div', { class: 'dl-viewbar' });
+  const qaNode = quickAdd({ project_id: id, client_id: p0.client_id });
   const details = detailsForm();
   root.append(head, el('div', { class: 'dl-split' },
     el('div', { class: 'dl-main' },
       el('section', { class: 'section' },
-        el('div', { class: 'section-head' }, el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Tasks'), el('h2', { class: 'h2' }, 'What is left to do'))),
-        quickAdd({ project_id: id, client_id: p0.client_id }),
+        el('div', { class: 'section-head' }, el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Tasks'), el('h2', { class: 'h2' }, 'What is left to do')), viewBar),
+        qaNode,
         tasksBox)),
     el('aside', { class: 'dl-side' }, details.node)));
 
@@ -458,7 +551,13 @@ function projectPage(id) {
     eyebrow.textContent = `Project${p.archived ? ' · archived' : ''}`;
     h1.textContent = p.name;
     const prog = projectProgress(id);
-    fill(sub, projectBadge(p.status),
+    if (!ownerBox.firstChild || ownerBox.firstChild.dataset.for !== p.id) {
+      const op = ownerPicker({ value: p.owner_id || null, label: 'Project owner', onChange: (oid) => saveOwner('projects', id, oid) });
+      op.dataset.for = p.id;
+      op.dataset.fk = 'powner';
+      fill(ownerBox, op);
+    } else ownerBox.firstChild.setValue(p.owner_id || null);
+    fill(sub, projectBadge(p.status), ownerBox,
       c ? el('a', { href: `#clients/${c.id}` }, icon('user', 13), c.name) : el('span', { class: 'faint' }, 'No client'),
       p.due_on ? el('span', { class: isOpenProject(p) && isOverdue(p.due_on) ? 'dl-warn' : '' }, `Due ${fmtDate(p.due_on)}`) : null,
       p.value ? el('span', { class: 'tnum' }, money(p.value)) : null,
@@ -487,11 +586,34 @@ function projectPage(id) {
       }, icon('trash', 16)));
   }
 
+  const seg = (name, value, opts, onPick) => el('div', { class: 'own-scope dl-seg', role: 'group', 'aria-label': name, dataset: { seg: name.toLowerCase().replace(/\s+/g, '-') } },
+    opts.map(([v, label]) => el('button', { type: 'button', class: `own-scope-btn${value === v ? ' is-active' : ''}`, 'aria-pressed': String(value === v), dataset: { v }, onClick: () => onPick(v) }, label)));
+  function paintViewBar() {
+    fill(viewBar,
+      ui.taskView === 'list' ? seg('Group by', ui.groupBy, [['status', 'Status'], ['person', 'Person']], (v) => { ui.groupBy = v; storeSet(`${TV_KEY}.group`, v); paintViewBar(); paintTasks(); }) : null,
+      seg('Layout', ui.taskView, [['list', 'List'], ['table', 'Table']], (v) => { ui.taskView = v; storeSet(TV_KEY, v); paintViewBar(); paintTasks(); }));
+  }
+  paintViewBar();
+
   function paintTasks() {
     const all = st.tasks.filter((t) => t.project_id === id);
+    qaNode.syncOwner?.();
     clear(tasksBox);
     if (!all.length) {
       tasksBox.append(el('p', { class: 'dl-none' }, 'No tasks yet. Type the first one above and press Enter.'));
+      return;
+    }
+    if (ui.taskView === 'table') { tasksBox.append(taskTable(all, () => paintTasks())); return; }
+    if (ui.groupBy === 'person') {
+      const people = [...activeTeam().map((m) => m.id), ...new Set(all.map((t) => t.owner_id).filter((o) => o && !activeTeam().some((m) => m.id === o))), null];
+      for (const pid of people) {
+        const items = all.filter((t) => (t.owner_id || null) === pid).sort((a, b) => (a.state === 'done') - (b.state === 'done') || bySort(a, b));
+        if (!items.length) continue;
+        const open = items.filter((t) => t.state !== 'done').length;
+        tasksBox.append(el('section', { class: 'dl-tgroup dl-pgroup', dataset: { owner: pid || 'none' } },
+          el('div', { class: 'dl-group-head' }, ownerLabel(pid, { size: 'sm' }), el('span', { class: 'count' }, num(open)), open !== items.length ? el('span', { class: 'small faint' }, `${num(items.length - open)} done`) : null),
+          el('ul', { class: 'dl-tasks' }, items.map((t) => taskRow(t)))));
+      }
       return;
     }
     for (const s of TASK_STATES) {
