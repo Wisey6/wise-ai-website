@@ -4,12 +4,12 @@
 import {
   el, icon, go, badge, statusBadge, toast, confirmDialog, emptyState, timeAgo, timeOnly,
   dayKey, dayLabel, prettyPhone, copyText, busy
-} from '../ui.js?v=20261118e';
+} from '../ui.js?v=20261118f';
 import {
   state, messagesFor, saveLead, suppress, renderTemplate, leadName, logEvent, ai
-} from '../api.js?v=20261118e';
-import { ownerPicker, ownerBadge, saveOwner, readScope, scopeToggle, inScope, meId } from '../owners.js?v=20261118e';
-import { deliver, finalBody, segmentCounter, errText, AU_MOBILE, suppressedSet } from './campaigns.js?v=20261118e';
+} from '../api.js?v=20261118f';
+import { ownerPicker, ownerBadge, saveOwner, readScope, scopeToggle, inScope, meId } from '../owners.js?v=20261118f';
+import { deliver, finalBody, segmentCounter, errText, AU_MOBILE, suppressedSet } from './campaigns.js?v=20261118f';
 
 /** append / replaceChildren that skip null and false children (native ones would print "null"). */
 const keep = (c) => c.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false);

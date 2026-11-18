@@ -8,15 +8,17 @@
 //   python3 -m http.server 8163 --bind 127.0.0.1 &
 //   OS_TEST_PASSWORD=… BASE=http://127.0.0.1:8163/os/ node os/tests/mail.test.mjs [shots-dir]
 import { createRequire } from 'node:module';
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const ROOT = (process.env.BASE || 'http://127.0.0.1:8163/os/').replace(/\/os\/?$/, '').replace(/\/$/, '');
 const URL = `${ROOT}/os/`;
 const PASSWORD = process.env.OS_TEST_PASSWORD;
-const EMAIL = process.env.OS_TEST_EMAIL || 'hq@wise-ai.au';
+// The operator sign-in address: from the environment, or the one the existing suites use (not repeated here).
+const EMAIL = process.env.OS_TEST_EMAIL || (readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'views.test.mjs'), 'utf8').match(/email: '([^']+)'/) || [])[1];
 const SHOTS = process.argv[2] || process.env.SHOTS || '';
 if (!PASSWORD) { console.error('Set OS_TEST_PASSWORD'); process.exit(2); }
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
@@ -25,7 +27,7 @@ const check = (c, m) => { (c ? passes : fails).push(m); console.log(`${c ? 'ok  
 const browser = await chromium.launch();
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'content-type': 'application/json' };
 const U = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const D1 = U(701); const D2 = U(702); const D3 = U(703); const CHAT = U(710);
+const D1 = U(701); const D2 = U(702); const D3 = U(703); const CHAT = U(710); const P1 = U(730);
 const FAKE_ADDR = 'owner@example.test';
 
 const LONG = Array.from({ length: 16 }, (_, i) => `Line ${i + 1} of the email.`).join('\n');
@@ -50,6 +52,8 @@ async function session(viewport, { mail = { configured: true, connected: false }
       return json(r, 200, { ok: true, draft: { id: body.draft_id, to: ['sam@example.com.au'], cc: [], subject: 'Thursday', status: 'sent', sent_at: new Date().toISOString() } });
     }
     if (body.action === 'mail_discard') return json(r, 200, { ok: true, draft: { id: body.draft_id, to: ['jo@example.com.au'], cc: [], subject: 'Long one', status: 'discarded', discarded_at: new Date().toISOString() } });
+    if (body.action === 'cal_confirm') return json(r, 200, { ok: true, proposal: { proposal_id: body.proposal_id, action: 'create', status: 'done', done_at: new Date().toISOString() } });
+    if (body.action === 'cal_cancel') return json(r, 200, { ok: true, proposal: { proposal_id: body.proposal_id, action: 'create', status: 'cancelled' } });
     if (body.action === 'status') return json(r, 200, { ok: true, provider: 'gdrive', configured: false, connected: false });
     return json(r, 400, { ok: false, error: 'bad_request' });
   });
@@ -62,7 +66,12 @@ async function session(viewport, { mail = { configured: true, connected: false }
       const now = new Date().toISOString();
       const steps = [{ tool: 'search_email', kind: 'read', ok: true, text: 'Searched your email: 2 found' }, draftStep(D1),
         draftStep(D2, { to: ['jo@example.com.au'], cc: ['amy@example.com.au'], subject: 'Long one', body: LONG, is_reply: true, thread_subject: 'Quote' }),
-        draftStep(D3, { to: ['bob@x.test'], subject: 'Hello Bob' })];
+        draftStep(D3, { to: ['bob@x.test'], subject: 'Hello Bob' }),
+        { tool: 'find_events', kind: 'read', ok: true, text: 'Looked at your calendar: 2 events', events: [
+          { id: 'ev1', title: 'Site visit, Harbour Dental', when: 'Fri 20 Nov, 9:00 am to 10:00 am', guests: ['Sam Lee'], location: 'Manly', all_day: false },
+          { id: 'ev2', title: 'Gym', when: 'Fri 20 Nov, 5:30 pm to 6:30 pm', guests: [], location: null, all_day: false }] },
+        { tool: 'save_event', kind: 'draft', ok: true, text: 'Waiting for you: Add and invite "Quote walk-through"', row_id: P1, table_name: 'calendar_proposals',
+          proposal: { proposal_id: P1, action: 'create', title: 'Quote walk-through', when: 'Mon 23 Nov, 10:00 am to 10:30 am', guests: ['sam@example.com.au'], location: 'Phone', status: 'pending', expires_at: new Date(Date.now() + 86400000).toISOString() } }];
       return json(r, 200, { ok: true, chat_id: CHAT, title: 'Emails', changes: [], email_drafts: steps.filter((s) => s.email).map((s) => s.email),
         message: { id: 9901, role: 'assistant', at: now, text: 'Drafted. Press Send when you are happy.', steps, links: [] }, run_id: U(720), model: 'claude-sonnet-5-5', cost_usd: 0.01, spent_usd: 1.01, cap_usd: 25 });
     }
@@ -78,6 +87,7 @@ async function session(viewport, { mail = { configured: true, connected: false }
   await rest('agent_changes', () => []);
   await rest('agent_chat_messages', () => []);
   await rest('mail_drafts', () => st.drafts);
+  await rest('calendar_proposals', () => []);
   await ctx.route('https://accounts.google.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>Google</title>Fake Google sign-in' }));
   await ctx.addInitScript(() => { window.__mod = (p) => import(document.querySelector('script[type=module]').src.replace('app.js', p)); });
   const page = await ctx.newPage();
@@ -200,6 +210,15 @@ try {
     await page.click(`[data-mail-draft="${D3}"] [data-act=mail-send]`);
     await page.waitForSelector(`[data-mail-draft="${D3}"] .cx-mail-err`, { timeout: 8000 });
     check(/opted out/.test(await page.locator(`[data-mail-draft="${D3}"] .cx-mail-err`).innerText()) && await page.locator(`[data-mail-draft="${D3}"][data-state=draft]`).count() === 1, 'a refused send says why, inline, and the draft stays');
+    // Calendar: event tiles and a change with guests that waits for the button.
+    const tiles = await page.locator('.cx.is-page [data-event]').allInnerTexts();
+    check(tiles.length === 2 && /Site visit, Harbour Dental/.test(tiles[0]) && /Fri 20 Nov, 9:00 am/.test(tiles[0]) && /Sam Lee/.test(tiles[0]), 'calendar events show as tiles: title, day and time, guests');
+    const pc = page.locator(`[data-cal-proposal="${P1}"]`);
+    check(/New event/.test(await pc.innerText()) && /Quote walk-through/.test(await pc.innerText()) && /sam@example\.com\.au/.test(await pc.innerText()) && /Waiting for you/.test(await pc.innerText()), 'a calendar change with guests shows what, when, who and "Waiting for you"');
+    check(/Add and invite/.test(await pc.locator('[data-act=cal-confirm]').innerText()), 'its button says Add and invite');
+    await pc.locator('[data-act=cal-confirm]').click();
+    await page.waitForSelector(`[data-cal-proposal="${P1}"][data-state=done]`, { timeout: 8000 });
+    check(/Added and invited/.test(await page.locator(`[data-cal-proposal="${P1}"]`).innerText()) && page.calls.filter((c) => c.action === 'cal_confirm' && c.proposal_id === P1).length === 1, 'pressing it calls cal_confirm once and the card says Added and invited');
     await shot(page, 'chat-draft-states');
     check(page.calls.filter((c) => c.fn === 'agent' && c.agent === 'chat').length === 1, 'one (mocked) chat call, none real');
     check(page.errors.length === 0, `no page errors ${page.errors.join(' | ')}`);

@@ -8,16 +8,16 @@
 import {
   el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural,
   money, titleCase, STATUS
-} from './ui.js?v=20261118e';
+} from './ui.js?v=20261118f';
 import {
   state, chatSend, chatMessages, chatRename, chatArchive, chatDelete, undoChange, memoryDelete,
   agentStatus, saveSettings, rowById, sb
-} from './api.js?v=20261118e';
-import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118e';
-import { agentsInfo, usd } from './views/agents.js?v=20261118e';
-import { ownerName } from './owners.js?v=20261118e';
-import { spotRecord } from './spot.js?v=20261118e';
-import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261118e';
+} from './api.js?v=20261118f';
+import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118f';
+import { agentsInfo, usd } from './views/agents.js?v=20261118f';
+import { ownerName } from './owners.js?v=20261118f';
+import { spotRecord } from './spot.js?v=20261118f';
+import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261118f';
 
 export const MAX_MESSAGE = 4000;
 
@@ -340,10 +340,10 @@ function changesOf(m) {
   });
 }
 // An email draft step (s.email) is shown as its own card (mail-card.js), not as a tile.
-const isDraftStep = (s) => s && !s.change_id && !s.email && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
+const isDraftStep = (s) => s && !s.change_id && !s.email && !s.proposal && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
 const isFailedStep = (s) => s && s.ok === false && s.kind !== 'read';
 const isPlainWrite = (s) => s && !s.change_id && s.ok !== false && s.kind === 'write';
-const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !s.email && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && !(s.kind === 'memory' && s.ok !== false) && (stepText(s) || str(s.tool)));
+const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !s.email && !s.proposal && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && !(s.kind === 'memory' && s.ok !== false) && (stepText(s) || str(s.tool)));
 const linkOf = (c) => safeHash(c.open) || safeHash(c.link) || hashFor(c.table_name, c.row_id);
 const OP = { insert: 'New', update: 'Edit', delete: 'Remove', archive: 'Archive', memory: 'Note', move: 'Move', rename: 'Rename', create_folder: 'Folder', link: 'Link' };
 const opWord = (c) => OP[c.op] || (/remember|memory/.test(String(c.tool || '')) ? 'Note' : /archive/.test(String(c.tool || '')) ? 'Archive'

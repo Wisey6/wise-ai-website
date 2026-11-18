@@ -5,7 +5,7 @@
 //
 // Sending happens only here, when the person presses Send on a draft card: the assistant has no
 // way to send.
-import { fn, sb, state } from './api.js?v=20261118e';
+import { fn, sb, state } from './api.js?v=20261118f';
 
 const SETTINGS_PATH = 'Settings, under Your sign-in';
 
@@ -130,7 +130,7 @@ export function draftState(id) {
   return { row: drafts.get(id) || null, busy: busyIds.has(id), error: errs.get(id) || null };
 }
 /** A short stamp of every draft's state (for redraw checks). */
-export const mailStamp = () => [...drafts.values()].map((r) => `${r.id}:${r.status}`).join(',') + `|${[...busyIds].join(',')}|${[...errs.values()].join(',')}|${status?.connected ? 1 : 0}`;
+export const mailStamp = () => [...drafts.values(), ...proposals.values()].map((r) => `${r.id}:${r.status}`).join(',') + `|${[...busyIds].join(',')}|${[...errs.values()].join(',')}|${status?.connected ? 1 : 0}`;
 
 /** The Gmail link that opens the draft (community-documented compose= form; falls back to Drafts). */
 export function gmailDraftLink(row, fallback) {
@@ -154,6 +154,45 @@ async function act(action, id) {
   emit();
   return r.ok ? r : { ...r, message: messageOf(r) };
 }
+/* ------------------------------------------------------------ calendar proposals (guests) */
+const PCOLS = 'id,chat_id,action,title,when_text,guests,location,status,created_at,expires_at,done_at';
+const proposals = new Map();   // proposal id → row
+let pLoaded = null;
+let pChannel = null;
+/** The person's own calendar proposals (their rows only). Starts a small live subscription once. */
+export function loadProposals(force = false) {
+  if (pLoaded && !force) return pLoaded;
+  pLoaded = (async () => {
+    if (!sb) return;
+    const { data, error } = await sb.from('calendar_proposals').select(PCOLS).order('created_at', { ascending: false }).limit(200);
+    if (!error && Array.isArray(data)) { for (const r of data) if (r?.id) proposals.set(r.id, r); emit(); }
+    if (!pChannel && sb.channel) {
+      pChannel = sb.channel('wiseos-cal-proposals').on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_proposals' }, (p) => {
+        const row = p.new && p.new.id ? p.new : null;
+        if (row) { proposals.set(row.id, { ...(proposals.get(row.id) || {}), ...row }); emit(); }
+      }).subscribe();
+    }
+  })().catch(() => {});
+  return pLoaded;
+}
+export function proposalState(id) { return { row: proposals.get(id) || null, busy: busyIds.has(id), error: errs.get(id) || null }; }
+const CAL_ERRORS = { expired: 'That waited more than a day, so it was dropped. Ask the assistant again.', done: 'That was already done.', cancelled: 'That was cancelled.', event_gone: 'That event is no longer in your calendar.' };
+async function calAct(action, id) {
+  if (!id || busyIds.has(id)) return null;
+  busyIds.add(id); errs.delete(id); emit();
+  const r = await call(action, { proposal_id: id });
+  busyIds.delete(id);
+  const p = r.proposal;
+  if (p && p.proposal_id) proposals.set(p.proposal_id, { ...(proposals.get(p.proposal_id) || {}), id: p.proposal_id, status: p.status, done_at: p.done_at });
+  if (!r.ok) errs.set(id, r.message || CAL_ERRORS[r.error] || MAIL_ERRORS[r.error] || 'That did not go through. Try again in a minute.');
+  emit();
+  return r;
+}
+/** The person pressed Add and invite / Send update / Cancel and notify: Google emails the guests. */
+export const confirmProposal = (id) => calAct('cal_confirm', id);
+/** The person dismissed it: nothing happens in the calendar. */
+export const cancelProposal = (id) => calAct('cal_cancel', id);
+
 /** The person pressed Send. */
 export const sendDraft = (id) => act('mail_send', id);
 /** The person pressed Discard (deletes the unsent Gmail draft). */

@@ -13,10 +13,13 @@
 //   POST {action:'mail_status'|'mail_connect_url'|'mail_disconnect'|'mail_send'|'mail_discard', ...}:
 //       the CALLER's own Google account (Gmail and calendar), see ../_shared/gmail.ts. The redirect
 //       URI is shared: a state signed with purpose 'gmail' comes back to /os/?mail=<result>#settings.
+//   POST {action:'cal_confirm'|'cal_cancel', proposal_id}: the person pressed the button on a calendar
+//       change that involves guests (Google emails them only then). See ../_shared/gcal.ts.
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { adminClient, bearer } from "../_shared/admin.ts";
 import { handleFile, runAction, type Member } from "../_shared/gdrive.ts";
 import { MAIL_ACTIONS, routeCallback, runMailAction } from "../_shared/gmail.ts";
+import { CAL_ACTIONS, runCalAction } from "../_shared/gcal.ts";
 
 const env = (k: string) => Deno.env.get(k);
 
@@ -57,7 +60,9 @@ Deno.serve(async (req) => {
     const action = String((body as Record<string, unknown>).action ?? "");
     const r = MAIL_ACTIONS.includes(action)
       ? await runMailAction({ db, env, member }, body as Record<string, unknown>)
-      : await runAction({ db, env, member, source: "hub" }, body as Record<string, unknown>);
+      : CAL_ACTIONS.includes(action)
+        ? await runCalAction({ db, env, member }, body as Record<string, unknown>)
+        : await runAction({ db, env, member, source: "hub" }, body as Record<string, unknown>);
     return json(req, r.status, r.body);
   } catch (e) {
     console.error("gdrive", (e as Error).message);

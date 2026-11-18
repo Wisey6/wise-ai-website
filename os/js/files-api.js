@@ -2,7 +2,7 @@
 // `onedrive` for OneDrive; both answer the same actions with the same shapes), the hub's own
 // link and change rows, and record labels for linking. Imports api.js with the same ?v= stamp
 // as every other module so there is only one copy of `state`.
-import { fn, sb, state, leadName } from './api.js?v=20261118e';
+import { fn, sb, state, leadName } from './api.js?v=20261118f';
 
 /** The two providers. Google Drive is the business's drive; OneDrive stays available, dormant. */
 export const PROVIDERS = {

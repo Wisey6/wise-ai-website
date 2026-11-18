@@ -90,9 +90,20 @@ business folder) goes in the newest user message. Measured: second turn `cache_r
 
 Guarantees in code:
 - One audited write path (`writeAudited`): table and field allowlist, ids must exist, an
-  `agent_changes` row with before/after for each change. Never deletes (except undoing its own
-  insert), never writes settings, the team, suppressions or agent logs, never sets or clears `dnc`,
-  never edits an opted-out lead, never links a deal or client to one. Sends nothing.
+  `agent_changes` row with before/after for each change. Never writes settings, the team,
+  suppressions or agent logs, never sets or clears `dnc`, never edits an opted-out lead, never links
+  a deal or client to one. Sends nothing (email drafts are sent only by the person: see Email).
+- Removing (`remove {kind, id, with_tasks?}`, migration `0015`): only when the person asks, for
+  tasks, library entries, costs, draft invoices, deals, draft proposals, jobs and leads. Clients are
+  archived, never removed; never an opted-out lead, a lead with messages, bookings, deals, clients,
+  proposals or linked files, a deal or job other records point at, or a job with invoices; a job's
+  tasks go only with `with_tasks` (each its own change). One path (`deleteAudited`): the audit row
+  (op `delete`, the whole row in `before`, a removed lead's activity log in `before._children`) is
+  written first. `undo` puts the row back with the SAME id and original timestamps. Blocked in a turn
+  that read outside text; at most 3 per message, up to 20 when the person's own message is a short yes
+  to an assistant message that listed the plan.
+- Every change in the response and in steps carries `title` (the record's display name) and
+  `kind_label` (Lead, Client, Deal, Job, Task, Invoice, Cost, Library, Proposal, Calendar).
 - Untrusted text: tool results mask phones and emails, and notes, messages and library text are
   scrubbed. Lists never carry a lead's notes or a library body. Once a turn has read a lead's notes or
   messages, a file or a library body, that turn cannot change files or links, archive, or save a
@@ -334,10 +345,37 @@ email connection.
 3. In the hub: **Settings > Your sign-in > Email and calendar > Connect**, sign in with your own
    wise-ai.au account and tick every box. Each team member does the same for their own account.
 
-These scopes are "restricted" (Gmail) or "sensitive" (Calendar); an app whose audience is Internal to
-the Workspace organisation needs no Google verification, as for Drive.
+Google lists `gmail.readonly` and `gmail.compose` as "restricted" scopes. As for Drive's restricted
+scope, an app whose audience is Internal to the Workspace organisation is used without Google's
+verification.
 
-Unit tests: `node --test supabase/tests/mail.test.mjs`. Page tests (mocked): `os/tests/mail.test.mjs`.
+### Calendar (the same connection)
+
+Tools, offered when the person's connection has `calendar.events`: `find_events {from?, to?, query?,
+limit?}` (default now to +14 days, primary calendar, local time), `get_event {id}`, `free_times {from,
+to, duration_min, within_hours?, weekends?}` (worked out from the event list, working hours 08:30 to
+17:30 Monday to Friday by default; the freebusy endpoint needs another scope), `save_event {id?, title,
+start, end | duration_min, all_day?, location?, description?, guests?, link_to?: {kind, record}}` and
+`remove_event {id}`. Without guests a change is made straight away with `sendUpdates=none` and logged in
+`public.calendar_changes` (the person's own rows; Undo deletes a created event, restores the changed
+fields, or creates a removed event again). `link_to` is stored in the event's private extended
+properties. Events organised by someone else are never changed or removed. Anything that adds or changes
+guests, or changes or removes an event that has guests, becomes a proposal in
+`public.calendar_proposals` (24 hours) shown as a card; the person's button calls `cal_confirm
+{proposal_id}` on the `gdrive` function (the only `sendUpdates=all` path) or `cal_cancel`. Calendar text
+written by others (an event they organised, guests, descriptions) holds hub changes and removals like
+email. A switched-off Calendar API answers `calendar_api_off`.
+
+Chat response additions: `email_drafts: [{draft_id, to[], cc[], subject, body, is_reply, thread_subject?,
+gmail_url, status:'draft'}]`, `event_proposals: [{proposal_id, action:'create'|'update'|'remove', title,
+when, guests[], location, status, expires_at, done_at}]`; steps `{tool:'draft_email'|'update_draft',
+kind:'draft', ok, text, row_id, table_name:'mail_drafts', email}`, `{tool:'save_event'|'remove_event',
+kind:'draft', ..., proposal}` and `{tool:'find_events', kind:'read', ..., events:[{id, title, when, guests,
+location, all_day}]}`; calendar changes `{id, kind:'calendar', table_name:'calendar_events', row_id:<event
+id>, op, summary, title, kind_label:'Calendar', undoable:true}`.
+
+Unit tests: `node --test supabase/tests/mail.test.mjs supabase/tests/calendar.test.mjs supabase/tests/removals.test.mjs`.
+Page tests (mocked): `os/tests/mail.test.mjs`.
 
 ## onedrive (the Files page, OneDrive: built, dormant)
 

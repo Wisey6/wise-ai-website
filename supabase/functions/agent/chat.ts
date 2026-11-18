@@ -6,7 +6,11 @@
 //  1. Every record write goes through writeAudited(): table and fields checked against the
 //     allowlist (chat-rules.ts WRITABLE / checkPatch), values checked in buildPatch, ids must
 //     exist, and an agent_changes row with before/after is written for each change.
-//  2. It never deletes a record, except undoing its own insert when nothing points at it.
+//  2. It deletes a record only through deleteAudited (the `remove` tool, when the person asks):
+//     the whole row is kept in agent_changes.before (op 'delete') and Undo puts it back with the
+//     same id. Never a client, an opted-out lead or anything other records point at (chat-rules.ts
+//     removalBlocked); never in a turn that read outside text; at most 3 a message (20 after the
+//     person said yes to a listed plan). Undoing its own insert also deletes, when nothing points at it.
 //     It never writes settings, team_members, suppressions, messages or agent logs; it never
 //     sets or clears a lead's dnc status and never edits a dnc lead.
 //  3. It sends nothing: draft_message only returns text for the inbox composer.
@@ -25,11 +29,13 @@ import {
   ARCHIVE_TABLES, KINDS, type LinkCandidate, Refusal, type Step, TABLE_KIND, buildHistory, buildPatch, checkChatRequest, checkPatch,
   diffPatch, fallbackTitle, labelFor, resultJson, linkFor, maskPhone, maskRow, ownsChat, pickLinks, searchTerm, splitTitle, trimText,
   undoConflicts, undoInsertPlan, undoBlocked, FILE_LINK_KIND, RECORD_WRITE_TOOLS, businessMemoryAllowed, callTimeout, taintCheck, taints,
-  MAIL_READ_TOOLS,
+  MAIL_READ_TOOLS, KIND_LABEL, REMOVABLE, removalBlocked, removalCap, restoreRow,
 } from "./chat-rules.ts";
 import { CHAT_SYSTEM, CHAT_TOOLS } from "./chat-prompt.ts";
 import { FILE_TOOLS, fileOrientation, undoFileChange } from "./files.ts";
 import { type EmailDraft, MAIL_TOOL_DEFS, MAIL_TOOL_NAMES, MAIL_TOOLS, mailContext } from "./mail.ts";
+import { CAL_TOOL_DEFS, CAL_TOOL_NAMES, CAL_TOOLS, calendarContext, undoCalendarChange } from "./calendar.ts";
+import { calendarTaints } from "./calendar-rules.ts";
 import { type NumberTopic, NUMBER_TOPICS, computeNumbers, monthlyEquivalent, isRunning, suggestInvoiceNo } from "./money.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -61,6 +67,10 @@ type Turn = ChatCtx & {
   userMessage: string; tainted: boolean; writesAfterTaint: number;
   // Email (the person's own Gmail): offered only when connected; a mail read sets mailTainted.
   mailTools: boolean; mailLine: string; mailTainted: boolean; emailDrafts: EmailDraft[];
+  // Calendar (the person's own): offered only when connected with the calendar scope.
+  calTools: boolean; calLine: string; eventProposals: Row[]; calOps?: number;
+  // Removals this message, and how many are allowed (3, or 20 after the person said yes to a listed plan).
+  removals: number; removeCap: number;
   // deno-lint-ignore no-explicit-any
   mailState?: any;
 };
@@ -117,7 +127,7 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
   const ch = must<Row | null>(await db.from("agent_changes").select("*").eq("id", changeId).maybeSingle());
   if (!ch) {
     // A file change (file_changes) or a file link (file_links) the assistant made.
-    const f = await undoFileChange(ctx, changeId);
+    const f = await undoFileChange(ctx, changeId) ?? await undoCalendarChange(ctx, changeId);
     return f ? json(req, f.status, f.body) : json(req, 404, { ok: false, error: "not_found" });
   }
   if (ch.member_id && ch.member_id !== member.id && member.role !== "owner") {
@@ -125,6 +135,7 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
   }
   if (ch.undone_at) return json(req, 200, { ok: false, error: "already_undone", detail: "That change was already undone.", undone_at: ch.undone_at });
   if (!(ch.table_name in REFERENCES)) return json(req, 400, { ok: false, error: "bad_request", detail: "That change cannot be undone here." });
+  if (ch.op === "delete") return await undoRemoval(ctx, ch);
   const current = must<Row | null>(await db.from(ch.table_name).select("*").eq("id", ch.row_id).maybeSingle());
   if (!current) return json(req, 200, { ok: false, error: "gone", detail: "That record no longer exists." });
   const blockedWhy = undoBlocked(ch.table_name, current);
@@ -181,6 +192,41 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
   const undoneAt = new Date().toISOString();
   must(await db.from("agent_changes").update({ undone_at: undoneAt }).eq("id", ch.id));
   return json(req, 200, { ok: true, change_id: ch.id, undone_at: undoneAt, result });
+}
+
+/**
+ * Undo a removal: the row goes back with the SAME id and its original timestamps, from the copy
+ * kept in agent_changes.before. A removed lead's activity log rows come back too (with new ids)
+ * and its run-log links are restored.
+ */
+async function undoRemoval(ctx: ChatCtx, ch: Row): Promise<Response> {
+  const { db, req } = ctx;
+  const row = restoreRow(ch.before);
+  if (!row) return json(req, 400, { ok: false, error: "bad_request", detail: "That removal has no copy to restore." });
+  const exists = must<Row | null>(await db.from(ch.table_name).select("id").eq("id", ch.row_id).maybeSingle());
+  if (exists) {
+    const undoneAt = new Date().toISOString();
+    must(await db.from("agent_changes").update({ undone_at: undoneAt }).eq("id", ch.id));
+    return json(req, 200, { ok: true, change_id: ch.id, undone_at: undoneAt, result: "already_back" });
+  }
+  const ins = await db.from(ch.table_name).insert(row);
+  if (ins.error) {
+    if (ins.error.code === "23503") return json(req, 200, { ok: false, error: "conflict", detail: "What it belonged to is gone (for a task, undo its job's removal first)." });
+    if (ins.error.code === "23505") return json(req, 200, { ok: false, error: "conflict", detail: "Another record now has the same phone number or other unique value, so it cannot come back. Change that one first." });
+    throw new Error(ins.error.message);
+  }
+  const kids = (ch.before ?? {})._children ?? {};
+  if (Array.isArray(kids.events) && kids.events.length) {
+    const r = await db.from("events").insert(kids.events.map((e: Row) => { const { id: _id, ...rest } = e; return rest; }));
+    if (r.error) console.error("restore events", r.error.message);
+  }
+  if (Array.isArray(kids.agent_runs) && kids.agent_runs.length) {
+    const r = await db.from("agent_runs").update({ lead_id: ch.row_id }).in("id", kids.agent_runs);
+    if (r.error) console.error("restore agent_runs", r.error.message);
+  }
+  const undoneAt = new Date().toISOString();
+  must(await db.from("agent_changes").update({ undone_at: undoneAt }).eq("id", ch.id));
+  return json(req, 200, { ok: true, change_id: ch.id, undone_at: undoneAt, result: "restored" });
 }
 
 // ------------------------------------------------------------------ context for the model
@@ -251,6 +297,7 @@ async function contextBlock(t: Turn, first: boolean): Promise<string> {
     ...lines,
     files,
     t.mailLine,
+    t.calLine,
     first ? 'This is the first message of a new conversation: after your reply, add a final line "TITLE: <a 3-6 word title for this conversation>".' : "",
     "</hub_context>",
   ].filter(Boolean).join("\n");
@@ -263,13 +310,13 @@ function client(timeout: number) {
 }
 
 
-async function callModel(model: string, messages: Msg[], timeout: number, withMail: boolean): Promise<Msg> {
+async function callModel(model: string, messages: Msg[], timeout: number, extraTools: Row[]): Promise<Msg> {
   const params: Row = {
     model, max_tokens: MAX_TOKENS,
     system: [{ type: "text", text: CHAT_SYSTEM, cache_control: { type: "ephemeral" } }],
-    // The email tools come last and only for someone whose email is connected, so each of the two
-    // tool lists is byte-stable (and cached) on its own.
-    tools: withMail ? [...CHAT_TOOLS, ...MAIL_TOOL_DEFS] : CHAT_TOOLS,
+    // The email and calendar tools come last and only for someone who connected them, so each
+    // tool list is byte-stable (and cached) on its own.
+    tools: extraTools.length ? [...CHAT_TOOLS, ...extraTools] : CHAT_TOOLS,
     tool_choice: { type: "auto" },
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
@@ -320,11 +367,15 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   const t: Turn = {
     ...ctx, today, chatId: chat.id, runId, team: await loadTeam(db), steps: [], changes: [], links: [], draft: null,
     userMessage: check.message, tainted: false, writesAfterTaint: 0,
-    mailTools: false, mailLine: "", mailTainted: false, emailDrafts: [],
+    mailTools: false, mailLine: "", mailTainted: false, emailDrafts: [], calTools: false, calLine: "", eventProposals: [],
+    removals: 0, removeCap: removalCap(check.message, [...prior].reverse().find((m) => m.role === "assistant" && m.model !== "recap")?.text ?? null),
   };
-  const mc = await mailContext({ db, member: ctx.member, chatId: chat.id });
+  const [mc, cc] = await Promise.all([mailContext({ db, member: ctx.member, chatId: chat.id }), calendarContext({ db, member: ctx.member, tz: ctx.tz })]);
   t.mailTools = mc.tools;
   t.mailLine = mc.text;
+  t.calTools = cc.tools;
+  t.calLine = cc.text;
+  const extraTools = [...(t.mailTools ? MAIL_TOOL_DEFS : []), ...(t.calTools ? CAL_TOOL_DEFS : [])];
   const history = buildHistory(prior as never);
   const messages: Msg[] = [
     ...history,
@@ -347,7 +398,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     for (; iterations < MAX_ITERATIONS; iterations++) {
       const elapsed = Date.now() - ctx.started;
       if (iterations > 0 && elapsed > TURN_SOFT_MS) { stopNote = "I ran out of time for one message before finishing."; break; }
-      const res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS), t.mailTools);
+      const res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS), extraTools);
       totals = addUsage(totals, res.usage);
       usedModel = String(res.model ?? model);
       // Running cost on the run row after every call, so a cut-off turn is still counted.
@@ -422,6 +473,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     ok: true, chat_id: t.chatId, title: newTitle ?? chat.title,
     message: { id: msg.id, role: "assistant", text, steps: t.steps, links: msg.links, at: msg.at },
     changes: t.changes, ...(t.draft ? { draft: t.draft } : {}), ...(t.emailDrafts.length ? { email_drafts: t.emailDrafts } : {}),
+    ...(t.eventProposals.length ? { event_proposals: t.eventProposals } : {}),
     usage: { input_tokens: totals.input, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, output_tokens: totals.output, iterations: iterations + 1, tool_calls: toolCalls },
     run_id: t.runId, model: usedModel, cost_usd: cost, spent_usd: ctx.spent + cost, cap_usd: ctx.cap,
   });
@@ -442,7 +494,7 @@ async function chatFailure(t: Turn, e: unknown, totals: Totals, model: string): 
   else if (e instanceof Anthropic.APIError) { detail = `The AI service returned an error (${e.status ?? "network"}).`; console.error("anthropic error", e.status, e.message); }
   else throw e;
   await updateRun(t, { status: "error", model, totals, cost, error: `${error}: ${(e as Error).message}`.slice(0, 500), output: { chat_id: t.chatId } });
-  if (t.changes.length || t.draft || t.emailDrafts.length) {
+  if (t.changes.length || t.draft || t.emailDrafts.length || t.eventProposals.length) {
     const did = t.steps.filter((s) => s.ok && s.kind !== "read").map((s) => `- ${s.text}`).join("\n");
     await saveAssistant(t, `The AI service failed partway through. What I had already done:\n${did}`, model, cost);
   }
@@ -483,14 +535,17 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
     if (blocked) refuse(blocked);
     const wasTainted = t.tainted;
     // The email tools exist for this turn only when the person's own email is connected.
-    const fn = MAIL_TOOL_NAMES.includes(name) ? (t.mailTools ? MAIL_TOOLS[name] : undefined) : TOOLS[name];
+    const fn = MAIL_TOOL_NAMES.includes(name) ? (t.mailTools ? MAIL_TOOLS[name] : undefined)
+      : CAL_TOOL_NAMES.includes(name) ? (t.calTools ? CAL_TOOLS[name] : undefined) : TOOLS[name];
     const out = await fn?.(t, input);
     if (!out) {
-      const names = [...CHAT_TOOLS, ...(t.mailTools ? MAIL_TOOL_DEFS : [])].map((x) => x.name);
+      const names = [...CHAT_TOOLS, ...(t.mailTools ? MAIL_TOOL_DEFS : []), ...(t.calTools ? CAL_TOOL_DEFS : [])].map((x) => x.name);
       return { is_error: true, content: `Unknown tool "${name}". The tools are: ${names.join(", ")}.` };
     }
     if (wasTainted && RECORD_WRITE_TOOLS.includes(name) && !out.unchanged) t.writesAfterTaint++;
     if (taints(name, input, out)) { t.tainted = true; if (MAIL_READ_TOOLS.includes(name)) t.mailTainted = true; }
+    // Calendar text written by someone else counts like email.
+    if (CAL_TOOL_NAMES.includes(name) && calendarTaints(name, out)) { t.tainted = true; t.mailTainted = true; }
     return { content: resultJson(out, t.tz) };
   } catch (e) {
     if (e instanceof Refusal) {
@@ -690,10 +745,33 @@ async function writeAudited(t: Turn, table: string, existing: Row | null, patch:
     chat_id: t.chatId, run_id: t.runId, member_id: t.member.id, table_name: table, row_id: saved.id, op, before, after, summary,
   }).select("id, at").single());
   const link = linkFor(table, saved);
-  t.changes.push({ id: ch.id, kind: "record", at: ch.at, chat_id: t.chatId, table_name: table, row_id: saved.id, op, summary, open: link, undone_at: null });
-  t.steps.push({ tool, kind: "write", ok: true, text: summary, link, change_id: ch.id, table_name: table, row_id: saved.id });
+  t.changes.push({ id: ch.id, kind: "record", at: ch.at, chat_id: t.chatId, table_name: table, row_id: saved.id, op, summary, open: link, undone_at: null, title: label, kind_label: KIND_LABEL[table] ?? NOUN[table] ?? table });
+  t.steps.push({ tool, kind: "write", ok: true, text: summary, link, change_id: ch.id, table_name: table, row_id: saved.id, title: label, kind_label: KIND_LABEL[table] ?? NOUN[table] ?? table });
   t.links.push({ label, hash: link, weight: 3 });
   return { ...saved, _change_id: ch.id, _summary: summary };
+}
+
+/** The one delete path: the whole row (and a lead's activity log) kept in agent_changes.before, op 'delete'. */
+async function deleteAudited(t: Turn, table: string, row: Row, tool: string, children: Row = {}): Promise<string> {
+  if (table === "leads" && row.status === "dnc") refuse("this lead has opted out (do not contact) and cannot be removed");
+  const label = labelFor(table, row);
+  const summary = `Removed ${NOUN[table]} ${label}`.slice(0, 300);
+  const before = { ...row, ...(Object.keys(children).length ? { _children: children } : {}) };
+  // The audit row first, so a removal is never unrecorded.
+  const ch = must<Row>(await t.db.from("agent_changes").insert({
+    chat_id: t.chatId, run_id: t.runId, member_id: t.member.id, table_name: table, row_id: row.id, op: "delete", before, after: null, summary,
+  }).select("id, at").single());
+  const del = await t.db.from(table).delete().eq("id", row.id).select("id");
+  if (del.error || !del.data?.length) {
+    await t.db.from("agent_changes").delete().eq("id", ch.id);
+    if (del.error) dbRefusal(del.error);
+    refuse(`that ${NOUN[table]} was already gone`);
+  }
+  t.removals++;
+  const kindLabel = KIND_LABEL[table] ?? NOUN[table] ?? table;
+  t.changes.push({ id: ch.id, kind: "record", at: ch.at, chat_id: t.chatId, table_name: table, row_id: row.id, op: "delete", summary, open: null, undone_at: null, title: label, kind_label: kindLabel });
+  t.steps.push({ tool, kind: "write", ok: true, text: summary, change_id: ch.id, table_name: table, row_id: row.id, title: label, kind_label: kindLabel });
+  return String(ch.id);
 }
 
 function dbRefusal(e: { message: string; code?: string }): never {
@@ -935,6 +1013,49 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
     const existing = must<Row | null>(await t.db.from(table!).select("*").eq("id", input.id).maybeSingle());
     if (!existing) refuse(`no ${kind} with that id`);
     return writeResult(table!, await writeAudited(t, table!, existing, { archived: input.archived }, "archive"));
+  },
+
+  async remove(t, input) {
+    const kind = String(input.kind);
+    const table = REMOVABLE[kind];
+    if (kind === "clients") refuse("Clients are never removed, only archived. Offer to archive it.");
+    if (!table) refuse(`only these can be removed: ${Object.keys(REMOVABLE).join(", ")}`);
+    if (!isUuid(input.id)) refuse("id must be a record id from find (look it up first; if several match, ask which one)");
+    const row = must<Row | null>(await t.db.from(table).select("*").eq("id", input.id).maybeSingle());
+    if (!row) refuse(`no ${NOUN[table]} with that id`);
+    // What points at it.
+    const count = async (tbl: string, col: string, extra?: (q: Row) => Row) => {
+      // deno-lint-ignore no-explicit-any
+      let q: any = t.db.from(tbl).select("id", { count: "exact", head: true }).eq(col, row!.id);
+      if (extra) q = extra(q);
+      const r = await q;
+      if (r.error) throw new Error(r.error.message);
+      return r.count ?? 0;
+    };
+    const refs: Record<string, number> = {};
+    const linkKind = FILE_LINK_KIND[table];
+    if (linkKind) refs.file_links = await count("file_links", "record_id", (q) => q.eq("kind", linkKind));
+    if (table === "leads") for (const [tb, col] of [["messages", "lead_id"], ["bookings", "lead_id"], ["deals", "lead_id"], ["clients", "lead_id"], ["proposals", "lead_id"]]) refs[tb] = await count(tb, col);
+    if (table === "deals") for (const tb of ["projects", "proposals"]) refs[tb] = await count(tb, "deal_id");
+    if (table === "projects") { refs.income = await count("income", "project_id"); refs.tasks = await count("tasks", "project_id"); }
+    const blocked = removalBlocked(kind, row!, refs, input.with_tasks === true);
+    if (blocked) refuse(blocked);
+    // The gate: 3 a message, or up to 20 after the person said yes to a listed plan.
+    const tasks = table === "projects" && refs.tasks ? must<Row[]>(await t.db.from("tasks").select("*").eq("project_id", row!.id).limit(200)) : [];
+    if (t.removals + 1 + tasks.length > t.removeCap) {
+      refuse(`At most ${t.removeCap} removals in one message${t.removeCap < 20 ? " unless the person has just said yes to a list of what goes" : ""}. Stop now: list what is left to remove (each by name) and ask the person to say yes in their next message.`);
+    }
+    for (const task of tasks) await deleteAudited(t, "tasks", task, "remove");
+    const children: Row = {};
+    if (table === "leads") {
+      children.events = must<Row[]>(await t.db.from("events").select("*").eq("lead_id", row!.id).limit(500));
+      children.agent_runs = must<Row[]>(await t.db.from("agent_runs").select("id").eq("lead_id", row!.id).limit(500)).map((r) => r.id);
+    }
+    const done = await deleteAudited(t, table, row!, "remove", children);
+    return {
+      ok: true, removed: labelFor(table, row!), kind, change_id: done, ...(tasks.length ? { removed_tasks: tasks.map((x) => x.title) } : {}),
+      note: "Removed. Tell the person exactly what was removed and that Undo under your reply brings it back.",
+    };
   },
 
   async draft_message(t, input) {

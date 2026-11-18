@@ -19,3 +19,12 @@
 .cx-mail-discard { margin-left: auto; color: var(--muted); }
 .cx-mail-err { margin: 0; font-size: var(--fs-sm); color: var(--rose-t); }
 .set-mail-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* Calendar: event tiles and changes that wait for the person (guests). */
+.cx-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cx-event { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--fs-sm); min-width: 0; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.cx-event .icon { color: var(--muted); flex: none; align-self: center; }
+.cx-event-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cx-event-title { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.cx-event-when, .cx-event-guests { color: var(--muted); font-size: var(--fs-meta); overflow-wrap: anywhere; }
+.cx-event-guests { text-align: right; max-width: 40%; }
+.cx-cal.is-done, .cx-cal.is-cancelled, .cx-cal.is-expired { background: transparent; }

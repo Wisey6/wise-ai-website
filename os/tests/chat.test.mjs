@@ -459,7 +459,7 @@ try {
     check(lastCall(page, (c) => c.action === 'memory_delete')?.id === M2, 'Forget sends memory_delete and the note goes');
     // the rules are the new rules
     const rules = await page.locator('.cx.is-page [data-rules]').innerText();
-    check(/makes the changes you ask for/i.test(rules) && /undone/i.test(rules) && /never sends/i.test(rules) && /never deletes/i.test(rules) && /do-not-contact/i.test(rules), 'the rules describe the new behaviour');
+    check(/makes the changes you ask for/i.test(rules) && /undone/i.test(rules) && /never sends/i.test(rules) && /removes only what you ask/i.test(rules) && /every removal can be undone/i.test(rules) && /do-not-contact/i.test(rules), 'the rules describe the new behaviour');
     // three columns at 1440
     const cols = await page.evaluate(() => ['.cx-hist', '.cx-conv', '.cx-side'].map((s) => { const r = document.querySelector(`.cx.is-page ${s}`).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width)]; }));
     check(cols[0][0] < cols[1][0] && cols[1][0] < cols[2][0], `1440: conversations · conversation · memory (${JSON.stringify(cols)})`);

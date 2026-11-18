@@ -3,14 +3,14 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
-} from '../ui.js?v=20261118e';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118e';
-import { FUNCTIONS_URL } from '../config.js?v=20261118e';
-import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261118e';
-import { chatModelPicker } from '../chat.js?v=20261118e';
-import { setMyEmail, teamSave } from '../api.js?v=20261118e';
-import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118e';
-import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261118e';
+} from '../ui.js?v=20261118f';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118f';
+import { FUNCTIONS_URL } from '../config.js?v=20261118f';
+import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261118f';
+import { chatModelPicker } from '../chat.js?v=20261118f';
+import { setMyEmail, teamSave } from '../api.js?v=20261118f';
+import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118f';
+import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261118f';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -530,9 +530,10 @@ function yourSignIn() {
    the assistant searches, reads and drafts in it when they ask; nothing is sent until they
    press Send on a draft. */
 export const MAIL_LINE = 'The assistant can search and read your inbox and write drafts. Nothing is sent until you press Send.';
+export const CAL_LINE = 'In your calendar it can look, find free times and add or change your own events; guests are invited only when you press the button.';
 function mailRow() {
   const status = el('div', { class: 'set-mail-status', dataset: { mailStatus: '' } });
-  const note = el('p', { class: 'small muted', dataset: { mailNote: '' } }, MAIL_LINE);
+  const note = el('p', { class: 'small muted', dataset: { mailNote: '' } }, MAIL_LINE, ' ', CAL_LINE);
   const err = el('p', { class: 'set-err', role: 'alert', dataset: { mailErr: '' } });
   const acts = el('div', { class: 'row', dataset: { mailActs: '' } });
   const node = el('div', { class: 'set-sub', dataset: { mailRow: '' } }, el('h3', { class: 'h3' }, 'Email and calendar'), status, note, err, acts);
@@ -714,11 +715,11 @@ function teamGroup() {
 
 /** A small modal with a form; resolves the values or null. */
 function modal2(title, body, confirmLabel) {
-  return import('../ui.js?v=20261118e').then(({ modal }) => modal({ title, body, confirmLabel }));
+  return import('../ui.js?v=20261118f').then(({ modal }) => modal({ title, body, confirmLabel }));
 }
 /** Show a PIN the owner just set, once. */
 function showOnce(name, pin) {
-  return import('../ui.js?v=20261118e').then(({ modal }) => modal({
+  return import('../ui.js?v=20261118f').then(({ modal }) => modal({
     title: `${name}'s PIN`, hideConfirm: true, cancelLabel: 'Done',
     body: el('div', { class: 'stack' },
       el('p', {}, `Tell ${name} this PIN in person. It is not shown again.`),
