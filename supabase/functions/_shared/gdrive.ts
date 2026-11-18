@@ -150,6 +150,7 @@ export const MESSAGES: Record<string, string> = {
   cross_drive: "Moving between My Drive and a shared drive, or between shared drives, is done in Google Drive itself.",
   forbidden: "Google Drive did not allow that change.",
   too_large: "That file is too large to preview here. Open it in Google Drive.",
+  unsupported: "That kind of file has no text to read.",
   owner_only: "Only the owner can connect or disconnect Google Drive.",
   bad_request: "That request was not understood.",
   ms_error: "Google did not answer as expected. Try again in a minute.",
@@ -158,7 +159,7 @@ export function statusFor(code: string): number {
   return ({
     unauthorized: 401, owner_only: 403, outside_drive: 403, forbidden: 403, not_found: 404, bad_request: 400, bad_name: 400,
     bad_move: 400, cross_drive: 400, not_undoable: 400, not_configured: 409, not_connected: 409, reconnect_needed: 409,
-    name_taken: 409, changed_since: 409, already_undone: 409, too_large: 413, busy: 503, ms_error: 502,
+    name_taken: 409, changed_since: 409, already_undone: 409, too_large: 413, unsupported: 415, busy: 503, ms_error: 502,
   } as Record<string, number>)[code] ?? 500;
 }
 /** Drive API status + error body → our code. 403 rate limits are "busy", like 429. */
@@ -425,11 +426,151 @@ export async function listChildren(d: Drive, folderId: string, opts: { rootId?: 
   }
   return { items: sortItems(items), cursor: next };
 }
-export async function searchDrive(d: Drive, q: string, rootId: string | null) {
-  const r = await d.call("GET", `/files?${ALL}&includeItemsFromAllDrives=true&corpora=allDrives&pageSize=100&q=${enc1(q)}&fields=${enc1(`files(${FILE_FIELDS})`)}`);
+export async function searchDrive(d: Drive, q: string, rootId: string | null, pages = 1) {
   const items: Item[] = [];
-  for (const f of (r.files as Row[]) || []) { const it = shapeFile(f, { rootId, strict: true }); if (it && !it.is_root) items.push(it); }
+  let token = "";
+  for (let i = 0; i < pages; i++) {
+    const r = await d.call("GET", `/files?${ALL}&includeItemsFromAllDrives=true&corpora=allDrives&pageSize=100&q=${enc1(q)}&fields=${enc1(`nextPageToken,files(${FILE_FIELDS})`)}${token ? `&pageToken=${enc1(token)}` : ""}`);
+    for (const f of (r.files as Row[]) || []) { const it = shapeFile(f, { rootId, strict: true }); if (it && !it.is_root) items.push(it); }
+    if (typeof r.nextPageToken !== "string") break;
+    token = r.nextPageToken;
+  }
   return items;
+}
+
+/* ------------------------------------------------------------------ the business folder */
+// Parent ids, cached for five minutes per warm function instance (folders rarely move).
+const parentCache = new Map<string, { p: string | null; at: number }>();
+const PARENT_TTL = 5 * 60_000;
+async function parentOf(d: Drive, id: string): Promise<string | null> {
+  const hit = parentCache.get(id);
+  if (hit && Date.now() - hit.at < PARENT_TTL) return hit.p;
+  const raw = await d.call("GET", `/files/${enc1(id)}?${ALL}&fields=${enc1("id,parents")}`);
+  const p = Array.isArray(raw.parents) && raw.parents.length ? String(raw.parents[0]) : null;
+  parentCache.set(id, { p, at: Date.now() });
+  return p;
+}
+/** Remember parents already known from a listing or search (saves calls in isInside). */
+export function rememberParents(items: { id: string; parent_id: string | null }[]) {
+  const now = Date.now();
+  for (const it of items) if (it.parent_id && it.parent_id !== SHARED) parentCache.set(it.id, { p: it.parent_id, at: now });
+}
+/**
+ * Every folder inside `homeId` (any depth), found level by level with a handful of queries and
+ * cached for five minutes. Drive has no "anywhere under this folder" search, so this is how
+ * "inside the business folder" is answered quickly. Stops at 5,000 folders.
+ */
+const treeCache = new Map<string, { set: Set<string>; at: number }>();
+export async function foldersUnder(d: Drive, homeId: string): Promise<Set<string>> {
+  const hit = treeCache.get(homeId);
+  if (hit && Date.now() - hit.at < PARENT_TTL) return hit.set;
+  const set = new Set<string>([homeId]);
+  let frontier = [homeId];
+  for (let depth = 0; frontier.length && depth < 30 && set.size < 5000; depth++) {
+    const next: string[] = [];
+    for (let i = 0; i < frontier.length; i += 40) {
+      const batch = frontier.slice(i, i + 40);
+      const q = `(${batch.map((id) => `'${qv(id)}' in parents`).join(" or ")}) and mimeType = '${FOLDER_MIME}' and trashed = false`;
+      let token = "";
+      for (let pg = 0; pg < 10; pg++) {
+        const r = await d.call("GET", `/files?${ALL}&includeItemsFromAllDrives=true&corpora=allDrives&pageSize=1000&q=${enc1(q)}&fields=${enc1("nextPageToken,files(id,parents)")}${token ? `&pageToken=${enc1(token)}` : ""}`);
+        for (const f of (r.files as Row[]) || []) {
+          const id = String(f.id);
+          if (!set.has(id)) { set.add(id); next.push(id); }
+          const p = Array.isArray(f.parents) && f.parents.length ? String(f.parents[0]) : null;
+          parentCache.set(id, { p, at: Date.now() });
+        }
+        if (typeof r.nextPageToken !== "string") break;
+        token = r.nextPageToken;
+      }
+    }
+    frontier = next;
+  }
+  treeCache.set(homeId, { set, at: Date.now() });
+  return set;
+}
+/**
+ * Is `itemId` the folder `homeId` or somewhere inside it? Uses the cached folder tree under the
+ * home folder plus one parent lookup (cached). `drive` is optional: without it a client is opened.
+ */
+export async function isInside(ctx: Ctx, itemId: string, homeId: string, drive?: Drive): Promise<boolean> {
+  if (!itemId || !homeId) return false;
+  if (itemId === homeId) return true;
+  let d = drive;
+  if (!d) { const o = await openDrive(ctx); if ("body" in o) return false; d = o.d; }
+  try {
+    const tree = await foldersUnder(d, homeId);
+    if (tree.has(itemId)) return true;
+    const p = await parentOf(d, itemId);
+    return p !== null && tree.has(p);
+  } catch { return false; }
+}
+/** The business folder from settings (null = the whole drive). */
+export async function homeFolder(db: Db): Promise<{ id: string; name: string | null } | null> {
+  try {
+    const { data } = await db.from("settings").select("files_home_id, files_home_name").eq("id", 1).maybeSingle();
+    return data?.files_home_id ? { id: String(data.files_home_id), name: data.files_home_name ?? null } : null;
+  } catch { return null; }
+}
+
+/* ------------------------------------------------------------------ document text (for the assistant) */
+export const MAX_TEXT_BYTES = 10 * 1024 * 1024;
+const TEXT_EXT = /\.(txt|md|markdown|csv|tsv|json|log|xml|html?|ya?ml)$/i;
+/** Read at most `max` bytes of a response body. */
+async function readCapped(res: Response, max: number): Promise<{ bytes: Uint8Array; cut: boolean }> {
+  const reader = res.body?.getReader();
+  if (!reader) return { bytes: new Uint8Array(), cut: false };
+  const parts: Uint8Array[] = [];
+  let n = 0, cut = false;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (n + value.length > max) { parts.push(value.slice(0, max - n)); n = max; cut = true; await reader.cancel().catch(() => {}); break; }
+    parts.push(value); n += value.length;
+  }
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return { bytes: out, cut };
+}
+export type TextResult =
+  | { ok: true; item: { id: string; name: string; kind: string; web_url: string | null }; format: string; text: string; truncated: boolean }
+  | { ok: false; error: string; unsupported?: string; item?: { id: string; name: string; kind: string; web_url: string | null } };
+/**
+ * Plain text of one file, for summarising: Google Docs and Slides (exported as text), Google
+ * Sheets (exported as CSV: the first sheet only), and text, CSV and Markdown files. PDFs and other
+ * binary files come back as { ok:false, error:'unsupported', unsupported:'pdf' | kind }.
+ * Downloads stop at 10 MB; text is cut at `maxChars` (default 20,000).
+ */
+export async function readText(ctx: Ctx, id: string, maxChars = 20000, drive?: Drive): Promise<TextResult> {
+  let d = drive;
+  if (!d) { const o = await openDrive(ctx); if ("body" in o) return { ok: false, error: String(o.body.error) }; d = o.d; }
+  if (!itemId(id)) return { ok: false, error: "bad_request" };
+  const raw = await getFile(d, id);
+  const it = shapeFile(raw, { strict: true });
+  if (!it) return { ok: false, error: "outside_drive" };
+  const item = { id: it.id, name: it.name, kind: it.kind, web_url: it.web_url };
+  let url: string | null = null, format = "text";
+  if (it.kind === "gdoc" || it.kind === "gslide") url = `/files/${enc1(id)}/export?mimeType=text%2Fplain`;
+  else if (it.kind === "gsheet") { url = `/files/${enc1(id)}/export?mimeType=text%2Fcsv`; format = "csv (first sheet)"; }
+  else if (!it.folder && (/^text\//.test(it.mime || "") || it.mime === "application/json" || TEXT_EXT.test(it.name))) {
+    if ((it.size || 0) > MAX_TEXT_BYTES) return { ok: false, error: "too_large", item };
+    url = `/files/${enc1(id)}?alt=media&${ALL}`;
+    if (/\.csv$/i.test(it.name) || it.mime === "text/csv") format = "csv";
+  }
+  if (!url) return { ok: false, error: "unsupported", unsupported: it.kind === "pdf" ? "pdf" : it.folder ? "folder" : it.kind, item };
+  try {
+    const res = await d.raw("GET", url);
+    const { bytes, cut } = await readCapped(res, MAX_TEXT_BYTES);
+    let text = new TextDecoder("utf-8", { fatal: false }).decode(bytes).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    const max = Math.max(200, Math.min(Number(maxChars) || 20000, 200000));
+    const truncated = cut || text.length > max;
+    if (text.length > max) text = text.slice(0, max);
+    return { ok: true, item, format, text, truncated };
+  } catch (e) {
+    if (e instanceof DriveError) return { ok: false, error: e.code, item };
+    throw e;
+  }
 }
 /** Breadcrumbs: My Drive / … or Shared drives / <drive> / … (at most 15 levels). */
 export async function pathTo(d: Drive, id: string | null, rootId: string | null) {
@@ -510,7 +651,7 @@ async function status(ctx: Ctx): Promise<Result> {
   const conn = await loadConn(ctx.db);
   return ok({
     configured: true, connected: Boolean(conn), needs_reconnect: Boolean(conn?.needs_reconnect), can_connect: isOwner,
-    owner_name: await ownerName(ctx.db),
+    owner_name: await ownerName(ctx.db), home: await homeFolder(ctx.db),
     account: conn ? { name: conn.account_name, email: conn.account_email ?? null, connected_at: conn.connected_at, connected_by: await memberName(ctx.db, conn.connected_by), root_id: conn.root_id } : null,
   });
 }
@@ -552,7 +693,7 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
       if (error) throw new Error(error.message);
       return ok({ connected: false });
     }
-    if (!["list", "folders", "search", "item", "move", "rename", "create_folder", "undo", "link", "unlink"].includes(action)) return fail("bad_request");
+    if (!["list", "folders", "search", "read_text", "item", "move", "rename", "create_folder", "undo", "link", "unlink"].includes(action)) return fail("bad_request");
     const open = await openDrive(ctx);
     if ("body" in open) return open;
     const { d, conn } = open;
@@ -588,7 +729,25 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
     if (action === "search") {
       const q = searchQuery(body.q);
       if (!q) return fail("bad_request");
-      return ok({ q: String(body.q).trim(), items: await signItems(ctx.env, await searchDrive(d, q, rootId)) });
+      // Drive cannot search "anywhere under a folder", so search the drive and keep what is inside it.
+      const within = body.within === undefined || body.within === null || body.within === "" ? null : resolve(body.within);
+      let items: Item[];
+      if (within && within !== rootId) {
+        // Search directly inside every folder of the business folder's tree, 40 folders a query.
+        const ids = [...await foldersUnder(d, within)];
+        items = [];
+        for (let i = 0; i < ids.length && items.length < 200; i += 40) {
+          const parents = ids.slice(i, i + 40).map((id) => `'${qv(id)}' in parents`).join(" or ");
+          items.push(...await searchDrive(d, `${q} and (${parents})`, rootId));
+        }
+      } else items = await searchDrive(d, q, rootId);
+      return ok({ q: String(body.q).trim(), within, items: await signItems(ctx.env, items) });
+    }
+
+    if (action === "read_text") {
+      const r = await readText(ctx, String(body.id ?? ""), Number(body.max_chars) || 20000, d);
+      return r.ok ? ok(r as unknown as Row) : fail(r.error, { ...(r.unsupported ? { unsupported: r.unsupported } : {}), ...(r.item ? { item: r.item } : {}),
+        ...(r.error === "unsupported" ? { message: r.unsupported === "pdf" ? "Reading PDFs is not available yet. Open it to read it." : "That kind of file has no text to read." } : {}) });
     }
 
     if (action === "item") {

@@ -148,7 +148,8 @@ async function mockDrive(ctx, cfg, d) {
       }
       case 'search': {
         const q = String(b.q || '').toLowerCase();
-        return reply(route, 200, { ok: true, q: b.q, items: Object.values(d.items).filter((x) => !x.is_root && x.name.toLowerCase().includes(q)).slice(0, 100).map((x) => shape(d, x)) });
+        const inside = (x) => { for (let c = x; c; c = d.items[c.parent]) if (c.id === b.within) return true; return false; };
+        return reply(route, 200, { ok: true, q: b.q, within: b.within || null, items: Object.values(d.items).filter((x) => !x.is_root && !x.virtual && x.name.toLowerCase().includes(q) && (!b.within || inside(x))).slice(0, 100).map((x) => shape(d, x)) });
       }
       case 'item': {
         const x = it(b.id);
@@ -254,6 +255,24 @@ async function openApp({ viewport = { width: 1440, height: 900 }, cfg = { connec
     page.errors.push(t);
   });
   page.on('pageerror', (e) => page.errors.push(`pageerror: ${e.message}`));
+  {
+    // The settings row is read through here with the test's business folder in it, and saving
+    // the business folder is answered here, so the real settings row is never changed.
+    await ctx.route('**/rest/v1/settings*', async (route) => {
+      if (route.request().method() === 'GET') {
+        const res = await route.fetch();
+        let body = await res.json();
+        const fix = (r) => ({ ...r, files_home_id: cfg.home ? cfg.home.id : null, files_home_name: cfg.home ? cfg.home.name : null });
+        body = Array.isArray(body) ? body.map(fix) : fix(body);
+        return route.fulfill({ response: res, body: JSON.stringify(body) });
+      }
+      if (route.request().method() !== 'PATCH') return route.continue();
+      const patch = JSON.parse(route.request().postData() || '{}');
+      page.savedSettings = patch;
+      const cur = await page.evaluate(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.settings);
+      return route.fulfill({ status: 200, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' }, body: JSON.stringify({ ...cur, ...patch }) });
+    });
+  }
   await page.goto(BASE);
   await page.evaluate(async ([email, pw]) => {
     const { sb } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
@@ -261,6 +280,12 @@ async function openApp({ viewport = { width: 1440, height: 900 }, cfg = { connec
     if (error) throw new Error(error.message);
   }, [EMAIL, PASSWORD]);
   await page.waitForFunction(async () => (await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'))).state.loaded, null, { timeout: 30000 });
+  // The business folder comes from settings: tests choose it (never the real one).
+  await page.evaluate(async (home) => {
+    const { state } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
+    state.settings = { ...state.settings, files_home_id: home ? home.id : null, files_home_name: home ? home.name : null };
+  }, cfg.home || null);
+
   await page.evaluate((h) => { location.hash = h; }, hash);
   await page.waitForSelector('#view .files-page', { timeout: 15000 });
   await page.mouse.move(viewport.width - 40, viewport.height - 40);
@@ -658,6 +683,52 @@ try {
     await g.waitForTimeout(500);
     await shot(g, 'gdrive-wide-3440');
     check(g.errors.length === 0, `Google 3440: no console errors ${g.errors.join(' | ')}`);
+    await g.ctx.close();
+  }
+
+  /* ============================================================ the business folder (Google) */
+  {
+    const g = await openApp({ cfg: { provider: 'gdrive', connected: true, home: { id: 'CL', name: 'Clients' } } });
+    await g.waitForSelector('.fl-row[data-id="SP"]');
+    check(/All of Drive.*Clients/.test(await g.textContent('.fl-crumbs')) && (await g.evaluate(() => location.hash)) === '#files', 'home: Files opens in the business folder; breadcrumbs start there with All of Drive above');
+    check(await g.$eval('.fl-scope', (b) => !b.hidden && b.textContent === 'In Clients'), 'home: search defaults to inside the business folder');
+    await g.fill('.fl-search', 'smith');
+    await g.waitForFunction(() => document.querySelector('.fl-count')?.textContent.includes('result'));
+    check(g.d.calls.at(-1).within === 'CL', 'home: search asks only inside the business folder');
+    check(/Search in Clients/.test(await g.textContent('.fl-crumbs')), 'home: the trail says the search is inside Clients');
+    await shot(g, 'gdrive-home-search-1440');
+    await g.click('.fl-scope');
+    await g.waitForFunction(() => document.querySelector('.fl-scope')?.textContent === 'All of Drive');
+    await g.waitForFunction((n) => true, null);
+    await g.waitForTimeout(400);
+    check(!('within' in g.d.calls.at(-1)), 'home: the toggle searches all of Drive');
+    await g.click('.fl-scope');
+    await g.click('.fl-clear');
+    await g.waitForSelector('.fl-row[data-id="SP"]');
+    await g.click('[data-fk="all-drive"]');
+    await g.waitForSelector('.fl-row[data-id="PDF1"]');
+    check(await g.$('[data-fk="back-home"]') !== null, 'home: at the top of the drive there is a way back to the business folder');
+    check(await g.$eval('[data-fk="make-home"]', (b) => b.hidden === false), 'home: the owner can make the drive top the business folder');
+    await shot(g, 'gdrive-home-all-1440');
+    await g.click('.fl-row[data-id="PR"] [data-fk="more"]');
+    await g.click('.fl-menu-item:has-text("Make this the business folder")');
+    await g.click('.modal-foot .btn-primary');
+    await g.waitForFunction(() => /now the business folder/.test(document.querySelector('.toast-wrap')?.textContent || ''));
+    check(g.savedSettings?.files_home_id === 'PR' && g.savedSettings?.files_home_name === 'Proposals', 'home: the owner can make another folder the business folder (saved to settings)');
+    await g.click('[data-fk="back-home"]');
+    await g.waitForFunction(() => /Proposals/.test(document.querySelector('.fl-crumbs')?.textContent || '') && location.hash === '#files');
+    check(true, 'home: Back goes to the new business folder');
+    check(g.errors.length === 0, `home: no console errors ${g.errors.join(' | ')}`);
+    await g.ctx.close();
+  }
+  {
+    const g = await openApp({ cfg: { provider: 'gdrive', connected: true, role: 'member', home: { id: 'CL', name: 'Clients' } } });
+    await g.waitForSelector('.fl-row[data-id="SP"]');
+    await g.click('[data-fk="all-drive"]');
+    await g.waitForSelector('.fl-row[data-id="PDF1"]');
+    check(await g.$eval('[data-fk="make-home"]', (b) => b.hidden), 'home: members cannot change the business folder');
+    await g.click('.fl-row[data-id="PR"] [data-fk="more"]');
+    check(!(await g.$('.fl-menu-item:has-text("Make this the business folder")')), 'home: not in a member’s menu either');
     await g.ctx.close();
   }
 

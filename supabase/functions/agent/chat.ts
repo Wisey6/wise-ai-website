@@ -27,6 +27,7 @@ import {
   undoConflicts, undoInsertPlan,
 } from "./chat-rules.ts";
 import { CHAT_SYSTEM, CHAT_TOOLS } from "./chat-prompt.ts";
+import { FILE_TOOLS, fileOrientation, undoFileChange } from "./files.ts";
 import { type NumberTopic, NUMBER_TOPICS, computeNumbers, monthlyEquivalent, isRunning, suggestInvoiceNo } from "./money.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -102,7 +103,11 @@ async function undo(ctx: ChatCtx, changeId: unknown): Promise<Response> {
   const { db, req, member } = ctx;
   if (!isUuid(changeId)) return json(req, 400, { ok: false, error: "bad_request", detail: "change_id must be a uuid" });
   const ch = must<Row | null>(await db.from("agent_changes").select("*").eq("id", changeId).maybeSingle());
-  if (!ch) return json(req, 404, { ok: false, error: "not_found" });
+  if (!ch) {
+    // A file change (file_changes) or a file link (file_links) the assistant made.
+    const f = await undoFileChange(ctx, changeId);
+    return f ? json(req, f.status, f.body) : json(req, 404, { ok: false, error: "not_found" });
+  }
   if (ch.member_id && ch.member_id !== member.id && member.role !== "owner") {
     return json(req, 403, { ok: false, error: "not_yours", detail: "Only the person who asked for this change, or the owner, can undo it." });
   }
@@ -168,7 +173,8 @@ async function loadTeam(db: SupabaseClient): Promise<Row[]> {
 /** The volatile part of the prompt: who, when, memory, and a small overview of the hub. */
 async function contextBlock(t: Turn, first: boolean): Promise<string> {
   const { db, today } = t;
-  const [mem, leads, deals, clients, projects, tasks, invoices, costs] = await Promise.all([
+  const [files, mem, leads, deals, clients, projects, tasks, invoices, costs] = await Promise.all([
+    fileOrientation(t),
     db.from("agent_memory").select("id, member_id, text").eq("active", true).or(`member_id.is.null,member_id.eq.${t.member.id}`).order("created_at").limit(60),
     db.from("leads").select("status, owner_id, next_followup_at, unread").eq("archived", false).limit(10000),
     db.from("deals").select("stage, owner_id, next_step_on").eq("archived", false).not("stage", "in", "(won,lost)").limit(2000),
@@ -209,6 +215,7 @@ async function contextBlock(t: Turn, first: boolean): Promise<string> {
     memory,
     "Hub overview:",
     ...lines,
+    files,
     first ? 'This is the first message of a new conversation: after your reply, add a final line "TITLE: <a 3-6 word title for this conversation>".' : "",
     "</hub_context>",
   ].filter(Boolean).join("\n");
@@ -407,6 +414,7 @@ async function updateRun(t: Turn, r: { status: string; model: string; totals: To
 // ------------------------------------------------------------------ tools
 
 type ToolOut = { content: string; is_error?: boolean };
+const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_file"];
 
 async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
   try {
@@ -417,7 +425,7 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
     return { content: JSON.stringify(out) };
   } catch (e) {
     if (e instanceof Refusal) {
-      t.steps.push({ tool: name, kind: name === "find" || name === "get" || name === "numbers" ? "read" : "note", ok: false, text: `${name}: ${e.message}`.slice(0, 300) });
+      t.steps.push({ tool: name, kind: READ_TOOLS.includes(name) ? "read" : "note", ok: false, text: `${name}: ${e.message}`.slice(0, 300) });
       return { is_error: true, content: e.message };
     }
     console.error("tool error", name, (e as Error).message);
@@ -611,7 +619,7 @@ async function writeAudited(t: Turn, table: string, existing: Row | null, patch:
     chat_id: t.chatId, run_id: t.runId, member_id: t.member.id, table_name: table, row_id: saved.id, op, before, after, summary,
   }).select("id, at").single());
   const link = linkFor(table, saved);
-  t.changes.push({ id: ch.id, at: ch.at, chat_id: t.chatId, table_name: table, row_id: saved.id, op, summary, open: link, undone_at: null });
+  t.changes.push({ id: ch.id, kind: "record", at: ch.at, chat_id: t.chatId, table_name: table, row_id: saved.id, op, summary, open: link, undone_at: null });
   t.steps.push({ tool, kind: "write", ok: true, text: summary, link, change_id: ch.id, table_name: table, row_id: saved.id });
   t.links.push({ label, hash: link, weight: 3 });
   return { ...saved, _change_id: ch.id, _summary: summary };
@@ -671,6 +679,7 @@ async function saveTool(t: Turn, tool: string, input: Row): Promise<Row> {
 }
 
 const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
+  ...FILE_TOOLS,
   async find(t, input) {
     const kind = String(input.kind);
     const info = KINDS[kind] ?? refuse(`kind must be one of: ${Object.keys(KINDS).join(", ")}`);

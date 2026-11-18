@@ -298,3 +298,20 @@ a.fl-crumb:hover, button.fl-crumb:hover { color: var(--ink); text-decoration: un
   .fl-acct-line { white-space: normal; min-width: 0; flex: 1 1 auto; }
   .fl-acct-line .faint { display: none; }
 }
+
+/* the business folder: breadcrumbs start there, with a quiet way up to all of the drive */
+.fl-bar-left { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-4); min-width: 0; flex: 1 1 280px; }
+.fl-bar-left .fl-crumbs { flex: 0 1 auto; }
+.fl-crumb-up { font-size: var(--fs-meta) !important; font-weight: 500; color: var(--faint) !important; display: inline-flex; align-items: center; gap: 4px; }
+.fl-crumb-up::before { content: ''; width: 6px; height: 6px; border-left: 1.5px solid currentColor; border-top: 1.5px solid currentColor; transform: rotate(45deg) translateY(1px); margin-right: 2px; }
+.fl-crumb-up:hover { color: var(--ink) !important; }
+.fl-crumbs li.fl-crumb-li-up + li::before { color: var(--line); }
+.fl-crumb-home { font-size: var(--fs-meta); font-weight: 600; color: var(--ink); margin-left: var(--space-3); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; white-space: nowrap; }
+.fl-crumbs { display: flex; align-items: center; flex-wrap: wrap; }
+.fl-make-home { color: var(--muted); font-weight: 500; text-decoration-color: var(--line); }
+.fl-make-home:hover { color: var(--ink); }
+.fl-scope { height: var(--control-h-sm); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+@container files (max-width: 720px) {
+  .fl-bar-left { flex-basis: 100%; }
+  .fl-scope { max-width: 112px; }
+}

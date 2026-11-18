@@ -11,7 +11,7 @@
 import {
   el, icon, toast, modal, fill, clear, busy, timeAgo, dateTime, plural, trapFocus
 } from '../ui.js?v=20261118d';
-import { state, memberName } from '../api.js?v=20261118d';
+import { state, memberName, saveSettings } from '../api.js?v=20261118d';
 import {
   od, detectProvider, provider, recentChanges, watchFiles, LINK_KINDS, KIND, recordLabel, recordFor, recordHash, pickRecords,
   fileSize, baseName, nameProblem, kindLabel
@@ -27,6 +27,7 @@ const setPref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* priva
 const mem = {
   status: null, statusAt: 0,
   view: pref('wiseos.files.view', 'list'),
+  scope: pref('wiseos.files.scope', 'home'), // search inside the business folder, or all of the drive
   sort: pref('wiseos.files.sort', 'name'),
   dir: pref('wiseos.files.dir', 'asc'),
   folders: new Map(),   // folder id → {folder, items, cursor, at}
@@ -300,7 +301,14 @@ export default function filesView(ctx) {
     };
     const seg = el('div', { class: 'fl-seg', role: 'group', 'aria-label': 'View' }, viewBtns.list, viewBtns.grid);
     const newBtn = el('button', { type: 'button', class: 'btn btn-ghost btn-sm fl-new', dataset: { fk: 'new-folder' } }, svg(15, NEWFOLDER_D, { stroke: 1.7 }), el('span', { class: 'lbl' }, 'New folder'));
-    const bar = el('div', { class: 'fl-bar' }, crumbs, el('div', { class: 'fl-tools' }, searchWrap, seg, newBtn));
+    const scopeBtn = el('button', { type: 'button', class: 'chip fl-scope', dataset: { fk: 'scope' }, hidden: true, onClick: () => {
+      mem.scope = mem.scope === 'home' ? 'all' : 'home';
+      setPref('wiseos.files.scope', mem.scope);
+      paintScope();
+      if (searchQ) runSearch(searchQ);
+    } });
+    const makeHome = el('button', { type: 'button', class: 'link-btn small fl-make-home', dataset: { fk: 'make-home' }, hidden: true, onClick: () => setHome(mem.folders.get(folderId)?.folder) }, 'Make this the business folder');
+    const bar = el('div', { class: 'fl-bar' }, el('div', { class: 'fl-bar-left' }, crumbs, makeHome), el('div', { class: 'fl-tools' }, searchWrap, scopeBtn, seg, newBtn));
     const listArea = el('div', { class: 'fl-list-area', 'aria-live': 'polite' });
     const tree = el('nav', { class: 'fl-tree', 'aria-label': 'Folders' });
     const treeCol = el('div', { class: 'fl-col-tree' }, tree);
@@ -341,8 +349,40 @@ export default function filesView(ctx) {
     mqSplit.addEventListener('change', layout);
 
     /* --------------------------------------------- navigation */
-    const hashFor = (id) => `#files${id && id !== rootId() ? `/${encodeURIComponent(id)}` : ''}`;
     const rootId = () => mem.status?.account?.root_id || 'root';
+    /** The business folder (Google Drive only): where Files opens and where search looks first. */
+    const home = () => (P().id === 'gdrive' && state.settings?.files_home_id ? { id: String(state.settings.files_home_id), name: state.settings.files_home_name || 'Business files' } : null);
+    const homeId = () => home()?.id || rootId();
+    const isOwner = () => Boolean(mem.status?.can_connect);
+    const hashFor = (id) => `#files${id && id !== homeId() ? `/${encodeURIComponent(id)}` : ''}`;
+    function paintScope() {
+      const h = home();
+      scopeBtn.hidden = !h;
+      if (!h) return;
+      scopeBtn.textContent = mem.scope === 'home' ? `In ${h.name}` : 'All of Drive';
+      scopeBtn.title = mem.scope === 'home' ? `Searching inside ${h.name}. Click to search all of Drive.` : `Searching all of Drive. Click to search inside ${h.name} only.`;
+      scopeBtn.setAttribute('aria-label', scopeBtn.title);
+      search.placeholder = mem.scope === 'home' ? `Search ${h.name}` : P().search;
+    }
+    paintScope();
+    async function setHome(folder) {
+      if (!folder || !isOwner()) return;
+      const toRoot = folder.id === rootId();
+      const name = toRoot ? null : folder.name;
+      const ok = await modal({
+        title: 'Make this the business folder?',
+        body: el('p', { class: 'confirm-text' }, toRoot
+          ? 'Files will open at the top of the drive, and search will look through all of it.'
+          : `Files will open in ${folder.name}, and search and the assistant will look there first. Everyone on the team sees the same folder. Nothing in ${P().name} moves.`),
+        confirmLabel: 'Make it the business folder'
+      });
+      if (!ok) return;
+      try { await saveSettings({ files_home_id: toRoot ? null : folder.id, files_home_name: name }); } catch (e) { toast(e.message, 'bad'); return; }
+      toast(toRoot ? 'Files now opens at the top of the drive' : `${folder.name} is now the business folder`);
+      paintScope();
+      pushHash(folder.id);
+      paintAll();
+    }
     function pushHash(id) {
       const h = hashFor(id);
       if (location.hash !== h) { try { history.pushState(null, '', h); } catch { location.hash = h; } }
@@ -373,13 +413,13 @@ export default function filesView(ctx) {
       closeMenu();
       if (searchQ) { searchQ = ''; searchItems = null; search.value = ''; }
       if (!keepSelection) { selected = null; paintPane(); }
-      const key = id || rootId();
+      const key = id || homeId();
       folderId = key;
       if (push) pushHash(key);
       const cached = mem.folders.get(key);
       if (cached && !force) { paintAll(); if (Date.now() - cached.at < FOLDER_TTL) return; }
       else showLoading();
-      const r = await od('list', { item_id: id || 'root', with_path: !mem.paths.has(key) });
+      const r = await od('list', { item_id: id || home()?.id || 'root', with_path: !mem.paths.has(key) });
       if (my !== seq) return;
       if (!r.ok) { listError(r); return; }
       remember(r.items); remember([r.folder]);
@@ -410,7 +450,8 @@ export default function filesView(ctx) {
       if (!q) { searchQ = ''; searchItems = null; paintAll(); return; }
       searchQ = q;
       showLoading(`Searching for “${q}”`);
-      const r = await od('search', { q });
+      const h = home();
+      const r = await od('search', { q, ...(h && mem.scope === 'home' ? { within: h.id } : {}) });
       if (my !== seq) return;
       if (!r.ok) { listError(r); return; }
       remember(r.items);
@@ -419,14 +460,29 @@ export default function filesView(ctx) {
     }
 
     /* --------------------------------------------- painting */
-    function paintAll() { newBtn.hidden = Boolean(searchQ) || folderId === 'shared'; paintCrumbs(); paintList(); paintTree(); }
-
-    function crumbTrail() {
-      return mem.paths.get(folderId) || [{ id: rootId(), name: P().root }];
+    function paintAll() {
+      newBtn.hidden = Boolean(searchQ) || folderId === 'shared';
+      const h = home();
+      makeHome.hidden = !(P().id === 'gdrive' && isOwner() && !searchQ && folderId !== 'shared' && mem.folders.has(folderId) && folderId !== (h ? h.id : rootId()));
+      paintScope(); paintCrumbs(); paintList(); paintTree();
     }
+
+    /** The breadcrumb trail; inside the business folder it starts there. */
+    function trailInfo() {
+      const h = home();
+      const full = mem.paths.get(folderId) || [{ id: homeId(), name: h?.name || P().root }];
+      if (!h) return { trail: full, inHome: false, h };
+      const i = full.findIndex((c) => c.id === h.id);
+      if (i < 0) return { trail: full, inHome: false, h };
+      return { trail: [{ id: h.id, name: h.name, home: true }, ...full.slice(i + 1)], inHome: true, h };
+    }
+    const crumbTrail = () => trailInfo().trail;
     function paintCrumbs() {
-      const trail = crumbTrail();
+      const { trail, inHome, h } = trailInfo();
       const list = el('ol', {});
+      if (h && inHome) {
+        list.append(el('li', { class: 'fl-crumb-li-up' }, el('a', { class: 'fl-crumb fl-crumb-up', href: hashFor(rootId()), dataset: { fk: 'all-drive' }, title: `Leave ${h.name} and see all of ${P().name}`, onClick: (e) => { e.preventDefault(); goFolder(rootId()); } }, 'All of Drive')));
+      }
       const show = trail.length > 4 ? [trail[0], { gap: true }, ...trail.slice(-2)] : trail;
       show.forEach((c, i) => {
         const last = i === show.length - 1 && !searchQ;
@@ -435,8 +491,10 @@ export default function filesView(ctx) {
             : last ? el('span', { class: 'fl-crumb is-here', 'aria-current': 'page' }, c.name)
               : el('a', { class: 'fl-crumb', href: hashFor(c.id), onClick: (e) => { e.preventDefault(); goFolder(c.id); } }, c.name)));
       });
-      if (searchQ) list.append(el('li', {}, el('span', { class: 'fl-crumb is-here' }, `Search: “${searchQ}”`)));
-      fill(crumbs, list);
+      if (searchQ) list.append(el('li', {}, el('span', { class: 'fl-crumb is-here' }, h && mem.scope === 'home' ? `Search in ${h.name}: “${searchQ}”` : `Search: “${searchQ}”`)));
+      fill(crumbs, list, h && !inHome && !searchQ
+        ? el('a', { class: 'fl-crumb-home', href: '#files', dataset: { fk: 'back-home' }, onClick: (e) => { e.preventDefault(); goFolder(h.id); } }, `Back to ${h.name}`)
+        : null);
     }
 
     function showLoading(text = 'Opening') {
@@ -924,7 +982,8 @@ export default function filesView(ctx) {
         it.web_url ? [P().open, () => window.open(it.web_url, '_blank', 'noopener,noreferrer')] : null,
         it.can_rename === false ? null : ['Rename', () => rename(it)],
         it.can_move === false ? null : ['Move', () => move(it)],
-        it.id === 'shared' ? null : ['Link to…', () => link(it)]
+        it.id === 'shared' ? null : ['Link to…', () => link(it)],
+        it.folder && it.id !== 'shared' && P().id === 'gdrive' && isOwner() && it.id !== home()?.id ? ['Make this the business folder', () => setHome(it)] : null
       ].filter(Boolean);
       const btns = items.map(([label, run]) => el('button', { type: 'button', role: 'menuitem', class: 'fl-menu-item', onClick: () => { closeMenu(); run(); } }, label));
       menu = el('div', { class: 'fl-menu', role: 'menu', 'aria-label': `Actions for ${it.name}` }, btns);

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {
   signState, verifyState, secretFor, pkceVerifier, pkceChallenge, authorizeUrl, signFile, verifyFile, safeThumbUrl, thumbAt,
   apiErrorCode, tokenErrorCode, statusFor, cleanName, qv, searchQuery, shapeFile, kindOf, undoPlan, runAction, handleCallback,
-  handleFile, backTo, SCOPES, FOLDER_MIME, SHARED,
+  handleFile, backTo, SCOPES, FOLDER_MIME, SHARED, isInside, readText,
 } from "../functions/_shared/gdrive.ts";
 
 const SECRET = "dummy-secret-for-tests-only-0123456789abcdef";
@@ -106,7 +106,7 @@ test("undo: conflict check; moves undo with add/remove parents; new folders are 
 
 /* ---------------------------------------------------------------- fakes */
 function fakeDb(seed = {}) {
-  const tables = { team_members: [], file_links: [], file_changes: [], clients: [], projects: [], deals: [], leads: [], ...seed.tables };
+  const tables = { team_members: [], file_links: [], file_changes: [], clients: [], projects: [], deals: [], leads: [], settings: [], ...seed.tables };
   const store = { conn: seed.conn ?? null, nonces: new Set() };
   let n = 0;
   const uuid = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
@@ -156,6 +156,10 @@ function fakeGoogle() {
     SWM: { id: "SWM", name: "Quote from a friend.pdf", mimeType: "application/pdf", ownedByMe: false },
     SD: { id: "0ASD", name: "Drive", mimeType: F, driveId: "0ASD" },
     SDF: { id: "SDF", name: "Team notes.pdf", mimeType: "application/pdf", parents: ["0ASD"], driveId: "0ASD" },
+    SUB: { id: "SUB", name: "Smith", mimeType: F, parents: ["CL"], ownedByMe: true },
+    QS: { id: "QS", name: "Quote Smith.pdf", mimeType: "application/pdf", size: "900", parents: ["SUB"], ownedByMe: true },
+    SHEET: { id: "SHEET", name: "Numbers", mimeType: "application/vnd.google-apps.spreadsheet", parents: ["CL"], ownedByMe: true },
+    MD: { id: "MD", name: "notes.md", mimeType: "text/markdown", size: "40", parents: ["CL"], ownedByMe: true },
   };
   const calls = [];
   let tokens = 0;
@@ -183,7 +187,9 @@ function fakeGoogle() {
       const q = u.searchParams.get("q") || "";
       let pm;
       if ((pm = /^'([^']+)' in parents and name = '(.+)' and trashed = false$/.exec(q))) return res(200, { files: Object.values(files).filter((x) => x.parents?.[0] === pm[1] && x.name === pm[2].replace(/\\'/g, "'")) });
-      if ((pm = /^'([^']+)' in parents/.exec(q))) return res(200, { files: Object.values(files).filter((x) => x.parents?.[0] === pm[1] && (!q.includes("mimeType =") || x.mimeType === F)) });
+      const ps = [...q.matchAll(/'([^']+)' in parents/g)].map((x) => x[1]);
+      const term = (/name contains '([^']+)'/.exec(q) || [])[1];
+      if (ps.length) return res(200, { files: Object.values(files).filter((x) => ps.includes(x.parents?.[0]) && (!q.includes("mimeType =") || x.mimeType === F) && (!term || x.name.toLowerCase().includes(term.toLowerCase()))) });
       if (/name contains/.test(q)) return res(200, { files: Object.values(files).filter((x) => /quote/i.test(x.name)) });
     }
     if (p === "/files" && m0 === "POST") {
@@ -192,10 +198,16 @@ function fakeGoogle() {
       files[id] = { id, name: b.name, mimeType: b.mimeType, parents: b.parents, ownedByMe: true };
       return res(200, files[id]);
     }
-    if ((m = /^\/files\/([^/]+)\/export$/.exec(p))) return new Response("%PDF-1.4 fake", { status: 200, headers: { "content-type": "application/pdf" } });
+    if ((m = /^\/files\/([^/]+)\/export$/.exec(p))) {
+      const mt = u.searchParams.get("mimeType");
+      if (mt === "text/plain") return new Response("\uFEFFScope of work\r\nWe will build the thing.", { status: 200, headers: { "content-type": "text/plain" } });
+      if (mt === "text/csv") return new Response("Month,Income\r\nOct,1200", { status: 200, headers: { "content-type": "text/csv" } });
+      return new Response("%PDF-1.4 fake", { status: 200, headers: { "content-type": "application/pdf" } });
+    }
     if ((m = /^\/files\/([^/]+)$/.exec(p))) {
       const x = files[m[1] === "root" ? "ROOT" : m[1]] || files[Object.keys(files).find((k) => files[k].id === m[1])];
       if (!x) return res(404, { error: { errors: [{ reason: "notFound" }] } });
+      if (u.searchParams.get("alt") === "media" && x.mimeType === "text/markdown") return new Response("# Notes\nCall Smith on Friday.", { status: 200, headers: { "content-type": "text/markdown" } });
       if (u.searchParams.get("alt") === "media") return new Response("%PDF-1.4 fake", { status: 200, headers: { "content-type": x.mimeType } });
       if (m0 === "PATCH") {
         const b = JSON.parse(init.body || "{}");
@@ -351,4 +363,43 @@ test("callback: bad/expired/replayed/non-owner refused; good one stores account 
   await runAction({ db, env: ENV, member: OWNER, fetchImpl: g.f }, { action: "disconnect" });
   assert.equal(db.store.conn, null);
   assert.ok(g.calls.includes("POST /revoke"));
+});
+
+test("business folder: isInside uses the folder tree; search within keeps only what is inside; status reports home", async () => {
+  const g = fakeGoogle();
+  const db = fakeDb({ conn: CONN(), tables: { settings: [{ id: 1, files_home_id: "CL", files_home_name: "Clients" }] } });
+  const ctx = { db, env: ENV, member: STAFF, fetchImpl: g.f };
+  assert.equal(await isInside(ctx, "QS", "CL"), true);
+  assert.equal(await isInside(ctx, "CL", "CL"), true);
+  assert.equal(await isInside(ctx, "AR", "CL"), false);
+  const all = await runAction(ctx, { action: "search", q: "quote" });
+  assert.ok(all.body.items.length >= 2);
+  const inside = await runAction(ctx, { action: "search", q: "quote", within: "CL" });
+  assert.deepEqual(inside.body.items.map((i) => i.id).sort(), ["PDF", "QS"]);
+  assert.equal(inside.body.within, "CL");
+  const st = await runAction(ctx, { action: "status" });
+  assert.deepEqual(st.body.home, { id: "CL", name: "Clients" });
+});
+
+test("readText: Docs as text, Sheets as CSV, Markdown as is; PDFs unsupported; capped", async () => {
+  const g = fakeGoogle();
+  const db = fakeDb({ conn: CONN() });
+  const ctx = { db, env: ENV, member: STAFF, fetchImpl: g.f };
+  const doc = await readText(ctx, "DOC");
+  assert.equal(doc.ok, true);
+  assert.equal(doc.text, "Scope of work\nWe will build the thing.");
+  assert.equal(doc.item.kind, "gdoc");
+  const sheet = await readText(ctx, "SHEET");
+  assert.equal(sheet.format, "csv (first sheet)");
+  assert.equal(sheet.text, "Month,Income\nOct,1200");
+  const md = await readText(ctx, "MD", 300);
+  assert.equal(md.text, "# Notes\nCall Smith on Friday.");
+  const cut = await readText(ctx, "DOC", 10);
+  assert.equal(cut.truncated, false, "short texts are not cut below 200 characters");
+  const pdf = await readText(ctx, "PDF");
+  assert.deepEqual([pdf.ok, pdf.error, pdf.unsupported], [false, "unsupported", "pdf"]);
+  assert.equal((await readText(ctx, "SWM")).error, "outside_drive");
+  const act = await runAction(ctx, { action: "read_text", id: "PDF" });
+  assert.equal(act.status, 415);
+  assert.match(act.body.message, /PDF/);
 });
