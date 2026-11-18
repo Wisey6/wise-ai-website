@@ -35,6 +35,26 @@ const L1 = U(21); const L2 = U(22); const T1 = U(23);
 const CH0 = U(30); const CH1 = U(31); const CH_NEW = U(32); const CH_BAD = U(33); const CH_TASK = U(34);
 const M1 = U(41); const M2 = U(42);
 const FC_MOVE = U(51); const FC_DIR = U(52); const FC_LINK = U(53);
+// the result-tiles reply: records it touched, and the records the hub has loaded for them
+const X = {
+  L3: U(24), T2: U(25), T3: U(26), D1: U(27), CO1: U(28), CL1: U(29), LIB: U(35),
+  CH_LEAD: U(81), CH_TASK2: U(82), CH_DEAL: U(83), CH_FILE: U(84), CH_DEL: U(85), CH_COST: U(86)
+};
+/** Put the records the tiles name into the page's state (in memory only; nothing is written). */
+const seedRecords = (page) => page.evaluate(async (x) => {
+  const m = await window.__mod('api.js');
+  const me = m.state.me?.id || null;
+  const now = new Date().toISOString();
+  const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const base = { created_at: now, updated_at: now };
+  m.state.leads.unshift({ ...base, id: x.L3, business: 'Bayside Dental', contact_name: 'Sam Lee', suburb: 'Manly', status: 'new', source: 'website', next_followup_at: `${day(2)}T00:00:00Z`, owner_id: me, tags: [], archived: false, unread: false, sequence_step: 0 });
+  m.state.tasks.unshift({ ...base, id: x.T2, title: 'Call Sam back', state: 'todo', priority: 'medium', due_on: day(3), owner_id: me, project_id: null, client_id: null, sort: 0 });
+  m.state.deals.unshift({ ...base, id: x.D1, title: 'Bayside Dental website', stage: 'qualified', value: 4800, monthly_value: 0, probability: 30, owner_id: me, lead_id: x.L3, archived: false });
+  m.state.costs.unshift({ ...base, id: x.CO1, name: 'Telstra phone plan', vendor: 'Telstra', category: 'software', amount: 26, cadence: 'monthly', ended_on: '2026-11-30', active: true });
+  m.state.clients.unshift({ ...base, id: x.CL1, name: 'Coastal Physio', status: 'active', monthly_value: 450, owner_id: me, tags: [], archived: false });
+  m.state.library.unshift({ ...base, id: x.LIB, title: 'Dental clinic playbook', kind: 'playbook', tags: [], pinned: false, archived: false });
+  m.notify();
+}, X);
 
 function populated() {
   return {
@@ -128,6 +148,22 @@ async function session(viewport, { data = emptyData(), scale = 1, connected = tr
           { tool: 'rename_file', kind: 'write', ok: false, text: 'Rename Scope.docx to Scope v2.docx' }
         ], links: [{ label: 'Harbour Dental proposal.pdf', hash: `#files/${F1}` }, { label: 'Clients', hash: '#files/1ClientsFolder' }] } });
       }
+      if (/^Show me everything/.test(msg)) {
+        // a reply that did a bit of everything: the shapes the tiles are built from
+        const FQ = '1BaysideQuotePdf_x';
+        return json(r, 200, { ...base, chat_id: body.chat_id || U(15), title: 'Bayside Dental set-up', changes: [
+          { id: X.CH_LEAD, kind: 'record', at: now, table_name: 'leads', row_id: X.L3, op: 'insert', summary: 'Added lead Bayside Dental (Manly)', open: `#leads/${X.L3}`, undone_at: null, undoable: true },
+          { id: X.CH_TASK2, kind: 'record', at: now, table_name: 'tasks', row_id: X.T2, op: 'insert', summary: 'Added task “Call Sam back” for Bayside Dental', open: '#projects/tasks', undone_at: null, undoable: true },
+          { id: X.CH_DEAL, kind: 'record', at: now, table_name: 'deals', row_id: X.D1, op: 'insert', summary: 'Added deal Bayside Dental website', open: `#pipeline/${X.D1}`, undone_at: null, undoable: true },
+          { id: X.CH_FILE, kind: 'file', at: now, table_name: 'file_changes', row_id: FQ, op: 'move', summary: 'Moved Bayside quote.pdf to Clients / Bayside Dental', open: `#files/${FQ}`, undone_at: null, undoable: true },
+          { id: X.CH_DEL, kind: 'record', at: now, table_name: 'tasks', row_id: X.T3, op: 'delete', summary: 'Removed task “Old follow-up for Bayside”', undone_at: null, undoable: true },
+          { id: X.CH_COST, kind: 'record', at: now, table_name: 'costs', row_id: X.CO1, op: 'update', summary: 'Set the phone plan to end 30 Nov', open: `#costs/${X.CO1}`, undone_at: now, undoable: true }
+        ], message: { id: 9501, role: 'assistant', at: now, text: 'Bayside Dental is in as a new lead, with a task for you to call Sam back on Friday and a deal for the website. I filed the quote under their folder, removed the old follow-up task and set the phone plan to end on 30 Nov. The client record did not go through: there is already one with that name.', steps: [
+          { tool: 'find', kind: 'read', ok: true, text: 'Looked for an existing lead called Bayside Dental' },
+          { tool: 'find', kind: 'read', ok: true, text: 'Read the dental clinic playbook', link: `#library/${X.LIB}` },
+          { tool: 'save_client', kind: 'write', ok: false, text: 'Add client Bayside Dental', error: 'There is already a client with that name.' }
+        ], links: [{ label: 'Bayside Dental', hash: `#leads/${X.L3}` }, { label: 'Coastal Physio', hash: `#clients/${X.CL1}` }, { label: 'Income', hash: '#income' }] } });
+      }
       // default: add a lead
       return json(r, 200, { ...base, chat_id: body.chat_id || NEW1, title: 'New lead, dental clinic in Manly', changes: [{ id: CH_NEW, table_name: 'leads', row_id: L2, op: 'insert', summary: 'Added lead Manly Smile Studio', open: `#leads/${L2}` }], message: { id: 9101, role: 'assistant', at: now, text: `Added Manly Smile Studio as a new lead from the website, owned by you. ${msg.includes('<img') ? '<img src=x onerror="window.__xss=1">' : ''}\n\nWant me to open a deal for it?`, steps: [{ tool: 'find', summary: 'Checked for an existing lead with that name' }, { tool: 'save_lead', summary: 'Added lead Manly Smile Studio', change_id: CH_NEW, table_name: 'leads', row_id: L2 }], links: [{ label: 'Manly Smile Studio', hash: `#leads/${L2}` }, { label: 'Leads', hash: '#leads' }] } });
     }
@@ -216,11 +252,14 @@ try {
     const agent = page.locator('.cx.is-page .cx-msg.is-agent').last();
     check((await agent.locator('.cx-text').innerText()).includes('Added Manly Smile Studio'), 'the reply shows');
     check(await page.evaluate(() => window.__xss === undefined && !document.querySelector('.cx-text img')), 'markup in a reply renders as text');
-    check(await agent.locator('[data-did] .cx-change').count() === 1 && (await agent.locator('.cx-change .cx-op').innerText()) === 'New', 'what it did: one ledger line, marked New');
-    check(await agent.locator(`.cx-change a.cx-open[href="#leads/${L2}"]`).count() === 1, 'the line links to the record');
-    check(await agent.locator('.cx-change [data-act=undo]').count() === 1, 'the line has an Undo');
-    const linkHrefs = await agent.locator('.cx-link').evaluateAll((ns) => ns.map((n) => n.getAttribute('href')));
-    check(JSON.stringify(linkHrefs) === JSON.stringify(['#leads']), `links are hub links, without repeating the record link (${linkHrefs})`);
+    const leadTile = agent.locator(`[data-did] .cx-tile[data-tile=change][data-change="${CH_NEW}"]`);
+    check(await agent.locator('[data-did] .cx-tile[data-tile=change]').count() === 1 && await leadTile.getAttribute('data-kind') === 'lead' && (await leadTile.locator('.cx-tile-verb').innerText()) === 'Added', 'what it did: one tile, a lead, marked Added');
+    check((await leadTile.locator('.cx-tile-name').innerText()) === 'Manly Smile Studio' && /^Leads/.test(await leadTile.locator('.cx-tile-where').innerText()), 'the tile is titled with the record name and says where it lives');
+    check(await leadTile.locator(`a.cx-tile-main[href="#leads/${L2}"]`).count() === 1, 'the tile links to the record');
+    check(await leadTile.locator('[data-act=undo]').count() === 1 && await leadTile.locator('a [data-act=undo]').count() === 0, 'the tile has an Undo, outside the link');
+    const linkHrefs = await agent.locator('.cx-tile[data-tile=see] a').evaluateAll((ns) => ns.map((n) => n.getAttribute('href')));
+    check(JSON.stringify(linkHrefs) === JSON.stringify(['#leads']), `see tiles are hub links, without repeating the record link (${linkHrefs})`);
+    check(await agent.locator('.cx-tile[data-tile=see] .cx-tile-verb').count() === 0, 'a see tile has no verb');
     check(/Looked up 1 thing/.test(await agent.locator('.cx-reads summary').innerText()), 'read-only steps fold into "Looked up"');
     check(/Sonnet · US\$0\.02/.test(await agent.locator('.cx-cost').innerText()), 'a quiet model and cost line');
     check((await page.locator('.cx.is-page .cx-title').innerText()) === 'New lead, dental clinic in Manly', 'the conversation takes the title the assistant gave it');
@@ -229,13 +268,16 @@ try {
     check(await page.locator('[data-recent] .cx-change').count() >= 1, 'the change also shows under "What it changed lately"');
     await shot(page, 'page-sent-1440');
 
-    // Undo strikes the line through
-    await agent.locator('[data-act=undo]').click();
-    await page.waitForSelector(`.cx.is-page .cx-msg.is-agent .cx-change.is-undone[data-change="${CH_NEW}"]`);
+    // Undo mutes the tile and strikes the name through, without going anywhere
+    const hashBefore = await page.evaluate(() => location.hash);
+    await leadTile.locator('[data-act=undo]').click();
+    await page.waitForSelector(`.cx.is-page .cx-msg.is-agent .cx-tile.is-undone[data-change="${CH_NEW}"]`);
     check(lastCall(page, (c) => c.action === 'undo')?.change_id === CH_NEW, 'Undo calls the function with the change id');
-    const deco = await page.locator(`.cx.is-page .cx-msg.is-agent .cx-change[data-change="${CH_NEW}"] .cx-change-sum`).evaluate((n) => getComputedStyle(n).textDecorationLine);
-    check(/line-through/.test(deco) && await page.locator(`.cx.is-page .cx-msg.is-agent .cx-change[data-change="${CH_NEW}"] [data-undone]`).count() === 1, `an undone change is struck through and says Undone (${deco})`);
-    check(await page.locator(`.cx.is-page .cx-msg.is-agent .cx-change[data-change="${CH_NEW}"] [data-act=undo], .cx.is-page .cx-msg.is-agent .cx-change[data-change="${CH_NEW}"] a.cx-open`).count() === 0, 'an undone change offers neither Undo nor Open');
+    check(await page.evaluate(() => location.hash) === hashBefore, 'Undo does not navigate');
+    const undoneTile = page.locator(`.cx.is-page .cx-msg.is-agent .cx-tile[data-change="${CH_NEW}"]`);
+    const deco = await undoneTile.locator('.cx-tile-name').evaluate((n) => getComputedStyle(n).textDecorationLine);
+    check(/line-through/.test(deco) && await undoneTile.locator('[data-undone]').count() === 1, `an undone tile is struck through and says Undone (${deco})`);
+    check(await undoneTile.locator('[data-act=undo], a').count() === 0, 'an undone addition offers no Undo and is no longer a link');
 
     // a clarifying question, then the answer, stays in one conversation
     await page.click('.cx.is-page [data-act=chat-new]');
@@ -249,8 +291,10 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('.cx.is-page .cx-msg.is-agent').length === 2);
     const answer = lastCall(page, (c) => c.agent === 'chat');
     check(answer.chat_id === NEW2, `the answer goes to the same conversation (${answer.chat_id})`);
-    const dbg = await page.evaluate(() => ({ you: document.querySelectorAll('.cx.is-page .cx-msg.is-you').length, did: [...document.querySelectorAll('.cx.is-page .cx-change')].map((n) => n.outerHTML.slice(0, 300)) }));
-    check(dbg.you === 2 && await page.locator(`.cx.is-page .cx-conv .cx-change[data-change="${CH_TASK}"] a[href="#projects/tasks"]`).count() === 1, `both turns are kept; the task links to Projects ${JSON.stringify(dbg)}`);
+    const dbg = await page.evaluate(() => ({ you: document.querySelectorAll('.cx.is-page .cx-msg.is-you').length, did: [...document.querySelectorAll('.cx.is-page .cx-tile')].map((n) => n.outerHTML.slice(0, 300)) }));
+    const taskTile = page.locator(`.cx.is-page .cx-conv .cx-tile[data-change="${CH_TASK}"]`);
+    check(dbg.you === 2 && await taskTile.locator('a[href="#projects/tasks"]').count() === 1 && await taskTile.getAttribute('data-kind') === 'task', `both turns are kept; the task tile links to Projects ${JSON.stringify(dbg)}`);
+    check((await taskTile.locator('.cx-tile-name').innerText()) === 'Send the first draft' && /^Tasks · for Coastal Physio/.test(await taskTile.locator('.cx-tile-where').innerText()), 'without the record loaded, the name and facts come from the summary');
 
     // errors: inline, text kept, retry
     for (const [text, code, re] of [['CAP please', 'cap_reached', /budget is used up/], ['OFF please', 'disabled', /switched off/]]) {
@@ -300,24 +344,24 @@ try {
     await page.locator('.cx.is-page .cx-input').press('Enter');
     await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9401"]');
     const m = page.locator('.cx.is-page .cx-msg[data-msg="9401"]');
-    const rows = await m.locator('.cx-change').evaluateAll((ns) => ns.map((n) => ({ op: n.querySelector('.cx-op').textContent, kind: n.dataset.kind || '', open: n.querySelector('.cx-open')?.getAttribute('href') || '', undo: !!n.querySelector('.cx-undo'), kept: !!n.querySelector('.cx-keep'), failed: n.classList.contains('is-failed') })));
-    check(rows.length === 4, `what I did: three file changes and one that did not happen (${rows.length})`);
-    check(rows[0]?.op === 'Move' && rows[0].kind === 'file' && rows[0].open === '#files/1AbCdEfGhIjKlMnOp_q-r' && rows[0].undo, 'a moved file: "Move", opens #files/<id>, with Undo');
-    check(rows[1]?.op === 'Folder' && rows[1].kept && !rows[1].undo, 'a new folder: no Undo, marked Kept (it cannot be undone from the chat)');
-    check(rows[2]?.op === 'Link' && rows[2].kind === 'file_link' && rows[2].open.startsWith('#clients/') && rows[2].undo, 'a file linked to a client: opens the client, with Undo');
-    check(rows[3]?.op === 'Not done' && rows[3].failed && !rows[3].undo, 'a step that failed is said plainly, with no Undo');
-    const links = await m.locator('.cx-link').evaluateAll((ns) => ns.map((n) => n.getAttribute('href')));
-    check(links.length === 1 && links[0] === '#files/1ClientsFolder', `links: file links open the Files page, no repeats of a change's own link (${links})`);
+    const rows = await m.locator('.cx-tile:not([data-tile=see])').evaluateAll((ns) => ns.map((n) => ({ verb: n.querySelector('.cx-tile-verb')?.textContent || '', name: n.querySelector('.cx-tile-name').textContent, where: n.querySelector('.cx-tile-where, .cx-tile-err')?.textContent || '', kind: n.dataset.kind || '', open: n.querySelector('a.cx-tile-main')?.getAttribute('href') || '', undo: !!n.querySelector('.cx-tile-undo'), kept: !!n.querySelector('[data-kept]'), failed: n.classList.contains('is-failed') })));
+    check(rows.length === 4, `what it did: three file changes and one that did not happen (${rows.length})`);
+    check(rows[0]?.verb === 'Moved' && rows[0].kind === 'file' && rows[0].name === 'Harbour Dental proposal.pdf' && rows[0].where === 'Files · to Clients / Harbour Dental' && rows[0].open === '#files/1AbCdEfGhIjKlMnOp_q-r' && rows[0].undo, `a moved file: "Moved", named, opens #files/<id>, with Undo (${JSON.stringify(rows[0])})`);
+    check(rows[1]?.verb === 'Added' && rows[1].kind === 'folder' && rows[1].name === 'Archive' && rows[1].kept && !rows[1].undo, `a new folder: a folder tile, no Undo, marked Kept (${JSON.stringify(rows[1])})`);
+    check(rows[2]?.verb === 'Linked' && rows[2].kind === 'file' && rows[2].name === 'Scope.docx' && rows[2].open.startsWith('#clients/') && rows[2].undo, `a file linked to a client: opens the client, with Undo (${JSON.stringify(rows[2])})`);
+    check(rows[3]?.verb === 'Not done' && rows[3].failed && !rows[3].undo && !rows[3].open, `a step that failed is said plainly, not a link, no Undo (${JSON.stringify(rows[3])})`);
+    const links = await m.locator('.cx-tile[data-tile=see] a').evaluateAll((ns) => ns.map((n) => n.getAttribute('href')));
+    check(links.length === 1 && links[0] === '#files/1ClientsFolder', `see tiles: file links open the Files page, no repeats of a change's own link (${links})`);
     await m.locator('.cx-reads summary').click();
     check((await m.locator('.cx-reads li').allInnerTexts()).join('|') === 'Listed Clients: 12 items', 'what it looked up uses the step text');
-    await m.locator('.cx-change[data-op=move] .cx-undo').click();
-    await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9401"] .cx-change[data-op=move].is-undone');
+    await m.locator('.cx-tile[data-op=move] .cx-tile-undo').click();
+    await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9401"] .cx-tile[data-op=move].is-undone');
     const u = lastCall(page, (c) => c.action === 'undo');
     check(u && u.change_id === FC_MOVE, 'Undo on a file change calls undo with its change_id');
-    check(await m.locator('.cx-change[data-op=move] [data-undone]').count() === 1 && await m.locator('.cx-change[data-op=move] .cx-open').count() === 0, 'it is struck through and marked Undone');
+    check(await m.locator('.cx-tile[data-op=move] [data-undone]').count() === 1 && await m.locator('.cx-tile[data-op=move] .cx-tile-undo').count() === 0, 'it is struck through and marked Undone');
+    check(await m.locator('.cx-tile[data-op=move] a[href^="#files/"]').count() === 1, 'an undone move still opens the file (it is back where it was)');
     await shot(page, 'page-files-1440');
-    await page.locator('.cx-change[data-op=move] .cx-op').first().scrollIntoViewIfNeeded();
-    await m.locator('.cx-change[data-kind=file] .cx-open').first().click().catch(() => {});
+    await m.locator('.cx-tile[data-kind=file] a.cx-tile-main').first().click().catch(() => {});
     check(page.errors.length === 0, `no page errors ${page.errors.join(' | ')}`);
     await ctx.close();
   }
@@ -370,10 +414,10 @@ try {
     await page.click(`.cx.is-page .cx-item[data-chat="${C2}"] .cx-item-open`);
     await page.waitForSelector('.cx.is-page .cx-msg[data-msg="202"]');
     check(await page.evaluate(() => location.hash) === `#agents/chat/${C2}`, 'switching conversations updates the address');
-    const lines = page.locator('.cx.is-page .cx-msg[data-msg="202"] .cx-change');
-    check(await lines.count() === 2, 'a stored reply shows its two changes');
-    check(await page.locator(`.cx.is-page .cx-msg[data-msg="202"] .cx-change.is-undone[data-change="${CH0}"]`).count() === 1, 'a change already undone shows struck through');
-    check(await page.locator(`.cx.is-page .cx-msg[data-msg="202"] .cx-change[data-change="${CH1}"] a[href="#leads/${L1}"]`).count() === 1, 'a stored change links to its record');
+    const lines = page.locator('.cx.is-page .cx-msg[data-msg="202"] .cx-tile[data-tile=change]');
+    check(await lines.count() === 2, 'a stored reply shows its two changes as tiles');
+    check(await page.locator(`.cx.is-page .cx-msg[data-msg="202"] .cx-tile.is-undone[data-change="${CH0}"]`).count() === 1, 'a change already undone shows struck through');
+    check(await page.locator(`.cx.is-page .cx-msg[data-msg="202"] .cx-tile[data-change="${CH1}"] a[href="#leads/${L1}"]`).count() === 1, 'a stored change links to its record');
     // memory
     const mem = page.locator('[data-memory] .cx-mem-item');
     check(await mem.count() === 2, 'What it remembers lists the notes');
@@ -415,7 +459,7 @@ try {
     check(lastCall(page, (c) => c.action === 'memory_delete')?.id === M2, 'Forget sends memory_delete and the note goes');
     // the rules are the new rules
     const rules = await page.locator('.cx.is-page [data-rules]').innerText();
-    check(/makes the changes you ask for/i.test(rules) && /undone/i.test(rules) && /never sends/i.test(rules) && /never deletes/i.test(rules) && /do-not-contact/i.test(rules), 'the rules describe the new behaviour');
+    check(/makes the changes you ask for/i.test(rules) && /undone/i.test(rules) && /never sends/i.test(rules) && /removes only what you ask/i.test(rules) && /every removal can be undone/i.test(rules) && /do-not-contact/i.test(rules), 'the rules describe the new behaviour');
     // three columns at 1440
     const cols = await page.evaluate(() => ['.cx-hist', '.cx-conv', '.cx-side'].map((s) => { const r = document.querySelector(`.cx.is-page ${s}`).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width)]; }));
     check(cols[0][0] < cols[1][0] && cols[1][0] < cols[2][0], `1440: conversations · conversation · memory (${JSON.stringify(cols)})`);
@@ -469,6 +513,116 @@ try {
       check(s.agent_chat === true && await page.locator('.cx.is-page [data-chat-off]').count() === 0, '"Turn it on" from the chat saves agent_chat = true');
     }
     check(page.errors.length === 0, `no page errors ${page.errors.join(' | ')}`);
+  }
+
+  /* ============================================ result tiles: the bar, the page, the spot */
+  if (run('tiles')) {
+    const sizes = [
+      { name: '1440', vp: { width: 1440, height: 900 }, scale: 2 },
+      { name: '390', vp: { width: 390, height: 844 }, scale: 2 },
+      { name: '3440', vp: { width: 3440, height: 1440 }, scale: 1 }
+    ];
+    for (const sz of sizes) {
+      const { ctx, page } = await session(sz.vp, { scale: sz.scale });
+      await seedRecords(page);
+      await nav(page, '#home');
+      await page.click('.agd-launch');
+      await page.waitForSelector('.agd-dock .cx-input');
+      await page.fill('.agd-dock .cx-input', 'Show me everything you did for Bayside Dental');
+      await page.locator('.agd-dock .cx-input').press('Enter');
+      await page.waitForSelector('.agd-dock .cx-msg[data-msg="9501"] .cx-tile');
+      await page.waitForTimeout(300);
+      const msg = page.locator('.agd-dock .cx-msg[data-msg="9501"]');
+      const tiles = await msg.locator('.cx-tile').evaluateAll((ns) => ns.map((n) => ({
+        type: n.dataset.tile, kind: n.dataset.kind, change: n.dataset.change || '', verb: n.querySelector('.cx-tile-verb')?.textContent || '',
+        name: n.querySelector('.cx-tile-name').textContent, where: n.querySelector('.cx-tile-where, .cx-tile-err')?.textContent || '',
+        href: n.querySelector('a.cx-tile-main')?.getAttribute('href') || '', undo: !!n.querySelector('.cx-tile-undo'), undone: n.classList.contains('is-undone'),
+        left: Math.round(n.getBoundingClientRect().left), h: Math.round(n.getBoundingClientRect().height)
+      })));
+      const by = (id) => tiles.find((t) => t.change === id) || {};
+      if (sz.name === '1440') {
+        check(JSON.stringify(tiles.filter((t) => t.type === 'change').map((t) => t.kind)) === JSON.stringify(['lead', 'task', 'deal', 'file', 'task', 'cost']), `tiles: a kind for each change (${tiles.map((t) => t.kind).join(' ')})`);
+        const lead = by(X.CH_LEAD);
+        check(lead.name === 'Bayside Dental' && /^Leads · New · follow-up \w{3} \d{1,2} \w{3}$/.test(lead.where) && lead.verb === 'Added' && lead.href === `#leads/${X.L3}`, `lead: named from the hub, with status and follow-up (${lead.name} | ${lead.where})`);
+        const task = by(X.CH_TASK2);
+        check(task.name === 'Call Sam back' && /^Tasks · You · due \w{3}$/.test(task.where), `task: named, with who and when it is due (${task.name} | ${task.where})`);
+        const deal = by(X.CH_DEAL);
+        check(deal.name === 'Bayside Dental website' && deal.where === 'Pipeline · Qualified · $4,800' && deal.href === `#pipeline/${X.D1}`, `deal: named, stage and value (${deal.where})`);
+        const file = by(X.CH_FILE);
+        check(file.name === 'Bayside quote.pdf' && file.verb === 'Moved' && file.where === 'Files · to Clients / Bayside Dental' && file.undo, `file: Moved, named, where it went (${file.where})`);
+        const del = by(X.CH_DEL);
+        check(del.verb === 'Removed' && del.name === 'Old follow-up for Bayside' && !del.href && del.undo, 'a removed task: "Removed", not a link, with Undo to restore it');
+        const cost = by(X.CH_COST);
+        check(cost.undone && cost.name === 'Telstra phone plan' && /^Costs · \$26 a month · ends \w{3} 30 Nov$/.test(cost.where) && !cost.undo, `an undone change: muted, says Undone (${cost.where})`);
+        const failed = tiles.find((t) => t.type === 'failed') || {};
+        check(failed.verb === 'Not done' && failed.where === 'There is already a client with that name.' && !failed.href && !failed.undo, `a failed write: "Not done" with the reason (${failed.where})`);
+        const see = tiles.filter((t) => t.type === 'see');
+        check(JSON.stringify(see.map((t) => t.href)) === JSON.stringify([`#clients/${X.CL1}`, '#income', `#library/${X.LIB}`]), `see tiles: links and reads with a link, no repeat of a change (${see.map((t) => t.href).join(' ')})`);
+        check(see[0]?.name === 'Coastal Physio' && see[0].where === 'Clients · Active · $450 a month' && !see[0].verb && see[2]?.name === 'Dental clinic playbook', 'see tiles name the record from the hub, with no verb');
+        check(tiles.every((t) => t.h >= 50 && t.h <= 60), `tiles are compact (${[...new Set(tiles.map((t) => t.h))].join(',')}px)`);
+        check(new Set(tiles.map((t) => t.left)).size === 2, `the bar at 1440: two columns (${[...new Set(tiles.map((t) => t.left))].join(',')})`);
+      }
+      if (sz.name === '390') {
+        check(new Set(tiles.map((t) => t.left)).size === 1 && tiles.length === 10, `390 bar: one column (${tiles.length} tiles)`);
+        check(await noHScroll(page) && await msg.evaluate((n) => [...n.querySelectorAll('.cx-tile')].every((t) => t.getBoundingClientRect().right <= innerWidth)), '390 bar: no sideways scroll, every tile fits');
+      }
+      await msg.locator('.cx-tiles').scrollIntoViewIfNeeded();
+      await shot(page, `tiles-bar-${sz.name}`);
+      if (sz.name === '1440') {
+        // a closer look at the tiles alone
+        await msg.locator('.cx-tiles-wrap').screenshot({ path: SHOTS ? join(SHOTS, 'tiles-bar-1440-crop.png') : '/dev/null' }).catch(() => {});
+        // Undo on the removed task: no navigation, the bar stays open, the tile now leads somewhere
+        const h0 = await page.evaluate(() => location.hash);
+        await msg.locator(`.cx-tile[data-change="${X.CH_DEL}"] .cx-tile-undo`).click();
+        await page.waitForSelector(`.agd-dock .cx-tile.is-undone[data-change="${X.CH_DEL}"]`);
+        check(await page.evaluate(() => location.hash) === h0 && await page.locator('.agd-dock[data-agd-state=open]').count() === 1, 'Undo on a tile: no navigation, the bar stays open');
+        check(await msg.locator(`.cx-tile[data-change="${X.CH_DEL}"] a.cx-tile-main`).count() === 1, 'a removal undone: the record is back, so the tile is a link again');
+        // clicking a tile goes to the record, closes the bar, and rings the record once
+        await msg.locator(`.cx-tile[data-change="${X.CH_LEAD}"] a.cx-tile-main`).click();
+        await page.waitForFunction((id) => location.hash === `#leads/${id}`, X.L3);
+        check(await page.locator('.agd-dock[data-agd-state=open]').count() === 0, 'a tile click closes the bar');
+        const spotted = await page.waitForFunction((id) => {
+          const n = document.querySelector('.is-spotted');
+          return n ? (n.matches(`[data-id="${id}"]`) ? 'row' : n.classList.contains('drawer') ? 'drawer' : n.className) : false;
+        }, X.L3, { timeout: 4000 }).then((h) => h.jsonValue()).catch(() => '');
+        check(spotted === 'row' || spotted === 'drawer', `the lead is ringed once it is on the page (${spotted})`);
+        const both = await page.evaluate((id) => ({ row: !!document.querySelector(`#view [data-id="${id}"].is-spotted`), drawer: !!document.querySelector('.drawer.is-spotted') }), X.L3);
+        await page.waitForTimeout(250);
+        if (SHOTS) await page.screenshot({ path: join(SHOTS, 'tiles-spot-lead-1440.png') });
+        check(both.row || both.drawer, `ringed: row ${both.row}, drawer ${both.drawer}`);
+        await page.waitForTimeout(1900);
+        check(await page.locator('.is-spotted').count() === 0, 'the ring fades and is gone after about 1.6 s');
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(250);
+        // the deal, from the Agents page
+        await nav(page, '#agents');
+        await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9501"] .cx-tile');
+        const pm = page.locator('.cx.is-page .cx-msg[data-msg="9501"]');
+        const pageCols = await pm.locator('.cx-tile').evaluateAll((ns) => new Set(ns.map((n) => Math.round(n.getBoundingClientRect().left))).size);
+        check(pageCols >= 2, `the Agents page at 1440: tiles in ${pageCols} columns`);
+        await pm.locator('.cx-tiles').scrollIntoViewIfNeeded();
+        await shot(page, 'tiles-page-1440');
+        await pm.locator(`.cx-tile[data-change="${X.CH_DEAL}"] a.cx-tile-main`).click();
+        await page.waitForFunction((id) => location.hash === `#pipeline/${id}`, X.D1);
+        const dealSpot = await page.waitForFunction(() => !!document.querySelector('.is-spotted'), null, { timeout: 4000 }).then(() => true).catch(() => false);
+        check(dealSpot, 'a deal tile goes to the pipeline and rings the deal');
+        await page.waitForTimeout(300);
+        if (SHOTS) await page.screenshot({ path: join(SHOTS, 'tiles-spot-deal-1440.png') });
+        await page.keyboard.press('Escape');
+      } else {
+        await page.keyboard.press('Escape');
+        await nav(page, '#agents');
+        await page.waitForSelector('.cx.is-page .cx-msg[data-msg="9501"] .cx-tile');
+        const pm = page.locator('.cx.is-page .cx-msg[data-msg="9501"]');
+        const cols = await pm.locator('.cx-tile').evaluateAll((ns) => new Set(ns.map((n) => Math.round(n.getBoundingClientRect().left))).size);
+        if (sz.name === '3440') check(cols === 3, `3440 Agents page: three columns of tiles (${cols})`);
+        if (sz.name === '390') check(cols === 1 && await noHScroll(page), `390 Agents page: one column, no sideways scroll (${cols})`);
+        await pm.locator('.cx-tiles').scrollIntoViewIfNeeded();
+        await shot(page, `tiles-page-${sz.name}`);
+      }
+      check(page.errors.length === 0, `${sz.name}: no page errors ${page.errors.join(' | ')}`);
+      await ctx.close();
+    }
   }
 
   /* ============================================ phones */

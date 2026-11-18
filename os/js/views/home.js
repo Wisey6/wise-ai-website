@@ -1,9 +1,9 @@
 // Today: what happened, what is coming up, and what to do next, across the whole
 // business: leads and replies, deals, proposals, delivery, invoices and retainers.
-import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118e';
-import { isAuMobile, leadName, leadById, isSuppressed, formatValue, isMine, rowById } from '../api.js?v=20261118e';
-import { ownerBadge, ownerName, readScope, scopeToggle, meId } from '../owners.js?v=20261118e';
-import { agentsInfo, briefingPanel, todaysBriefing, pendingActions } from './agents.js?v=20261118e';
+import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118f';
+import { isAuMobile, leadName, leadById, isSuppressed, formatValue, isMine, rowById } from '../api.js?v=20261118f';
+import { ownerBadge, ownerName, readScope, scopeToggle, meId } from '../owners.js?v=20261118f';
+import { agentsInfo, briefingPanel, todaysBriefing, pendingActions } from './agents.js?v=20261118f';
 
 const DAY = 86400000;
 const seenEvents = new Set();

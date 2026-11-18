@@ -251,7 +251,7 @@
    The assistant (js/chat.js). One conversation, shown in the owl dropdown and on the
    Agents page. Prefix .cx-*. A transcript, not a chat widget: the agent's words sit
    on the paper in the body type; your words are a quiet mist block on the right;
-   what it changed reads like a ledger (hairlines, a small op word, Open, Undo).
+   what it did or found sits under its reply as small tiles (end of this file).
    ========================================================================== */
 .cx { min-width: 0; }
 
@@ -278,9 +278,7 @@
 .cx-day { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-1) 0 calc(-1 * var(--space-2)); font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--faint); }
 .cx-day::before, .cx-day::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 
-/* -- what I did: a ledger */
-.cx-did { display: flex; flex-direction: column; margin-top: var(--space-1); }
-.cx-did-h { padding-bottom: 6px; border-bottom: 1px solid var(--ink); font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--muted); }
+/* -- change lines ("What it changed lately"); under a reply they are tiles, see the end of this file */
 .cx-changes { list-style: none; margin: 0; padding: 0; }
 .cx-change {
   display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-3);
@@ -311,9 +309,6 @@
 .cx-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-2); padding: 2px 0 2px var(--space-3); border-left: 2px solid var(--ink); font-size: var(--fs-sm); color: var(--body); }
 .cx-draft .icon { color: var(--muted); }
 .cx-draft a { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
-.cx-links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
-.cx-link { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-sm); font-weight: 500; color: var(--ink); padding-bottom: 1px; border-bottom: 1px solid var(--line-2); }
-.cx-link:hover { text-decoration: none; border-bottom-color: var(--ink); }
 .cx-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-4); font-size: var(--fs-meta); color: var(--faint); }
 .cx-reads summary { cursor: pointer; color: var(--muted); list-style: none; display: inline-flex; align-items: center; gap: 4px; }
 .cx-reads summary::-webkit-details-marker { display: none; }
@@ -524,4 +519,124 @@ button.cx-item-open:hover { background: var(--hover); }
   .ag-tabs { display: flex; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .ag-tabs::-webkit-scrollbar { display: none; }
   .ag-tabs .tab { white-space: nowrap; flex: none; }
+}
+
+/* =============================================================================
+   Result tiles (js/chat.js: tile(), tilesFor()) and the spot ring (js/spot.js).
+   Under a reply, each thing it did or found is a small hairline tile on the paper:
+   the kind's icon, the record's name, then a dot + word (Added, Updated, Moved…) and
+   where it lives with its key fact. The tile is the link; Undo is a quiet text button
+   beside it behind a hairline, never inside the link. Things it only found are
+   lighter "see" tiles with no word. No tinted backgrounds: colour is the dot only.
+   ========================================================================== */
+.cx-tiles-wrap { container-type: inline-size; margin-top: var(--space-1); }
+.cx-tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+@container (min-width: 560px) { .cx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (min-width: 800px) { .cx.is-page .cx-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* on the Agents page the tiles may use the log's full measure; the words keep theirs */
+.cx.is-page .cx-msg.is-agent { max-width: none; }
+.cx.is-page .cx-msg.is-agent > :not(.cx-tiles-wrap) { max-width: 68ch; }
+
+.cx-tile {
+  position: relative; display: flex; align-items: stretch; min-width: 0; min-height: 54px;
+  border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--paper);
+  transition: border-color var(--dur) var(--ease);
+}
+.cx-tile-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); padding: 8px 12px 8px 14px;
+  color: inherit; text-decoration: none; border-radius: inherit; -webkit-tap-highlight-color: transparent;
+}
+a.cx-tile-main:hover { text-decoration: none; }
+.cx-tile:has(> a.cx-tile-main:hover) { border-color: var(--ink); }
+a.cx-tile-main:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+a.cx-tile-main:active { background: var(--hover); }
+.cx-tile-ic { flex: none; display: grid; place-items: center; width: 18px; color: var(--muted); }
+.cx-tile-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cx-tile-title { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: var(--fs-sm); font-weight: 500; line-height: 1.3; color: var(--ink); letter-spacing: -.003em; }
+.cx-tile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx-tile-title .icon { flex: none; color: var(--faint); transition: transform var(--dur) var(--ease), color var(--dur) var(--ease); }
+a.cx-tile-main:hover .cx-tile-title .icon { color: var(--ink); transform: translateX(2px); }
+.cx-tile-meta { display: flex; align-items: center; min-width: 0; font-size: var(--fs-meta); line-height: 1.3; color: var(--muted); white-space: nowrap; }
+.cx-tile-where, .cx-tile-err { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cx-tile-verb { flex: none; display: inline-flex; align-items: center; gap: 5px; font-weight: 500; color: var(--ink-2); }
+.cx-tile-verb + .cx-tile-where::before, .cx-tile-verb + .cx-tile-err::before { content: '·'; margin: 0 6px; color: var(--faint); }
+.cx-tile-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.cx-tile-verb.is-add .cx-tile-dot { background: var(--up); }
+.cx-tile-verb.is-del .cx-tile-dot { background: var(--rose); }
+.cx-tile-verb.is-draft .cx-tile-dot { background: var(--amber); }
+.cx-tile-verb.is-bad { color: var(--rose-t); }
+.cx-tile-verb.is-bad .cx-tile-dot { background: var(--rose); }
+.cx-tile-err { color: var(--rose-t); }
+
+/* the action in the tile's top-right corner, outside the link: Undo, or a quiet state word */
+.cx-tile-undo, .cx-tile-state {
+  position: absolute; top: 7px; right: 6px; z-index: 1; display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+  border-radius: var(--radius-s); font-size: var(--fs-meta); white-space: nowrap;
+}
+.cx-tile:has(> .cx-tile-undo, > .cx-tile-state) .cx-tile-title { padding-right: 62px; }
+.cx-tile-undo {
+  border: 0; background: transparent; font-family: inherit; font-weight: 500; color: var(--muted); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.cx-tile-undo:hover { color: var(--ink); text-decoration-color: currentColor; }
+.cx-tile-undo::before { content: ''; position: absolute; inset: -7px -6px -2px; }   /* a bigger target, mostly above */
+.cx-tile-undo:focus-visible { outline: var(--focus-ring); outline-offset: 0; }
+.cx-tile-undo:disabled { cursor: progress; text-decoration: none; }
+.cx-tile-state { color: var(--faint); cursor: default; }
+
+/* undone: muted, the name struck through */
+.cx-tile.is-undone { border-color: var(--line-3); }
+.cx-tile.is-undone .cx-tile-name { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+.cx-tile.is-undone .cx-tile-ic, .cx-tile.is-undone .cx-tile-meta, .cx-tile.is-undone .cx-tile-verb { color: var(--faint); }
+.cx-tile.is-undone .cx-tile-dot { background: var(--line-2); }
+/* not a link (removed, failed): no arrow, no hover */
+.cx-tile.is-static .cx-tile-main { cursor: default; }
+.cx-tile.is-failed { border-style: dashed; border-color: var(--line-2); }
+.cx-tile.is-failed .cx-tile-name { color: var(--body); }
+/* found, not changed: lighter */
+.cx-tile.is-see { border-color: var(--line-3); }
+.cx-tile.is-see .cx-tile-ic { color: var(--faint); }
+.cx-tile.is-see .cx-tile-meta { color: var(--faint); }
+.cx-tile.is-see:has(> a.cx-tile-main:hover) { border-color: var(--ink); }
+
+/* the dock: a touch tighter */
+.agd-dock .cx-tile { min-height: 52px; }
+.agd-dock .cx-tile-main { padding: 7px 10px 7px 12px; gap: 10px; }
+
+/* the reads and the cost under the tiles: quieter */
+.cx-tiles-wrap + .cx-foot { margin-top: calc(-1 * var(--space-1)); }
+
+@media (max-width: 760px) {
+  .cx-tile { min-height: 56px; }
+  .cx-tile-undo::before { inset: -9px -8px -3px; }
+  .cx-tile:has(> .cx-tile-undo, > .cx-tile-state) .cx-tile-title { padding-right: 66px; }
+}
+
+/* spot: the record a tile led to gets a soft ring, once */
+.is-spotted { animation: cx-spot 1600ms var(--ease) var(--spot-delay, 0ms) 1 both; }
+tr.is-spotted { animation: none; }
+tr.is-spotted > td, tr.is-spotted > th { animation: cx-spot-cell 1600ms var(--ease) var(--spot-delay, 0ms) 1 both; }
+.drawer.is-spotted { animation-name: cx-spot-inset; }
+@keyframes cx-spot {
+  0% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+  14%, 62% { box-shadow: 0 0 0 3px rgba(37,99,235,.32); }
+  100% { box-shadow: 0 0 0 3px rgba(37,99,235,0); }
+}
+@keyframes cx-spot-cell {
+  0% { box-shadow: inset 0 0 0 0 rgba(37,99,235,0); background-color: transparent; }
+  14%, 62% { box-shadow: inset 0 2px 0 rgba(37,99,235,.32), inset 0 -2px 0 rgba(37,99,235,.32); background-color: rgba(37,99,235,.05); }
+  100% { box-shadow: inset 0 2px 0 rgba(37,99,235,0), inset 0 -2px 0 rgba(37,99,235,0); background-color: transparent; }
+}
+@keyframes cx-spot-inset {
+  0% { box-shadow: inset 0 0 0 0 rgba(37,99,235,0), var(--shadow-float); }
+  14%, 62% { box-shadow: inset 0 0 0 3px rgba(37,99,235,.28), var(--shadow-float); }
+  100% { box-shadow: inset 0 0 0 3px rgba(37,99,235,0), var(--shadow-float); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .is-spotted, tr.is-spotted > td, tr.is-spotted > th { animation: none; }
+  .is-spotted:not(tr):not(.drawer) { box-shadow: 0 0 0 3px rgba(37,99,235,.32); }
+  .drawer.is-spotted { box-shadow: inset 0 0 0 3px rgba(37,99,235,.28), var(--shadow-float); }
+  tr.is-spotted > td { box-shadow: inset 0 2px 0 rgba(37,99,235,.32), inset 0 -2px 0 rgba(37,99,235,.32); }
+  .cx-tile, .cx-tile-title .icon, .cx-tile-undo { transition: none; }
 }

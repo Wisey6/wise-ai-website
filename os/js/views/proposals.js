@@ -5,8 +5,8 @@
 import {
   el, fill, clear, icon, badge, toast, modal, confirmDialog, field, input, select, textarea,
   emptyState, money, num, plural, dayKey, go, busy, copyText, timeOnly
-} from '../ui.js?v=20261118e';
-import { state, saveRow, deleteRow, rowById, leadById, leadName, ai } from '../api.js?v=20261118e';
+} from '../ui.js?v=20261118f';
+import { state, saveRow, deleteRow, rowById, leadById, leadName, ai } from '../api.js?v=20261118f';
 
 /* ------------------------------------------------------------- statuses */
 export const PROPOSAL_STATUSES = [
@@ -723,7 +723,7 @@ function editorView(id) {
         const deal = doc.deal_id ? rowById('deals', doc.deal_id) : null;
         if (deal && deal.stage !== 'won') {
           const ok = await confirmDialog('Move the deal to Won?', `${deal.title} is still in ${deal.stage}. Mark it won, and make the client and project from it.`, { confirmLabel: 'Move to Won', danger: false });
-          if (ok) { const pl = await import('./pipeline.js?v=20261118e'); await pl.moveDeal(deal, 'won'); }
+          if (ok) { const pl = await import('./pipeline.js?v=20261118f'); await pl.moveDeal(deal, 'won'); }
         }
       }
     } catch (e) { toast(e.message, 'bad'); }

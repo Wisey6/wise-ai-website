@@ -1,19 +1,23 @@
 // The Wise AI assistant: one conversation, used by the owl dropdown and the Agents page.
 // It reads the hub and makes the changes it is asked for; every change comes back as a
-// "what I did" line with a link to the record and an Undo. It never sends anything.
+// small tile under its reply that opens the record, with an Undo. It never sends anything.
 //
 // One store for both surfaces, so a conversation, its typed draft and a reply that is
 // still on its way are the same wherever you look at them. Everything the assistant
 // returns reaches the page as text nodes through el(); links are hub hashes only.
 import {
-  el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural
-} from './ui.js?v=20261118e';
+  el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural,
+  money, titleCase, STATUS
+} from './ui.js?v=20261118f';
 import {
   state, chatSend, chatMessages, chatRename, chatArchive, chatDelete, undoChange, memoryDelete,
   agentStatus, saveSettings, rowById, sb
-} from './api.js?v=20261118e';
-import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118e';
-import { agentsInfo, usd } from './views/agents.js?v=20261118e';
+} from './api.js?v=20261118f';
+import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118f';
+import { agentsInfo, usd } from './views/agents.js?v=20261118f';
+import { ownerName } from './owners.js?v=20261118f';
+import { spotRecord } from './spot.js?v=20261118f';
+import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261118f';
 
 export const MAX_MESSAGE = 4000;
 
@@ -76,6 +80,8 @@ function emit() {
 
 /** Follow the assistant's own changes (a send starting or finishing, an undo). */
 export function onChatChange(fn) { subs.add(() => { fn(); return true; }); }
+// An email draft sent or discarded (or the email connection changing) redraws the conversation.
+onMailChange(() => emit());
 
 /** Is a reply on its way in any conversation? (The launcher speeds up.) */
 export const chatBusy = () => S.pending.size > 0;
@@ -333,12 +339,13 @@ function changesOf(m) {
     return out;
   });
 }
-const isDraftStep = (s) => s && !s.change_id && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
+// An email draft step (s.email) is shown as its own card (mail-card.js), not as a tile.
+const isDraftStep = (s) => s && !s.change_id && !s.email && !s.proposal && (s.kind === 'draft' || /draft/i.test(String(s.tool || '')));
 const isFailedStep = (s) => s && s.ok === false && s.kind !== 'read';
 const isPlainWrite = (s) => s && !s.change_id && s.ok !== false && s.kind === 'write';
-const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && (stepText(s) || str(s.tool)));
+const readsOf = (m) => arr(m.steps).filter((s) => s && !s.change_id && !s.email && !s.proposal && !isDraftStep(s) && !isFailedStep(s) && !isPlainWrite(s) && !(s.kind === 'memory' && s.ok !== false) && (stepText(s) || str(s.tool)));
 const linkOf = (c) => safeHash(c.open) || safeHash(c.link) || hashFor(c.table_name, c.row_id);
-const OP = { insert: 'New', update: 'Edit', archive: 'Archive', memory: 'Note', move: 'Move', rename: 'Rename', create_folder: 'Folder', link: 'Link' };
+const OP = { insert: 'New', update: 'Edit', delete: 'Remove', archive: 'Archive', memory: 'Note', move: 'Move', rename: 'Rename', create_folder: 'Folder', link: 'Link' };
 const opWord = (c) => OP[c.op] || (/remember|memory/.test(String(c.tool || '')) ? 'Note' : /archive/.test(String(c.tool || '')) ? 'Archive'
   : /folder/.test(String(c.tool || '')) ? 'Folder' : /move/.test(String(c.tool || '')) ? 'Move' : /rename/.test(String(c.tool || '')) ? 'Rename' : /link/.test(String(c.tool || '')) ? 'Link' : 'Done');
 const humanTool = (t) => String(t || 'step').replace(/_/g, ' ').replace(/^\w/, (x) => x.toUpperCase());
@@ -368,23 +375,240 @@ export function changeLine(c, { when = false } = {}) {
           : el('span', { class: 'cx-keep', title: 'This one cannot be undone from here.' }, 'Kept')));
 }
 
-/** A write that did not happen, or happened without an undo record: said plainly, no Undo. */
-function noteLine(s, failed) {
-  const h = safeHash(s.link) || hashFor(s.table_name, s.row_id);
-  return el('li', { class: `cx-change${failed ? ' is-failed' : ''}`, dataset: { step: failed ? 'failed' : 'write' } },
-    el('span', { class: 'cx-op' }, failed ? 'Not done' : opWord(s)),
-    el('span', { class: 'cx-change-main' }, el('span', { class: 'cx-change-sum' }, stepText(s) || humanTool(s.tool))),
-    el('span', { class: 'cx-change-acts' }, h && !failed ? el('a', { class: 'cx-open', href: h }, 'Open', icon('arrow', 12)) : null));
+/* ============================================================== result tiles */
+// Under each reply, everything it did or found is a small tile: an icon for the kind of
+// thing, what happened (a dot and a word: Added, Updated, Moved…), the record's name, and
+// a quiet line saying where it lives and its key fact. The tile is a link to the record
+// (spot.js then rings it on the page); a change keeps its Undo on the right. What it only
+// found is a lighter "see" tile. Names and facts come from the live record when the hub
+// has it loaded, else from what the backend said. Everything is text through el().
+
+const KINDS = {
+  leads: { kind: 'lead', icon: 'leads', area: 'Leads' },
+  tasks: { kind: 'task', icon: 'check', area: 'Tasks' },
+  deals: { kind: 'deal', icon: 'tag', area: 'Pipeline' },
+  clients: { kind: 'client', icon: 'user', area: 'Clients' },
+  projects: { kind: 'project', icon: 'deliver', area: 'Projects' },
+  income: { kind: 'invoice', icon: 'money', area: 'Income' },
+  costs: { kind: 'cost', icon: 'dollar', area: 'Costs' },
+  library: { kind: 'library', icon: 'book', area: 'Library' },
+  proposals: { kind: 'proposal', icon: 'note', area: 'Proposals' },
+  roi_reports: { kind: 'report', icon: 'spark', area: 'ROI reports' },
+  files: { kind: 'file', icon: 'note', area: 'Files' },
+  folder: { kind: 'folder', icon: 'archive', area: 'Files' },
+  email: { kind: 'email', icon: 'mail', area: 'Inbox' },
+  bookings: { kind: 'event', icon: 'calendar', area: 'Bookings' },
+  events: { kind: 'event', icon: 'calendar', area: 'Calendar' },
+  agent_memory: { kind: 'memory', icon: 'pin', area: 'Memory' }
+};
+const TABLE_ALIAS = { file_changes: 'files', file_links: 'files', file: 'files', memory: 'agent_memory', calendar: 'events', calendar_events: 'events', emails: 'email', gmail: 'email', invoices: 'income' };
+const KIND_LABEL = {
+  lead: 'leads', task: 'tasks', deal: 'deals', client: 'clients', project: 'projects', invoice: 'income', income: 'income', cost: 'costs',
+  'library entry': 'library', library: 'library', file: 'files', folder: 'folder', email: 'email', 'email draft': 'email',
+  'calendar event': 'events', event: 'events', memory: 'agent_memory', note: 'agent_memory', proposal: 'proposals', 'roi report': 'roi_reports', report: 'roi_reports'
+};
+const ROUTE_TABLE = { leads: 'leads', clients: 'clients', pipeline: 'deals', projects: 'projects', income: 'income', costs: 'costs', library: 'library', proposals: 'proposals', 'roi-reports': 'roi_reports', files: 'files', inbox: 'email', bookings: 'bookings' };
+const ROUTE_AREA = {
+  home: 'Home', leads: 'Leads', inbox: 'Inbox', campaigns: 'Campaigns', bookings: 'Bookings', pipeline: 'Pipeline', proposals: 'Proposals', clients: 'Clients',
+  projects: 'Projects', 'roi-reports': 'ROI reports', income: 'Income', costs: 'Costs', runway: 'Runway', playbook: 'Playbook', library: 'Library', files: 'Files', agents: 'Agents', settings: 'Settings'
+};
+const ROUTE_ICON = { home: 'home', inbox: 'inbox', campaigns: 'send', runway: 'spark', playbook: 'book', agents: 'agents', settings: 'settings' };
+
+/** Display name of a loaded record, per table (the name column differs). */
+const NAME = {
+  leads: (r) => r.business || r.contact_name, clients: (r) => r.name, deals: (r) => r.title, projects: (r) => r.name, tasks: (r) => r.title,
+  income: (r) => r.description || r.invoice_no, costs: (r) => r.name, library: (r) => r.title, proposals: (r) => r.title, roi_reports: (r) => r.title,
+  bookings: (r) => r.name || r.title, agent_memory: (r) => r.text
+};
+const amount = (v) => Number(v) > 0;
+const TASK_STATE = { todo: 'To do', doing: 'Doing', review: 'In review', blocked: 'Blocked', done: 'Done' };
+const CADENCE = { monthly: 'a month', yearly: 'a year', one_off: 'one-off' };
+/** The key facts of a loaded record, per table: its status, who, when, how much. */
+const FACTS = {
+  leads: (r) => [STATUS[r.status]?.label, r.next_followup_at ? `follow-up ${dayWord(r.next_followup_at, true)}` : r.suburb],
+  tasks: (r) => [r.owner_id ? ownerName(r.owner_id, { you: true }) : rowById('projects', r.project_id)?.name,
+    r.state === 'done' ? 'Done' : r.due_on ? `due ${dayWord(r.due_on)}` : TASK_STATE[r.state]],
+  deals: (r) => [titleCase(r.stage), amount(r.monthly_value) ? `${money(r.monthly_value)} a month` : amount(r.value) ? money(r.value) : null],
+  clients: (r) => [titleCase(r.status), amount(r.monthly_value) ? `${money(r.monthly_value)} a month` : r.suburb],
+  projects: (r) => [titleCase(r.status), r.due_on ? `due ${dayWord(r.due_on)}` : rowById('clients', r.client_id)?.name],
+  income: (r) => [titleCase(r.status), amount(r.amount) ? money(r.amount) : null,
+    r.status === 'paid' ? (r.paid_on ? `paid ${dayWord(r.paid_on)}` : null) : r.due_on ? `due ${dayWord(r.due_on)}` : null],
+  costs: (r) => [amount(r.amount) ? `${money(r.amount)} ${CADENCE[r.cadence] || ''}`.trim() : null,
+    r.ended_on ? `ends ${dayWord(r.ended_on, true)}` : r.next_due ? `next ${dayWord(r.next_due)}` : null],
+  library: (r) => [titleCase(r.kind)],
+  proposals: (r) => [titleCase(r.status), r.number],
+  roi_reports: (r) => [titleCase(r.status)],
+  agent_memory: (r) => [r.member_id == null ? 'For the business' : 'Yours']
+};
+
+/** "today", "tomorrow", "Fri" (this week), else "Fri 20 Nov". full: always the date. */
+function dayWord(v, full = false) {
+  const k = /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : dayKey(v);
+  if (!k) return '';
+  const diff = Math.round((Date.parse(`${k}T00:00:00Z`) - Date.parse(`${dayKey()}T00:00:00Z`)) / 86400000);
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'tomorrow';
+  if (diff === -1) return 'yesterday';
+  const d = new Date(`${k}T12:00:00Z`);
+  return d.toLocaleDateString('en-AU', { timeZone: 'UTC', ...(diff > 1 && diff < 7 && !full ? { weekday: 'short' } : { weekday: 'short', day: 'numeric', month: 'short' }) }).replace(',', '');
+}
+const clip = (s, n = 80) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+
+const LEAD_WORDS = /^(?:add(?:ed)?|create[d]?|make|made|update[d]?|change[d]?|set|mark(?:ed)?|move[d]?|rename[d]?|link(?:ed)?|remove[d]?|delete[d]?|archive[d]?|draft(?:ed)?|write|wrote|save[d]?|remember(?:ed)?|note[d]?|found|open(?:ed)?)\s+(?:(?:a|an|the|new)\s+)?(?:(?:lead|task|deal|client|project|invoice|cost|library entry|entry|note|file|folder|proposal|report|email|reply|draft|event|booking|record)\s+)?/i;
+/** Pull a name and the rest out of a summary: “Send the draft” · for Coastal Physio. */
+function parseSummary(s) {
+  const t = String(s || '').trim().replace(/\.$/, '');
+  if (!t) return { name: '', rest: '' };
+  const q = t.match(/[“"‘]([^”"’]{1,90})[”"’]/);
+  if (q) return { name: q[1].trim(), rest: t.slice(q.index + q[0].length).replace(/^[\s,:;-]+/, '').trim() };
+  const body = t.replace(LEAD_WORDS, '');
+  if (body === t) return { name: t, rest: '' };
+  const m = body.match(/^(.+?)\s+((?:to|in|into|for|from|on|as|due|with|under)\s.+)$/i);
+  return m ? { name: m[1].trim(), rest: m[2].trim() } : { name: body.trim(), rest: '' };
 }
 
-function draftLine(s) {
-  const lead = s.lead_id || (s.table_name === 'leads' ? s.row_id : null);
-  const h = safeHash(s.link) || (lead ? safeHash(`#inbox/${lead}`) : null);
-  return el('li', { class: 'cx-change is-draft' },
-    el('span', { class: 'cx-op' }, 'Draft'),
-    el('span', { class: 'cx-change-main' }, el('span', { class: 'cx-change-sum' }, stepText(s) || 'Wrote a draft reply. Nothing was sent.')),
-    el('span', { class: 'cx-change-acts' }, h ? el('a', { class: 'cx-open', href: h }, 'Inbox', icon('arrow', 12)) : null));
+const hashParts = (h) => {
+  const [route, ...rest] = String(h || '').replace(/^#\/?/, '').split('/');
+  return { route, id: rest.length ? decodeURIComponent(rest.join('/')) : '' };
+};
+const TOOL_TABLE = [[/lead/i, 'leads'], [/task/i, 'tasks'], [/deal/i, 'deals'], [/client/i, 'clients'], [/project/i, 'projects'], [/invoice|income/i, 'income'],
+  [/cost/i, 'costs'], [/library/i, 'library'], [/proposal/i, 'proposals'], [/roi|report/i, 'roi_reports']];
+function tableOf(x) {
+  const t = TABLE_ALIAS[x.table_name] || x.table_name || '';
+  const lbl = KIND_LABEL[String(x.kind_label || '').trim().toLowerCase()];
+  const tool = String(x.tool || '');
+  let table = KINDS[t] ? t : lbl || (/mail|gmail/i.test(tool) ? 'email' : /calendar|event/i.test(tool) ? 'events' : /remember|memory/i.test(tool) ? 'agent_memory' : /file|folder|drive/i.test(tool) ? 'files' : TOOL_TABLE.find(([re]) => re.test(tool))?.[1] || '')
+    || ROUTE_TABLE[hashParts(x.hash).route] || t;
+  if ((table === 'files' || x.kind === 'file') && (x.op === 'create_folder' || /folder/i.test(tool) || lbl === 'folder')) table = 'folder';
+  if (!table && (x.kind === 'file' || x.kind === 'file_link')) table = 'files';
+  return table;
 }
+
+/** What a tile shows about a record: kind, icon, name, and "Area · fact · fact". */
+function describe(x) {
+  const table = tableOf(x);
+  const K = KINDS[table] || { kind: 'record', icon: 'note', area: ROUTE_AREA[hashParts(x.hash).route] || '' };
+  const row = x.id && Array.isArray(state[table]) ? rowById(table, x.id) : null;
+  const p = parseSummary(x.summary);
+  const name = (str(x.title) && x.title) || (row && NAME[table]?.(row)) || (str(x.label) && x.label) || p.name || K.area || 'Record';
+  const facts = row && FACTS[table] ? FACTS[table](row) : [x.facts || (p.rest ? clip(p.rest, 60) : '')];
+  const area = K.area || (str(x.kind_label) ? titleCase(x.kind_label) : '');
+  return { ...K, table, id: x.id || '', name: clip(name, 90), meta: [area, ...facts].filter((f) => str(f)).join(' · ') };
+}
+
+const VERB = { insert: 'Added', update: 'Updated', delete: 'Removed', archive: 'Archived', move: 'Moved', rename: 'Renamed', create_folder: 'Added', link: 'Linked', memory: 'Added', draft: 'Drafted' };
+const VERB_WORD = [[/^(?:added|created|made|new|saved)\b/i, 'Added'], [/^(?:removed|deleted)\b/i, 'Removed'], [/^moved\b/i, 'Moved'], [/^renamed\b/i, 'Renamed'],
+  [/^linked\b/i, 'Linked'], [/^archived\b/i, 'Archived'], [/^(?:drafted|wrote)\b/i, 'Drafted'], [/^(?:remembered|noted)\b/i, 'Added']];
+const VERB_TOOL = [[/delete|remove/, 'Removed'], [/archive/, 'Archived'], [/folder/, 'Added'], [/move/, 'Moved'], [/rename/, 'Renamed'], [/link/, 'Linked'],
+  [/draft/, 'Drafted'], [/remember|memory/, 'Added'], [/add|create|new/, 'Added']];
+const TONE = { Added: 'add', Removed: 'del', Drafted: 'draft', 'Not done': 'bad' };
+function verbOf(x, text = '') {
+  if (VERB[x.op]) return VERB[x.op];
+  const t = String(text || x.summary || '').trim();
+  return VERB_WORD.find(([re]) => re.test(t))?.[1] || VERB_TOOL.find(([re]) => re.test(String(x.tool || '')))?.[1] || 'Updated';
+}
+
+/**
+ * Every tile for one reply, in order: its changes, writes without an undo record,
+ * failed writes, a draft, then up to six "see" tiles (its links and the reads that
+ * carry one), never repeating a place a change tile already goes to.
+ */
+function tilesFor(m) {
+  const out = [];
+  const seen = new Set();
+  for (const c of changesOf(m)) {
+    const undone = Boolean(c.undone_at);
+    const to = linkOf(c);
+    if (to) seen.add(to);
+    // A removed record has no page until the removal is undone; an addition that was undone is gone.
+    const gone = c.op === 'delete' ? !undone : undone && (c.op === 'insert' || c.op === 'create_folder');
+    const memHash = !to && tableOf(c) === 'agent_memory' ? '#agents' : null;
+    const d = describe({ ...c, id: c.row_id, hash: to });
+    out.push({ type: 'change', d, verb: verbOf(c), hash: gone ? null : to || memHash, change: c, tip: str(c.summary) ? c.summary : '' });
+  }
+  if (!m.draft) {
+    for (const s of arr(m.steps).filter(isDraftStep)) {
+      const leadId = s.lead_id || (s.table_name === 'leads' ? s.row_id : null);
+      const lead = leadId ? rowById('leads', leadId) : null;
+      const h = safeHash(s.link) || (leadId ? safeHash(`#inbox/${leadId}`) : null);
+      if (h) seen.add(h);
+      const d = describe({ table_name: 'email', summary: stepText(s), title: lead ? `Reply to ${lead.business || lead.contact_name}` : '', facts: 'not sent', tool: s.tool });
+      out.push({ type: 'draft', d: { ...d, table: 'leads', id: leadId || '' }, verb: 'Drafted', hash: h, tip: stepText(s) });
+    }
+  }
+  for (const s of arr(m.steps)) {
+    const failed = isFailedStep(s);
+    const memo = !failed && s && !s.change_id && s.ok !== false && s.kind === 'memory';
+    if (!failed && !isPlainWrite(s) && !memo) continue;
+    const h = failed ? null : safeHash(s.link) || hashFor(s.table_name, s.row_id) || (memo ? '#agents' : null);
+    if (h) seen.add(h);
+    const why = [s.error, s.reason, s.detail, s.message].find(str);
+    const d = describe({ ...s, id: s.row_id, summary: stepText(s) || humanTool(s.tool), hash: h, ...(memo ? { table_name: s.table_name || 'agent_memory' } : {}) });
+    if (failed) d.meta = clip(why || [d.meta.split(' · ')[0], 'it did not go through'].filter(Boolean).join(' · '), 120);
+    out.push({ type: failed ? 'failed' : 'note', d, verb: failed ? 'Not done' : verbOf(s, stepText(s)), hash: h, tip: stepText(s) });
+  }
+  const see = [];
+  const look = (hash, label, summary = '') => {
+    const h = safeHash(hash);
+    if (!h || seen.has(h)) return;
+    seen.add(h);
+    const { route, id } = hashParts(h);
+    const table = ROUTE_TABLE[route] || '';
+    const page = !id || id === 'tasks' || !table;
+    const d = page
+      ? { kind: 'page', icon: KINDS[table]?.icon || ROUTE_ICON[route] || 'list', table: '', id: '', name: clip(label || ROUTE_AREA[route] || 'Open', 90), meta: label && ROUTE_AREA[route] && label !== ROUTE_AREA[route] ? ROUTE_AREA[route] : 'Open the page' }
+      : describe({ table_name: table === 'email' ? 'leads' : table, id, label, summary, hash: h });
+    if (table === 'email' && id) Object.assign(d, { ...KINDS.email, table: 'leads', meta: 'Inbox' });
+    see.push({ type: 'see', d, verb: '', hash: h, tip: label || summary });
+  };
+  for (const l of arr(m.links)) look(l?.hash, str(l?.label) ? l.label.trim().slice(0, 80) : '');
+  for (const s of readsOf(m)) if (s.link) look(s.link, '', stepText(s));
+  return out.concat(see.slice(0, 6));
+}
+
+/** One result tile. A link to the record when it has a page; Undo sits beside it, never inside. */
+function tile(t) {
+  const c = t.change || null;
+  const undone = Boolean(c?.undone_at);
+  const busyU = c ? S.undoing.has(c.id) : false;
+  const err = c ? S.undoErr.get(c.id) : null;
+  const { d } = t;
+  const verb = t.verb
+    ? el('span', { class: `cx-tile-verb is-${TONE[t.verb] || 'upd'}` }, el('span', { class: 'cx-tile-dot', 'aria-hidden': 'true' }), t.verb)
+    : null;
+  const inner = [
+    el('span', { class: 'cx-tile-ic', 'aria-hidden': 'true' }, icon(d.icon, 16)),
+    el('span', { class: 'cx-tile-body' },
+      el('span', { class: 'cx-tile-title' }, el('span', { class: 'cx-tile-name' }, d.name), t.hash ? icon('arrow', 12) : null),
+      el('span', { class: 'cx-tile-meta' }, verb, err ? el('span', { class: 'cx-tile-err', role: 'alert' }, err) : d.meta ? el('span', { class: 'cx-tile-where' }, d.meta) : null))
+  ];
+  const label = [t.verb, d.name, d.meta].filter(Boolean).join(', ');
+  const main = t.hash
+    ? el('a', { class: 'cx-tile-main', href: t.hash, title: t.tip || null, 'aria-label': `${label}. Open`, dataset: { act: 'open-tile' }, onClick: () => spotRecord({ table: d.table, id: d.id, hash: t.hash }) }, inner)
+    : el('div', { class: 'cx-tile-main', title: t.tip || null }, inner);
+  let side = null;
+  if (c) {
+    side = undone
+      ? el('span', { class: 'cx-tile-state', dataset: { undone: '' } }, 'Undone')
+      : canUndo(c)
+        ? el('button', { type: 'button', class: 'cx-tile-undo', dataset: { act: 'undo' }, disabled: busyU || null, 'aria-label': `Undo: ${t.tip || label}`, onClick: () => doUndo(c.id) }, busyU ? 'Undoing…' : 'Undo')
+        : el('span', { class: 'cx-tile-state', dataset: { kept: '' }, title: 'This one cannot be undone from here.' }, 'Kept');
+  }
+  const data = { tile: t.type, kind: d.kind };
+  if (c) { data.change = c.id; if (c.op) data.op = c.op; }
+  return el('li', { class: `cx-tile is-${t.type}${undone ? ' is-undone' : ''}${t.hash ? '' : ' is-static'}${err ? ' has-err' : ''}`, dataset: data }, main, side);
+}
+
+/** The tiles under a reply, or nothing. */
+function tilesBlock(m) {
+  const tiles = tilesFor(m);
+  if (!tiles.length) return null;
+  const did = tiles.some((t) => t.type !== 'see');
+  return el('div', { class: 'cx-tiles-wrap', dataset: did ? { did: '' } : { links: '' } },
+    el('ul', { class: 'cx-tiles', 'aria-label': did ? 'What it did' : 'Where to look' }, tiles.map(tile)));
+}
+/** A short fingerprint of a reply's tiles, so the log redraws when a record or an undo changes. */
+const tilesStamp = (m) => tilesFor(m).map((t) => `${t.d.name}|${t.d.meta}|${t.hash || ''}|${t.change ? `${t.change.undone_at || ''}${S.undoing.has(t.change.id)}${S.undoErr.get(t.change.id) || ''}` : ''}`).join('~');
 
 function youMsg(m, { pending = false } = {}) {
   return el('li', { class: `cx-msg is-you${pending ? ' is-pending' : ''}`, dataset: { msg: String(m.id ?? ''), role: 'user' } },
@@ -392,27 +616,17 @@ function youMsg(m, { pending = false } = {}) {
 }
 
 function agentMsg(m) {
-  const changes = changesOf(m);
-  const drafts = m.draft ? [] : arr(m.steps).filter(isDraftStep);
-  const notes = arr(m.steps).filter((s) => isFailedStep(s) || isPlainWrite(s));
   const reads = readsOf(m);
-  const seen = new Set(changes.map(linkOf).filter(Boolean));
-  const links = arr(m.links).map((l) => ({ label: str(l?.label) ? l.label.trim().slice(0, 80) : '', hash: safeHash(l?.hash) }))
-    .filter((l) => l.hash && !seen.has(l.hash) && (seen.add(l.hash) || true)).slice(0, 6);
   const draftHash = m.draft ? safeHash(`#inbox/${m.draft.lead_id}`) : null;
   const meta = [MODEL_NAME[m.model] || null, Number(m.cost_usd) > 0 ? usd(m.cost_usd) : null].filter(Boolean).join(' · ');
   return el('li', { class: 'cx-msg is-agent', dataset: { msg: String(m.id ?? ''), role: 'assistant' } },
     el('p', { class: 'cx-by' }, el('span', { class: 'cx-by-name' }, 'Wise AI'), m.at ? el('span', { class: 'cx-by-time' }, timeOnly(m.at)) : null),
     el('div', { class: 'cx-text' }, m.text.trim() ? richText(m.text) : el('p', { class: 'muted' }, 'No reply came back.')),
-    changes.length || drafts.length || notes.length
-      ? el('div', { class: 'cx-did', dataset: { did: '' } },
-        el('p', { class: 'cx-did-h' }, 'What I did'),
-        el('ul', { class: 'cx-changes' }, changes.map((c) => changeLine(c)), drafts.map(draftLine), notes.map((s) => noteLine(s, isFailedStep(s)))))
-      : null,
     draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
       el('span', {}, 'Draft is in the inbox reply box. Nothing was sent.'),
       el('a', { href: draftHash }, 'Open the inbox', icon('arrow', 12))) : null,
-    links.length ? el('div', { class: 'cx-links', dataset: { links: '' } }, links.map((l) => el('a', { class: 'cx-link', href: l.hash }, l.label || l.hash, icon('arrow', 12)))) : null,
+    emailCards(m, [...S.msgs.values()].flatMap((e) => e.list || [])),
+    tilesBlock(m),
     reads.length || meta
       ? el('div', { class: 'cx-foot' },
         reads.length ? el('details', { class: 'cx-reads' }, el('summary', {}, `Looked up ${plural(reads.length, 'thing')}`),
@@ -652,10 +866,11 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   }
 
   function emptyConv() {
-    const ex = dock ? CHAT_EXAMPLES.slice(0, 4) : CHAT_EXAMPLES;
+    mailBoot();
+    const ex = [...(dock ? CHAT_EXAMPLES.slice(0, 4) : CHAT_EXAMPLES), ...(mailConnected() ? [MAIL_EXAMPLE] : [])];
     return el('li', { class: 'cx-empty', dataset: { chatEmpty: '' } },
       el('p', { class: 'cx-empty-h' }, 'Ask it, or tell it what to do.'),
-      el('p', { class: 'cx-empty-p' }, 'It reads every part of the hub and makes the changes you ask for. Each change is listed under its reply with an Undo. It never sends anything to anyone.'),
+      el('p', { class: 'cx-empty-p' }, `It reads every part of the hub and makes the changes you ask for. Each change is listed under its reply with an Undo. ${mailConnected() ? 'It can read your email and write drafts; nothing is sent until you press Send.' : 'It never sends anything to anyone.'}`),
       el('ul', { class: 'cx-examples', 'aria-label': 'Examples' }, ex.map((t) => el('li', {},
         el('button', { type: 'button', class: 'cx-example', dataset: { example: '' }, onClick: () => { box.value = t; S.drafts.set(keyOf(), t); grow(); drawCount(); paintSend(); box.focus(); box.setSelectionRange(t.length, t.length); } },
           el('span', {}, t), icon('arrow', 13))))));
@@ -668,8 +883,8 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     const entry = S.current ? S.msgs.get(S.current) : null;
     const msgs = entry?.list || [];
     const pend = S.pending.get(k);
-    const changeStamp = msgs.flatMap((m) => changesOf(m).map((c) => `${c.id}:${c.undone_at || ''}:${S.undoing.has(c.id)}:${S.undoErr.get(c.id) || ''}`)).join(',');
-    const lk = JSON.stringify([k, entry?.status, msgs.map((m) => m.id), Boolean(pend), changeStamp]);
+    const changeStamp = msgs.map((m) => (m.role === 'user' ? '' : tilesStamp(m))).join(',');
+    const lk = JSON.stringify([k, entry?.status, msgs.map((m) => m.id), Boolean(pend), changeStamp, mailStamp()]);
     if (!force && lk === logKey) return;
     logKey = lk;
     const atBottom = dock ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40 : true;

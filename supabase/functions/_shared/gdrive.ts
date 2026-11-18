@@ -95,6 +95,19 @@ export async function verifyState(state: unknown, secret: string, nowS = Math.fl
   if (p.e - nowS > STATE_TTL_S + 5) return { ok: false, error: "bad_state" };
   return { ok: true, member: p.m, nonce: p.n };
 }
+/**
+ * A sign-in state for another use of the same Google client and redirect URI (the person's own
+ * Gmail and calendar): the same signed {m, n, e} plus p, the purpose. Signed, so it cannot be changed.
+ */
+export async function signPurposeState(member: string, nonce: string, secret: string, purpose: "gmail", nowS = Math.floor(Date.now() / 1000)) {
+  return signJson({ m: member, n: nonce, e: nowS + STATE_TTL_S, p: purpose }, secret);
+}
+/** The purpose a signed state carries: 'gmail', 'drive' (no purpose: the Files sign-in), or null when the signature is bad. Expiry is not checked here. */
+export async function statePurpose(state: unknown, secret: string): Promise<"gmail" | "drive" | null> {
+  const p = await readSigned(state, secret, 600);
+  if (!p) return null;
+  return p.p === "gmail" ? "gmail" : p.p === undefined ? "drive" : null;
+}
 export async function pkceVerifier(secret: string, nonce: string) { return b64url(await hmac256(secret, `pkce:${nonce}`)); }
 export async function pkceChallenge(v: string) { return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(v)))); }
 
@@ -690,8 +703,15 @@ export async function runAction(ctx: Ctx, body: Row): Promise<Result> {
     if (action === "disconnect") {
       if (ctx.member.role !== "owner") return fail("owner_only");
       const conn = await loadConn(ctx.db);
-      // Revoke at Google too (best effort), so the hub's access ends there as well.
-      if (conn?.refresh_token) await (ctx.fetchImpl ?? fetch)(`https://oauth2.googleapis.com/revoke?token=${enc1(conn.refresh_token)}`, { method: "POST", signal: AbortSignal.timeout(8000) }).catch(() => {});
+      // Revoke at Google too (best effort), so the hub's access ends there as well. Google revokes
+      // every scope the account granted this project, so when the same Google account is also
+      // someone's Gmail connection, revoking would cut that off too: then only the hub forgets it.
+      let shared = false;
+      if (conn?.account_email) {
+        const { data } = await ctx.db.rpc("gmail_email_in_use", { p_email: conn.account_email, p_except: null });
+        shared = data === true;
+      }
+      if (conn?.refresh_token && !shared) await (ctx.fetchImpl ?? fetch)(`https://oauth2.googleapis.com/revoke?token=${enc1(conn.refresh_token)}`, { method: "POST", signal: AbortSignal.timeout(8000) }).catch(() => {});
       const { error } = await ctx.db.rpc("gdrive_clear");
       if (error) throw new Error(error.message);
       return ok({ connected: false });
@@ -946,6 +966,8 @@ export async function handleCallback(o: { db: Db; env: Env; params: URLSearchPar
     const secret = await secretFor(env, "state");
     const st = await verifyState(params.get("state"), secret);
     if (!st.ok) return backTo(st.error === "expired" ? "expired" : "bad_state");
+    // A Gmail sign-in is never accepted as the Drive connection (routeCallback in gmail.ts sends it there).
+    if ((await statePurpose(params.get("state"), secret)) !== "drive") return backTo("bad_state");
     if (!configured(env)) return backTo("not_configured");
     const { data: fresh, error: nErr } = await db.rpc("onedrive_use_nonce", { p_nonce: st.nonce });
     if (nErr || fresh !== true) return backTo("bad_state");

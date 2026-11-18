@@ -6,13 +6,13 @@
 import {
   el, icon, fill, clear, toast, busy, badge, confirmDialog, emptyState, timeAgo, dateTime, timeOnly, dayKey,
   money, num, plural, STATUS, go
-} from '../ui.js?v=20261118e';
+} from '../ui.js?v=20261118f';
 import {
   state, notify, saveLead, saveSettings, agentRun, agentStatus, applyAgentAction, rejectAgentAction,
   leadById, leadName, rowById
-} from '../api.js?v=20261118e';
-import { safeHash } from '../ask.js?v=20261118e';
-import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261118e';
+} from '../api.js?v=20261118f';
+import { safeHash } from '../ask.js?v=20261118f';
+import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261118f';
 
 /* ================================================================ shared bits */
 
@@ -32,7 +32,7 @@ export const AGENTS = [
 export const CHAT_AGENT = {
   k: 'chat', name: 'Assistant', col: 'agent_chat', eyebrow: 'Talk to it',
   does: 'Looks things up across the hub and makes the changes you ask for. Every change is listed with an Undo.',
-  never: 'Never sends anything, never deletes, and never touches settings, the team or opt-outs.'
+  never: 'Never sends anything on its own, removes only what you ask (with Undo), and never touches settings, the team or opt-outs.'
 };
 // Earlier agents still appear in the run log and approvals.
 const AGENT = Object.fromEntries([...AGENTS, CHAT_AGENT, { k: 'ask', name: 'Ask the hub' }, { k: 'doer', name: 'Doer' }].map((a) => [a.k, a]));
@@ -217,7 +217,7 @@ export function researchCard(lead, r, { onSaved } = {}) {
         : el('div', { class: 'row' }, el('button', {
           type: 'button', class: 'btn btn-danger btn-sm', dataset: { act: 'mark-dnc' },
           onClick: async () => {
-            const { markDnc } = await import('./leads.js?v=20261118e');
+            const { markDnc } = await import('./leads.js?v=20261118f');
             const ok = await markDnc(cur());
             if (ok) onSaved?.('status', 'dnc');
           }
@@ -585,7 +585,7 @@ export default function agentsView(ctx) {
   root.append(
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Assistants'), el('h1', { class: 'h1' }, 'Agents'),
-        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything to anyone.'))),
+        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything on its own: an email it drafts goes only when you press Send.'))),
     head, tabsBox, body);
 
   const updaters = [];
@@ -883,8 +883,8 @@ export function rulesPanel({ compact = false } = {}) {
       rule('It makes the changes you ask for.', 'Asking is the go-ahead: no button in between. It says plainly what it did.'),
       rule('Every change can be undone.', 'Each one is listed under its reply, and here, with a link to the record and an Undo.'),
       rule('It asks before it guesses.', 'If something that matters is missing, or two records could be the one you mean, it asks one short question first.'),
-      rule('It never sends.', 'No text, email, invoice or booking goes to anyone. A message it writes waits as a draft in your inbox reply box.'),
-      rule('It never deletes.', 'It can archive, end a recurring cost or mark a task done. Deleting stays yours.'),
+      rule('It never sends on its own.', 'No text, email, invoice or booking goes out by itself. A text it writes waits in your inbox reply box; an email waits as a draft until you press Send.'),
+      rule('It removes only what you ask.', 'It removes only what you ask it to, and every removal can be undone. Clients are archived, never removed.'),
       rule('Some things stay yours.', 'Settings, the team, sign-in and anyone’s do-not-contact status. It cannot touch them.'),
       rule('Spending is capped and logged.', `${usd(info.cap)} a month across all agents, and up to ${num(info.limit('chat'))} messages a day. Every run is in the run log with what it cost.`)),
     el('a', { class: 'card-link', href: '#agents/runs' }, 'Open the run log', icon('arrow', 14)));

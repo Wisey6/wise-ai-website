@@ -9,7 +9,7 @@
 //    try/catch and toast the error.
 //  - fn() and sendSms() never throw on HTTP errors.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118e';
+import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118f';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
@@ -266,13 +266,18 @@ export function onMessage(cb) { messageListeners.add(cb); return () => messageLi
 export function onRealtime(cb) { realtimeListeners.add(cb); return () => realtimeListeners.delete(cb); }
 
 /** Schedule listeners (batched). */
-export function notify() {
+/** What changed since the last flush: table names, or '*' when it could be anything. */
+let dirty = new Set();
+export function notify(what = '*') {
+  dirty.add(what);
   if (notifyQueued) return;
   notifyQueued = true;
   const run = () => {
     notifyQueued = false;
+    const changed = dirty;
+    dirty = new Set();
     for (const cb of [...changeListeners]) {
-      try { cb(state); } catch (e) { reportError(e); }
+      try { cb(state, changed); } catch (e) { reportError(e); }
     }
   };
   if (typeof requestAnimationFrame === 'function' && document.visibilityState === 'visible') requestAnimationFrame(run);
@@ -418,7 +423,7 @@ export function subscribe() {
       if (table === 'messages' && type !== 'DELETE') {
         for (const cb of messageListeners) { try { cb(row); } catch (e) { reportError(e); } }
       }
-      notify();
+      notify(table);
     });
   }
   channel.subscribe((status) => {
@@ -749,7 +754,7 @@ export async function loadAgents() {
 export async function agentStatus() {
   const { status, data } = await fn('agent', { action: 'status' });
   state.agents = status === 200 && data && typeof data.configured === 'boolean' ? data : null;
-  notify();
+  notify('agents');
   return state.agents;
 }
 
@@ -780,7 +785,7 @@ export async function loadChats() {
     if (!changes.error) state.agent_changes = changes.data;
     if (!memory.error) state.agent_memory = memory.data;
   } catch { /* the assistant simply starts with no history */ }
-  notify();
+  notify('agent_chats');
 }
 
 async function agentCall(body) {
@@ -802,7 +807,7 @@ export async function chatSend({ chat_id, message }) {
     if (res.draft && res.draft.lead_id && res.draft.body) {
       try { sessionStorage.setItem('wiseos.draft.' + res.draft.lead_id, res.draft.body); } catch { /* private window */ }
     }
-    notify();
+    notify('agent_chats');
   }
   return res;
 }
@@ -818,32 +823,32 @@ export async function chatMessages(chatId) {
 
 export async function chatRename(chatId, title) {
   const res = await agentCall({ action: 'chat_rename', chat_id: chatId, title });
-  if (res.ok) { upsertInto(state.agent_chats, { id: chatId, title: res.title || title }); notify(); }
+  if (res.ok) { upsertInto(state.agent_chats, { id: chatId, title: res.title || title }); notify('agent_chats'); }
   return res;
 }
 
 export async function chatArchive(chatId, archived = true) {
   const res = await agentCall({ action: 'chat_archive', chat_id: chatId, archived });
-  if (res.ok) { upsertInto(state.agent_chats, { id: chatId, archived }); notify(); }
+  if (res.ok) { upsertInto(state.agent_chats, { id: chatId, archived }); notify('agent_chats'); }
   return res;
 }
 
 export async function chatDelete(chatId) {
   const res = await agentCall({ action: 'chat_delete', chat_id: chatId });
-  if (res.ok) { state.agent_chats = state.agent_chats.filter((c) => c.id !== chatId); notify(); }
+  if (res.ok) { state.agent_chats = state.agent_chats.filter((c) => c.id !== chatId); notify('agent_chats'); }
   return res;
 }
 
 /** Put one change the assistant made back the way it was. */
 export async function undoChange(changeId) {
   const res = await agentCall({ action: 'undo', change_id: changeId });
-  if (res.ok) { upsertInto(state.agent_changes, { id: changeId, undone_at: res.undone_at || new Date().toISOString() }); notify(); }
+  if (res.ok) { upsertInto(state.agent_changes, { id: changeId, undone_at: res.undone_at || new Date().toISOString() }); notify('agent_chats'); }
   return res;
 }
 
 export async function memoryDelete(id) {
   const res = await agentCall({ action: 'memory_delete', id });
-  if (res.ok) { state.agent_memory = state.agent_memory.filter((m) => m.id !== id); notify(); }
+  if (res.ok) { state.agent_memory = state.agent_memory.filter((m) => m.id !== id); notify('agent_chats'); }
   return res;
 }
 

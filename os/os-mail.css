@@ -1,0 +1,30 @@
+/* Email draft cards in the assistant's conversation (js/mail-card.js) and the Email and
+   calendar row in Settings (js/views/settings.js). Quiet: a hairline box, the text as written. */
+.cx-mails { display: flex; flex-direction: column; gap: var(--space-2); }
+.cx-mail { border: 1px solid var(--line-2); border-radius: var(--radius-s); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); background: var(--paper); min-width: 0; }
+.cx-mail.is-sent, .cx-mail.is-discarded, .cx-mail.is-stale { background: transparent; }
+.cx-mail.is-discarded .cx-mail-body, .cx-mail.is-stale .cx-mail-body { color: var(--faint); }
+.cx-mail-head { margin: 0; display: flex; align-items: center; gap: 6px; font-size: var(--fs-meta); color: var(--muted); }
+.cx-mail-kind { color: var(--ink); font-weight: 600; }
+.cx-mail-state { margin-left: auto; }
+.cx-mail.is-sent .cx-mail-state { color: var(--ink); font-weight: 500; }
+.cx-mail-meta { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-2); font-size: var(--fs-sm); }
+.cx-mail-meta dt { color: var(--muted); }
+.cx-mail-meta dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+.cx-mail-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--body); border-top: 1px solid var(--line); padding-top: var(--space-2); }
+.cx-mail-more { align-self: flex-start; font-size: var(--fs-meta); }
+.cx-mail-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cx-mail-send { max-width: 100%; min-width: 0; }
+.cx-mail-send-to { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
+.cx-mail-discard { margin-left: auto; color: var(--muted); }
+.cx-mail-err { margin: 0; font-size: var(--fs-sm); color: var(--rose-t); }
+.set-mail-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* Calendar: event tiles and changes that wait for the person (guests). */
+.cx-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cx-event { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--fs-sm); min-width: 0; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.cx-event .icon { color: var(--muted); flex: none; align-self: center; }
+.cx-event-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cx-event-title { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.cx-event-when, .cx-event-guests { color: var(--muted); font-size: var(--fs-meta); overflow-wrap: anywhere; }
+.cx-event-guests { text-align: right; max-width: 40%; }
+.cx-cal.is-done, .cx-cal.is-cancelled, .cx-cal.is-expired { background: transparent; }

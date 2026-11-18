@@ -3,13 +3,14 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
-} from '../ui.js?v=20261118e';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118e';
-import { FUNCTIONS_URL } from '../config.js?v=20261118e';
-import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261118e';
-import { chatModelPicker } from '../chat.js?v=20261118e';
-import { setMyEmail, teamSave } from '../api.js?v=20261118e';
-import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118e';
+} from '../ui.js?v=20261118f';
+import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118f';
+import { FUNCTIONS_URL } from '../config.js?v=20261118f';
+import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261118f';
+import { chatModelPicker } from '../chat.js?v=20261118f';
+import { setMyEmail, teamSave } from '../api.js?v=20261118f';
+import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118f';
+import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261118f';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -514,11 +515,74 @@ function yourSignIn() {
       : [el('span', { class: 'muted' }, 'No email on file yet, so a forgotten PIN can only be reset by the owner.')]));
   }
   update();
+  const mail = mailRow();
   const node = group('Your sign-in', 'Your PIN and reset email', 'Each person signs in with their own PIN. Five wrong PINs lock that person out for a while, and the lock gets longer each time.',
     who,
     el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Change your PIN'), pinForm),
-    el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Email for PIN resets'), hint, emailForm));
+    el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Email for PIN resets'), hint, emailForm),
+    mail.node);
   node.dataset.sec = 'sign-in';
+  return { node, update: () => { update(); mail.update(); } };
+}
+
+/* ---------------------------------------------------- Email and calendar
+   Each person connects their OWN Google account (Gmail and calendar). Only they can use it:
+   the assistant searches, reads and drafts in it when they ask; nothing is sent until they
+   press Send on a draft. */
+export const MAIL_LINE = 'The assistant can search and read your inbox and write drafts. Nothing is sent until you press Send.';
+export const CAL_LINE = 'In your calendar it can look, find free times and add or change your own events; guests are invited only when you press the button.';
+function mailRow() {
+  const status = el('div', { class: 'set-mail-status', dataset: { mailStatus: '' } });
+  const note = el('p', { class: 'small muted', dataset: { mailNote: '' } }, MAIL_LINE, ' ', CAL_LINE);
+  const err = el('p', { class: 'set-err', role: 'alert', dataset: { mailErr: '' } });
+  const acts = el('div', { class: 'row', dataset: { mailActs: '' } });
+  const node = el('div', { class: 'set-sub', dataset: { mailRow: '' } }, el('h3', { class: 'h3' }, 'Email and calendar'), status, note, err, acts);
+  const connectBtn = (label) => {
+    const b = el('button', { type: 'button', class: 'btn btn-primary', dataset: { act: 'mail-connect' } }, icon('mail', 15), label);
+    b.addEventListener('click', () => busy(b, async () => {
+      err.textContent = '';
+      const r = await connectMail();
+      if (!r.ok) err.textContent = r.message;
+    }));
+    return b;
+  };
+  const disconnectBtn = () => {
+    const b = el('button', { type: 'button', class: 'btn btn-ghost', dataset: { act: 'mail-disconnect' } }, 'Disconnect');
+    b.addEventListener('click', async () => {
+      const ok = await confirmDialog('Disconnect your email?', 'The assistant will no longer be able to search, read or draft in your email. Drafts already in Gmail stay there.', { confirmLabel: 'Disconnect' });
+      if (!ok) return;
+      busy(b, async () => {
+        const r = await disconnectMail();
+        if (r.ok) toast('Your email is disconnected.'); else err.textContent = r.message;
+      });
+    });
+    return b;
+  };
+  function update() {
+    const s = mailStatus();
+    if (!s) { fill(status, el('span', { class: 'muted' }, 'Checking…')); fill(acts); node.dataset.state = 'loading'; return; }
+    if (!s.ok) { fill(status, badge('Not reachable', 'warn'), el('span', { class: 'small muted' }, ' ', s.message || MAIL_ERRORS.network)); fill(acts); node.dataset.state = 'error'; return; }
+    if (!s.configured) { fill(status, badge('Not set up', 'warn'), el('span', { class: 'small muted' }, ' Google sign-in is not set up for the hub yet.')); fill(acts); node.dataset.state = 'not-configured'; return; }
+    if (s.connected && s.needs_reconnect) {
+      fill(status, badge('Sign in again', 'warn'), el('span', { class: 'small' }, ' ', s.email || 'Your Google account'), el('span', { class: 'small muted' }, ' needs signing in again.'));
+      fill(acts, connectBtn('Reconnect'), disconnectBtn()); node.dataset.state = 'reconnect'; return;
+    }
+    if (s.connected) {
+      fill(status, badge('Connected', 'ok'), el('span', { class: 'small' }, ' as ', el('strong', {}, s.email || 'your Google account')),
+        s.can_draft ? null : el('span', { class: 'small muted' }, '. Reading only: connect again and tick every box to allow drafts.'));
+      fill(acts, s.can_draft ? null : connectBtn('Connect again'), disconnectBtn()); node.dataset.state = 'connected'; return;
+    }
+    fill(status, badge('Not connected', 'mute'));
+    fill(acts, connectBtn('Connect'));
+    node.dataset.state = 'not-connected';
+  }
+  let seen = false;
+  const off = onMailChange(() => { if (node.isConnected) seen = true; else if (seen) { off(); return; } update(); });
+  update();
+  refreshMailStatus(true);
+  // Back from Google's sign-in: say how it went once.
+  const flag = takeMailFlag();
+  if (flag) { toast(flag.text, flag.tone); if (flag.flag === 'api_off') err.textContent = MAIL_ERRORS.mail_api_off; }
   return { node, update };
 }
 
@@ -651,11 +715,11 @@ function teamGroup() {
 
 /** A small modal with a form; resolves the values or null. */
 function modal2(title, body, confirmLabel) {
-  return import('../ui.js?v=20261118e').then(({ modal }) => modal({ title, body, confirmLabel }));
+  return import('../ui.js?v=20261118f').then(({ modal }) => modal({ title, body, confirmLabel }));
 }
 /** Show a PIN the owner just set, once. */
 function showOnce(name, pin) {
-  return import('../ui.js?v=20261118e').then(({ modal }) => modal({
+  return import('../ui.js?v=20261118f').then(({ modal }) => modal({
     title: `${name}'s PIN`, hideConfirm: true, cancelLabel: 'Done',
     body: el('div', { class: 'stack' },
       el('p', {}, `Tell ${name} this PIN in person. It is not shown again.`),
