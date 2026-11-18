@@ -7,6 +7,8 @@ import {
 import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261118c';
 import { FUNCTIONS_URL } from '../config.js?v=20261118c';
 import { AGENTS, agentsInfo, settingSwitch } from './agents.js?v=20261118c';
+import { setMyEmail, teamSave } from '../api.js?v=20261118c';
+import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261118c';
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -244,40 +246,9 @@ export default function settings() {
   /* ------------------------------------------------ agents */
   const agentsSettings = agentsGroup();
 
-  /* ------------------------------------------------ PIN */
-  const pinForm = el('form', { class: 'stack', novalidate: true });
-  const pinFields = {
-    old: input('old_pin', { type: 'password', inputmode: 'numeric', autocomplete: 'current-password', maxlength: 12, pattern: '[0-9]*', 'aria-label': 'Current PIN' }),
-    nw: input('new_pin', { type: 'password', inputmode: 'numeric', autocomplete: 'new-password', maxlength: 12, pattern: '[0-9]*', 'aria-label': 'New PIN' }),
-    again: input('new_pin2', { type: 'password', inputmode: 'numeric', autocomplete: 'new-password', maxlength: 12, pattern: '[0-9]*', 'aria-label': 'New PIN again' })
-  };
-  const pinBtn = el('button', { class: 'btn btn-primary', type: 'submit' }, icon('lock', 15), 'Change PIN');
-  pinForm.append(
-    el('div', { class: 'grid cols-3 set-pin' },
-      field('Current PIN', pinFields.old), field('New PIN', pinFields.nw, '4 to 12 digits'), field('New PIN again', pinFields.again)),
-    el('div', { class: 'row' }, pinBtn));
-  pinForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const oldPin = pinFields.old.value.trim();
-    const newPin = pinFields.nw.value.trim();
-    if (!/^\d{4,12}$/.test(newPin)) { toast('The new PIN must be 4 to 12 digits', 'bad'); return; }
-    if (newPin !== pinFields.again.value.trim()) { toast('The new PINs do not match', 'bad'); return; }
-    if (newPin === oldPin) { toast('Pick a PIN that is different from the current one', 'bad'); return; }
-    if (/^(\d)\1+$/.test(newPin) || '01234567890123'.includes(newPin) || '98765432109876'.includes(newPin)) { toast('Pick a PIN that is harder to guess', 'bad'); return; }
-    busy(pinBtn, async () => {
-      const r = await changePin(oldPin, newPin);
-      if (r.ok) {
-        toast('PIN changed. Use the new one next time you unlock.');
-        pinForm.reset();
-        return;
-      }
-      const msg = r.error === 'bad_pin' ? `Current PIN is wrong${r.remaining !== undefined ? ` (${r.remaining} tries left before a lockout)` : ''}`
-        : r.error === 'locked' ? `Too many tries. Locked for ${Math.ceil((r.retry_after_s || 60) / 60)} min.`
-          : r.error === 'weak_pin' ? 'The new PIN must be 4 to 12 digits'
-            : `Could not change the PIN (${r.error})`;
-      toast(msg, 'bad');
-    });
-  });
+  /* ------------------------------------------------ your sign-in + team */
+  const signIn = yourSignIn();
+  const team = teamGroup();
 
   /* ------------------------------------------------ integrations */
   const integ = el('div', { class: 'stack' });
@@ -373,8 +344,8 @@ export default function settings() {
       el('div', { class: 'stack' }, el('div', { class: 'eyebrow' }, 'System'), el('h1', { class: 'h1' }, 'Settings'))),
     form,
     agentsSettings.node,
-    group('Security', 'Change PIN', 'Five wrong PINs lock this device for a while. The lock gets longer each time.',
-      pinForm),
+    signIn.node,
+    team.node,
     group('Connections', 'Integrations', 'What is connected, and the steps to connect the rest.',
       el('div', { class: 'set-int-tools' }, recheck),
       integ),
@@ -393,6 +364,8 @@ export default function settings() {
   renderSup();
   root.onState = () => {
     agentsSettings.update();
+    signIn.update();
+    team.update();
     // Forms keep what is typed; only the live panels refresh.
     if ((state.ai?.spent_usd ?? null) !== usageFor && usage !== null) loadUsage(); else renderAiLive();
     renderIntegrations();
@@ -444,6 +417,236 @@ function agentsGroup() {
         el('a', { class: 'btn btn-ghost btn-sm', href: '#agents' }, icon('agents', 14), 'Open Agents'),
         el('a', { class: 'btn btn-ghost btn-sm', href: '#agents/runs' }, icon('list', 14), 'Run log'))));
   return { node, update };
+}
+
+/* ------------------------------------------------------- Your sign-in
+   Everyone: change your own PIN (current, new, confirm) and the address a PIN
+   reset is emailed to. Only a masked hint of that address is ever shown. */
+const PIN_RE = /^\d{4,12}$/;
+const guessable = (p) => /^(\d)\1+$/.test(p) || '01234567890123'.includes(p) || '98765432109876'.includes(p);
+
+/** Check a PIN change before it is sent. Returns {field, message} or null. Pure. */
+export function validatePinChange(oldPin, newPin, again) {
+  if (!oldPin) return { field: 'old', message: 'Enter your current PIN.' };
+  if (!PIN_RE.test(oldPin)) return { field: 'old', message: 'Your current PIN is 4 to 12 digits.' };
+  if (!PIN_RE.test(newPin)) return { field: 'nw', message: 'The new PIN must be 4 to 12 digits.' };
+  if (newPin !== again) return { field: 'again', message: 'The two new PINs do not match.' };
+  if (newPin === oldPin) return { field: 'nw', message: 'Pick a PIN that is different from the current one.' };
+  if (guessable(newPin)) return { field: 'nw', message: 'Pick a PIN that is harder to guess.' };
+  return null;
+}
+
+const pinIn = (name, label, auto) => {
+  const n = input(name, { type: 'password', inputmode: 'numeric', autocomplete: auto, maxlength: 12, pattern: '[0-9]*', 'aria-label': label });
+  n.addEventListener('input', () => { const c = n.value.replace(/\D/g, '').slice(0, 12); if (c !== n.value) n.value = c; });
+  return n;
+};
+
+function yourSignIn() {
+  const f = { old: pinIn('old_pin', 'Current PIN', 'current-password'), nw: pinIn('new_pin', 'New PIN', 'new-password'), again: pinIn('new_pin2', 'Confirm new PIN', 'new-password') };
+  const err = el('p', { class: 'set-err', role: 'alert', dataset: { pinErr: '' } });
+  const pinBtn = el('button', { class: 'btn btn-primary', type: 'submit' }, icon('lock', 15), 'Change PIN');
+  const pinForm = el('form', { class: 'stack', novalidate: true, dataset: { form: 'change-pin' } },
+    el('div', { class: 'grid cols-3 set-pin' },
+      field('Current PIN', f.old), field('New PIN', f.nw, '4 to 12 digits'), field('Confirm new PIN', f.again)),
+    err, el('div', { class: 'row' }, pinBtn));
+  const showErr = (fieldKey, msg) => {
+    err.textContent = msg || '';
+    for (const [k, n] of Object.entries(f)) n.setAttribute('aria-invalid', String(k === fieldKey));
+    if (fieldKey) f[fieldKey].focus();
+  };
+  Object.values(f).forEach((n) => n.addEventListener('input', () => { if (err.textContent) showErr(null, ''); }));
+  pinForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const bad = validatePinChange(f.old.value.trim(), f.nw.value.trim(), f.again.value.trim());
+    if (bad) { showErr(bad.field, bad.message); return; }
+    busy(pinBtn, async () => {
+      const r = await changePin(f.old.value.trim(), f.nw.value.trim());
+      if (r.ok) {
+        showErr(null, '');
+        toast('PIN changed. Use the new one next time you unlock.');
+        pinForm.reset();
+        return;
+      }
+      if (r.error === 'bad_pin') showErr('old', `Your current PIN is not right${Number.isFinite(Number(r.remaining)) && r.remaining !== null && r.remaining !== undefined ? `. ${plural(Number(r.remaining), 'try', 'tries')} left before a lockout.` : '.'}`);
+      else if (r.error === 'locked') showErr('old', `Too many tries. Locked for ${Math.ceil((r.retry_after_s || 60) / 60)} min.`);
+      else if (r.error === 'weak_pin') showErr('nw', 'The new PIN must be 4 to 12 digits.');
+      else if (r.error === 'unauthorized') showErr(null, 'Your session has expired. Lock and unlock, then try again.');
+      else showErr(null, `Could not change the PIN (${r.error}).`);
+    });
+  });
+
+  // Email for PIN resets.
+  const hint = el('p', { class: 'set-email-hint', dataset: { emailHint: '' } });
+  const emailIn = input('reset_email', { type: 'email', placeholder: 'name@example.com', autocomplete: 'email', 'aria-label': 'New email for PIN resets' });
+  const emailErr = el('p', { class: 'set-err', role: 'alert' });
+  const emailBtn = el('button', { class: 'btn btn-ghost', type: 'submit' }, 'Save email');
+  const emailForm = el('form', { class: 'set-email', novalidate: true, dataset: { form: 'reset-email' } },
+    el('div', { class: 'set-email-row' }, field('Change it to', emailIn), emailBtn), emailErr);
+  emailForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const v = emailIn.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { emailErr.textContent = 'That does not look like an email address.'; emailIn.focus(); return; }
+    emailErr.textContent = '';
+    busy(emailBtn, async () => {
+      const r = await setMyEmail(v);
+      if (r.ok) { emailIn.value = ''; toast('Reset email saved'); update(); } else emailErr.textContent = r.message;
+    });
+  });
+
+  const who = el('div', { class: 'set-me' });
+  function update() {
+    const me = state.me;
+    fill(who, me ? ownerBadge(me.id, { size: 'lg', title: false }) : null,
+      el('div', { class: 'stack tight' },
+        el('strong', {}, me ? me.name : 'Signed in'),
+        el('span', { class: 'small muted' }, me ? `${me.role === 'owner' ? 'Owner' : 'Team member'} · signs in with their own PIN` : 'Loading who is signed in…')));
+    hint.replaceChildren(...(me?.email_hint
+      ? [el('span', { class: 'muted' }, 'Reset links go to '), el('strong', { class: 'tnum' }, me.email_hint)]
+      : [el('span', { class: 'muted' }, 'No email on file yet, so a forgotten PIN can only be reset by the owner.')]));
+  }
+  update();
+  const node = group('Your sign-in', 'Your PIN and reset email', 'Each person signs in with their own PIN. Five wrong PINs lock that person out for a while, and the lock gets longer each time.',
+    who,
+    el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Change your PIN'), pinForm),
+    el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Email for PIN resets'), hint, emailForm));
+  node.dataset.sec = 'sign-in';
+  return { node, update };
+}
+
+/* --------------------------------------------------------------- Team
+   Everyone sees who is on the team; only the owner changes it. All through teamSave. */
+function teamGroup() {
+  const body = el('div', { class: 'set-team', dataset: { team: '' } });
+  const isOwner = () => state.me?.role === 'owner';
+  const ownerOf = () => (state.team || []).find((m) => m.role === 'owner');
+
+  const save = async (args, okMsg) => {
+    const r = await teamSave(args);
+    if (r.ok) { if (okMsg) toast(okMsg); return r.member; }
+    toast(r.message, 'bad');
+    return null;
+  };
+
+  async function editPerson(m) {
+    const name = input('name', { value: m.name, required: true, maxlength: 60, autocomplete: 'off' });
+    const ini = input('initials', { value: m.initials || '', maxlength: 3, autocomplete: 'off' });
+    const v = await modal2('Edit ' + m.name, el('div', { class: 'form-grid' }, field('Name', name), field('Initials', ini, 'Up to 3 letters, shown in the ring')), 'Save');
+    if (!v) return;
+    await save({ member: { id: m.id, name: v.name.trim(), initials: v.initials.trim() } }, 'Saved');
+  }
+
+  async function resetPin(m) {
+    const a = pinIn('pin', 'New PIN', 'new-password');
+    const b = pinIn('pin2', 'Confirm new PIN', 'new-password');
+    const emailIn = input('email', { type: 'email', placeholder: 'Leave empty to keep the one on file', autocomplete: 'off' });
+    const v = await modal2(`Reset ${m.name}'s PIN`, el('div', { class: 'stack' },
+      el('p', { class: 'small muted' }, `Set a new PIN for ${m.name}. You will see it once, so you can tell them; they can change it in Settings after signing in.`),
+      el('div', { class: 'form-grid' }, field('New PIN', a, '4 to 12 digits'), field('Confirm new PIN', b)),
+      field('Reset email (optional)', emailIn, 'Where their own "Forgot PIN?" link is sent')), 'Reset PIN');
+    if (!v) return;
+    if (!PIN_RE.test(v.pin)) { toast('A PIN is 4 to 12 digits.', 'bad'); return; }
+    if (v.pin !== v.pin2) { toast('The two PINs do not match.', 'bad'); return; }
+    if (guessable(v.pin)) { toast('Pick a PIN that is harder to guess.', 'bad'); return; }
+    const args = { member: { id: m.id }, pin: v.pin, sign_in: true };
+    if (v.email.trim()) args.email = v.email.trim();
+    const saved = await save(args);
+    if (saved) await showOnce(m.name, v.pin);
+  }
+
+  async function addPerson() {
+    const name = input('name', { required: true, maxlength: 60, placeholder: 'e.g. Sam Lee', autocomplete: 'off' });
+    const ini = input('initials', { maxlength: 3, placeholder: 'SL', autocomplete: 'off' });
+    const can = el('input', { type: 'checkbox', class: 'check', name: 'sign_in', value: 'yes' });
+    const a = pinIn('pin', 'Starting PIN', 'new-password');
+    const em = input('email', { type: 'email', placeholder: 'For their PIN resets', autocomplete: 'off' });
+    const loginBits = el('div', { class: 'form-grid', hidden: true }, field('Starting PIN', a, '4 to 12 digits, shown to you once'), field('Reset email', em, 'Optional'));
+    can.addEventListener('change', () => { loginBits.hidden = !can.checked; });
+    name.addEventListener('input', () => { if (!ini.dataset.touched) ini.placeholder = initialsOf({ name: name.value }) || 'SL'; });
+    ini.addEventListener('input', () => { ini.dataset.touched = '1'; });
+    const v = await modal2('Add a person', el('div', { class: 'stack' },
+      el('div', { class: 'form-grid' }, field('Name', name), field('Initials', ini, 'Shown in their ring')),
+      el('label', { class: 'check-row' }, can, el('span', {}, 'They can sign in to the hub ', el('span', { class: 'muted' }, '(otherwise work can still be given to them)'))),
+      loginBits), 'Add person');
+    if (!v) return;
+    if (!v.name.trim()) { toast('A name is needed.', 'bad'); return; }
+    const signIn = v.sign_in === 'yes';
+    if (signIn && (!PIN_RE.test(v.pin) || guessable(v.pin))) { toast('Give them a starting PIN of 4 to 12 digits that is hard to guess.', 'bad'); return; }
+    const sort = Math.max(0, ...(state.team || []).map((x) => Number(x.sort) || 0)) + 10;
+    const args = { member: { name: v.name.trim(), initials: (v.initials || '').trim() || undefined, sort } };
+    if (signIn) { args.sign_in = true; args.pin = v.pin; if ((v.email || '').trim()) args.email = v.email.trim(); }
+    const saved = await save(args, `${v.name.trim()} added`);
+    if (saved && signIn) await showOnce(saved.name, v.pin);
+  }
+
+  async function move(m, dir) {
+    const list = [...(state.team || [])];
+    const i = list.findIndex((x) => x.id === m.id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    const changes = list.map((x, k) => ({ x, sort: k * 10 })).filter(({ x, sort }) => Number(x.sort) !== sort);
+    for (const { x, sort } of changes) { if (!await save({ member: { id: x.id, sort } })) return; }
+    body.querySelector(`[data-member="${m.id}"] [data-act="${dir < 0 ? 'up' : 'down'}"]`)?.focus();
+  }
+
+  async function setActive(m, on) {
+    if (!on && !await confirmDialog(`Switch off ${m.name}'s login?`, `${m.name} will not be able to sign in. Their work keeps its owner, and you can switch the login back on later.`, { confirmLabel: 'Switch off' })) return;
+    await save({ member: { id: m.id, active: on } }, on ? `${m.name} can sign in again` : `${m.name}'s login is off`);
+  }
+
+  function update() {
+    const owner = isOwner();
+    const team = state.team || [];
+    const boss = ownerOf();
+    fill(body,
+      owner ? null : el('p', { class: 'set-team-note', dataset: { readonly: '' } }, icon('lock', 14), `${boss?.name || 'The owner'} manages the team. Ask ${boss?.name || 'them'} to add someone or reset a PIN.`),
+      team.length ? el('ul', { class: 'set-team-list' }, team.map((m, i) => {
+        const self = m.id === meId();
+        return el('li', { class: `set-person${m.active === false ? ' is-off' : ''}`, dataset: { member: m.id } },
+          ownerBadge(m.id, { size: 'lg', title: false }),
+          el('div', { class: 'set-person-main' },
+            el('strong', {}, m.name, self ? el('span', { class: 'muted' }, ' (you)') : null),
+            el('span', { class: 'small muted' }, [m.role === 'owner' ? 'Owner' : 'Member', m.active === false ? 'Login switched off' : m.can_sign_in ? 'Can sign in' : 'No login, can be given work'].join(' · '))),
+          owner ? el('div', { class: 'set-person-acts' },
+            el('button', { type: 'button', class: 'icon-btn sm', 'aria-label': `Move ${m.name} up`, disabled: i === 0 || null, dataset: { act: 'up' }, onClick: () => move(m, -1) }, el('span', { class: 'dl-rot' }, icon('chevron', 15))),
+            el('button', { type: 'button', class: 'icon-btn sm', 'aria-label': `Move ${m.name} down`, disabled: i === team.length - 1 || null, dataset: { act: 'down' }, onClick: () => move(m, 1) }, el('span', { class: 'dl-rot is-down' }, icon('chevron', 15))),
+            el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'edit' }, onClick: () => editPerson(m) }, icon('edit', 13), 'Rename'),
+            self ? null : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'reset-pin' }, onClick: () => resetPin(m) }, icon('lock', 13), m.can_sign_in ? 'Reset PIN' : 'Give a login'),
+            m.role === 'owner' || !m.can_sign_in ? null : m.active === false
+              ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'login-on' }, onClick: () => setActive(m, true) }, 'Switch login on')
+              : el('button', { type: 'button', class: 'btn btn-ghost btn-sm is-danger', dataset: { act: 'login-off' }, onClick: () => setActive(m, false) }, 'Switch login off')) : null);
+      })) : el('p', { class: 'small muted' }, 'Loading the team…'),
+      owner ? el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn btn-ghost', dataset: { act: 'add-person' }, onClick: addPerson }, icon('plus', 15), 'Add a person')) : null);
+  }
+  update();
+  const node = group('Team', 'Who is on the team', 'Everyone sees the same hub. What changes is what it puts in front of each person: their tasks, their replies, their next steps.', body);
+  node.dataset.sec = 'team';
+  let lastKey = '';
+  return {
+    node,
+    update() {
+      const key = JSON.stringify([state.me?.id, state.me?.role, (state.team || []).map((m) => [m.id, m.name, m.initials, m.sort, m.active, m.can_sign_in])]);
+      if (key === lastKey || body.contains(document.activeElement) && document.activeElement.matches('input')) return;
+      lastKey = key;
+      update();
+    }
+  };
+}
+
+/** A small modal with a form; resolves the values or null. */
+function modal2(title, body, confirmLabel) {
+  return import('../ui.js?v=20261118c').then(({ modal }) => modal({ title, body, confirmLabel }));
+}
+/** Show a PIN the owner just set, once. */
+function showOnce(name, pin) {
+  return import('../ui.js?v=20261118c').then(({ modal }) => modal({
+    title: `${name}'s PIN`, hideConfirm: true, cancelLabel: 'Done',
+    body: el('div', { class: 'stack' },
+      el('p', {}, `Tell ${name} this PIN in person. It is not shown again.`),
+      el('p', { class: 'set-pin-once tnum', dataset: { pinOnce: '' } }, pin),
+      el('p', { class: 'small muted' }, 'They can change it in Settings, under Your sign-in, after they sign in.'))
+  }));
 }
 
 /** A settings group: title and a short description on the left, the controls on the right. */
