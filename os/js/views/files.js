@@ -1,7 +1,8 @@
-// Files: a live window onto the business OneDrive, in the hub's own design. Nothing is copied:
-// every folder is read from Microsoft Graph (through the `onedrive` function) when it is opened.
+// Files: a live window onto the business drive (Google Drive; OneDrive is supported but dormant),
+// in the hub's own design. Nothing is copied: every folder is read through the `gdrive` (or
+// `onedrive`) function when it is opened. Both functions answer the same actions and shapes.
 // Folders, breadcrumbs, search, thumbnails, previews (images, PDFs, video in place; Office files
-// open in OneDrive), rename, move, new folder, links to clients / projects / deals / leads, and a
+// open in the drive's own editor), rename, move, new folder, links to clients / projects / deals / leads, and a
 // log of every change with Undo. There is no delete, anywhere.
 //
 // Layout: one column on phones (preview opens as a sheet), list + preview from 1100px, and on
@@ -12,9 +13,12 @@ import {
 } from '../ui.js?v=20261118d';
 import { state, memberName } from '../api.js?v=20261118d';
 import {
-  od, recentChanges, watchFiles, LINK_KINDS, KIND, recordLabel, recordFor, recordHash, pickRecords,
+  od, detectProvider, provider, recentChanges, watchFiles, LINK_KINDS, KIND, recordLabel, recordFor, recordHash, pickRecords,
   fileSize, baseName, nameProblem, kindLabel
 } from '../files-api.js?v=20261118d';
+const P = () => provider();
+/** A folder's display name: the drive root reads as the provider's root (OneDrive / My Drive). */
+const rootName = (f) => (f?.is_root && !f.parent_id ? P().root : f?.name || P().root);
 
 /* ================================================================ memory
    Kept across re-renders (each hash change builds a fresh view) so moving around is instant. */
@@ -61,7 +65,7 @@ const MOVE_D = [...FOLDER_D, 'M9.5 13h5', 'M12.5 10.5 15 13l-2.5 2.5'];
 
 function glyph(item, size = 'md') {
   if (item.folder) return el('span', { class: `fl-glyph is-folder is-${size}` }, svg(size === 'lg' ? 56 : size === 'md' ? 22 : 18, FOLDER_D, { stroke: size === 'lg' ? 1.1 : 1.5 }));
-  const ext = (item.ext || '').slice(0, 4).toUpperCase();
+  const ext = (item.badge || item.ext || '').slice(0, 5).toUpperCase();
   return el('span', { class: `fl-glyph is-file is-${size}`, dataset: { kind: item.kind } },
     svg(size === 'lg' ? 56 : size === 'md' ? 22 : 18, PAGE_D, { stroke: size === 'lg' ? 1.1 : 1.5 }),
     size === 'sm' || !ext ? null : el('span', { class: 'fl-ext' }, ext));
@@ -69,6 +73,7 @@ function glyph(item, size = 'md') {
 
 /* ================================================================ helpers */
 const OFFICE = new Set(['word', 'excel', 'powerpoint']);
+const GOOGLE = new Set(['gdoc', 'gsheet', 'gslide', 'gdraw']);
 const shortDate = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
@@ -89,29 +94,38 @@ function sortList(items) {
   }[mem.sort] || ((a, b) => coll.compare(a.name, b.name));
   return [...items].sort((a, b) => (a.folder !== b.folder ? (a.folder ? -1 : 1) : by(a, b) * dir || coll.compare(a.name, b.name)));
 }
+const countLabel = (it) => (it.child_count === null || it.child_count === undefined ? 'Folder' : it.child_count === 1 ? '1 item' : `${it.child_count} items`);
 const remember = (items) => { for (const it of items || []) if (it?.id) mem.items.set(it.id, it); };
 const errText = (r) => r?.message || 'Something went wrong. Try again in a minute.';
 const ownerName = () => mem.status?.owner_name || 'the owner';
 
 function cleanQuery() {
   const q = new URLSearchParams(location.search);
-  const flag = q.get('onedrive');
-  if (!flag) return null;
-  q.delete('onedrive');
+  const key = q.has('drive') ? 'drive' : q.has('onedrive') ? 'onedrive' : null;
+  if (!key) return null;
+  const flag = q.get(key);
+  q.delete(key);
   try { history.replaceState(history.state, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`); } catch { /* */ }
-  return flag;
+  return { flag, google: key === 'drive' };
 }
-const RESULT = {
-  connected: ['OneDrive is connected.', 'ok'],
-  denied: ['OneDrive was not connected: the Microsoft sign-in was cancelled.', 'warn'],
-  expired: ['That sign-in link expired. Start again from Connect OneDrive.', 'warn'],
-  bad_state: ['That sign-in could not be checked. Start again from Connect OneDrive.', 'bad'],
-  not_owner: ['Only the owner can connect OneDrive.', 'bad'],
-  not_configured: ['OneDrive is not set up yet.', 'warn'],
-  no_drive: ['That Microsoft account has no OneDrive.', 'bad'],
-  busy: ['Microsoft is busy. Try connecting again in a minute.', 'warn'],
-  error: ['OneDrive could not be connected. Try again.', 'bad']
-};
+function resultMessage({ flag, google }) {
+  const name = google ? 'Google Drive' : 'OneDrive';
+  const co = google ? 'Google' : 'Microsoft';
+  return ({
+    connected: [`${name} is connected.`, 'ok'],
+    denied: [`${name} was not connected: the ${co} sign-in was cancelled.`, 'warn'],
+    expired: [`That sign-in link expired. Start again from Connect ${name}.`, 'warn'],
+    bad_state: [`That sign-in could not be checked. Start again from Connect ${name}.`, 'bad'],
+    not_owner: [`Only the owner can connect ${name}.`, 'bad'],
+    not_in_org: ['That Google account is not part of the business Google Workspace. Sign in with the business account.', 'bad'],
+    no_refresh: ['Google did not grant lasting access. Start again from Connect Google Drive and allow access.', 'bad'],
+    scope_missing: ['Google Drive access was not ticked on the Google screen. Start again and allow access to Google Drive.', 'bad'],
+    not_configured: [`${name} is not set up yet.`, 'warn'],
+    no_drive: ['That Microsoft account has no OneDrive.', 'bad'],
+    busy: [`${co} is busy. Try connecting again in a minute.`, 'warn'],
+    error: [`${name} could not be connected. Try again.`, 'bad']
+  })[flag] || [`${name} could not be connected. Try again.`, 'bad'];
+}
 
 /* ================================================================ the view */
 export default function filesView(ctx) {
@@ -119,17 +133,20 @@ export default function filesView(ctx) {
   mem.warm = true;
   const flag = cleanQuery();
   if (flag) {
-    const [msg, tone] = RESULT[flag] || RESULT.error;
+    const [msg, tone] = resultMessage(flag);
     setTimeout(() => toast(msg, tone), 50);
     mem.status = null;
   }
 
   const acct = el('div', { class: 'fl-acct' });
+  const lede = el('p', { class: 'muted fl-lede' });
+  const paintLede = () => { lede.textContent = `Your ${P().name}, live. Nothing is copied: what you see here is what is in ${P().name} right now.`; };
+  paintLede();
   const head = el('header', { class: 'page-head fl-head' },
     el('div', { class: 'stack' },
       el('p', { class: 'eyebrow' }, 'Know'),
       el('h1', { class: 'h1' }, 'Files'),
-      el('p', { class: 'muted fl-lede' }, 'Your OneDrive, live. Nothing is copied: what you see here is what is in OneDrive right now.')),
+      lede),
     acct);
   const banner = el('div', { class: 'fl-banner' });
   const body = el('div', { class: 'fl-body' });
@@ -139,8 +156,9 @@ export default function filesView(ctx) {
 
   async function loadStatus(force = false) {
     if (!force && mem.status && Date.now() - mem.statusAt < STATUS_TTL) return mem.status;
-    const r = await od('status');
+    const r = await detectProvider();
     if (r.ok) { mem.status = r; mem.statusAt = Date.now(); }
+    paintLede();
     return r;
   }
 
@@ -150,21 +168,24 @@ export default function filesView(ctx) {
     fill(acct,
       el('span', { class: `fl-acct-line${s.needs_reconnect ? ' is-warn' : ''}` },
         el('span', { class: 'dot', 'aria-hidden': 'true' }),
-        el('span', {}, s.needs_reconnect ? 'Needs signing in again' : `${s.account?.name || 'OneDrive'}`),
-        s.account?.connected_at && !s.needs_reconnect ? el('span', { class: 'faint' }, ` · connected ${shortDate(s.account.connected_at)}`) : null),
+        el('span', {}, s.needs_reconnect ? 'Needs signing in again' : `${s.account?.name || P().name}`),
+        s.account?.connected_at && !s.needs_reconnect ? el('span', { class: 'faint' }, ` · ${P().name} · connected ${shortDate(s.account.connected_at)}`) : null),
       s.can_connect ? el('button', { type: 'button', class: 'link-btn small fl-disconnect', dataset: { fk: 'disconnect' }, onClick: disconnect }, 'Disconnect') : null);
   }
 
   function paintBanner() {
     const s = mem.status;
     if (!s?.connected || !s.needs_reconnect) { clear(banner); return; }
+    const google = P().id === 'gdrive';
     fill(banner, el('div', { class: 'callout is-warn fl-reconnect', role: 'status' },
       icon('alert', 16),
       el('div', { class: 'fl-callout-text' },
-        el('b', {}, 'Microsoft needs a fresh sign-in'),
+        el('b', {}, `${P().company} needs a fresh sign-in`),
         el('span', {}, s.can_connect
-          ? 'OneDrive sign-ins lapse after about 90 days without use, or when access is removed in the Microsoft account. Sign in again and everything carries on as before.'
-          : `The OneDrive sign-in has lapsed. Ask ${ownerName()} to sign in again from this page.`)),
+          ? (google
+            ? 'Google sign-ins lapse after six months without use, or when access is removed in the Google account or by the Workspace admin. Sign in again and everything carries on as before.'
+            : 'OneDrive sign-ins lapse after about 90 days without use, or when access is removed in the Microsoft account. Sign in again and everything carries on as before.')
+          : `The ${P().name} sign-in has lapsed. Ask ${ownerName()} to sign in again from this page.`)),
       s.can_connect ? el('button', { type: 'button', class: 'btn btn-primary btn-sm', dataset: { fk: 'reconnect' }, onClick: (e) => connect(e.currentTarget) }, 'Sign in again') : null));
   }
 
@@ -177,51 +198,63 @@ export default function filesView(ctx) {
   }
 
   async function disconnect() {
+    const google = P().id === 'gdrive';
     const ok = await modal({
-      title: 'Disconnect OneDrive?',
-      body: el('p', { class: 'confirm-text' }, 'Files will stop showing OneDrive until someone connects it again. Nothing in OneDrive changes, and the links to clients and projects stay. To remove the hub’s access completely, also remove it under Apps and services in your Microsoft account.'),
+      title: `Disconnect ${P().name}?`,
+      body: el('p', { class: 'confirm-text' }, `Files will stop showing ${P().name} until someone connects it again. Nothing in ${P().name} changes, and the links to clients and projects stay. ${google
+        ? 'The hub’s access is also withdrawn at Google.'
+        : 'To remove the hub’s access completely, also remove it under Apps and services in your Microsoft account.'}`),
       confirmLabel: 'Disconnect', danger: true
     });
     if (!ok) return;
     const r = await od('disconnect');
     if (!r.ok) { toast(errText(r), 'bad'); return; }
-    mem.status = null; mem.folders.clear(); mem.details.clear(); mem.paths.clear();
-    toast('OneDrive disconnected');
+    mem.status = null; mem.folders.clear(); mem.details.clear(); mem.paths.clear(); mem.changes = null;
+    toast(`${P().name} disconnected`);
     start(true);
   }
 
   /* ------------------------------------------------------------ not set up / not connected */
   const promise = () => el('ul', { class: 'fl-promise' },
-    el('li', {}, el('b', {}, 'Every folder, live.'), ' Read straight from OneDrive each time, so there is nothing to sync and nothing to fall behind.'),
-    el('li', {}, el('b', {}, 'Previews in place.'), ' PDFs, photos and video open right here. Word, Excel and PowerPoint open in OneDrive.'),
+    el('li', {}, el('b', {}, 'Every folder, live.'), ` Read straight from ${P().name} each time, so there is nothing to sync and nothing to fall behind.`),
+    el('li', {}, el('b', {}, 'Previews in place.'), P().id === 'gdrive'
+      ? ' PDFs, photos, Google Docs, Sheets and Slides open right here. Everything opens in Google Drive in one click.'
+      : ' PDFs, photos and video open right here. Word, Excel and PowerPoint open in OneDrive.'),
     el('li', {}, el('b', {}, 'Filed against the work.'), ' Link a file to a client, project, deal or lead and it shows on that page.'),
     el('li', {}, el('b', {}, 'Safe to tidy.'), ' Rename, move and make folders. Every change is logged with an Undo, and nothing is ever deleted from here.'));
 
   function paintSetup(s) {
     const owner = s.owner_name || 'the owner';
     const isOwner = s.can_connect;
+    const google = P().id === 'gdrive';
     if (!s.configured) {
-      fill(body, el('section', { class: 'fl-setup', dataset: { state: 'not-configured' } },
+      fill(body, el('section', { class: 'fl-setup', dataset: { state: 'not-configured', provider: P().id } },
         el('div', { class: 'fl-setup-mark', 'aria-hidden': 'true' }, folderIcon(40)),
         el('p', { class: 'eyebrow' }, 'Almost ready'),
-        el('h2', { class: 'fl-setup-title' }, 'OneDrive is waiting on one Microsoft step'),
+        el('h2', { class: 'fl-setup-title' }, google ? 'Google Drive is waiting on one Google step' : 'OneDrive is waiting on one Microsoft step'),
         el('p', { class: 'fl-setup-text' }, isOwner
-          ? 'The hub needs its Microsoft app details before it can connect: the application ID and secret go into the hub’s server settings as MS_CLIENT_ID and MS_CLIENT_SECRET. Once they are in, a Connect OneDrive button appears here.'
-          : `The Microsoft app details still need to be added before OneDrive can be connected. ${owner} can finish it.`),
+          ? (google
+            ? 'The hub needs its Google app details before it can connect: in Google Cloud, an internal app for the wise-ai.au Workspace with a web client. Its client ID and secret go into the hub’s server settings as GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET. Once they are in, a Connect Google Drive button appears here.'
+            : 'The hub needs its Microsoft app details before it can connect: the application ID and secret go into the hub’s server settings as MS_CLIENT_ID and MS_CLIENT_SECRET. Once they are in, a Connect OneDrive button appears here.')
+          : `The ${google ? 'Google' : 'Microsoft'} app details still need to be added before ${P().name} can be connected. ${owner} can finish it.`),
         isOwner
-          ? el('p', { class: 'fl-setup-note small muted' }, 'The redirect address to give Microsoft is this hub’s OneDrive function address, exactly as in the setup notes.')
-          : el('p', { class: 'fl-setup-ask' }, `Ask ${owner} to finish the Microsoft setup`),
+          ? el('p', { class: 'fl-setup-note small muted' }, google
+            ? 'The step-by-step clicks, including the exact redirect address to give Google, are in the setup notes (supabase/README.md, Google Drive). It takes about ten minutes.'
+            : 'The redirect address to give Microsoft is this hub’s OneDrive function address, exactly as in the setup notes.')
+          : el('p', { class: 'fl-setup-ask' }, `Ask ${owner} to finish the ${google ? 'Google' : 'Microsoft'} setup`),
         promise()));
       return;
     }
-    fill(body, el('section', { class: 'fl-setup', dataset: { state: 'not-connected' } },
+    fill(body, el('section', { class: 'fl-setup', dataset: { state: 'not-connected', provider: P().id } },
       el('div', { class: 'fl-setup-mark', 'aria-hidden': 'true' }, folderIcon(40)),
       el('p', { class: 'eyebrow' }, 'Not connected'),
-      el('h2', { class: 'fl-setup-title' }, isOwner ? 'Connect the business OneDrive' : 'OneDrive is not connected yet'),
+      el('h2', { class: 'fl-setup-title' }, isOwner ? `Connect the business ${P().name}` : `${P().name} is not connected yet`),
       el('p', { class: 'fl-setup-text' }, isOwner
-        ? 'You will sign in with Microsoft and allow the hub to read and organise your files. One connection serves everyone on the team. You can disconnect at any time.'
-        : `Only the owner can connect OneDrive. Ask ${owner} to connect it from this page.`),
-      isOwner ? el('button', { type: 'button', class: 'btn btn-primary', dataset: { fk: 'connect' }, onClick: (e) => connect(e.currentTarget) }, folderIcon(16), 'Connect OneDrive') : null,
+        ? (google
+          ? 'You will sign in with the business Google account and allow the hub to see and organise your Drive. One connection serves everyone on the team. You can disconnect at any time.'
+          : 'You will sign in with Microsoft and allow the hub to read and organise your files. One connection serves everyone on the team. You can disconnect at any time.')
+        : `Only the owner can connect ${P().name}. Ask ${owner} to connect it from this page.`),
+      isOwner ? el('button', { type: 'button', class: 'btn btn-primary', dataset: { fk: 'connect' }, onClick: (e) => connect(e.currentTarget) }, folderIcon(16), `Connect ${P().name}`) : null,
       promise()));
   }
 
@@ -259,7 +292,7 @@ export default function filesView(ctx) {
     let seq = 0;
 
     const crumbs = el('nav', { class: 'fl-crumbs', 'aria-label': 'Folder path' });
-    const search = el('input', { class: 'input fl-search', type: 'search', placeholder: 'Search OneDrive', 'aria-label': 'Search OneDrive', autocomplete: 'off', enterkeyhint: 'search' });
+    const search = el('input', { class: 'input fl-search', type: 'search', placeholder: P().search, 'aria-label': P().search, autocomplete: 'off', enterkeyhint: 'search' });
     const searchWrap = el('label', { class: 'fl-search-wrap' }, icon('search', 15), search);
     const viewBtns = {
       list: el('button', { type: 'button', class: 'fl-seg-btn', 'aria-label': 'List view', title: 'List', dataset: { view: 'list' } }, svg(16, LIST_D, { stroke: 1.7 })),
@@ -323,10 +356,10 @@ export default function filesView(ctx) {
       const known = mem.items.get(id);
       if (known?.folder || mem.folders.has(id)) { await goFolder(id, { push: false }); return; }
       if (known && known.parent_id) { await goFolder(known.parent_id, { push: false, keepSelection: true }); select(known, { push: false }); return; }
-      // Unknown: ask OneDrive what it is.
+      // Unknown: ask the drive what it is.
       showLoading();
       const r = await od('item', { id, with_path: true });
-      if (!r.ok) { listError(r, r.error === 'not_found' || r.error === 'outside_drive' ? 'That file or folder is not in OneDrive any more' : null); return; }
+      if (!r.ok) { listError(r, r.error === 'not_found' || r.error === 'outside_drive' ? `That file or folder is not in ${P().name} any more` : null); return; }
       remember([r.item]);
       if (r.item.folder) { await goFolder(r.item.id, { push: false }); return; }
       mem.details.set(r.item.id, { ...r, at: Date.now() });
@@ -354,7 +387,7 @@ export default function filesView(ctx) {
       if (realKey !== key) { folderId = realKey; }
       mem.folders.set(realKey, { folder: r.folder, items: r.items, cursor: r.cursor, at: Date.now() });
       if (r.path) mem.paths.set(realKey, r.path);
-      else if (!mem.paths.has(realKey)) mem.paths.set(realKey, [{ id: realKey, name: r.folder.is_root ? 'OneDrive' : r.folder.name }]);
+      else if (!mem.paths.has(realKey)) mem.paths.set(realKey, [{ id: realKey, name: rootName(r.folder) }]);
       if (r.folder.is_root && mem.status?.account) mem.status.account.root_id = r.folder.id;
       paintAll();
     }
@@ -386,10 +419,10 @@ export default function filesView(ctx) {
     }
 
     /* --------------------------------------------- painting */
-    function paintAll() { paintCrumbs(); paintList(); paintTree(); }
+    function paintAll() { newBtn.hidden = Boolean(searchQ) || folderId === 'shared'; paintCrumbs(); paintList(); paintTree(); }
 
     function crumbTrail() {
-      return mem.paths.get(folderId) || [{ id: rootId(), name: 'OneDrive' }];
+      return mem.paths.get(folderId) || [{ id: rootId(), name: P().root }];
     }
     function paintCrumbs() {
       const trail = crumbTrail();
@@ -416,11 +449,11 @@ export default function filesView(ctx) {
       if (r.error === 'reconnect_needed') { mem.status.needs_reconnect = true; paintBanner(); paintAcct(); }
       fill(listArea, el('div', { class: 'empty fl-empty' },
         el('div', { class: 'empty-icon' }, icon('alert', 22)),
-        el('p', { class: 'empty-title' }, title || (r.error === 'busy' ? 'OneDrive is busy' : r.error === 'reconnect_needed' ? 'OneDrive needs a fresh sign-in' : 'That did not open')),
+        el('p', { class: 'empty-title' }, title || (r.error === 'busy' ? `${P().name} is busy` : r.error === 'reconnect_needed' ? `${P().name} needs a fresh sign-in` : 'That did not open')),
         el('p', { class: 'muted' }, errText(r)),
         el('div', { class: 'row' },
           r.error === 'reconnect_needed' ? null : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { fk: 'retry' }, onClick: () => (searchQ ? runSearch(searchQ) : goFolder(folderId, { push: false, force: true, keepSelection: true })) }, icon('refresh', 14), 'Try again'),
-          el('a', { class: 'btn btn-ghost btn-sm', href: '#files', onClick: (e) => { e.preventDefault(); goFolder(null); } }, 'Back to OneDrive'))));
+          el('a', { class: 'btn btn-ghost btn-sm', href: '#files', onClick: (e) => { e.preventDefault(); goFolder(null); } }, `Back to ${P().root}`))));
     }
 
     function currentItems() {
@@ -459,8 +492,8 @@ export default function filesView(ctx) {
 
     function metaLine(it) {
       const bits = [];
-      if (searchQ && it.parent_path) bits.push(it.parent_path === '/' ? 'OneDrive' : it.parent_path.replace(/^\//, '').replace(/\//g, ' / '));
-      if (it.folder) bits.push(it.child_count === 1 ? '1 item' : `${it.child_count ?? 0} items`);
+      if (searchQ && it.parent_path) bits.push(it.parent_path === '/' ? P().root : it.parent_path.replace(/^\//, '').replace(/\//g, ' / '));
+      if (it.folder) bits.push(countLabel(it));
       else if (it.size !== null) bits.push(fileSize(it.size));
       if (it.modified) bits.push(whenLabel(it.modified));
       return bits.join(' · ');
@@ -474,10 +507,10 @@ export default function filesView(ctx) {
         fill(listArea, searchQ
           ? el('div', { class: 'empty fl-empty' }, el('div', { class: 'empty-icon' }, icon('search', 22)),
             el('p', { class: 'empty-title' }, 'Nothing matches'),
-            el('p', { class: 'muted' }, `OneDrive found nothing for “${searchQ}”. Try part of the name, or a word inside the document.`))
+            el('p', { class: 'muted' }, `${P().name} found nothing for “${searchQ}”. Try part of the name, or a word inside the document.`))
           : el('div', { class: 'empty fl-empty' }, el('div', { class: 'empty-icon' }, folderIcon(28)),
             el('p', { class: 'empty-title' }, 'This folder is empty'),
-            el('p', { class: 'muted' }, 'Add files to it in OneDrive and they show here straight away.'),
+            el('p', { class: 'muted' }, `Add files to it in ${P().name} and they show here straight away.`),
             el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: () => newFolder() }, svg(14, NEWFOLDER_D, { stroke: 1.7 }), 'New folder'))));
         return;
       }
@@ -505,7 +538,7 @@ export default function filesView(ctx) {
               it.thumb?.small && it.kind === 'image' ? el('span', { class: 'fl-mini' }, el('img', { src: it.thumb.small, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' })) : glyph(it, 'sm'),
               el('span', { class: 'fl-name-text' }, el('span', { class: 'fl-name-main' }, it.name), el('span', { class: 'fl-name-meta' }, metaLine(it))))),
           el('td', { class: 'fl-td-mod tnum' }, it.modified ? el('span', { title: dateTime(it.modified) }, whenLabel(it.modified)) : ''),
-          el('td', { class: 'fl-td-size num tnum' }, it.folder ? el('span', { class: 'faint' }, it.child_count === 1 ? '1 item' : `${it.child_count ?? 0} items`) : fileSize(it.size)),
+          el('td', { class: 'fl-td-size num tnum' }, it.folder ? el('span', { class: 'faint' }, countLabel(it)) : fileSize(it.size)),
           el('td', { class: 'fl-td-act' }, moreBtn(it))))));
       table.addEventListener('click', (e) => {
         const tr = e.target.closest('tr.fl-row');
@@ -591,7 +624,7 @@ export default function filesView(ctx) {
         closeSheet();
         fill(pane, mode === 'stack' ? null : el('div', { class: 'fl-pane-idle' }, folderIcon(30),
           el('p', { class: 'fl-idle-title' }, 'Choose a file to preview it here'),
-          el('p', {}, 'PDFs, photos and video open in place. Word, Excel and PowerPoint show their first page, with a button to open them in OneDrive.')));
+          el('p', {}, P().id === 'gdrive' ? 'PDFs, photos, Google Docs, Sheets and Slides open in place. Word, Excel and PowerPoint show their first page, with a button to open them in Google Drive.' : 'PDFs, photos and video open in place. Word, Excel and PowerPoint show their first page, with a button to open them in OneDrive.')));
         pane.classList.toggle('is-idle', true);
         paintChanges();
         return;
@@ -606,7 +639,8 @@ export default function filesView(ctx) {
       const it = d?.item || item;
       const loading = !d;
       const isOffice = OFFICE.has(it.kind);
-      const openBtn = it.web_url ? el('a', { class: `btn btn-sm ${isOffice ? 'btn-primary' : 'btn-ghost'}`, href: it.web_url, target: '_blank', rel: 'noopener noreferrer', dataset: { fk: 'open-onedrive' } }, icon('external', 14), 'Open in OneDrive') : null;
+      const isGoogle = GOOGLE.has(it.kind);
+      const openBtn = it.web_url ? el('a', { class: `btn btn-sm ${isOffice || isGoogle ? 'btn-primary' : 'btn-ghost'}`, href: it.web_url, target: '_blank', rel: 'noopener noreferrer', dataset: { fk: 'open-web' } }, icon('external', 14), P().open) : null;
       const dl = d?.download_url && !it.folder ? el('a', { class: 'btn btn-ghost btn-sm', href: d.download_url, rel: 'noopener noreferrer', dataset: { fk: 'download' } }, icon('download', 14), 'Download') : null;
       const head = el('div', { class: 'fl-pv-head' },
         el('div', { class: 'fl-pv-top' },
@@ -615,8 +649,8 @@ export default function filesView(ctx) {
         el('h2', { class: 'h2 fl-pv-name' }, it.name),
         el('div', { class: 'fl-pv-acts' }, openBtn, dl),
         el('div', { class: 'fl-pv-tools' },
-          el('button', { type: 'button', class: 'fl-tool', dataset: { fk: 'rename' }, onClick: () => rename(it) }, icon('edit', 14), 'Rename'),
-          el('button', { type: 'button', class: 'fl-tool', dataset: { fk: 'move' }, onClick: () => move(it) }, svg(14, MOVE_D, { stroke: 1.7 }), 'Move'),
+          it.can_rename === false ? null : el('button', { type: 'button', class: 'fl-tool', dataset: { fk: 'rename' }, onClick: () => rename(it) }, icon('edit', 14), 'Rename'),
+          it.can_move === false ? null : el('button', { type: 'button', class: 'fl-tool', dataset: { fk: 'move' }, onClick: () => move(it) }, svg(14, MOVE_D, { stroke: 1.7 }), 'Move'),
           el('button', { type: 'button', class: 'fl-tool', dataset: { fk: 'link' }, onClick: () => link(it) }, icon('link', 14), 'Link to…')));
 
       const stage = el('div', { class: `fl-stage is-${it.kind}` });
@@ -626,23 +660,23 @@ export default function filesView(ctx) {
       } else if (loading) {
         stage.append(el('div', { class: 'skeleton fl-stage-skel' }));
       } else if (it.kind === 'image') {
-        const src = it.thumb?.large || d.download_url;
+        const src = it.thumb?.large || d.preview_url || d.download_url;
         stage.append(src ? el('img', { class: 'fl-stage-img', src, alt: it.name, referrerpolicy: 'no-referrer', decoding: 'async' }) : glyph(it, 'lg'));
-      } else if (it.kind === 'pdf') {
+      } else if (it.kind === 'pdf' || (isGoogle && d.preview_url)) {
         stage.append(pdfFrame(it, d));
-      } else if (it.kind === 'video' && d.download_url) {
-        stage.append(el('video', { class: 'fl-stage-media', src: d.download_url, controls: true, preload: 'metadata', playsinline: true }));
-      } else if (it.kind === 'audio' && d.download_url) {
-        stage.append(glyph(it, 'lg'), el('audio', { class: 'fl-stage-audio', src: d.download_url, controls: true, preload: 'none' }));
+      } else if (it.kind === 'video' && (d.preview_url || d.download_url)) {
+        stage.append(el('video', { class: 'fl-stage-media', src: d.preview_url || d.download_url, controls: true, preload: 'metadata', playsinline: true }));
+      } else if (it.kind === 'audio' && (d.preview_url || d.download_url)) {
+        stage.append(glyph(it, 'lg'), el('audio', { class: 'fl-stage-audio', src: d.preview_url || d.download_url, controls: true, preload: 'none' }));
       } else if (it.thumb?.large) {
         stage.append(el('div', { class: 'fl-sheet-page' }, el('img', { src: it.thumb.large, alt: `First page of ${it.name}`, referrerpolicy: 'no-referrer', decoding: 'async' })),
-          isOffice ? el('p', { class: 'fl-stage-cap small muted' }, 'A first-page preview. Open it in OneDrive to read or edit the whole thing.') : null);
+          isOffice ? el('p', { class: 'fl-stage-cap small muted' }, `A first-page preview. ${P().open} to read or edit the whole thing.`) : null);
       } else {
         stage.append(el('div', { class: 'fl-stage-note' }, glyph(it, 'lg'),
-          el('p', {}, isOffice ? 'Word, Excel and PowerPoint files open in OneDrive, where you can read and edit them.' : 'There is no preview for this kind of file. Open it in OneDrive or download it.')));
+          el('p', {}, isOffice ? `Word, Excel and PowerPoint files open in ${P().name}, where you can read and edit them.` : `There is no preview for this kind of file. ${P().open} or download it.`)));
       }
 
-      const loc = it.parent_path ? (it.parent_path === '/' ? 'OneDrive' : `OneDrive / ${it.parent_path.replace(/^\//, '').replace(/\//g, ' / ')}`) : null;
+      const loc = it.parent_path ? (it.parent_path === '/' ? P().root : `${P().root} / ${it.parent_path.replace(/^\//, '').replace(/\//g, ' / ')}`) : null;
       const facts = el('dl', { class: 'fl-facts' },
         fact('Modified', it.modified ? `${dateTime(it.modified)}${it.modified_by ? `, ${it.modified_by}` : ''}` : '—'),
         it.created ? fact('Created', dateTime(it.created)) : null,
@@ -659,7 +693,7 @@ export default function filesView(ctx) {
             return el('li', { dataset: { link: l.id } },
               el('span', { class: 'fl-link-kind' }, KIND[l.kind]?.label || l.kind),
               rec ? el('a', { href: recordHash(l.kind, l.record_id), class: 'fl-link-name' }, recordLabel(l.kind, rec)) : el('span', { class: 'fl-link-name faint' }, 'A record that has since been removed'),
-              el('button', { type: 'button', class: 'icon-btn sm', 'aria-label': `Remove the link to ${rec ? recordLabel(l.kind, rec) : 'this record'}`, title: 'Remove link (the file stays in OneDrive)', dataset: { fk: 'unlink' }, onClick: (e) => unlink(it, l, e.currentTarget) }, icon('x', 14)));
+              el('button', { type: 'button', class: 'icon-btn sm', 'aria-label': `Remove the link to ${rec ? recordLabel(l.kind, rec) : 'this record'}`, title: `Remove link (the file stays in ${P().name})`, dataset: { fk: 'unlink' }, onClick: (e) => unlink(it, l, e.currentTarget) }, icon('x', 14)));
           }))
           : el('p', { class: 'small muted' }, 'Not linked to anything yet. Link it to a client, project, deal or lead and it shows on their page.'));
 
@@ -671,22 +705,23 @@ export default function filesView(ctx) {
       const wrap = el('div', { class: 'fl-pdf' });
       const fallback = () => fill(wrap, it.thumb?.large
         ? el('div', { class: 'fl-sheet-page' }, el('img', { src: it.thumb.large, alt: `First page of ${it.name}`, referrerpolicy: 'no-referrer' }))
-        : el('div', { class: 'fl-stage-note' }, glyph(it, 'lg'), el('p', {}, 'This PDF is too large to show here. Open it in OneDrive.')));
+        : el('div', { class: 'fl-stage-note' }, glyph(it, 'lg'), el('p', {}, `This PDF is too large to show here. ${P().open}.`)));
+      const src = d.preview_url || d.download_url;
       if (mode === 'stack') {
         // Phones show only the first page of a framed PDF, so show that page and open the whole file in a tab.
         wrap.classList.add('is-phone');
         wrap.append(it.thumb?.large
           ? el('div', { class: 'fl-sheet-page' }, el('img', { src: it.thumb.large, alt: `First page of ${it.name}`, referrerpolicy: 'no-referrer' }))
           : glyph(it, 'lg'),
-        d.download_url ? el('a', { class: 'btn btn-ghost btn-sm fl-pdf-open', href: d.download_url, target: '_blank', rel: 'noopener noreferrer', dataset: { fk: 'open-pdf' } }, icon('external', 14), 'Read the whole PDF') : null);
+        src ? el('a', { class: 'btn btn-ghost btn-sm fl-pdf-open', href: src, target: '_blank', rel: 'noopener noreferrer', dataset: { fk: 'open-pdf' } }, icon('external', 14), 'Read the whole PDF') : null);
         return wrap;
       }
       if (d.pdf) { wrap.append(el('iframe', { class: 'fl-pdf-frame', src: d.pdf, title: `Preview of ${it.name}` })); return wrap; }
-      if (!d.download_url || (it.size || 0) > 40 * 1024 * 1024) { fallback(); return wrap; }
+      if (!src || (it.size || 0) > 40 * 1024 * 1024) { fallback(); return wrap; }
       wrap.append(el('div', { class: 'skeleton fl-stage-skel' }));
       (async () => {
         try {
-          const res = await fetch(d.download_url, { referrerPolicy: 'no-referrer', credentials: 'omit' });
+          const res = await fetch(src, { referrerPolicy: 'no-referrer', credentials: 'omit' });
           if (!res.ok) throw new Error(String(res.status));
           const blob = new Blob([await res.arrayBuffer()], { type: 'application/pdf' });
           if (selected?.id !== it.id) return;
@@ -775,7 +810,7 @@ export default function filesView(ctx) {
     function pickFolder(it) {
       return new Promise((resolve) => {
         let at = it.parent_id || rootId();
-        let atName = 'OneDrive';
+        let atName = P().root;
         let resolved = false;
         const crumbsBox = el('nav', { class: 'fl-pick-crumbs', 'aria-label': 'Folder path' });
         const listBox = el('div', { class: 'fl-pick-list' });
@@ -788,7 +823,7 @@ export default function filesView(ctx) {
           const r = await od('folders', { item_id: id });
           if (!r.ok) { fill(listBox, el('p', { class: 'small muted' }, errText(r))); return; }
           remember(r.items); remember([r.folder]);
-          at = r.folder.id; atName = r.folder.is_root ? 'OneDrive' : r.folder.name;
+          at = r.folder.id; atName = rootName(r.folder);
           hidden.value = at;
           const path = r.path || [{ id: at, name: atName }];
           fill(crumbsBox, el('ol', {}, path.map((c, i) => el('li', {}, i === path.length - 1 ? el('span', { class: 'fl-crumb is-here' }, c.name)
@@ -811,7 +846,7 @@ export default function filesView(ctx) {
       const inp = el('input', { class: 'input', name: 'name', id: 'fl-nf', required: true, maxlength: '250', autocomplete: 'off', placeholder: 'For example, Smith Plumbing' });
       const hint = el('p', { class: 'field-hint' }, '');
       inp.addEventListener('input', () => { const p = nameProblem(inp.value); inp.setCustomValidity(p); hint.textContent = p; });
-      const where = (mem.paths.get(folderId) || []).at(-1)?.name || 'OneDrive';
+      const where = (mem.paths.get(folderId) || []).at(-1)?.name || P().root;
       const v = await modal({
         title: 'New folder', confirmLabel: 'Make folder',
         body: [el('p', { class: 'muted small' }, `Inside ${where}.`), el('div', { class: 'field' }, el('label', { class: 'field-label', for: 'fl-nf' }, 'Folder name'), inp, hint)]
@@ -846,7 +881,7 @@ export default function filesView(ctx) {
       paintKinds(); paintRecs();
       const v = await modal({
         title: 'Link to…', confirmLabel: 'Link',
-        body: [el('p', { class: 'muted small' }, `${it.name} will show on that page. The file itself stays where it is in OneDrive.`), kinds, q, listBox],
+        body: [el('p', { class: 'muted small' }, `${it.name} will show on that page. The file itself stays where it is in ${P().name}.`), kinds, q, listBox],
         onOpen: () => setTimeout(() => q.focus(), 40)
       });
       if (!v || !v.record) return;
@@ -865,7 +900,7 @@ export default function filesView(ctx) {
         if (!r.ok) { toast(errText(r), 'bad'); return; }
         const d = mem.details.get(it.id);
         if (d) d.links = (d.links || []).filter((x) => x.id !== l.id);
-        toast('Link removed. The file is still in OneDrive.');
+        toast(`Link removed. The file is still in ${P().name}.`);
         if (selected?.id === it.id) paintPane();
       });
     }
@@ -886,10 +921,10 @@ export default function filesView(ctx) {
       closeMenu();
       const items = [
         it.folder ? ['Open', () => goFolder(it.id)] : ['Preview', () => select(it)],
-        it.web_url ? ['Open in OneDrive', () => window.open(it.web_url, '_blank', 'noopener,noreferrer')] : null,
-        ['Rename', () => rename(it)],
-        ['Move', () => move(it)],
-        ['Link to…', () => link(it)]
+        it.web_url ? [P().open, () => window.open(it.web_url, '_blank', 'noopener,noreferrer')] : null,
+        it.can_rename === false ? null : ['Rename', () => rename(it)],
+        it.can_move === false ? null : ['Move', () => move(it)],
+        it.id === 'shared' ? null : ['Link to…', () => link(it)]
       ].filter(Boolean);
       const btns = items.map(([label, run]) => el('button', { type: 'button', role: 'menuitem', class: 'fl-menu-item', onClick: () => { closeMenu(); run(); } }, label));
       menu = el('div', { class: 'fl-menu', role: 'menu', 'aria-label': `Actions for ${it.name}` }, btns);

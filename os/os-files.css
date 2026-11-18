@@ -82,6 +82,10 @@ a.fl-crumb:hover, button.fl-crumb:hover { color: var(--ink); text-decoration: un
 .fl-glyph[data-kind="pdf"] .fl-ext { border-color: var(--rose); }
 .fl-glyph[data-kind="image"] .fl-ext { border-color: var(--violet); }
 .fl-glyph[data-kind="video"] .fl-ext { border-color: var(--teal); }
+.fl-glyph[data-kind="gdoc"] .fl-ext { border-color: var(--blue); }
+.fl-glyph[data-kind="gsheet"] .fl-ext { border-color: var(--up); }
+.fl-glyph[data-kind="gslide"] .fl-ext { border-color: var(--amber); }
+.fl-glyph.is-lg .fl-ext:not(:empty) { letter-spacing: .06em; }
 .fl-glyph.is-sm::after { content: ''; position: absolute; right: 1px; bottom: 1px; width: 6px; height: 1.5px; border-radius: 1px; background: transparent; }
 .fl-glyph.is-sm[data-kind="word"]::after { background: var(--blue); }
 .fl-glyph.is-sm[data-kind="excel"]::after { background: var(--up); }
@@ -89,6 +93,9 @@ a.fl-crumb:hover, button.fl-crumb:hover { color: var(--ink); text-decoration: un
 .fl-glyph.is-sm[data-kind="pdf"]::after { background: var(--rose); }
 .fl-glyph.is-sm[data-kind="image"]::after { background: var(--violet); }
 .fl-glyph.is-sm[data-kind="video"]::after { background: var(--teal); }
+.fl-glyph.is-sm[data-kind="gdoc"]::after { background: var(--blue); }
+.fl-glyph.is-sm[data-kind="gsheet"]::after { background: var(--up); }
+.fl-glyph.is-sm[data-kind="gslide"]::after { background: var(--amber); }
 
 /* list */
 .fl-table-wrap { margin: 0; }
@@ -128,7 +135,7 @@ a.fl-crumb:hover, button.fl-crumb:hover { color: var(--ink); text-decoration: un
 .fl-tile:hover { text-decoration: none; }
 .fl-thumb { aspect-ratio: 4 / 3; border-radius: var(--radius-m); background: var(--mist); display: grid; place-items: center; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(10,14,17,.05); transition: box-shadow var(--dur); }
 .fl-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.fl-tile[data-kind="word"] .fl-thumb img, .fl-tile[data-kind="excel"] .fl-thumb img, .fl-tile[data-kind="powerpoint"] .fl-thumb img, .fl-tile[data-kind="pdf"] .fl-thumb img { object-fit: contain; object-position: center top; padding: 10px 10px 0; background: var(--mist); }
+.fl-tile[data-kind="gdoc"] .fl-thumb img, .fl-tile[data-kind="gsheet"] .fl-thumb img, .fl-tile[data-kind="gslide"] .fl-thumb img, .fl-tile[data-kind="word"] .fl-thumb img, .fl-tile[data-kind="excel"] .fl-thumb img, .fl-tile[data-kind="powerpoint"] .fl-thumb img, .fl-tile[data-kind="pdf"] .fl-thumb img { object-fit: contain; object-position: center top; padding: 10px 10px 0; background: var(--mist); }
 .fl-tile:hover .fl-thumb { box-shadow: inset 0 0 0 1px var(--line-2); }
 .fl-tile-wrap.is-selected .fl-thumb { box-shadow: inset 0 0 0 2px var(--ink); }
 .fl-tile-name { font-size: var(--fs-sm); font-weight: 500; color: var(--ink); line-height: var(--lh-title); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 0 2px; }
@@ -280,6 +287,9 @@ a.fl-crumb:hover, button.fl-crumb:hover { color: var(--ink); text-decoration: un
 .fl-rec-file-mark[data-kind="powerpoint"]::after { background: var(--amber); }
 .fl-rec-file-mark[data-kind="pdf"]::after { background: var(--rose); }
 .fl-rec-file-mark[data-kind="image"]::after { background: var(--violet); }
+.fl-rec-file-mark[data-kind="gdoc"]::after { background: var(--blue); }
+.fl-rec-file-mark[data-kind="gsheet"]::after { background: var(--up); }
+.fl-rec-file-mark[data-kind="gslide"]::after { background: var(--amber); }
 .fl-rec-file-name { flex: 1; min-width: 0; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fl-rec-file-when { flex: none; font-variant-numeric: tabular-nums; }
 @container (max-width: 380px) { .fl-rec-file-when { display: none; } }

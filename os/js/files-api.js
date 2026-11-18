@@ -1,17 +1,39 @@
-// Files (OneDrive) client helpers: one call shape for the `onedrive` edge function, the hub's
-// own link and change rows, and record labels for linking. Imports api.js with the same ?v=
-// stamp as every other module so there is only one copy of `state`.
+// Files client helpers: one call shape for the drive functions (`gdrive` for Google Drive,
+// `onedrive` for OneDrive; both answer the same actions with the same shapes), the hub's own
+// link and change rows, and record labels for linking. Imports api.js with the same ?v= stamp
+// as every other module so there is only one copy of `state`.
 import { fn, sb, state, leadName } from './api.js?v=20261118d';
 
-/**
- * Call the onedrive function. Never throws: resolves to the function's body with `ok`, or
- * {ok:false, error:'network'|'server_error', message}.
- */
-export async function od(action, body = {}) {
-  const { status, data } = await fn('onedrive', { action, ...body });
+/** The two providers. Google Drive is the business's drive; OneDrive stays available, dormant. */
+export const PROVIDERS = {
+  gdrive: { id: 'gdrive', fn: 'gdrive', name: 'Google Drive', root: 'My Drive', open: 'Open in Google Drive', search: 'Search Drive', flag: 'drive', company: 'Google' },
+  onedrive: { id: 'onedrive', fn: 'onedrive', name: 'OneDrive', root: 'OneDrive', open: 'Open in OneDrive', search: 'Search OneDrive', flag: 'onedrive', company: 'Microsoft' }
+};
+let current = PROVIDERS.gdrive;
+/** The provider the Files page is showing. */
+export const provider = () => current;
+
+async function call(name, action, body = {}) {
+  const { status, data } = await fn(name, { action, ...body });
   if (data && typeof data === 'object' && 'ok' in data) return data;
   if (status === 0) return { ok: false, error: 'network', message: 'Cannot reach the hub. Check your connection.' };
   return { ok: false, error: 'server_error', message: 'Something went wrong. Try again in a minute.' };
+}
+
+/** Call the current provider's function. Never throws: resolves to the body with `ok`. */
+export async function od(action, body = {}) { return call(current.fn, action, body); }
+
+/**
+ * Pick the provider and return its status: Google Drive when it is set up or connected, else
+ * OneDrive when it is set up, else Google Drive (whose not-set-up state explains the Google steps).
+ */
+export async function detectProvider() {
+  const g = await call('gdrive', 'status');
+  if (g.ok && (g.configured || g.connected)) { current = PROVIDERS.gdrive; return g; }
+  const o = await call('onedrive', 'status');
+  if (o.ok && o.configured) { current = PROVIDERS.onedrive; return { ...o, provider: 'onedrive' }; }
+  current = PROVIDERS.gdrive;
+  return g.ok ? g : o.ok ? { ...g, ...o, configured: false, connected: false } : g;
 }
 
 /** Links for one record (client, project, deal or lead), newest first. */
@@ -21,7 +43,7 @@ export async function linksForRecord(kind, recordId) {
   return data || [];
 }
 
-/** Links for one OneDrive item. */
+/** Links for one drive item. */
 export async function linksForItem(itemId) {
   const { data, error } = await sb.from('file_links').select('*').eq('item_id', itemId).order('created_at');
   if (error) throw new Error(error.message);
@@ -30,7 +52,7 @@ export async function linksForItem(itemId) {
 
 /** The latest moves, renames and new folders. */
 export async function recentChanges(limit = 25) {
-  const { data, error } = await sb.from('file_changes').select('*').order('at', { ascending: false }).limit(limit);
+  const { data, error } = await sb.from('file_changes').select('*').eq('provider', current.id).order('at', { ascending: false }).limit(limit);
   if (error) throw new Error(error.message);
   return data || [];
 }
@@ -116,11 +138,12 @@ export function baseName(name) {
   return m && m[1] ? m[1] : String(name || '');
 }
 
-/** The same rules the function applies (OneDrive's). Returns an error sentence or ''. */
+/** The same rules the function applies. Returns an error sentence or ''. */
 export function nameProblem(raw) {
   const name = String(raw || '').trim();
   if (!name) return 'Give it a name.';
   if (name.length > 250) return 'That name is too long.';
+  if (current.id === 'gdrive') return name.includes('/') ? 'Names cannot contain a slash (/).' : '';
   if (/["*:<>?/\\|]/.test(name)) return 'Names cannot contain " * : < > ? / \\ or |.';
   if (name.endsWith('.')) return 'Names cannot end with a full stop.';
   if (/^(con|prn|aux|nul|com\d|lpt\d|desktop\.ini|\.lock)$/i.test(name) || /^_vti_/i.test(name) || name.startsWith('~$')) return 'OneDrive reserves that name.';
@@ -131,6 +154,7 @@ export function nameProblem(raw) {
 export function kindLabel(item) {
   if (!item) return '';
   if (item.folder) return 'Folder';
-  return ({ word: 'Word document', excel: 'Excel workbook', powerpoint: 'PowerPoint deck', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive' })[item.kind]
+  return ({ word: 'Word document', excel: 'Excel workbook', powerpoint: 'PowerPoint deck', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive',
+    gdoc: 'Google Doc', gsheet: 'Google Sheet', gslide: 'Google Slides', gform: 'Google Form', gdraw: 'Google Drawing', shortcut: 'Shortcut' })[item.kind]
     || (item.ext ? `${item.ext.toUpperCase()} file` : 'File');
 }
