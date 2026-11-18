@@ -43,7 +43,7 @@ import {
   AGENTS, type AgentName, DAILY_LIMITS, HAIKU, MAX_TOKENS, SONNET, type Totals,
   addDays, addUsage, cleanResearch, costOf, dayWindowStart, emptyTotals, extractJson, filterLinked, hostOf,
   inputTokens, isUuid, lastThree, localDate, monthStartUtc, normUrl, normaliseHistory, overBudget,
-  overDailyLimit, referencedIds, scrubText, validateActions,
+  overDailyLimit, decodeActions, referencedIds, scrubText, validateActions,
 } from "./validate.ts";
 import { allowedHashes, buildSnapshot, isEmptyHub, serialiseSnapshot, type SnapshotRows } from "./snapshot.ts";
 import {
@@ -272,10 +272,15 @@ async function runResearcher(ctx: Ctx, lead: Row) {
       } else {
         sources.push({ kind: "fetch", url: asked, ok: false, error: String(c.error_code ?? "error") });
       }
-    } else if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
-      for (const r of b.content) if (r?.url) sources.push({ kind: "search_result", url: String(r.url), title: String(r.title ?? "").slice(0, 120) });
+    } else if (b.type === "web_search_tool_result") {
+      if (Array.isArray(b.content)) {
+        for (const r of b.content) if (r?.url) sources.push({ kind: "search_result", url: String(r.url), title: String(r.title ?? "").slice(0, 120) });
+      } else {
+        sources.push({ kind: "search", ok: false, error: String(b.content?.error_code ?? "error") });
+      }
     }
   }
+  const trace = content.map((b) => String(b.type) + (b.name ? `:${b.name}` : ""));
   if (!totals.searches && searchBlocks) totals = { ...totals, searches: searchBlocks };
   read.delete("");
   base.sources = sources;
@@ -290,7 +295,7 @@ async function runResearcher(ctx: Ctx, lead: Row) {
   if (!cleaned) return badOutput(ctx, "researcher", base, totals, model, tail);
   const cost = costOf(model, totals);
   const id = await logRun(ctx, {
-    agent: "researcher", status: "ok", ...base, output: { ...cleaned.result, dropped: cleaned.dropped, structured }, model, totals, cost,
+    agent: "researcher", status: "ok", ...base, output: { ...cleaned.result, dropped: cleaned.dropped, structured, trace }, model, totals, cost,
   });
   return respond(ctx, 200, { ok: true, result: cleaned.result, dropped: cleaned.dropped, sources }, { id, model, cost });
 }
@@ -396,7 +401,8 @@ async function runDoer(ctx: Ctx, instruction: string) {
   if (!out || !Array.isArray(out.actions)) return badOutput(ctx, "doer", base, totals, model, raw);
 
   // Look up every id the proposals name (read only), then run the allowlist.
-  const refs = referencedIds(out.actions);
+  const proposed = decodeActions(out.actions);
+  const refs = referencedIds(proposed);
   const db = ctx.db;
   const [leads, clients, projects, deals] = await Promise.all([
     refs.leads.length ? db.from("leads").select("id, status, phone").in("id", refs.leads).eq("archived", false) : { data: [], error: null },
@@ -407,7 +413,7 @@ async function runDoer(ctx: Ctx, instruction: string) {
   const leadRows = must<Row[]>(leads as never);
   const phones = leadRows.map((l) => l.phone).filter(Boolean) as string[];
   const suppressed = new Set<string>(phones.length ? must<Row[]>(await db.from("suppressions").select("phone").in("phone", phones)).map((r) => String(r.phone)) : []);
-  const check = validateActions(out.actions, {
+  const check = validateActions(proposed, {
     today: localDate(ctx.now, ctx.tz),
     leads: new Map(leadRows.map((l) => [String(l.id), { status: String(l.status), suppressed: Boolean(l.phone && suppressed.has(String(l.phone))) }])),
     clients: new Set(must<Row[]>(clients as never).map((r) => String(r.id))),

@@ -27,13 +27,13 @@ function storageSet(k, v) { try { if (v === null) localStorage.removeItem(k); el
  * Exchange the PIN for a session via the hq-login edge function.
  * → {ok:true} | {ok:false, error:'bad_pin'|'locked'|'network'|..., remaining?, retry_after_s?}
  */
-export async function login(pin) {
+export async function login(pin, memberId) {
   let res;
   try {
     res = await fetch(`${FUNCTIONS_URL}hq-login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` },
-      body: JSON.stringify({ pin: String(pin), device_token: storageGet(DEVICE_KEY) || undefined })
+      body: JSON.stringify({ pin: String(pin), member_id: memberId || undefined, device_token: storageGet(DEVICE_KEY) || undefined })
     });
   } catch {
     return { ok: false, error: 'network' };
@@ -52,7 +52,110 @@ export async function login(pin) {
   const { error } = await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
   if (error) return { ok: false, error: 'session' };
   storageSet(PINLEN_KEY, String(String(pin).length));
-  return { ok: true };
+  if (data.member) {
+    state.me = data.member;
+    storageSet(WHO_KEY, data.member.id);
+    storageSet(`${PINLEN_KEY}.${data.member.id}`, String(String(pin).length));
+  }
+  return { ok: true, member: data.member || null };
+}
+
+/* -------------------------------------------------------------------- team
+   More than one person can sign in. Everyone sees the same hub; `state.me` is who
+   is signed in ({id, name, role, email_hint}) and `state.team` is everyone work can
+   be given to ([{id, name, initials, role, can_sign_in, active, sort}]).
+     await who()                  → [{id, name, initials}] the people on the lock screen (public)
+     lastWho()                    → the member id that last signed in on this device, or null
+     pinLengthFor(memberId)       → that person's PIN length on this device, or 0 if unknown
+     memberById(id), memberName(id, fallback), isMine(row)   helpers for owner_id
+     await teamSave({member, pin, sign_in, email})   owner only → {ok, member} | {ok:false, message}
+     await setMyEmail(email)      → {ok} | {ok:false, message}
+     await resetRequest(memberId) → {ok} | {ok:false, error, message}    (public, from the lock screen)
+     await resetConfirm(token, newPin) → {ok} | {ok:false, error, message} */
+const WHO_KEY = 'wiseos.who';
+
+async function publicFn(body) {
+  try {
+    const res = await fetch(`${FUNCTIONS_URL}hq-login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify(body)
+    });
+    let data = {};
+    try { data = await res.json(); } catch { data = {}; }
+    return { status: res.status, data };
+  } catch {
+    return { status: 0, data: { error: 'network' } };
+  }
+}
+
+export async function who() {
+  const { status, data } = await publicFn({ action: 'who' });
+  return status === 200 && Array.isArray(data.people) ? data.people : [];
+}
+
+export const lastWho = () => storageGet(WHO_KEY) || null;
+export function pinLengthFor(memberId) {
+  const n = Number(storageGet(`${PINLEN_KEY}.${memberId}`));
+  return n >= 4 && n <= 12 ? n : 0;
+}
+
+export const memberById = (id) => (state.team || []).find((m) => m.id === id) || null;
+export const memberName = (id, fallback = 'Nobody yet') => memberById(id)?.name || fallback;
+/** True when the record is yours or has no owner (unowned work is everyone's to see). */
+export const isMine = (row) => !row?.owner_id || row.owner_id === state.me?.id;
+
+/** Refresh who is signed in (after a reload the session is gone, so this runs after login). */
+export async function loadMe() {
+  const { status, data } = await fn('hq-login', { action: 'me' });
+  if (status === 200 && data?.member) state.me = data.member;
+  notify();
+  return state.me;
+}
+
+const TEAM_ERRORS = {
+  owner_only: 'Only the owner can manage the team.',
+  weak_pin: 'A PIN is 4 to 12 digits.',
+  unauthorized: 'Your session has expired. Lock and unlock, then try again.',
+  email_not_configured: 'Email is not set up yet, so a reset link cannot be sent. Ask the owner to reset your PIN in Settings.',
+  too_many: 'Too many reset requests. Try again in an hour.',
+  bad_token: 'That reset link has expired or was already used. Ask for a new one.',
+  network: 'Could not reach the sign-in service. Check your connection.'
+};
+const teamError = (status, data) => {
+  const error = data?.error || (status === 0 ? 'network' : `http_${status}`);
+  return { ok: false, error, message: data?.detail || TEAM_ERRORS[error] || 'That did not work. Try again.' };
+};
+
+export async function teamSave({ member, pin, sign_in: signIn, email } = {}) {
+  const body = { action: 'team_save', member: member || {} };
+  if (pin) body.pin = String(pin);
+  if (signIn) body.sign_in = true;
+  if (typeof email === 'string') body.email = email;
+  const { status, data } = await fn('hq-login', body);
+  if (status === 200 && data?.ok) {
+    upsertInto(state.team, data.member);
+    state.team.sort((a, b) => (a.sort - b.sort) || String(a.created_at).localeCompare(String(b.created_at)));
+    notify();
+    return { ok: true, member: data.member };
+  }
+  return teamError(status, data);
+}
+
+export async function setMyEmail(email) {
+  const { status, data } = await fn('hq-login', { action: 'set_email', email: String(email || '') });
+  if (status === 200 && data?.ok) { await loadMe(); return { ok: true }; }
+  return teamError(status, data);
+}
+
+export async function resetRequest(memberId) {
+  const { status, data } = await publicFn({ action: 'reset_request', member_id: memberId });
+  return status === 200 && data?.ok ? { ok: true } : teamError(status, data);
+}
+
+export async function resetConfirm(token, newPin) {
+  const { status, data } = await publicFn({ action: 'reset_confirm', token: String(token || ''), new_pin: String(newPin || '') });
+  return status === 200 && data?.ok ? { ok: true } : teamError(status, data);
 }
 
 /** Length of the PIN that last unlocked this device (default 6). Never the PIN itself. */
@@ -68,6 +171,7 @@ export async function changePin(oldPin, newPin) {
   });
   if (status === 200 && data && data.ok) {
     storageSet(PINLEN_KEY, String(String(newPin).length));
+    if (state.me?.id) storageSet(`${PINLEN_KEY}.${state.me.id}`, String(String(newPin).length));
     return { ok: true };
   }
   return { ok: false, error: data?.error || `http_${status}`, remaining: data?.remaining, retry_after_s: data?.retry_after_s };
@@ -134,6 +238,8 @@ export const state = {
   income: [],
   costs: [],
   library: [],
+  me: null,
+  team: [],
   ai: null,
   agents: null,
   agent_runs: [],
@@ -218,6 +324,7 @@ export async function loadAll() {
   refreshSmsStatus();
   aiStatus();
   loadAgents();
+  loadTeam();
   return state;
 }
 
@@ -246,7 +353,7 @@ function setConnection(c) {
 export const BUSINESS_TABLES = ['clients', 'deals', 'proposals', 'projects', 'tasks', 'roi_reports', 'income', 'costs', 'library'];
 const TABLE_KEY = {
   leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events',
-  agent_runs: 'agent_runs', agent_actions: 'agent_actions',
+  agent_runs: 'agent_runs', agent_actions: 'agent_actions', team_members: 'team',
   ...Object.fromEntries(BUSINESS_TABLES.map((t) => [t, t]))
 };
 
@@ -601,6 +708,16 @@ const AGENT_ERRORS = {
   empty: 'There is nothing in the hub for it to work from yet.',
   bad_request: 'It needs a bit more to go on.'
 };
+
+export async function loadTeam() {
+  try {
+    const { data, error } = await sb.from('team_members').select('*').order('sort').order('created_at');
+    if (!error) state.team = data;
+  } catch { /* the team list simply stays empty */ }
+  notify();
+  if (!state.me) await loadMe();
+  return state.team;
+}
 
 export async function loadAgents() {
   try {

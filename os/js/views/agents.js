@@ -241,14 +241,16 @@ export function researchCard(lead, r, { onSaved } = {}) {
     el('p', { class: 'ag-rc-label' }, 'Personal lines it suggests'),
     lines.length
       ? el('ul', { class: 'ag-lines' }, lines.map((line) => {
-        const b = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'use-line' } }, icon('check', 13), 'Use this line');
+        const inUse = (cur().hook || '').trim() === line;
+        const b = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'use-line' }, disabled: inUse || null }, icon('check', 13), inUse ? 'In use' : 'Use this line');
         b.addEventListener('click', () => useLine(line, b));
         return el('li', {}, el('q', { class: 'ag-line' }, line), optedOut ? null : b);
       }))
       : el('p', { class: 'ag-honest', dataset: { nolines: '' } }, 'It found nothing specific enough to write a personal line from, so it has not made one up. Look at their reviews or socials yourself, or leave this one.'),
     lines.length && !optedOut ? el('p', { class: 'small muted' }, 'Each goes in after “Hi <name>, Tyler from Wise AI here in Brisbane.” Read it before you use it.') : null);
 
-  const painBtn = pain ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'save-pain' } }, 'Save the problem') : null;
+  const painSaved = pain && (cur().pain || '').trim() === pain;
+  const painBtn = pain ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'save-pain' }, disabled: painSaved || null }, painSaved ? [icon('check', 13), 'Saved'] : 'Save the problem') : null;
   painBtn?.addEventListener('click', () => savePain(painBtn));
   const painBlock = pain ? el('div', { class: 'ag-rc-block' },
     el('p', { class: 'ag-rc-label' }, 'The likely problem'),
@@ -264,10 +266,10 @@ export function researchCard(lead, r, { onSaved } = {}) {
   const numberBlock = el('div', { class: 'ag-rc-block', dataset: { number: np } },
     el('p', { class: 'ag-rc-label' }, 'Is their mobile published?'),
     el('div', { class: 'ag-rc-row' },
-      el('p', {},
-        badge(np === 'yes' ? 'Yes' : np === 'no' ? 'No' : 'Unknown', np === 'yes' ? 'ok' : np === 'no' ? 'warn' : 'mute'), ' ',
+      el('p', { class: 'ag-num-line' },
+        badge(np === 'yes' ? 'Yes' : np === 'no' ? 'No' : 'Unknown', np === 'yes' ? 'ok' : np === 'no' ? 'warn' : 'mute'),
         el('span', { class: 'muted' }, np === 'yes' ? 'It is on a page it read.' : np === 'no' ? 'It could not find it on the pages it read.' : 'It could not tell.'),
-        ev ? [' ', extLink(ev, 'Evidence')] : null),
+        ev ? extLink(ev, 'Evidence') : null),
       srcBtn),
     np === 'yes' && curSrc ? el('p', { class: 'small muted' }, 'The lead already has a number source saved.') : null);
 
@@ -424,6 +426,19 @@ export function describeChange(a) {
   }
 }
 
+const LEAD_OK = ['new', 'queued', 'contacted', 'replied', 'interested', 'booked', 'won', 'lost'];
+/** Why a proposal breaks the rules (so it cannot be approved), or null. Mirrors the allowlist in api.js. */
+export function ruleBreak(a) {
+  const p = a.payload || {};
+  if (!KIND[a.kind]) return 'This kind of change is not on the allowed list.';
+  const l = p.lead_id ? leadById(p.lead_id) : null;
+  if (a.kind === 'lead.set_status' && p.status === 'dnc') return 'Marking someone do not contact is yours to do, not an agent’s.';
+  if (a.kind === 'lead.set_status' && !LEAD_OK.includes(p.status)) return 'That status is not allowed.';
+  if (['lead.set_status', 'lead.set_followup', 'message.draft'].includes(a.kind) && l?.status === 'dnc') return 'This lead is marked do not contact.';
+  if (a.kind === 'deal.update' && p.stage !== undefined && !['qualified', 'proposal', 'negotiation'].includes(p.stage)) return 'Closing a deal is yours to do, not an agent’s.';
+  return null;
+}
+
 async function approve(a, btn) {
   const run = async () => {
     const res = await applyAgentAction(a);
@@ -452,7 +467,8 @@ export function actionCard(a) {
         open && safeHash(open) ? el('a', { class: 'small ag-open', href: safeHash(open) }, 'Open', icon('arrow', 12)) : null,
         a.decided_at ? el('span', { class: 'small faint' }, timeAgo(a.decided_at)) : null));
   }
-  const ok = el('button', { type: 'button', class: 'btn btn-primary btn-sm', dataset: { act: 'approve' }, disabled: k ? null : true }, icon('check', 14), 'Approve');
+  const broken = ruleBreak(a);
+  const ok = el('button', { type: 'button', class: 'btn btn-primary btn-sm', dataset: { act: 'approve' }, disabled: broken ? true : null }, icon('check', 14), 'Approve');
   const no = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'reject' } }, 'Reject');
   ok.addEventListener('click', () => approve(a, ok));
   no.addEventListener('click', () => busy(no, async () => {
@@ -466,6 +482,7 @@ export function actionCard(a) {
     el('p', { class: 'ag-action-sum' }, a.summary),
     el('div', { class: 'ag-change' }, el('p', { class: 'ag-rc-label' }, 'What will change'), el('ul', {}, describeChange(a))),
     str(a.reason) ? el('p', { class: 'ag-why small' }, el('span', { class: 'muted' }, 'Why: '), a.reason) : null,
+    broken ? el('p', { class: 'callout is-bad ag-broken', dataset: { broken: '' } }, icon('ban', 15), el('span', {}, `Outside the rules, so it cannot be approved. ${broken} Reject it to clear it.`)) : null,
     el('div', { class: 'row ag-action-btns' }, ok, no));
 }
 
@@ -494,9 +511,10 @@ async function approveAll(list, btn) {
 function proposalGroup(runId, list, { showHead = true } = {}) {
   const run = state.agent_runs.find((r) => r.id === runId);
   const proposed = list.filter((a) => a.status === 'proposed');
-  const all = proposed.length > 1 && (!run || run.agent === 'doer')
-    ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'approve-all' } }, `Approve all ${proposed.length}`) : null;
-  all?.addEventListener('click', () => approveAll(proposed, all));
+  const allowed = proposed.filter((a) => !ruleBreak(a));
+  const all = allowed.length > 1 && (!run || run.agent === 'doer')
+    ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'approve-all' } }, `Approve all ${allowed.length}`) : null;
+  all?.addEventListener('click', () => approveAll(allowed, all));
   return el('section', { class: 'ag-group', dataset: { run: runId || '' } },
     showHead || all ? el('div', { class: 'ag-group-head' },
       showHead ? el('div', { class: 'stack tight' },
@@ -694,7 +712,7 @@ function buildControl(k) {
 
 /* ---------------------------------------------------------------- researcher */
 function researcherControl() {
-  const search = el('input', { class: 'input', type: 'search', name: 'research-q', placeholder: 'Pick a lead to research: type a business or name', 'aria-label': 'Pick a lead to research', autocomplete: 'off', value: ui.researchQ });
+  const search = el('input', { class: 'input', type: 'search', name: 'research-q', placeholder: 'Find a lead to research', 'aria-label': 'Pick a lead to research', autocomplete: 'off', value: ui.researchQ });
   const results = el('ul', { class: 'ag-pick', 'aria-label': 'Matching leads' });
   const chosen = el('div', { class: 'ag-chosen' });
   let chosenKey = '';

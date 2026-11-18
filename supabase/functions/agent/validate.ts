@@ -439,6 +439,20 @@ export function validateActions(raw: unknown, ctx: ActionCtx): { valid: Proposal
   return { valid, rejected };
 }
 
+/** Turns the model's actions ({kind, payload_json, summary, reason}) into {kind, payload, …}; bad JSON → null payload. */
+export function decodeActions(raw: unknown): unknown[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((a) => {
+    if (!a || typeof a !== "object") return a;
+    const r = a as Record<string, unknown>;
+    let payload: unknown = r.payload;
+    if (typeof r.payload_json === "string") {
+      try { payload = JSON.parse(r.payload_json); } catch { payload = null; }
+    }
+    return { kind: r.kind, payload, summary: r.summary, reason: r.reason };
+  });
+}
+
 /** Every lead/client/project/deal id the proposed actions mention (to look up before validating). */
 export function referencedIds(raw: unknown): { leads: string[]; clients: string[]; projects: string[]; deals: string[] } {
   const sets = { leads: new Set<string>(), clients: new Set<string>(), projects: new Set<string>(), deals: new Set<string>() };

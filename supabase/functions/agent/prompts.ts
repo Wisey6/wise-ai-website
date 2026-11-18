@@ -145,23 +145,13 @@ Hard rules:
 - At most 20 actions. Each needs a one-line "summary" (what will change, naming the business) and a short "reason".
 - If nothing in the snapshot matches the instruction, return no actions and explain in "note".
 - "note" is always a short plain summary for Tyler of what you proposed and anything you could not do.
+- Write each action's payload as a JSON object in "payload_json", e.g. {"lead_id":"<id>","date":"2026-11-20"}.
 
 HUB SNAPSHOT:
 `;
 
-const id = { type: "string" };
-const action = (kind: string, props: Record<string, unknown>, required: string[]) => ({
-  type: "object",
-  properties: {
-    kind: { type: "string", const: kind },
-    payload: { type: "object", properties: props, required, additionalProperties: false },
-    summary: str,
-    reason: str,
-  },
-  required: ["kind", "payload", "summary", "reason"],
-  additionalProperties: false,
-});
-
+// One flat item shape: the payload travels as a JSON string. (A per-kind anyOf schema was rejected by
+// the API as "compiled grammar is too large".) The allowlist validator checks every payload in code.
 export const DOER_SCHEMA = {
   type: "object",
   properties: {
@@ -169,17 +159,18 @@ export const DOER_SCHEMA = {
     actions: {
       type: "array",
       items: {
-        anyOf: [
-          action("lead.set_status", { lead_id: id, status: { type: "string", enum: ["new", "queued", "contacted", "replied", "interested", "booked", "won", "lost"] } }, ["lead_id", "status"]),
-          action("lead.set_followup", { lead_id: id, date: str }, ["lead_id", "date"]),
-          action("lead.set_hook", { lead_id: id, hook: str }, ["lead_id", "hook"]),
-          action("note.add", { lead_id: id, client_id: id, text: str }, ["text"]),
-          action("task.create", { title: str, client_id: id, project_id: id, due_on: str, priority: { type: "string", enum: ["low", "medium", "high"] } }, ["title"]),
-          action("deal.create", { title: str, lead_id: id, client_id: id, value: { type: "number" }, monthly_value: { type: "number" }, next_step: str }, ["title"]),
-          action("deal.update", { deal_id: id, stage: { type: "string", enum: ["qualified", "proposal", "negotiation"] }, next_step: str, next_step_on: str, probability: { type: "integer" } }, ["deal_id"]),
-          action("message.draft", { lead_id: id, body: str }, ["lead_id", "body"]),
-          action("invoice.draft", { client_id: id, description: str, amount: { type: "number" }, kind: { type: "string", enum: ["one_off", "retainer"] } }, ["client_id", "description", "amount", "kind"]),
-        ],
+        type: "object",
+        properties: {
+          kind: {
+            type: "string",
+            enum: ["lead.set_status", "lead.set_followup", "lead.set_hook", "note.add", "task.create", "deal.create", "deal.update", "message.draft", "invoice.draft"],
+          },
+          payload_json: str,
+          summary: str,
+          reason: str,
+        },
+        required: ["kind", "payload_json", "summary", "reason"],
+        additionalProperties: false,
       },
     },
   },

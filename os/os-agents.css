@@ -93,7 +93,9 @@
 .ag-honest { font-size: var(--fs-sm); color: var(--body); line-height: var(--lh-body); padding: 2px 0 2px var(--space-3); border-left: 2px solid var(--line-2); max-width: 62ch; }
 .ag-rc-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .ag-rc-row > p { flex: 1 1 260px; min-width: 0; line-height: var(--lh-body); color: var(--ink); }
-.ag-rc-row .badge { vertical-align: -5px; }
+.ag-num-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--space-3); }
+.ag-num-line .ag-src { font-size: var(--fs-sm); }
+.ag-broken { margin-top: var(--space-1); }
 .ag-optout strong { color: var(--rose-t); font-weight: 600; }
 .ag-optout .row { margin-top: var(--space-1); }
 .ag-unread strong { color: var(--ink); font-weight: 600; }
@@ -185,12 +187,12 @@
 .ag-run-chips .chip .count { margin-left: 2px; }
 .ag-run { display: flex; flex-direction: column; gap: var(--space-5); max-width: 900px; }
 .ag-run > .card-link { align-self: flex-start; }
-.ag-run-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.ag-run-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; }
 .ag-run-head .h2 { overflow-wrap: anywhere; }
 .ag-run-cells { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
 .ag-run-cell { display: flex; flex-direction: column; gap: 6px; padding: var(--space-3) var(--space-3) var(--space-3) 0; min-width: 0; }
 .ag-run-cell + .ag-run-cell { padding-left: var(--space-3); border-left: 1px solid var(--line); }
-.ag-run-cell .tnum { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.ag-run-cell .tnum { color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-feature-settings: normal; }
 @media (max-width: 760px) {
   .ag-run-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ag-run-cell, .ag-run-cell + .ag-run-cell { padding: var(--space-3) var(--space-3) var(--space-3) 0; border-left: 0; border-bottom: 1px solid var(--line-3); }

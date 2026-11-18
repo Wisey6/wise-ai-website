@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   DAILY_LIMITS, MAX_ACTIONS, addDays, addUsage, cleanResearch, costOf, dayWindowStart, emptyTotals, extractJson,
-  filterLinked, hasContactDetails, hostOf, lastThree, localDate, monthStartUtc, normUrl, normaliseHistory,
+  decodeActions, filterLinked, hasContactDetails, hostOf, lastThree, localDate, monthStartUtc, normUrl, normaliseHistory,
   overBudget, overDailyLimit, referencedIds, scrubText, validateActions,
 } from "../functions/agent/validate.ts";
 import { allowedHashes, buildSnapshot, isEmptyHub, serialiseSnapshot } from "../functions/agent/snapshot.ts";
@@ -342,6 +342,19 @@ test("doer: at most 20 actions, duplicates dropped, junk tolerated", () => {
   assert.equal(validateActions([null, 5, "x"], ctx()).rejected.length, 3);
 });
 
+test("doer: payload_json is decoded, bad JSON becomes a rejected action", () => {
+  const decoded = decodeActions([
+    { kind: "lead.set_followup", payload_json: `{"lead_id":"${L1}","date":"2026-11-20"}`, summary: "Follow up Acme", reason: "quiet" },
+    { kind: "task.create", payload_json: "{not json", summary: "x", reason: "" },
+    null,
+  ]);
+  assert.deepEqual(decoded[0], { kind: "lead.set_followup", payload: { lead_id: L1, date: "2026-11-20" }, summary: "Follow up Acme", reason: "quiet" });
+  const r = validateActions(decoded, ctx());
+  assert.equal(r.valid.length, 1);
+  assert.deepEqual(r.rejected.map((x) => x.why), ["payload missing", "kind not allowed"]);
+  assert.deepEqual(decodeActions("nope"), []);
+});
+
 test("referencedIds collects only uuids, first 20", () => {
   const r = referencedIds([act("note.add", { lead_id: L1, client_id: C1 }), act("deal.update", { deal_id: D1 }), act("task.create", { project_id: "x" })]);
   assert.deepEqual(r, { leads: [L1], clients: [C1], projects: [], deals: [D1] });
@@ -448,5 +461,5 @@ test("schemas are strict objects", () => {
   };
   walk(RESEARCHER_SCHEMA);
   walk(DOER_SCHEMA);
-  assert.equal(DOER_SCHEMA.properties.actions.items.anyOf.length, 9);
+  assert.equal(DOER_SCHEMA.properties.actions.items.properties.kind.enum.length, 9);
 });
