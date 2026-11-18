@@ -7,10 +7,10 @@
 // conversation is kept on the server, the unsent text is kept here). A reply that lands
 // while it is folded shows for a few seconds above the pill, and a dot stays until it is
 // opened. It makes the changes you ask for, lists each with an Undo, and never sends.
-import { el, icon, fill, busy, plural } from './ui.js?v=20261118d';
-import { state, onChange } from './api.js?v=20261118d';
-import { chatSurface, chatBusy, onChatChange, lastReply } from './chat.js?v=20261118d';
-import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261118d';
+import { el, icon, fill, busy, plural } from './ui.js?v=20261118e';
+import { state, onChange } from './api.js?v=20261118e';
+import { chatSurface, chatBusy, onChatChange, lastReply } from './chat.js?v=20261118e';
+import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261118e';
 
 const LOGO = '../logo.svg';
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');

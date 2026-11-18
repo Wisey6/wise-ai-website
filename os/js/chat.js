@@ -7,13 +7,13 @@
 // returns reaches the page as text nodes through el(); links are hub hashes only.
 import {
   el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural
-} from './ui.js?v=20261118d';
+} from './ui.js?v=20261118e';
 import {
   state, chatSend, chatMessages, chatRename, chatArchive, chatDelete, undoChange, memoryDelete,
   agentStatus, saveSettings, rowById, sb
-} from './api.js?v=20261118d';
-import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118d';
-import { agentsInfo, usd } from './views/agents.js?v=20261118d';
+} from './api.js?v=20261118e';
+import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261118e';
+import { agentsInfo, usd } from './views/agents.js?v=20261118e';
 
 export const MAX_MESSAGE = 4000;
 

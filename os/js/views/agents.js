@@ -6,13 +6,13 @@
 import {
   el, icon, fill, clear, toast, busy, badge, confirmDialog, emptyState, timeAgo, dateTime, timeOnly, dayKey,
   money, num, plural, STATUS, go
-} from '../ui.js?v=20261118d';
+} from '../ui.js?v=20261118e';
 import {
   state, notify, saveLead, saveSettings, agentRun, agentStatus, applyAgentAction, rejectAgentAction,
   leadById, leadName, rowById
-} from '../api.js?v=20261118d';
-import { safeHash } from '../ask.js?v=20261118d';
-import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261118d';
+} from '../api.js?v=20261118e';
+import { safeHash } from '../ask.js?v=20261118e';
+import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261118e';
 
 /* ================================================================ shared bits */
 
@@ -217,7 +217,7 @@ export function researchCard(lead, r, { onSaved } = {}) {
         : el('div', { class: 'row' }, el('button', {
           type: 'button', class: 'btn btn-danger btn-sm', dataset: { act: 'mark-dnc' },
           onClick: async () => {
-            const { markDnc } = await import('./leads.js?v=20261118d');
+            const { markDnc } = await import('./leads.js?v=20261118e');
             const ok = await markDnc(cur());
             if (ok) onSaved?.('status', 'dnc');
           }
