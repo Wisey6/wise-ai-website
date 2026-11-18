@@ -401,6 +401,7 @@ test("callback: bad, expired, replayed and non-owner states are refused; a good 
   const once = await signState(MEMBER, "n-once-abcdefghijklmnop", secret);
   await call({ code: "c", state: once });
   assert.equal(await call({ code: "c", state: once }), backTo("bad_state"));
-  assert.equal(await handleCallback({ db, env: NO_ENV, params: new URLSearchParams({ code: "c", state: once }) }), backTo("not_configured"));
+  assert.equal(await handleCallback({ db, env: NO_ENV, params: new URLSearchParams({ code: "c", state: await signState(MEMBER, "n-nc-abcdefghijklmnop", secret) }) }), backTo("not_configured"));
+  assert.equal(await handleCallback({ db, env: NO_ENV, params: new URLSearchParams({ code: "c", state: "junk" }) }), backTo("bad_state"));
   assert.equal(backTo("connected"), "https://wise-ai.au/os/?onedrive=connected#files");
 });

@@ -10,6 +10,7 @@ import {
   openProjectForm, guardedPaint, keepFocus, sortMyTasks
 } from './projects.js?v=20261118d';
 import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner, ownerName } from '../owners.js?v=20261118d';
+import { linkedFiles } from './files-linked.js?v=20261118d';
 
 /* ============================================================ constants */
 export const CLIENT_STATUSES = [
@@ -323,7 +324,7 @@ function clientPage(id) {
       sec('To do', 'Open tasks', null, quickAdd({ client_id: id }, { placeholder: 'Add a task for this client and press Enter' }), tasksBox),
       sec('Proof of value', 'ROI reports', el('a', { class: 'btn btn-ghost btn-sm', href: `#roi-reports/new/${id}` }, icon('plus', 13), 'New ROI report'), reportsBox),
       sec('History', 'The story so far', null, storyBox)),
-    el('aside', { class: 'dl-side' }, details.node, notes.node)));
+    el('aside', { class: 'dl-side' }, details.node, notes.node, linkedFiles('client', id))));
 
   function paintHead() {
     const c = rowById('clients', id);

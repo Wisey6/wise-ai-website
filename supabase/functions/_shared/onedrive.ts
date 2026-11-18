@@ -737,10 +737,10 @@ export const backTo = (result: string) => `${HUB_FILES}?onedrive=${encodeURIComp
 export async function handleCallback(o: { db: Db; env: Env; params: URLSearchParams; fetchImpl?: Fetch }): Promise<string> {
   const { db, env, params } = o;
   try {
-    if (!configured(env)) return backTo("not_configured");
     const secret = await stateSecret(env);
     const st = await verifyState(params.get("state"), secret);
     if (!st.ok) return backTo(st.error === "expired" ? "expired" : "bad_state");
+    if (!configured(env)) return backTo("not_configured");
     const { data: fresh, error: nErr } = await db.rpc("onedrive_use_nonce", { p_nonce: st.nonce });
     if (nErr || fresh !== true) return backTo("bad_state");
     if (params.get("error")) return backTo(params.get("error") === "access_denied" ? "denied" : "error");

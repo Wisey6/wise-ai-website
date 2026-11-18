@@ -6,6 +6,7 @@ import {
 import { state, saveRow, deleteRow, rowById } from '../api.js?v=20261118d';
 import { today, addDays, fmtDate, keyOf } from './roi-reports.js?v=20261118d';
 import { ownerPicker, ownerBadge, ownerLabel, ownerName, saveOwner, activeTeam, meId, isMe } from '../owners.js?v=20261118d';
+import { linkedFiles } from './files-linked.js?v=20261118d';
 
 /* ============================================================ constants */
 export const PROJECT_STATUSES = [
@@ -640,7 +641,7 @@ function projectPage(id) {
         el('div', { class: 'section-head' }, el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Tasks'), el('h2', { class: 'h2' }, 'What is left to do')), viewBar),
         qaNode,
         tasksBox)),
-    el('aside', { class: 'dl-side' }, details.node)));
+    el('aside', { class: 'dl-side' }, details.node, linkedFiles('project', id))));
 
   function paintHead() {
     const p = rowById('projects', id);

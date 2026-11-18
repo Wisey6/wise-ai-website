@@ -40,7 +40,8 @@ export const NAV = [
   ] },
   { group: 'Know', icon: 'book', items: [
     { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118d') },
-    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261118d') }
+    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261118d') },
+    { id: 'files', label: 'Files', icon: 'archive', view: () => import('./views/files.js?v=20261118d') }
   ] },
   { sep: true },
   { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261118d') },

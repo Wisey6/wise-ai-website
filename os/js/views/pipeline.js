@@ -8,6 +8,7 @@ import {
 import { state, saveRow, deleteRow, rowById, leadById, leadName, leadToClient, onChange } from '../api.js?v=20261118d';
 import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner } from '../owners.js?v=20261118d';
 import { createProposalFromDeal, proposalTotals, effectiveStatus, PROPOSAL_STATUS } from './proposals.js?v=20261118d';
+import { linkedFiles } from './files-linked.js?v=20261118d';
 
 /* ------------------------------------------------------------- constants */
 export const STAGES = [
@@ -612,7 +613,7 @@ export function openDeal(id) {
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close deal', onClick: () => close() }, icon('x', 18))),
       el('div', { class: 'row' }, stageSel, ownerSel, sub),
       actions),
-    el('div', { class: 'drawer-body' }, nextSec, outcome, details, propsSec),
+    el('div', { class: 'drawer-body' }, nextSec, outcome, details, propsSec, linkedFiles('deal', id, { drawer: true })),
     el('div', { class: 'drawer-foot' }, saveBtn, archiveBtn, el('span', { class: 'spacer' }), delBtn));
   const backdrop = el('div', { class: 'drawer-backdrop', onClick: () => close() });
 
