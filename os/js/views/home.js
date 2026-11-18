@@ -1,7 +1,8 @@
 // Today: what happened, what is coming up, and what to do next, across the whole
 // business: leads and replies, deals, proposals, delivery, invoices and retainers.
 import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num, plural, prettyPhone } from '../ui.js?v=20261118c';
-import { isAuMobile, leadName, leadById, isSuppressed, formatValue } from '../api.js?v=20261118c';
+import { isAuMobile, leadName, leadById, isSuppressed, formatValue, isMine, rowById } from '../api.js?v=20261118c';
+import { ownerBadge, ownerName, readScope, scopeToggle, meId } from '../owners.js?v=20261118c';
 import { agentsInfo, briefingPanel, todaysBriefing, pendingActions } from './agents.js?v=20261118c';
 
 const DAY = 86400000;
@@ -34,8 +35,47 @@ export function eligibleForFirstText(l, settings) {
     && (!settings?.require_hook || Boolean((l.hook || '').trim()));
 }
 
+/* ------------------------------------------------------- what is yours
+   Everyone sees the same hub. "Mine" narrows the work in front of you to what is
+   yours or nobody's yet; business numbers always stay whole-business. */
+const clientOwned = (state, id) => (state.clients || []).find((c) => c.id === id) || null;
+/** The state, narrowed to your own and unowned work (leads, bookings, tasks, deals, clients, invoices, proposals). Pure. */
+export function scopedState(state, scope = 'mine') {
+  if (scope !== 'mine') return state;
+  const mine = (r) => isMine(r);
+  const leadMine = (id) => { const l = (state.leads || []).find((x) => x.id === id); return !l || mine(l); };
+  const clientMine = (id) => { const c = clientOwned(state, id); return !c || mine(c); };
+  const dealMine = (id) => { const d = (state.deals || []).find((x) => x.id === id); return !d || mine(d); };
+  return {
+    ...state,
+    leads: (state.leads || []).filter(mine),
+    bookings: (state.bookings || []).filter((b) => !b.lead_id || leadMine(b.lead_id)),
+    tasks: (state.tasks || []).filter(mine),
+    deals: (state.deals || []).filter(mine),
+    clients: (state.clients || []).filter(mine),
+    income: (state.income || []).filter((i) => !i.client_id || clientMine(i.client_id)),
+    proposals: (state.proposals || []).filter((p) => (p.deal_id ? dealMine(p.deal_id) : p.client_id ? clientMine(p.client_id) : true))
+  };
+}
+
+/** Who owns the record behind a Do next item (from its key), or null. */
+export function ownerOfItem(state, key) {
+  const m = /^(reply|web|nudge|call|outcome|inv|task|deal-step|deal|prop|retainer|roi)-(.+)$/.exec(key || '');
+  if (!m) return null;
+  const [, kind, id] = m;
+  const find = (t) => (state[t] || []).find((r) => r.id === id) || null;
+  if (kind === 'reply' || kind === 'web' || kind === 'nudge') return find('leads')?.owner_id || null;
+  if (kind === 'call' || kind === 'outcome') { const b = find('bookings'); return (b?.lead_id && (state.leads || []).find((l) => l.id === b.lead_id)?.owner_id) || null; }
+  if (kind === 'inv') { const i = find('income'); return (i?.client_id && clientOwned(state, i.client_id)?.owner_id) || null; }
+  if (kind === 'task') return find('tasks')?.owner_id || null;
+  if (kind === 'deal' || kind === 'deal-step') return find('deals')?.owner_id || null;
+  if (kind === 'prop') { const p = find('proposals'); const d = p?.deal_id ? (state.deals || []).find((x) => x.id === p.deal_id) : null; return d?.owner_id || (p?.client_id && clientOwned(state, p.client_id)?.owner_id) || null; }
+  if (kind === 'retainer' || kind === 'roi') return clientOwned(state, id)?.owner_id || null;
+  return null;
+}
+
 /* ------------------------------------------------------------- Do next */
-function computeDoNext(state) {
+function computeDoNext(state, full = state) {
   const items = [];
   const now = Date.now();
   const leads = state.leads.filter(isActive);
@@ -162,7 +202,7 @@ function computeDoNext(state) {
   }
 
   // 10. Setup gaps.
-  if (!state.leads.length) {
+  if (!full.leads.length) {
     items.push({ key: 'import', icon: 'upload', tone: 'blue', title: 'Import your first leads', sub: 'A CSV from a directory or spreadsheet; we keep AU mobiles and flag the rest', href: '#leads/import', cta: 'Import' });
     items.push({ key: 'add', icon: 'plus', tone: '', title: 'Or add one lead by hand', sub: 'Someone you already know could use a hand', href: '#leads/new', cta: 'Add' });
   }
@@ -341,14 +381,21 @@ function bizStrip(state) {
 const DO_CAP = 9;
 let doShowAll = false;
 
-function doNextCard(state) {
-  const items = computeDoNext(state);
+function doNextCard(fullState, scope = readScope('today')) {
+  const state = scopedState(fullState, scope);
+  const items = computeDoNext(state, fullState);
   const shown = doShowAll ? items : items.slice(0, DO_CAP);
   const unread = state.leads.filter((l) => l.unread && !l.archived).length;
+  const me = meId();
+  const tag = (key) => {
+    if (scope === 'mine') return null;
+    const o = ownerOfItem(fullState, key);
+    return o && o !== me ? el('span', { class: 'do-owner', title: `${ownerName(o)}'s` }, ownerBadge(o, { size: 'sm', title: false }), el('span', { class: 'sr-only' }, ` (${ownerName(o)}'s)`)) : null;
+  };
   const list = el('ol', { class: 'do-list' }, shown.map((it, i) => el('li', { class: `do-item${i === 0 ? ' is-first' : ''}`, dataset: { key: it.key } },
     el('span', { class: 'do-n', 'aria-hidden': 'true' }, String(i + 1).padStart(2, '0')),
     el('span', { class: 'do-text' },
-      el('span', { class: 'do-title' }, it.title),
+      el('span', { class: 'do-title' }, tag(it.key), it.title),
       it.sub ? el('span', { class: 'do-sub' }, it.sub) : null),
     el('span', { class: 'do-acts' },
       it.extra ? el('a', {
@@ -361,13 +408,15 @@ function doNextCard(state) {
     el('div', { class: 'card-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Do next'),
         el('h2', { class: 'h2', id: 'do-next-h' }, items.length ? `${plural(items.length, 'thing')} worth your time, in order` : 'Nothing urgent')),
-      unread ? el('a', { class: 'card-link', href: '#inbox' }, 'Open inbox', icon('arrow', 14)) : null),
+      el('div', { class: 'do-head-acts' },
+        me ? scopeToggle('today', scope, () => repaintToday(), { label: 'Whose work' }) : null,
+        unread ? el('a', { class: 'card-link', href: '#inbox' }, 'Open inbox', icon('arrow', 14)) : null)),
     items.length ? list : el('div', { class: 'all-clear' },
       el('span', { class: 'all-clear-mark', 'aria-hidden': 'true' }, icon('check', 18)),
       el('span', {}, 'All caught up. A good time to write a few personal lines or review the playbook.')),
     items.length > DO_CAP ? el('button', {
       type: 'button', class: 'link-btn do-more', 'aria-expanded': String(doShowAll),
-      onClick: (e) => { doShowAll = !doShowAll; const card = e.currentTarget.closest('.do-card'); const next = doNextCard(state); card.replaceWith(next); next.querySelector('.do-more')?.focus(); }
+      onClick: (e) => { doShowAll = !doShowAll; const card = e.currentTarget.closest('.do-card'); const next = doNextCard(fullState); card.replaceWith(next); next.querySelector('.do-more')?.focus(); }
     }, doShowAll ? 'Show fewer' : `Show all ${items.length}`) : null);
 }
 
@@ -567,14 +616,14 @@ function smsStrip(state) {
       s.window_open ? `Window open until ${hourLabel(set.send_end_hour ?? 17)}` : `Window closed · opens ${hourLabel(set.send_start_hour ?? 9)}`));
 }
 
-function hero(state) {
+function hero(state, full = state) {
   const unread = state.leads.filter((l) => l.unread && !l.archived).length;
   const today = dayKey();
   const callsToday = state.bookings.filter((b) => b.status === 'booked' && b.starts_at && dayKey(b.starts_at) === today).length;
   const bits = [];
   if (unread) bits.push(`${plural(unread, 'reply', 'replies')} waiting`);
   if (callsToday) bits.push(`${plural(callsToday, 'call')} today`);
-  const lede = !state.leads.length
+  const lede = !full.leads.length
     ? ['An empty pipeline is a clean slate. Start by importing a list or adding someone you already know.']
     : bits.length
       ? [el('b', {}, `${bits[0]}${bits.length > 1 ? ',' : '.'}`), bits.length > 1 ? ` ${bits[1]}.` : '']
@@ -584,7 +633,7 @@ function hero(state) {
     el('div', { class: 'hero-top' },
       el('div', { class: 'hero-copy' },
         el('p', { class: 'eyebrow' }, date),
-        el('h1', { class: 'h1', id: 'greet-h' }, `${greeting()}, Tyler`),
+        el('h1', { class: 'h1', id: 'greet-h' }, `${greeting()}${firstName(state.me?.name) ? `, ${firstName(state.me.name)}` : ''}`),
         el('p', { class: 'lede' }, lede)),
       el('div', { class: 'hero-actions' },
         el('a', { class: 'btn btn-ghost', href: '#leads/import' }, icon('upload', 16), 'Import'),
@@ -635,17 +684,32 @@ function pipelineCard(state) {
       statusBadge(l.status)))));
 }
 
+const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
+let lastCtx = null;
+/** Mine / Everyone changed: draw Today again in place. */
+function repaintToday() {
+  const cur = document.querySelector('.page.today');
+  if (!cur || !lastCtx) return;
+  const next = home(lastCtx);
+  next.style.animation = 'none';
+  cur.replaceWith(next);
+  next.querySelector('.own-scope-btn.is-active')?.focus({ preventScroll: true });
+}
+
 export default function home(ctx) {
+  lastCtx = ctx;
   const { state } = ctx;
-  const node = el('div', { class: 'page today' },
-    hero(state),
+  const scope = readScope('today');
+  const mine = scopedState(state, scope);
+  const node = el('div', { class: 'page today', dataset: { scope } },
+    hero(mine, state),
     briefingCard(),
     businessNumbers(state).hasData ? bizStrip(state) : null,
     kpiStrip(state),
     businessNumbers(state).hasData ? null : bizStrip(state),
     el('div', { class: 'today-grid' },
-      el('div', { class: 'today-col c1' }, doNextCard(state)),
-      el('div', { class: 'today-col c2' }, callsCard(state), pipelineCard(state)),
+      el('div', { class: 'today-col c1' }, doNextCard(state, scope)),
+      el('div', { class: 'today-col c2' }, callsCard(mine), pipelineCard(mine)),
       el('div', { class: 'today-col c3' }, chartCard(state), feedCard(state))));
   firstPaint = false;
   return node;

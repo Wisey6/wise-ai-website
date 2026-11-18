@@ -8,6 +8,7 @@ import {
 import {
   state, messagesFor, saveLead, suppress, renderTemplate, leadName, logEvent, ai
 } from '../api.js?v=20261118c';
+import { ownerPicker, ownerBadge, saveOwner, readScope, scopeToggle, inScope, meId } from '../owners.js?v=20261118c';
 import { deliver, finalBody, segmentCounter, errText, AU_MOBILE, suppressedSet } from './campaigns.js?v=20261118c';
 
 /** append / replaceChildren that skip null and false children (native ones would print "null"). */
@@ -15,6 +16,7 @@ const keep = (c) => c.flat(Infinity).filter((x) => x !== null && x !== undefined
 const add = (n, ...c) => { n.append(...keep(c)); return n; };
 const put = (n, ...c) => { n.replaceChildren(...keep(c)); return n; };
 
+const fill2 = (n, ...c) => { n.replaceChildren(...c.filter(Boolean)); return n; };
 const drafts = new Map();      // leadId → typed text (kept across re-renders and route changes)
 const threads = new Map();     // leadId → message rows, oldest first
 let filter = 'all';
@@ -89,20 +91,28 @@ export default function inbox(ctx = {}) {
   /* ---------- list pane */
   const search = el('input', { class: 'input inbox-search', type: 'search', placeholder: 'Search conversations', 'aria-label': 'Search conversations', value: query });
   search.addEventListener('input', () => { query = search.value; renderList(); });
+  let scope = meId() ? readScope('inbox') : 'all';
   const filterBtns = [['all', 'All'], ['unread', 'Unread'], ['waiting', 'Waiting on you']].map(([id, label]) =>
     el('button', { class: `tab${filter === id ? ' is-active' : ''}`, type: 'button', 'aria-pressed': filter === id ? 'true' : 'false', dataset: { f: id },
-      onClick: () => { filter = id; filterBtns.forEach((b) => { const on = b.dataset.f === id; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); renderList(); } }, label));
+      onClick: () => { filter = id; filterBtns.forEach((b) => { const on = b.dataset.f === id; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); renderList(); } }, label, el('span', { class: 'count inbox-fcount' })));
+  const scopeBox = el('div', { class: 'inbox-scope' });
+  const paintScope = () => fill2(scopeBox, meId() ? scopeToggle('inbox', scope, (v) => { scope = v; renderList(); }, { label: 'Whose conversations' }) : null);
   const listEl = el('ul', { class: 'inbox-list', 'aria-label': 'Conversations' });
   const listPane = el('aside', { class: 'inbox-side' },
     el('div', { class: 'inbox-side-head' },
       el('div', { class: 'row' }, el('h1', { class: 'h2 inbox-title' }, 'Inbox'), el('span', { class: 'spacer' }), el('span', { class: 'inbox-unread-total' })),
       el('label', { class: 'inbox-search-wrap' }, icon('search', 15), search),
+      scopeBox,
       el('div', { class: 'tabs inbox-filters' }, filterBtns)),
     listEl);
 
   function renderList() {
-    const all = conversations();
+    if (!scopeBox.firstChild && meId()) { scope = readScope('inbox'); paintScope(); }
+    // Yours and unowned conversations by default; "Everyone" shows all of them.
+    const all = conversations().filter((c) => inScope(scope, c.lead));
     const unreadTotal = all.filter((c) => c.lead.unread).length;
+    const counts = { all: all.length, unread: unreadTotal, waiting: all.filter((c) => c.waiting).length };
+    filterBtns.forEach((b) => { const n = counts[b.dataset.f]; const c = b.querySelector('.inbox-fcount'); c.textContent = n ? String(n) : ''; c.hidden = !n; });
     const tot = listPane.querySelector('.inbox-unread-total');
     tot.textContent = unreadTotal ? `${unreadTotal} unread` : '';
     const q = query.trim().toLowerCase();
@@ -135,7 +145,7 @@ export default function inbox(ctx = {}) {
               el('span', { class: 'inbox-item-preview' },
                 drafts.get(l.id)?.trim() ? el('span', { class: 'inbox-draft-tag' }, 'Draft · ') : null, preview),
               l.unread ? el('span', { class: 'inbox-dot', role: 'img', 'aria-label': 'Unread' }) : null),
-            el('span', { class: 'inbox-item-meta' }, statusBadge(l.status))))));
+            el('span', { class: 'inbox-item-meta' }, statusBadge(l.status), l.owner_id ? ownerBadge(l.owner_id, { size: 'sm' }) : null)))));
     }
   }
 
@@ -159,6 +169,14 @@ export default function inbox(ctx = {}) {
     return null;
   }
 
+  let ownerNode = null;
+  function threadOwner() {
+    if (!ownerNode) ownerNode = ownerPicker({ value: lead.owner_id || null, label: 'Conversation owner', onChange: (oid) => saveOwner('leads', lead.id, oid) });
+    else ownerNode.setValue(lead.owner_id || null);
+    ownerNode.classList.add('inbox-owner');
+    return ownerNode;
+  }
+
   function renderHead() {
     lead = (state.leads || []).find((l) => l.id === leadId) || lead;
     if (!lead) { head.replaceChildren(); return; }
@@ -179,6 +197,7 @@ export default function inbox(ctx = {}) {
             lead.phone ? el('a', { href: `tel:${lead.phone}` }, prettyPhone(lead.phone)) : 'No phone',
             meta ? ` · ${meta}` : '')),
         el('span', { class: 'spacer' }),
+        threadOwner(),
         el('a', { class: 'btn btn-ghost btn-sm', href: `#leads/${lead.id}`, title: 'Open the lead' }, icon('user', 15), el('span', { class: 'inbox-hide-sm' }, 'Lead')),
         el('button', { class: 'icon-btn inbox-unread-btn', type: 'button', title: lead.unread ? 'Mark read' : 'Mark unread',
           'aria-label': lead.unread ? 'Mark read' : 'Mark unread', onClick: (e) => toggleUnread(e.currentTarget) },

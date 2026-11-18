@@ -6,6 +6,7 @@ import {
   emptyState, money, num, plural, timeAgo, dayKey, go, busy, trapFocus
 } from '../ui.js?v=20261118c';
 import { state, saveRow, deleteRow, rowById, leadById, leadName, leadToClient, onChange } from '../api.js?v=20261118c';
+import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner } from '../owners.js?v=20261118c';
 import { createProposalFromDeal, proposalTotals, effectiveStatus, PROPOSAL_STATUS } from './proposals.js?v=20261118c';
 
 /* ------------------------------------------------------------- constants */
@@ -23,7 +24,8 @@ const MODE_KEY = 'wiseos.pipeline.view';
 const ui = {
   mode: (() => { try { return localStorage.getItem(MODE_KEY) || 'board'; } catch { return 'board'; } })(),
   showClosed: false,
-  archived: false
+  archived: false,
+  owner: ''
 };
 
 /* --------------------------------------------------------------- helpers */
@@ -182,7 +184,7 @@ export default function pipelineView(ctx) {
           type: 'button', class: 'link-btn small', 'aria-pressed': String(ui.archived),
           onClick: () => { ui.archived = !ui.archived; paint(); }
         }, ui.archived ? 'Back to the pipeline' : `Archived (${archivedN})`) : null),
-      el('span', { class: 'spacer' }), modeTabs);
+      el('span', { class: 'spacer' }), ownerFilterSelect(ui.owner, (v) => { ui.owner = v; paint(); }, { label: 'Owner' }), modeTabs);
   }
 
   function paint() {
@@ -201,8 +203,9 @@ export default function pipelineView(ctx) {
     }
     drawKpis(deals);
     drawBar(deals);
-    if (ui.archived) { content.append(drawTable(deals.filter((d) => d.archived), true)); return; }
-    const live = deals.filter((d) => !d.archived);
+    const mineOnly = (list) => list.filter((d) => matchesOwner(ui.owner, d));
+    if (ui.archived) { content.append(drawTable(mineOnly(deals.filter((d) => d.archived)), true)); return; }
+    const live = mineOnly(deals.filter((d) => !d.archived));
     content.append(ui.mode === 'table' ? drawTable(live.filter((d) => ui.showClosed || isOpen(d))) : drawBoard(live));
   }
 
@@ -215,7 +218,8 @@ export default function pipelineView(ctx) {
       link ? el('a', { class: 'deal-link', href: link.href }, link.label) : null,
       el('div', { class: 'deal-vals tnum' },
         dealValue(d) ? el('span', { class: 'deal-money' }, dealValue(d)) : el('span', { class: 'faint' }, 'No value yet'),
-        isOpen(d) ? el('span', { class: 'muted' }, `${n(d.probability)}%`) : null),
+        isOpen(d) ? el('span', { class: 'muted' }, `${n(d.probability)}%`) : null,
+        el('span', { class: 'deal-owner' }, ownerBadge(d.owner_id, { size: 'sm' }))),
       nextStepLine(d, { compact: true }),
       d.expected_close && isOpen(d) ? el('span', { class: 'deal-close muted' }, `Expected close ${shortDate(d.expected_close)}`) : null);
     if (drag) {
@@ -257,7 +261,7 @@ export default function pipelineView(ctx) {
     const rows = [...list].sort((a, b) => STAGES.findIndex((s) => s.id === a.stage) - STAGES.findIndex((s) => s.id === b.stage) || weightedOf(b) - weightedOf(a));
     const table = el('table', { class: 'table pipe-table' },
       el('thead', {}, el('tr', {},
-        el('th', {}, 'Deal'), el('th', {}, 'Stage'), el('th', { class: 'num' }, 'One-off'), el('th', { class: 'num' }, '$/mo'),
+        el('th', {}, 'Deal'), el('th', { class: 'pipe-owner-h' }, 'Owner'), el('th', {}, 'Stage'), el('th', { class: 'num' }, 'One-off'), el('th', { class: 'num' }, '$/mo'),
         el('th', { class: 'num' }, 'Prob.'), el('th', { class: 'num', title: 'One-off plus 12 months, times probability' }, 'Weighted'),
         el('th', {}, 'Next step'), el('th', {}, 'Close'))),
       el('tbody', {}, rows.map((d) => {
@@ -266,6 +270,7 @@ export default function pipelineView(ctx) {
           el('td', {}, el('div', { class: 'lead-cell' },
             el('button', { type: 'button', class: 'lead-name-btn', onClick: (e) => { e.stopPropagation(); openDeal(d.id); } }, el('b', {}, d.title)),
             link ? el('a', { class: 'deal-link', href: link.href }, link.label) : el('span', {}, ' '))),
+          el('td', { class: 'pipe-owner-cell' }, ownerPicker({ value: d.owner_id || null, compact: true, label: `Owner: ${d.title}`, onChange: (oid) => saveOwner('deals', d.id, oid) })),
           el('td', {}, stageBadge(d.stage)),
           el('td', { class: 'num' }, n(d.value) ? money(d.value) : el('span', { class: 'faint' }, '—')),
           el('td', { class: 'num' }, n(d.monthly_value) ? money(d.monthly_value) : el('span', { class: 'faint' }, '—')),
@@ -360,11 +365,14 @@ export async function ensureClient(deal, { name } = {}) {
   if (linked) return linked;
   const lead = deal.lead_id ? leadById(deal.lead_id) : null;
   let client;
-  if (lead) client = await leadToClient(lead);
-  else {
+  if (lead) {
+    client = await leadToClient(lead);
+    const carry = lead.owner_id || deal.owner_id || null;
+    if (carry && !client.owner_id) client = await saveRow('clients', { id: client.id, owner_id: carry });
+  } else {
     client = await saveRow('clients', {
       name: String(name || deal.title || 'New client').trim(), status: 'active', started_on: todayKey(),
-      monthly_value: n(deal.monthly_value), notes: deal.notes || null
+      monthly_value: n(deal.monthly_value), notes: deal.notes || null, owner_id: deal.owner_id || meId()
     });
   }
   if (lead && n(deal.monthly_value) && !n(client.monthly_value)) client = await saveRow('clients', { id: client.id, monthly_value: n(deal.monthly_value) });
@@ -377,7 +385,7 @@ export async function ensureClient(deal, { name } = {}) {
 export async function startProject(deal, opts = {}) {
   const client = await ensureClient(deal, opts);
   const p = await saveRow('projects', {
-    name: deal.title, client_id: client.id, deal_id: deal.id, status: 'planned',
+    name: deal.title, client_id: client.id, deal_id: deal.id, status: 'planned', owner_id: deal.owner_id || client.owner_id || meId(),
     started_on: todayKey(), value: n(deal.value), description: deal.notes || null
   });
   toast('Project started');
@@ -420,7 +428,8 @@ function dealFields(d = {}, { isNew = false } = {}) {
     field('Probability (%)', input('probability', { type: 'number', value: d.probability ?? STAGE.qualified.prob, min: 0, max: 100, step: 5, inputmode: 'numeric' })),
     field('Expected close', input('expected_close', { type: 'date', value: d.expected_close || '' })),
     isNew ? field('Next step', input('next_step', { value: d.next_step || 'Intro call', maxlength: 160 })) : null,
-    isNew ? field('Next step by', input('next_step_on', { type: 'date', value: d.next_step_on || addDays(todayKey(), 2) })) : null);
+    isNew ? field('Next step by', input('next_step_on', { type: 'date', value: d.next_step_on || addDays(todayKey(), 2) })) : null,
+    isNew ? el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Owner'), ownerPicker({ value: d.owner_id || meId(), name: 'owner_id', label: 'Deal owner' })) : null);
 }
 
 function cleanDeal(v) {
@@ -438,7 +447,7 @@ export async function openNewDeal(preset = {}) {
   const row = cleanDeal(values);
   if (!row.title) { toast('Give the deal a name', 'bad'); return null; }
   try {
-    const saved = await saveRow('deals', { ...row, stage: 'qualified' });
+    const saved = await saveRow('deals', { ...row, stage: 'qualified', owner_id: values.owner_id || null });
     toast('Deal added');
     openDeal(saved.id);
     return saved;
@@ -469,10 +478,12 @@ export function openDeal(id) {
   });
   const sub = el('div', { class: 'ld-sub' });
   const actions = el('div', { class: 'ld-actions' });
+  const ownerSel = ownerPicker({ value: d0.owner_id || null, label: 'Deal owner', onChange: (oid) => saveOwner('deals', id, oid) });
 
   const drawHead = () => {
     const d = rowById('deals', id);
     if (!d) return;
+    ownerSel.setValue(d.owner_id || null);
     nameH.textContent = d.title;
     if (document.activeElement !== stageSel) stageSel.value = d.stage;
     eyebrow.textContent = `Deal · added ${timeAgo(d.created_at)}${d.archived ? ' · archived' : ''}`;
@@ -599,7 +610,7 @@ export function openDeal(id) {
       el('div', { class: 'ld-title' },
         el('div', { class: 'stack tight', style: 'flex:1;min-width:0' }, eyebrow, nameH),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close deal', onClick: () => close() }, icon('x', 18))),
-      el('div', { class: 'row' }, stageSel, sub),
+      el('div', { class: 'row' }, stageSel, ownerSel, sub),
       actions),
     el('div', { class: 'drawer-body' }, nextSec, outcome, details, propsSec),
     el('div', { class: 'drawer-foot' }, saveBtn, archiveBtn, el('span', { class: 'spacer' }), delBtn));

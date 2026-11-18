@@ -9,6 +9,7 @@ import {
   taskRow, quickAdd, progressBar, projectProgress, projectBadge, isOpenProject, isOverdue, taskClientId,
   openProjectForm, guardedPaint, keepFocus, sortMyTasks
 } from './projects.js?v=20261118c';
+import { ownerPicker, ownerBadge, saveOwner, meId, ownerFilterSelect, matchesOwner, ownerName } from '../owners.js?v=20261118c';
 
 /* ============================================================ constants */
 export const CLIENT_STATUSES = [
@@ -181,7 +182,8 @@ async function openClientForm() {
       field('Suburb', input('suburb', { placeholder: 'Paddington' })),
       field('Retainer', input('monthly_value', { type: 'number', min: 0, step: 50, inputmode: 'decimal', placeholder: '0' }), '$ a month, if they pay one'),
       field('Client since', input('started_on', { type: 'date', value: today() })),
-      field('Status', select('status', CLIENT_STATUSES.map((s) => ({ id: s.id, label: s.label })), 'active')))
+      field('Status', select('status', CLIENT_STATUSES.map((s) => ({ id: s.id, label: s.label })), 'active')),
+      el('div', { class: 'field' }, el('span', { class: 'field-label' }, 'Owner'), ownerPicker({ value: meId(), name: 'owner_id', label: 'Client owner' })))
   });
   if (!v) return;
   const phone = v.phone.trim() ? (normalisePhone(v.phone) || v.phone.trim()) : null;
@@ -189,7 +191,8 @@ async function openClientForm() {
     const row = await saveRow('clients', {
       name: v.name.trim(), contact_name: v.contact_name.trim() || null, phone, email: v.email.trim() || null,
       website: v.website.trim() || null, industry: v.industry.trim() || null, suburb: v.suburb.trim() || null,
-      monthly_value: Number(v.monthly_value) || 0, started_on: v.started_on || null, status: v.status
+      monthly_value: Number(v.monthly_value) || 0, started_on: v.started_on || null, status: v.status,
+      owner_id: v.owner_id || null
     });
     toast('Client added');
     go(`clients/${row.id}`);
@@ -197,7 +200,7 @@ async function openClientForm() {
 }
 
 /* ================================================================ view */
-const ui = { q: '', status: 'all', archived: false };
+const ui = { q: '', status: 'all', archived: false, owner: '' };
 
 export default function clientsView(ctx) {
   const { param } = ctx;
@@ -223,7 +226,8 @@ function roster() {
   search.addEventListener('input', () => { ui.q = search.value.trim().toLowerCase(); paint(); });
   const chips = el('div', { class: 'row dl-chips', role: 'group', 'aria-label': 'Filter by status' });
   const arch = el('label', { class: 'check-row small' }, el('input', { type: 'checkbox', class: 'check', checked: ui.archived || null, onChange: (e) => { ui.archived = e.target.checked; paint(); } }), 'Archived');
-  const bar = el('div', { class: 'toolbar dl-bar' }, el('label', { class: 'search' }, icon('search', 16), search), chips, el('span', { class: 'spacer' }), arch);
+  const ownerBox = el('span', { class: 'own-filter-box' });
+  const bar = el('div', { class: 'toolbar dl-bar' }, el('label', { class: 'search' }, icon('search', 16), search), chips, el('span', { class: 'spacer' }), ownerBox, arch);
   const content = el('div');
   root.append(head, kpis, bar, content);
 
@@ -237,7 +241,8 @@ function roster() {
       el('div', { class: 'kpi' }, el('span', { class: 'kpi-label' }, 'Average per client'), el('span', { class: 'kpi-value', dataset: { k: 'avg' } }, money(tot.avg)), el('span', { class: 'kpi-sub' }, 'a month')),
       el('a', { class: 'kpi', href: '#income' }, el('span', { class: 'kpi-label' }, 'Owed to you'), el('span', { class: 'kpi-value', dataset: { k: 'owed' } }, money(owed)), el('span', { class: 'kpi-sub' }, 'invoiced, not yet paid'))));
 
-    const base = st.clients.filter((c) => (ui.archived ? c.archived : !c.archived));
+    if (!ownerBox.firstChild || document.activeElement !== ownerBox.firstChild) fill(ownerBox, ownerFilterSelect(ui.owner, (v) => { ui.owner = v; paint(); }, { label: 'Owner' }));
+    const base = st.clients.filter((c) => (ui.archived ? c.archived : !c.archived) && matchesOwner(ui.owner, c));
     const chip = (id, label) => {
       const count = id === 'all' ? base.length : base.filter((c) => c.status === id).length;
       return el('button', { type: 'button', class: `chip${ui.status === id ? ' is-active' : ''}`, 'aria-pressed': String(ui.status === id), onClick: () => { ui.status = id; paint(); } }, label, el('span', { class: 'count' }, num(count)));
@@ -259,7 +264,7 @@ function roster() {
     if (!list.length) { content.append(emptyState({ icon: 'search', title: 'Nothing matches', text: ui.archived ? 'No archived clients.' : 'Try another search or status.' })); return; }
     content.append(el('div', { class: 'table-wrap' }, el('table', { class: 'table dl-table cl-table' },
       el('thead', {}, el('tr', {},
-        el('th', {}, 'Client'), el('th', {}, 'Status'), el('th', { class: 'num' }, '$/mo'), el('th', { class: 'num' }, 'Projects'), el('th', { class: 'num' }, 'Tasks'),
+        el('th', {}, 'Client'), el('th', { class: 'cl-owner-h' }, 'Owner'), el('th', {}, 'Status'), el('th', { class: 'num' }, '$/mo'), el('th', { class: 'num' }, 'Projects'), el('th', { class: 'num' }, 'Tasks'),
         el('th', { class: 'num' }, 'Paid'), el('th', { class: 'num' }, 'Unpaid'), el('th', {}, 'Last report'))),
       el('tbody', {}, list.map((c) => {
         const f = clientFacts(c, st);
@@ -267,6 +272,7 @@ function roster() {
           el('td', { class: 'dl-primary' }, el('div', { class: 'dl-cell' },
             el('a', { href: `#clients/${c.id}`, class: 'dl-name', onClick: (e) => e.stopPropagation() }, c.name),
             el('span', { class: 'dl-sub' }, [c.contact_name, c.phone ? prettyPhone(c.phone) : c.email].filter(Boolean).join(' · ') || c.industry || ''))),
+          el('td', { class: 'cl-owner-cell', 'data-label': 'Owner' }, ownerPicker({ value: c.owner_id || null, compact: true, label: `Owner: ${c.name}`, onChange: (oid) => saveOwner('clients', c.id, oid) })),
           el('td', { 'data-label': 'Status' }, clientBadge(c.status)),
           el('td', { class: 'num', 'data-label': '$/mo', dataset: { k: 'mrr' } }, n(c.monthly_value) ? money(c.monthly_value) : el('span', { class: 'faint' }, '—')),
           el('td', { class: 'num', 'data-label': 'Projects', dataset: { k: 'projects' } }, f.openProjects.length ? num(f.openProjects.length) : el('span', { class: 'faint' }, '0')),
@@ -293,6 +299,7 @@ function clientPage(id) {
   const eyebrow = el('p', { class: 'eyebrow' });
   const h1 = el('h1', { class: 'h1 cl-h1' });
   const sub = el('div', { class: 'dl-headsub' });
+  const ownerSlot = el('span', { class: 'dl-powner' });
   const contact = el('div', { class: 'row cl-contact' });
   const headActions = el('div', { class: 'row' });
   const head = el('div', { class: 'page-head' },
@@ -323,7 +330,9 @@ function clientPage(id) {
     eyebrow.textContent = ['Client', c.industry, c.suburb, c.started_on ? `since ${fmtDate(c.started_on, { month: 'short', year: 'numeric' })}` : null, c.archived ? 'archived' : null].filter(Boolean).join(' · ');
     h1.textContent = c.name;
     const lead = c.lead_id ? leadById(c.lead_id) : null;
-    fill(sub, clientBadge(c.status),
+    if (!ownerSlot.firstChild) fill(ownerSlot, ownerPicker({ value: c.owner_id || null, label: 'Client owner', onChange: (oid) => saveOwner('clients', id, oid) }));
+    else ownerSlot.firstChild.setValue(c.owner_id || null);
+    fill(sub, clientBadge(c.status), ownerSlot,
       n(c.monthly_value) ? el('span', { class: 'tnum' }, `${money(c.monthly_value)}/mo`) : null,
       c.contact_name ? el('span', {}, icon('user', 13), c.contact_name) : null,
       lead ? el('a', { href: `#leads/${lead.id}` }, icon('link', 13), 'Lead record') : null);

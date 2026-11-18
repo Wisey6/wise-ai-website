@@ -464,37 +464,135 @@ function projectLine(p) {
     progressBar(prog));
 }
 
+/* ========================================================== task table */
+/** A sortable table of tasks: Task, Owner, Status, Due, Priority. Every cell edits in place. */
+export function taskTable(tasks, repaint, { showProject = false } = {}) {
+  const cols = [['title', 'Task'], ['owner', 'Owner'], ['state', 'Status'], ['due', 'Due'], ['priority', 'Priority']];
+  const rows = sortTaskTable(tasks, ui.tsort.key, ui.tsort.dir);
+  const th = ([key, label]) => {
+    const on = ui.tsort.key === key;
+    return el('th', { scope: 'col', class: `dl-tt-${key}`, 'aria-sort': on ? (ui.tsort.dir > 0 ? 'ascending' : 'descending') : 'none' },
+      el('button', {
+        type: 'button', class: `dl-sort${on ? ' is-on' : ''}`, dataset: { sort: key },
+        onClick: () => { ui.tsort = { key, dir: on ? -ui.tsort.dir : 1 }; repaint(); }
+      }, label, el('span', { class: `dl-sort-ic${on && ui.tsort.dir < 0 ? ' is-desc' : ''}`, 'aria-hidden': 'true' }, on ? icon('chevron', 12) : null)));
+  };
+  const body = rows.map((t) => {
+    const done = t.state === 'done';
+    const check = el('input', { type: 'checkbox', class: 'check', 'aria-label': `${done ? 'Reopen' : 'Done'}: ${t.title}`, checked: done || null, dataset: { fk: `${t.id}-tcheck` } });
+    check.addEventListener('change', () => setTaskState(t, check.checked ? 'done' : 'todo'));
+    const st = select('state', TASK_STATES.map((x) => ({ id: x.id, label: x.label })), t.state);
+    st.classList.add('sm', 'dl-state');
+    st.setAttribute('aria-label', `State: ${t.title}`);
+    st.dataset.fk = `${t.id}-tstate`;
+    st.addEventListener('change', () => setTaskState(t, st.value));
+    const pri = select('priority', PRIORITIES, t.priority);
+    pri.className = `input sm dl-pri is-${t.priority}`;
+    pri.setAttribute('aria-label', `Priority: ${t.title}`);
+    pri.dataset.fk = `${t.id}-tpri`;
+    pri.addEventListener('change', async () => { try { await saveRow('tasks', { id: t.id, priority: pri.value }); } catch (e) { toast(e.message, 'bad'); } });
+    const proj = showProject && t.project_id ? rowById('projects', t.project_id) : null;
+    return el('tr', { class: `dl-trow${done ? ' is-done' : ''}`, dataset: { id: t.id, state: t.state } },
+      el('td', { class: 'dl-tt-title' }, el('div', { class: 'dl-tt-cell' }, check,
+        el('span', { class: 'dl-tt-name' }, el('span', { class: 'dl-task-title is-static' }, t.title),
+          proj ? el('a', { class: 'dl-task-ctx', href: `#projects/${proj.id}` }, proj.name) : null))),
+      el('td', { class: 'dl-tt-owner', 'data-label': 'Owner' }, taskOwner(t), el('span', { class: 'dl-tt-ownername small' }, ownerName(t.owner_id, { you: true }))),
+      el('td', { class: 'dl-tt-state', 'data-label': 'Status' }, st),
+      el('td', { class: 'dl-tt-due', 'data-label': 'Due' }, dueControl(t)),
+      el('td', { class: 'dl-tt-priority', 'data-label': 'Priority' }, pri));
+  });
+  return el('div', { class: 'table-wrap dl-ttable-wrap' },
+    el('table', { class: 'table dl-ttable', 'aria-label': 'Tasks' },
+      el('thead', {}, el('tr', {}, cols.map(th))),
+      el('tbody', {}, body)));
+}
+
 /* ============================================================ my tasks */
 function myTasksView() {
   const st = state;
   const root = el('div', { class: 'page dl-page' });
   const tabsBox = el('div');
+  const titleH = el('h1', { class: 'h1' }, 'My tasks');
+  const lede = el('p', { class: 'muted dl-lede' });
   const head = el('div', { class: 'page-head' },
-    el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Deliver'), el('h1', { class: 'h1' }, 'My tasks'),
-      el('p', { class: 'muted dl-lede' }, 'Everything not done, across every project. Soonest due first, then priority.')));
+    el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Deliver'), titleH, lede));
   const cSel = el('select', { class: 'input sm', 'aria-label': 'Filter by client' });
   cSel.addEventListener('change', () => { ui.taskClient = cSel.value; paint(); });
-  const qa = quickAdd({}, { placeholder: 'Add a task and press Enter', clientPicker: true });
+  // A new task belongs to whoever the list is showing (you, unless you picked someone else).
+  const qa = quickAdd({}, {
+    placeholder: 'Add a task and press Enter', clientPicker: true,
+    ownerDefault: () => (ui.person === 'me' || ui.person === 'all' ? meId() : ui.person === 'none' ? null : ui.person)
+  });
+  const switcher = el('div', { class: 'dl-people', role: 'group', 'aria-label': 'Whose tasks' });
+  const strip = el('div', { class: 'dl-load', 'aria-label': 'Workload: open and overdue tasks per person' });
   const bar = el('div', { class: 'toolbar dl-bar' }, el('span', { class: 'small muted' }, 'Show'), cSel);
   const list = el('div', { class: 'dl-tasks-wrap' });
-  root.append(head, tabsBox, qa, bar, list);
+  root.append(head, tabsBox, switcher, strip, qa, bar, list);
+
+  const pick = (v) => { ui.person = v; paint(); qa.syncOwner?.(); switcher.querySelector(`[data-person="${CSS.escape(v)}"]`)?.focus(); };
 
   function paint() {
     fill(tabsBox, areaTabs('tasks'));
     const open = st.tasks.filter((t) => t.state !== 'done');
+    const t0 = today();
+    const team = activeTeam();
+    if (ui.person !== 'me' && ui.person !== 'all' && ui.person !== 'none' && !team.some((m) => m.id === ui.person)) ui.person = 'me';
+    const others = team.filter((m) => !isMe(m.id));
+    const opts = [
+      ['me', 'Me', null],
+      ...others.map((m) => [m.id, m.name, m.id]),
+      ['all', 'Everyone', undefined],
+      ['none', 'Unassigned', undefined]
+    ];
+    fill(switcher, opts.map(([v, label, oid]) => {
+      const n = tasksFor(v, open).length;
+      const on = ui.person === v;
+      return el('button', { type: 'button', class: `dl-person${on ? ' is-active' : ''}`, 'aria-pressed': String(on), dataset: { person: v }, onClick: () => pick(v) },
+        v === 'me' ? ownerBadge(meId(), { size: 'sm', title: false }) : oid ? ownerBadge(oid, { size: 'sm', title: false }) : null,
+        el('span', {}, label), el('span', { class: 'count' }, num(n)));
+    }));
+
+    // Workload: everyone with open work, plus nobody yet.
+    const load = workload(st.tasks, t0);
+    const ids = [...team.map((m) => m.id), ...[...load.keys()].filter((k) => k && !team.some((m) => m.id === k)), null].filter((k) => k !== null || load.has(null));
+    const max = Math.max(1, ...ids.map((k) => load.get(k)?.open || 0));
+    fill(strip, ids.map((k) => {
+      const w = load.get(k) || { open: 0, overdue: 0 };
+      const v = k === null ? 'none' : isMe(k) ? 'me' : k;
+      return el('button', { type: 'button', class: `dl-load-item${ui.person === v ? ' is-active' : ''}`, dataset: { owner: k || 'none' }, onClick: () => pick(v),
+        'aria-label': `${ownerName(k)}: ${plural(w.open, 'open task')}${w.overdue ? `, ${w.overdue} overdue` : ''}` },
+        ownerBadge(k, { size: 'md', title: false }),
+        el('span', { class: 'dl-load-text' },
+          el('span', { class: 'dl-load-name' }, ownerName(k, { you: true })),
+          el('span', { class: 'dl-load-n tnum' }, el('b', {}, num(w.open)), ' open', w.overdue ? el('span', { class: 'dl-warn' }, ` · ${num(w.overdue)} overdue`) : null)),
+        el('span', { class: 'dl-load-bar', 'aria-hidden': 'true' },
+          el('i', { style: `width:${Math.round((w.open / max) * 100)}%` }),
+          w.overdue ? el('i', { class: 'is-over', style: `width:${Math.round((w.overdue / max) * 100)}%` }) : null));
+    }));
+
+    const who = ui.person === 'me' ? 'You' : ui.person === 'all' ? 'Everyone' : ui.person === 'none' ? 'Nobody yet' : ownerName(ui.person);
+    titleH.textContent = ui.person === 'me' ? 'My tasks' : ui.person === 'all' ? 'Everyone\'s tasks' : ui.person === 'none' ? 'Unassigned tasks' : `${who}'s tasks`;
+    lede.textContent = ui.person === 'none'
+      ? 'Work nobody owns yet. Give each one an owner so it does not drift.'
+      : 'Everything not done, across every project. Soonest due first, then priority.';
+
+    const mine = tasksFor(ui.person, open);
     const cur = ui.taskClient;
-    const cids = new Set(open.map(taskClientId).filter(Boolean));
+    const cids = new Set(mine.map(taskClientId).filter(Boolean));
     fill(cSel, el('option', { value: '' }, 'All clients'), el('option', { value: 'none' }, 'No client'),
       st.clients.filter((c) => cids.has(c.id) || c.id === cur).sort((a, b) => a.name.localeCompare(b.name)).map((c) => el('option', { value: c.id }, c.name)));
     cSel.value = cur;
-    const shown = sortMyTasks(open.filter((t) => !ui.taskClient || (ui.taskClient === 'none' ? !taskClientId(t) : taskClientId(t) === ui.taskClient)));
+    const shown = sortMyTasks(mine.filter((t) => !ui.taskClient || (ui.taskClient === 'none' ? !taskClientId(t) : taskClientId(t) === ui.taskClient)));
     clear(list);
-    if (!open.length) {
-      list.append(emptyState({ icon: 'check', title: 'Nothing on your list', text: 'Type a task above and press Enter. Add a client or a date if it has one.' }));
+    if (!mine.length) {
+      list.append(emptyState({
+        icon: 'check',
+        title: ui.person === 'me' ? 'Nothing on your list' : ui.person === 'none' ? 'Every task has an owner' : `Nothing on ${who === 'Everyone' ? 'anyone' : who}'s list`,
+        text: ui.person === 'me' ? 'Type a task above and press Enter. Add a client or a date if it has one, or leave the date as TBC.' : 'Type a task above to give them one.'
+      }));
       return;
     }
     if (!shown.length) { list.append(emptyState({ icon: 'search', title: 'Nothing for that client', text: 'Every task for them is done.' })); return; }
-    const t0 = today();
     const buckets = [
       ['Overdue', (t) => t.due_on && t.due_on < t0],
       ['Today', (t) => t.due_on === t0],
@@ -506,7 +604,7 @@ function myTasksView() {
       const items = shown.filter(fn);
       if (!items.length) continue;
       list.append(el('section', { class: 'dl-tgroup', dataset: { bucket: label } },
-        el('div', { class: 'dl-group-head' }, el('span', { class: `dl-tg-label${label === 'Overdue' ? ' dl-warn' : ''}` }, label), el('span', { class: 'count' }, num(items.length))),
+        el('div', { class: 'dl-group-head' }, el('span', { class: `dl-tg-label${label === 'Overdue' ? ' dl-warn' : ''}` }, label === 'No date' ? 'Date TBC' : label), el('span', { class: 'count' }, num(items.length))),
         el('ul', { class: 'dl-tasks' }, items.map((t) => taskRow(t, { showProject: true, showClient: true })))));
     }
   }
