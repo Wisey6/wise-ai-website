@@ -498,7 +498,7 @@ export const fail = (code: string, extra: Row = {}): Result =>
   ({ status: statusFor(code), body: { ok: false, error: code, message: MESSAGES[code] ?? "Something went wrong.", ...extra } });
 
 const str = (v: unknown, max = 300) => (typeof v === "string" && v.length > 0 && v.length <= max ? v : null);
-const ID = /^[A-Za-z0-9!._-]{1,200}$/;
+const ID = /^[A-Za-z0-9!._~:-]{1,200}$/;
 const itemId = (v: unknown) => (typeof v === "string" && ID.test(v) ? v : null);
 
 async function memberName(db: Db, id: string | null): Promise<string | null> {
