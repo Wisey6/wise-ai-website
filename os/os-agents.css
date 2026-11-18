@@ -352,7 +352,7 @@
 .cx-box:hover { border-color: #C4C9CE; }
 .cx-box:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(10,14,17,.06); }
 .cx-input {
-  flex: 1; min-width: 0; margin: 0; padding: 6px 0; border: 0; outline: 0; resize: none; background: transparent;
+  flex: 1; min-width: 0; min-height: 36px; margin: 0; padding: 7px 0; border: 0; outline: 0; resize: none; background: transparent;
   font-size: var(--fs-body); line-height: 1.5; color: var(--ink); overflow-y: hidden; scrollbar-width: thin;
 }
 .cx-input:focus-visible { outline: 0; }
@@ -506,4 +506,9 @@ button.cx-item-open:hover { background: var(--hover); }
 }
 @media (prefers-reduced-motion: reduce) {
   .cx-pulse::after { animation: none; }
+}
+@media (max-width: 760px) {
+  .ag-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .ag-tabs::-webkit-scrollbar { display: none; }
+  .ag-tabs .tab { white-space: nowrap; flex: none; }
 }

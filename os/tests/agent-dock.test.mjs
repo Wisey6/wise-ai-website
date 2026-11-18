@@ -1,6 +1,7 @@
 // Wise AI agent launcher: the owl on the moving splodge, top right (bottom right on
-// phones), and its dropdown panel (Ask, Doer, quick rows). The agent function is
-// always mocked here; nothing is sent and no record changes.
+// phones), and its dropdown: the assistant's conversation, its history and quick rows.
+// The agent function and the chat tables are always mocked here; nothing is sent and
+// no record changes. (The full chat is covered by chat.test.mjs.)
 //
 //   python3 -m http.server 8186 --bind 127.0.0.1 &
 //   OS_TEST_PASSWORD=… node os/tests/agent-dock.test.mjs [shots-dir]
@@ -31,10 +32,12 @@ async function session(viewport, { connected = true, reducedMotion = 'no-prefere
     const body = JSON.parse(r.request().postData() || '{}');
     calls.push(body);
     if (body.action === 'status') return r.fulfill({ status: 200, headers: CORS, body: JSON.stringify({ configured: connected, enabled: connected, agents: { researcher: true, briefing: true, ask: true, doer: true }, spent_usd: 1.2, cap_usd: 25, runs_today: {}, limits: {} }) });
-    if (body.agent === 'ask') return new Promise((res) => setTimeout(res, 900)).then(() => r.fulfill({ status: 200, headers: CORS, body: JSON.stringify({ ok: true, result: { answer: 'Two clients have not been invoiced this month.', links: [{ label: 'Income', hash: '#income' }, { label: 'Bad', hash: 'javascript:alert(1)' }] }, cost_usd: 0.01 }) }));
-    if (body.agent === 'doer') return r.fulfill({ status: 200, headers: CORS, body: JSON.stringify({ ok: true, result: { note: 'I would add two tasks for the retainer invoices.', actions: [{ kind: 'task.create' }, { kind: 'task.create' }] }, cost_usd: 0.02 }) });
+    if (body.agent === 'chat') return new Promise((res) => setTimeout(res, 900)).then(() => r.fulfill({ status: 200, headers: CORS, body: JSON.stringify({ ok: true, chat_id: '00000000-0000-4000-8000-0000000000d1', title: 'Invoices this month', message: { id: 777001, role: 'assistant', at: new Date().toISOString(), text: 'Two clients have not been invoiced this month.', steps: [], links: [{ label: 'Income', hash: '#income' }, { label: 'Bad', hash: 'javascript:alert(1)' }] }, changes: [], model: 'claude-sonnet-5-5', cost_usd: 0.01 }) }));
     return r.fulfill({ status: 403, headers: CORS, body: JSON.stringify({ ok: false, error: 'disabled' }) });
   });
+  for (const t of ['agent_chats', 'agent_changes', 'agent_memory', 'agent_chat_messages']) {
+    await ctx.route(`**/rest/v1/${t}*`, (r) => (r.request().method() === 'OPTIONS' ? r.fulfill({ status: 204, headers: CORS }) : r.fulfill({ status: 200, headers: CORS, body: '[]' })));
+  }
   await ctx.addInitScript(() => { window.__mod = (p) => import(document.querySelector('script[type=module]').src.replace('app.js', p)); });
   const page = await ctx.newPage();
   page.errors = [];
@@ -70,10 +73,8 @@ try {
   await L.click();
   await page.waitForSelector('.agd-panel.is-in');
   check(await L.getAttribute('aria-expanded') === 'true' && await page.locator('.agd-panel[role=region][aria-labelledby=agd-title]').isVisible(), 'click opens a labelled panel; aria-expanded true');
-  check((await page.locator('.agd-for').innerText()).includes('Tyler'), 'the header says who it is working for');
-  check(/US\$1\.20 of US\$25\.00/.test(await page.locator('.agd-spend').innerText()), 'this month\'s spend against the budget');
-  const order = await page.$$eval('.agd-sec-h', (ns) => ns.map((n) => n.textContent));
-  check(order[0] === 'Ask anything about the business' && order[1] === 'Tell it what to set up', `sections in order (${order.join(' | ')})`);
+  check(await page.locator('.agd-panel .cx.is-dock .cx-input').count() === 1 && await page.locator('.agd-panel [data-chat-empty]').isVisible(), 'the panel is the assistant: an empty conversation and a composer');
+  check((await page.locator('.agd-for').innerText()) === 'New conversation', 'the header names the conversation');
   await page.keyboard.press('Escape');
   check(await page.locator('.agd-panel').isHidden() && await page.evaluate(() => document.activeElement?.classList.contains('agd-launch')), 'Escape closes and focus returns to the launcher');
   await page.locator('#view').click({ position: { x: 5, y: 5 } }).catch(() => {});
@@ -95,29 +96,27 @@ try {
   check(await page.locator('.agd-panel').isHidden() || !(await page.locator('.agd-panel').count()), 'typing "." in a field does not open it');
   await page.fill('.leads-bar input[type=search]', '');
 
-  // Ask through the panel, mocked: the answer, its hub link only, the launcher busy meanwhile
+  // Talk to it through the panel, mocked: the reply, its hub link only, the launcher busy meanwhile
   await L.click();
-  await page.fill('.agd-panel .ag-ask-input', 'Which clients have not been invoiced?');
+  await page.fill('.agd-panel .cx-input', 'Which clients have not been invoiced?');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(250);
-  check(await L.evaluate((n) => n.classList.contains('is-busy')), 'while an agent works the launcher moves faster (is-busy)');
-  await page.waitForSelector('.agd-panel .ag-link');
-  check((await page.locator('.agd-panel .ag-a').innerText()).includes('Two clients'), 'Ask: the answer shows in the panel');
-  check(await page.locator('.agd-panel .ag-link').count() === 1 && await page.locator('.agd-panel .ag-link').getAttribute('href') === '#income', 'Ask: hub links only (an unsafe link is dropped)');
-  check(page.calls.some((c) => c.agent === 'ask' && c.question.startsWith('Which clients')), 'the question went to the (mocked) ask agent');
+  check(await L.evaluate((n) => n.classList.contains('is-busy')), 'while the assistant works the launcher moves faster (is-busy)');
+  await page.waitForSelector('.agd-panel .cx-link');
+  check((await page.locator('.agd-panel .cx-msg.is-agent .cx-text').innerText()).includes('Two clients'), 'the reply shows in the panel');
+  check(await page.locator('.agd-panel .cx-link').count() === 1 && await page.locator('.agd-panel .cx-link').getAttribute('href') === '#income', 'hub links only (an unsafe link is dropped)');
+  check(page.calls.some((c) => c.agent === 'chat' && c.message.startsWith('Which clients')), 'the message went to the (mocked) assistant');
+  check((await page.locator('.agd-for').innerText()) === 'Invoices this month', 'the header takes the conversation title');
   // a typed draft survives a live update
-  await page.fill('.agd-panel .agd-doer-input', 'Make a task');
+  await page.fill('.agd-panel .cx-input', 'Make a task');
   await page.evaluate(async () => { const m = await window.__mod('api.js'); m.notify(); });
   await page.waitForTimeout(200);
-  check(await page.locator('.agd-panel .agd-doer-input').inputValue() === 'Make a task', 'typed text is kept through live updates');
-  await page.fill('.agd-panel .agd-doer-input', 'Make tasks for this month\'s retainer invoices');
-  await page.click('[data-act=agd-doer]');
-  await page.waitForSelector('[data-doer-note]');
-  check((await page.locator('[data-doer-note]').innerText()).includes('two tasks'), 'Doer: its note shows');
-  check((await page.locator('[data-act=agd-approvals]').innerText()).includes('2 suggestions waiting for your approval') && await page.locator('[data-act=agd-approvals]').getAttribute('href') === '#agents/approvals', 'Doer: "2 suggestions waiting for your approval" links to the approvals');
-  check(await page.locator('.agd-panel .ag-action, .agd-panel [data-act=approve]').count() === 0, 'no approval cards are duplicated in the panel');
+  check(await page.locator('.agd-panel .cx-input').inputValue() === 'Make a task', 'typed text is kept through live updates');
+  await page.fill('.agd-panel .cx-input', '');
+  await page.click('[data-act=agd-history]');
   const quick = await page.$$eval('.agd-quick [data-quick]', (ns) => ns.map((n) => n.dataset.quick));
-  check(JSON.stringify(quick) === JSON.stringify(['approvals', 'briefing', 'research', 'agents']), `quick rows (${quick})`);
+  check(JSON.stringify(quick) === JSON.stringify(['approvals', 'briefing', 'memory', 'research', 'agents']), `quick rows under the history (${quick})`);
+  check((await page.locator('.agd-meta').innerText()).includes('Tyler') && /US\$1\.2\d of US\$25\.00/.test(await page.locator('.agd-meta').innerText()), 'who it works for and this month\'s spend');
   check(!page.calls.some((c) => c.agent === 'briefing'), 'the briefing never runs by itself');
   if (SHOTS) await page.screenshot({ path: join(SHOTS, 'open-1440.png') });
   await page.click('[data-quick=agents]');
@@ -139,11 +138,11 @@ try {
   const toastTop = await page.evaluate(() => { const t = document.querySelector('.toast-wrap'); return t ? parseFloat(getComputedStyle(t).top) : 999; });
   check(toastTop >= lb.y + lb.height, `toasts start below the launcher (${toastTop}px)`);
 
-  // no overlap with each page's primary header button
-  clientId = await page.evaluate(async (P) => { const m = await window.__mod('api.js'); return (await m.saveRow('clients', { name: `${P} Harbour Dental`, status: 'active' })).id; }, P);
+  // no overlap with each page's primary header button (an existing client, if any; nothing is created)
+  const existingClient = await page.evaluate(async () => { const m = await window.__mod('api.js'); return m.state.clients[0]?.id || null; });
   for (const [vp, label] of [[{ width: 1440, height: 900 }, '1440'], [{ width: 3440, height: 1440 }, '3440']]) {
     await page.setViewportSize(vp);
-    for (const [hash, sel] of [['#home', '.home-hero .btn-primary'], ['#leads', '.page-head .btn-primary'], [`#clients/${clientId}`, '.page-head .btn-primary']]) {
+    for (const [hash, sel] of [['#home', '.home-hero .btn-primary'], ['#leads', '.page-head .btn-primary'], ...(existingClient ? [[`#clients/${existingClient}`, '.page-head .btn-primary']] : [])]) {
       await page.evaluate((h) => { location.hash = h; }, hash);
       await page.waitForSelector(sel, { timeout: 10000 });
       await page.waitForTimeout(300);

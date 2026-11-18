@@ -162,7 +162,7 @@ const nav = async (page, hash) => {
 };
 const lastCall = (page, pred) => page.calls.filter(pred).pop();
 const noHScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
-const shot = async (page, name, opts = {}) => { if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`), ...opts }); };
+const shot = async (page, name, opts = {}) => { if (!SHOTS) return; const vw = page.viewportSize().width; await page.mouse.move(vw - 300, 2); await page.waitForTimeout(250); await page.screenshot({ path: join(SHOTS, `${name}.png`), ...opts }); };
 
 let settingsBefore = null;
 let restorePage = null;
