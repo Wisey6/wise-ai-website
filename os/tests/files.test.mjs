@@ -567,6 +567,7 @@ try {
     await g.waitForSelector('.fl-row[data-id="SD1"]');
     await g.evaluate(() => { location.hash = '#files'; });
     await g.waitForSelector('.fl-row[data-id="PDF1"]');
+    check(await g.$eval('.fl-crumbs', (n) => n.textContent.trim()) === 'My Drive', 'Google: after visiting a shared drive, the root is still My Drive');
     // a move across drives is refused, plainly
     await g.click('.fl-row[data-id="PDF1"] [data-fk="more"]');
     await g.click('.fl-menu-item:has-text("Move")');

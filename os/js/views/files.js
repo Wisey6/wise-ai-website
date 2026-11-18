@@ -388,7 +388,7 @@ export default function filesView(ctx) {
       mem.folders.set(realKey, { folder: r.folder, items: r.items, cursor: r.cursor, at: Date.now() });
       if (r.path) mem.paths.set(realKey, r.path);
       else if (!mem.paths.has(realKey)) mem.paths.set(realKey, [{ id: realKey, name: rootName(r.folder) }]);
-      if (r.folder.is_root && mem.status?.account) mem.status.account.root_id = r.folder.id;
+      if (r.folder.is_root && !r.folder.parent_id && mem.status?.account) mem.status.account.root_id = r.folder.id;
       paintAll();
     }
 
@@ -664,7 +664,7 @@ export default function filesView(ctx) {
         stage.append(src ? el('img', { class: 'fl-stage-img', src, alt: it.name, referrerpolicy: 'no-referrer', decoding: 'async' }) : glyph(it, 'lg'));
       } else if (it.kind === 'pdf' || (isGoogle && d.preview_url)) {
         stage.append(pdfFrame(it, d));
-      } else if (it.kind === 'video' && (d.preview_url || d.download_url)) {
+      } else if (it.kind === 'video' && (d.preview_url || d.download_url) && (it.size || 0) <= 40 * 1024 * 1024) {
         stage.append(el('video', { class: 'fl-stage-media', src: d.preview_url || d.download_url, controls: true, preload: 'metadata', playsinline: true }));
       } else if (it.kind === 'audio' && (d.preview_url || d.download_url)) {
         stage.append(glyph(it, 'lg'), el('audio', { class: 'fl-stage-audio', src: d.preview_url || d.download_url, controls: true, preload: 'none' }));

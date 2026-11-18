@@ -85,7 +85,82 @@ Pure helpers (phone normalisation, template rendering, opt-out tail, Twilio/Cal 
 timezone maths) have unit checks with dummy secrets: `node --test supabase/tests/shared.test.mjs`
 (Node 22.18+, which runs the `.ts` files directly).
 
-## onedrive (the Files page)
+## gdrive (the Files page, Google Drive)
+
+The Files page shows the business **Google Drive** (the Google Workspace account on wise-ai.au):
+My Drive plus any shared drives, live, read through the Drive API v3 each time. The page picks
+Google Drive when `gdrive` is set up or connected, otherwise OneDrive (below) if that is set up,
+otherwise it explains the Google setup. Function `gdrive`, shared code
+`functions/_shared/gdrive.ts`, migration `0011_gdrive.sql` (adds `provider` to `file_links` and
+`file_changes`, and the private `gdrive_connection` row reached only through
+`gdrive_get / gdrive_save / gdrive_clear`, service role only).
+
+**No delete, no trash.** Nothing in the function deletes or trashes. Moves stay inside one drive
+(My Drive, or one shared drive); moving between drives is refused with `cross_drive`. Files that are
+only "shared with me" are not shown.
+
+**Previews.** Google's thumbnail links need the signed-in token and are blocked by CORS, so the
+function streams thumbnails, images, PDFs, short videos and Google Docs/Sheets/Slides (exported as
+PDF, Google's limit 10 MB) itself, through `GET /gdrive?f=<signed token>`. A token names one file
+and one kind of output and expires after an hour. This works whether or not the viewer is signed in
+to Google in their browser (the `drive.google.com/.../preview` iframe does not, for private files).
+
+### Set it up (once, about ten minutes)
+
+Signed in to Google as the Workspace admin (the wise-ai.au account):
+
+1. Go to console.cloud.google.com. In the project picker choose **New project**; name it
+   "Wise AI OS"; Organisation: **wise-ai.au**. Create, then select it.
+2. **Menu > APIs & Services > Library**: search **Google Drive API**, open it, **Enable**.
+3. **Menu > Google Auth platform > Branding**. If it says "Google Auth platform not configured
+   yet", click **Get started**. App name "Wise AI OS"; User support email: the business address;
+   **Next**. Audience: **Internal**; **Next**. Contact information: the business address; **Next**.
+   Tick the policy agreement, **Continue**, **Create**.
+4. (Optional for an Internal app, but it records what the hub asks for.) **Google Auth platform >
+   Data access > Add or remove scopes**: tick
+   `https://www.googleapis.com/auth/drive` (find it by filtering for "drive"), plus `openid`,
+   `.../auth/userinfo.email` and `.../auth/userinfo.profile`; **Update**, then **Save**.
+5. **Google Auth platform > Clients > Create client**. Application type **Web application**; name
+   "Wise AI OS hub". Under **Authorised redirect URIs**, **Add URI**:
+   `https://adfgtlhryyyrqbbgbfmx.supabase.co/functions/v1/gdrive` (exactly). **Create**.
+6. Copy the **Client ID** and the **Client secret** straight away: Google shows the secret only
+   once (if it is lost, add a new secret on the client's page).
+7. Supabase → Edge Functions → Secrets: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+8. In the hub, the owner opens **Files** and presses **Connect Google Drive**, signs in with the
+   business account and allows access. One connection serves the whole team.
+
+Optional secret `GDRIVE_STATE_SECRET` (32+ random characters) signs the sign-in state and the
+preview links; without it a key is derived from the service-role key.
+
+Why Internal: the full Drive scope is a "restricted" scope. An app whose audience is Internal to the
+Workspace organisation needs no Google verification and never shows the unverified-app screen, and
+the 7-day refresh-token expiry only applies to External apps in Testing. The connection then lasts
+until it is unused for six months, the owner or Workspace admin removes the hub's access (Google
+Account > Security > Your connections to third-party apps, or Admin console API controls), or the
+OAuth client is deleted (Google deletes clients unused for six months). If any of that happens the
+page shows the owner a "Sign in again" banner. Disconnecting from the hub also revokes the token at
+Google.
+
+### Actions (the same contract as `onedrive`)
+
+POST JSON with a signed-in team member's JWT. Same actions, request bodies, item shape and error
+codes as the OneDrive table below, plus: every answer carries `provider: "gdrive"`; `item` also
+returns `preview_url` (signed, one hour; a Google Doc/Sheet/Slides comes back as PDF);
+`download_url` is a signed download through the function (null for Google Docs, which open in
+Google Drive); items carry `drive_id` (shared drive or null), `can_rename`, `can_move` and, for
+Google files, `badge` (DOC, SHEET, SLIDE). Folders have `child_count: null` (Drive does not count).
+`list {item_id: "shared"}` lists the shared drives; My Drive's listing ends with a "Shared drives"
+folder when there are any. Extra errors: `cross_drive`, `too_large`. Rate limits (429, or 403
+`userRateLimitExceeded` / `rateLimitExceeded`) are waited out once and then answered `busy`.
+
+`GET ?code&state` is Google's redirect → `https://wise-ai.au/os/?drive=<result>#files` with result
+`connected | denied | expired | bad_state | not_owner | not_in_org | no_refresh | scope_missing |
+not_configured | busy | error`.
+
+Unit tests: `node --test supabase/tests/gdrive.test.mjs`. Page tests (fake Google Drive and fake
+OneDrive): `os/tests/files.test.mjs`.
+
+## onedrive (the Files page, OneDrive: built, dormant)
 
 A live window onto the business OneDrive (a **personal** Microsoft account) through Microsoft
 Graph. Nothing is copied: every folder is read when it is opened. The hub keeps only its own

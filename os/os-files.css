@@ -293,3 +293,8 @@ a.fl-crumb:hover, button.fl-crumb:hover { color: var(--ink); text-decoration: un
 .fl-rec-file-name { flex: 1; min-width: 0; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fl-rec-file-when { flex: none; font-variant-numeric: tabular-nums; }
 @container (max-width: 380px) { .fl-rec-file-when { display: none; } }
+.fl-acct { flex-wrap: wrap; }
+@container files (max-width: 720px) {
+  .fl-acct-line { white-space: normal; min-width: 0; flex: 1 1 auto; }
+  .fl-acct-line .faint { display: none; }
+}
