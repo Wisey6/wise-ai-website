@@ -281,3 +281,4 @@
 .set-person-acts .btn.is-danger { color: var(--rose-t); }
 .set-pin-once { font-family: var(--font-display); font-weight: 900; font-size: 40px; letter-spacing: .12em; color: var(--ink); }
 @media (max-width: 760px) { .set-person-acts { width: 100%; padding-left: 52px; } }
+.set-team > .row { margin-top: var(--space-2); }

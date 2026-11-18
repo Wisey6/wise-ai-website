@@ -48,7 +48,7 @@ export function ownerBadge(id, { size = 'md', title = true } = {}) {
     class: `own-ring is-${size}${id ? ` t-${toneOf(id)}` : ' is-empty'}${isMe(id) ? ' is-me' : ''}`,
     role: 'img', 'aria-label': label, title: title ? (id ? ownerName(id) : 'Nobody yet') : null,
     dataset: { owner: id || '' }
-  }, id ? initialsOf(m) || '?' : icon('user', size === 'sm' ? 11 : 13));
+  }, id ? initialsOf(m) || '?' : icon('plus', size === 'sm' ? 11 : 13));
 }
 
 /** Ring + name, for headers and lists. */
