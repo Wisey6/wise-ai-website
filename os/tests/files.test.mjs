@@ -38,7 +38,7 @@ const slideSvg = () => `<svg xmlns="http://www.w3.org/2000/svg" width="800" heig
 // A one-page PDF (valid enough for a viewer).
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length 88>>stream\nBT /F1 28 Tf 72 740 Td (Wise AI price list) Tj ET BT /F1 12 Tf 72 700 Td (Fake test file) Tj ET\nendstream endobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
 
-function newDrive() {
+function newDrive(provider = 'onedrive') {
   const items = {};
   const add = (o) => { items[o.id] = { size: 0, created: ago(120), modified: ago(30), modified_by: 'Tyler W', ...o }; return items[o.id]; };
   add({ id: 'ROOT', name: 'root', folder: true, is_root: true });
@@ -57,28 +57,49 @@ function newDrive() {
   add({ id: 'SPQ', name: 'Smith Plumbing quote.pdf', parent: 'SP', size: 120000, mime: 'application/pdf', modified: ago(2), thumb: 'doc-pdf' });
   add({ id: 'OG', name: 'Brand banner.png', parent: 'PH', size: 90000, mime: 'image/png', thumb: 'og' });
   for (let i = 1; i <= 100; i++) add({ id: `R${i}`, name: `Receipt ${String(i).padStart(3, '0')}.pdf`, parent: 'BIG', size: 30000 + i * 917, mime: 'application/pdf', modified: ago(i % 30) });
-  return { items, changes: [], links: [], calls: [], seq: 0 };
+  if (provider === 'gdrive') {
+    // Google flavour: Google Docs/Sheets in place of Word/Excel, and a shared drive.
+    delete items.DOC1; delete items.XLS1;
+    add({ id: 'GDOC', name: 'Scope of work', parent: 'ROOT', mime: 'application/vnd.google-apps.document', modified: ago(1, 2), thumb: 'doc-word', size: null });
+    add({ id: 'GSHEET', name: 'Monthly numbers', parent: 'ROOT', mime: 'application/vnd.google-apps.spreadsheet', modified: ago(6), thumb: 'sheet', size: null });
+    add({ id: 'shared', name: 'Shared drives', folder: true, parent: 'ROOT', virtual: true, modified: null });
+    add({ id: 'SD1', name: 'Clients shared', folder: true, parent: 'shared', drive: 'SD1', drive_root: true });
+    add({ id: 'SDF', name: 'Team notes.pdf', parent: 'SD1', drive: 'SD1', size: 88000, mime: 'application/pdf', thumb: 'doc-pdf' });
+  }
+  return { items, changes: [], links: [], calls: [], seq: 0, provider };
 }
 
-const kindOf = (name, folder) => {
+const kindOf = (name, folder, mime) => {
   if (folder) return 'folder';
+  if (mime === 'application/vnd.google-apps.document') return 'gdoc';
+  if (mime === 'application/vnd.google-apps.spreadsheet') return 'gsheet';
   const ext = (name.match(/\.([a-z0-9]{1,8})$/i)?.[1] || '').toLowerCase();
   return ({ docx: 'word', xlsx: 'excel', pptx: 'powerpoint', pdf: 'pdf', jpg: 'image', png: 'image' })[ext] || 'file';
 };
 function pathOf(d, id) {
   const out = [];
-  for (let cur = d.items[id]; cur; cur = d.items[cur.parent]) { out.unshift(cur.is_root ? { id: cur.id, name: 'OneDrive' } : { id: cur.id, name: cur.name }); if (cur.is_root) break; }
+  for (let cur = d.items[id]; cur; cur = d.items[cur.parent]) {
+    out.unshift(cur.is_root ? { id: cur.id, name: rootLabel(d) } : { id: cur.id, name: cur.name });
+    if (cur.is_root || cur.virtual) break;
+  }
   return out;
 }
+const rootLabel = (d) => (d.provider === 'gdrive' ? 'My Drive' : 'OneDrive');
+const driveOf = (d, it) => { for (let c = it; c; c = d.items[c.parent]) if (c.drive) return c.drive; return null; };
 const THUMB = 'https://thumbs.fake-onedrive.test/';
 function shape(d, it) {
   const kids = Object.values(d.items).filter((x) => x.parent === it.id);
   const pp = it.parent ? pathOf(d, it.parent).slice(1).map((p) => p.name).join('/') : null;
   const ext = (it.name.match(/\.([a-z0-9]{1,8})$/i)?.[1] || '').toLowerCase();
+  const g = d.provider === 'gdrive';
+  const kind = kindOf(it.name, it.folder, it.mime);
   return {
-    id: it.id, name: it.name, folder: Boolean(it.folder), child_count: it.folder ? kids.length : null, size: it.folder ? null : it.size,
-    mime: it.mime || null, kind: kindOf(it.name, it.folder), ext, modified: it.modified, created: it.created, modified_by: it.modified_by,
-    web_url: `https://onedrive.live.com/?id=${it.id}`, parent_id: it.parent || null, parent_path: it.parent ? `/${pp}`.replace(/^\/$/, '/') : null, is_root: Boolean(it.is_root),
+    id: it.id, name: it.is_root ? rootLabel(d) : it.name, folder: Boolean(it.folder), child_count: it.folder && !g ? kids.length : null, size: it.folder ? null : it.size ?? null,
+    mime: it.mime || null, kind, ext, ...(kind === 'gdoc' ? { badge: 'DOC' } : kind === 'gsheet' ? { badge: 'SHEET' } : {}),
+    modified: it.modified, created: it.created, modified_by: it.modified_by,
+    web_url: g ? (kind === 'gdoc' ? `https://docs.google.com/document/d/${it.id}/edit` : `https://drive.google.com/file/d/${it.id}/view`) : `https://onedrive.live.com/?id=${it.id}`,
+    parent_id: it.parent || null, parent_path: g ? null : it.parent ? `/${pp}`.replace(/^\/$/, '/') : null, is_root: Boolean(it.is_root || it.drive_root),
+    drive_id: g ? driveOf(d, it) : undefined, can_rename: it.virtual || it.drive_root ? false : undefined, can_move: it.virtual || it.drive_root ? false : undefined,
     thumb: it.thumb ? { small: `${THUMB}${it.thumb}?s`, medium: `${THUMB}${it.thumb}?m`, large: `${THUMB}${it.thumb}?l` } : null
   };
 }
@@ -87,7 +108,13 @@ function shape(d, it) {
 async function mockDrive(ctx, cfg, d) {
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS, GET' };
   const reply = (route, status, body) => route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  await ctx.route('**/functions/v1/onedrive', async (route) => {
+  const prov = cfg.provider || 'onedrive';
+  const other = prov === 'gdrive' ? 'onedrive' : 'gdrive';
+  // The other provider is not set up.
+  await ctx.route(`**/functions/v1/${other}`, (route) => (route.request().method() === 'OPTIONS'
+    ? route.fulfill({ status: 204, headers: cors })
+    : reply(route, 200, { ok: true, configured: false, connected: false, can_connect: cfg.role !== 'member', owner_name: 'Tyler' })));
+  await ctx.route(`**/functions/v1/${prov}`, async (route) => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     let b = {};
     try { b = JSON.parse(route.request().postData() || '{}'); } catch { /* */ }
@@ -110,7 +137,7 @@ async function mockDrive(ctx, cfg, d) {
     if (cfg.busyOnce) { cfg.busyOnce = false; return fail(503, 'busy', 'OneDrive is busy right now. Try again in a minute.'); }
     const it = (id) => d.items[id === 'root' || !id ? 'ROOT' : id];
     const now = new Date().toISOString();
-    const log = (row) => { const c = { id: `00000000-0000-4000-8000-${String(++d.seq).padStart(12, '0')}`, at: now, member_id: null, source: 'hub', chat_id: null, undone_at: null, ...row }; d.changes.unshift(c); return c; };
+    const log = (row) => { const c = { id: `00000000-0000-4000-8000-${String(++d.seq).padStart(12, '0')}`, at: now, member_id: null, source: 'hub', chat_id: null, undone_at: null, provider: d.provider, ...row }; d.changes.unshift(c); return c; };
     switch (b.action) {
       case 'list': case 'folders': {
         const f = it(b.item_id);
@@ -126,7 +153,13 @@ async function mockDrive(ctx, cfg, d) {
       case 'item': {
         const x = it(b.id);
         if (!x) return fail(404, 'not_found', 'That file or folder is no longer in OneDrive. It may have been moved or removed there.');
-        return reply(route, 200, { ok: true, item: shape(d, x), download_url: x.folder ? null : `https://dl.fake-onedrive.test/${x.id}`, path: b.with_path ? pathOf(d, x.parent) : null, links: d.links.filter((l) => l.item_id === x.id) });
+        const sh = shape(d, x);
+        const gdoc = sh.kind === 'gdoc' || sh.kind === 'gsheet';
+        return reply(route, 200, {
+          ok: true, item: sh, download_url: x.folder || gdoc ? null : `https://dl.fake-onedrive.test/${x.id}`,
+          ...(d.provider === 'gdrive' ? { preview_url: gdoc || sh.kind === 'pdf' || sh.kind === 'image' ? `https://dl.fake-onedrive.test/${x.id}` : null } : {}),
+          path: b.with_path ? pathOf(d, x.parent) : null, links: d.links.filter((l) => l.item_id === x.id)
+        });
       }
       case 'rename': {
         const x = it(b.id);
@@ -141,9 +174,10 @@ async function mockDrive(ctx, cfg, d) {
         const x = it(b.id), dest = it(b.parent_id);
         if (!x || !dest) return fail(403, 'outside_drive', 'That item is not in the connected OneDrive.');
         if (x.parent === dest.id) return reply(route, 200, { ok: true, item: shape(d, x), change: null, unchanged: true });
+        if (d.provider === 'gdrive' && (dest.virtual || driveOf(d, x) !== driveOf(d, dest))) return fail(400, 'cross_drive', 'Moving between My Drive and a shared drive, or between shared drives, is done in Google Drive itself.');
         const from = d.items[x.parent];
         x.parent = dest.id;
-        const fromName = from.is_root ? 'OneDrive' : from.name, toName = dest.is_root ? 'OneDrive' : dest.name;
+        const fromName = from.is_root ? rootLabel(d) : from.name, toName = dest.is_root ? rootLabel(d) : dest.name;
         const change = log({ item_id: x.id, op: 'move', before: { parent_id: from.id, parent_name: fromName, name: x.name }, after: { parent_id: dest.id, parent_name: toName, name: x.name }, summary: `Moved ${x.name} from ${fromName} to ${toName}` });
         return reply(route, 200, { ok: true, item: shape(d, x), change });
       }
@@ -152,7 +186,7 @@ async function mockDrive(ctx, cfg, d) {
         if (Object.values(d.items).some((y) => y.parent === p.id && y.name === b.name)) return fail(409, 'name_taken', 'Something with that name is already in that folder.');
         const id = `NF${++d.seq}`;
         d.items[id] = { id, name: b.name, folder: true, parent: p.id, created: now, modified: now, modified_by: 'Tyler W' };
-        const where = p.is_root ? 'OneDrive' : p.name;
+        const where = p.is_root ? rootLabel(d) : p.name;
         const change = log({ item_id: id, op: 'create_folder', before: null, after: { name: b.name, parent_id: p.id, parent_name: where }, summary: `Made a folder ${b.name} in ${where}` });
         return reply(route, 200, { ok: true, item: shape(d, d.items[id]), change });
       }
@@ -170,7 +204,7 @@ async function mockDrive(ctx, cfg, d) {
       case 'link': {
         const x = it(b.item_id);
         let l = d.links.find((y) => y.item_id === x.id && y.kind === b.kind && y.record_id === b.record_id);
-        if (!l) { l = { id: `00000000-0000-4000-9000-${String(++d.seq).padStart(12, '0')}`, created_at: now, item_id: x.id, name: x.name, web_url: `https://onedrive.live.com/?id=${x.id}`, mime: x.mime || null, is_folder: Boolean(x.folder), kind: b.kind, record_id: b.record_id, created_by: null }; d.links.push(l); }
+        if (!l) { l = { id: `00000000-0000-4000-9000-${String(++d.seq).padStart(12, '0')}`, created_at: now, item_id: x.id, name: x.name, web_url: `https://onedrive.live.com/?id=${x.id}`, mime: x.mime || null, is_folder: Boolean(x.folder), kind: b.kind, record_id: b.record_id, created_by: null, provider: d.provider }; d.links.push(l); }
         return reply(route, 200, { ok: true, link: l });
       }
       case 'unlink': d.links = d.links.filter((l) => l.id !== b.link_id); return reply(route, 200, { ok: true, unlinked: b.link_id });
@@ -207,7 +241,7 @@ async function mockDrive(ctx, cfg, d) {
 /* ================================================================ browser helpers */
 const browser = await chromium.launch();
 
-async function openApp({ viewport = { width: 1440, height: 900 }, cfg = { connected: true }, d = newDrive(), scale = SHOTS ? 2 : 1, hash = '#files', storage = null } = {}) {
+async function openApp({ viewport = { width: 1440, height: 900 }, cfg = { connected: true }, d = newDrive(cfg.provider), scale = SHOTS ? 2 : 1, hash = '#files', storage = null } = {}) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: scale });
   await mockDrive(ctx, cfg, d);
   if (storage) await ctx.addInitScript((s) => { for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v); }, storage);
@@ -250,9 +284,9 @@ try {
     const page = await openApp({ cfg: { configured: false, role: 'member' } });
     await page.waitForSelector('[data-state="not-configured"]');
     const t = await page.textContent('.fl-setup');
-    check(/Ask Tyler to finish the Microsoft setup/.test(t), 'not configured (member): asks Tyler to finish the Microsoft setup');
+    check(/Ask Tyler to finish the Google setup/.test(t), 'not configured (member): asks Tyler to finish the Google setup');
     check(!(await page.$('[data-fk="connect"]')), 'not configured: no connect button');
-    check(!/MS_CLIENT_SECRET/.test(t), 'member does not see setup internals');
+    check(!/GOOGLE_CLIENT_SECRET/.test(t) && (await page.getAttribute('.fl-setup', 'data-provider')) === 'gdrive', 'nothing set up: the page explains Google Drive; members do not see setup internals');
     await shot(page, 'files-not-configured-1440');
     check(page.errors.length === 0, `not configured: no console errors ${page.errors.join(' | ')}`);
     await page.ctx.close();
@@ -260,7 +294,7 @@ try {
   {
     const page = await openApp({ cfg: { configured: false } });
     await page.waitForSelector('[data-state="not-configured"]');
-    check(/MS_CLIENT_ID and MS_CLIENT_SECRET/.test(await page.textContent('.fl-setup')), 'not configured (owner): names the two settings to add');
+    check(/GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET/.test(await page.textContent('.fl-setup')), 'not configured (owner): names the two Google settings to add');
     await page.ctx.close();
   }
   {
@@ -341,8 +375,8 @@ try {
   check(await page.$eval('.fl-stage-img', (i) => i.complete && i.naturalWidth > 0), 'image previews in place');
   await shot(page, 'files-preview-image-1440');
   await page.click('.fl-row[data-id="DOC1"] .fl-name');
-  await page.waitForSelector('.fl-pane .fl-pv[data-id="DOC1"] [data-fk="open-onedrive"]');
-  check(await page.$eval('[data-fk="open-onedrive"]', (a) => a.classList.contains('btn-primary') && a.target === '_blank' && a.href.startsWith('https://onedrive.live.com/')), 'Word: Open in OneDrive is the main action, in a new tab');
+  await page.waitForSelector('.fl-pane .fl-pv[data-id="DOC1"] [data-fk="open-web"]');
+  check(await page.$eval('[data-fk="open-web"]', (a) => a.classList.contains('btn-primary') && a.target === '_blank' && a.href.startsWith('https://onedrive.live.com/')), 'Word: Open in OneDrive is the main action, in a new tab');
   await shot(page, 'files-preview-word-1440');
 
   // grid toggle (remembered)
@@ -494,6 +528,137 @@ try {
   check(page.errors.length === 0, `1440: no console errors ${page.errors.join(' | ')}`);
   check(!page.d.calls.some((c) => /delete/i.test(c.action || '')), 'no delete action was ever called');
   await page.ctx.close();
+
+  /* ============================================================ Google Drive */
+  {
+    const g = await openApp({ cfg: { provider: 'gdrive', connected: true } });
+    await waitRows(g);
+    check(await g.getAttribute('.fl-search', 'placeholder') === 'Search Drive', 'Google: the search box reads Search Drive');
+    check(/Your Google Drive, live/.test(await g.textContent('.fl-lede')), 'Google: the page names Google Drive');
+    check(await g.$eval('.fl-crumbs', (n) => n.textContent.trim()) === 'My Drive', 'Google: the root reads My Drive');
+    const gnames = await rows(g);
+    check(gnames.includes('Shared drives') && gnames.includes('Scope of work'), `Google: My Drive lists a Shared drives folder and Google files (${gnames.join(', ')})`);
+    check(/Google Doc/.test(await g.textContent('.fl-row[data-id="GDOC"]')) || await g.$eval('.fl-row[data-id="GDOC"]', (r) => r.dataset.kind === 'gdoc'), 'Google: a Google Doc is recognised');
+    check(!(await g.textContent('.fl-table')).includes('0 items'), 'Google: folders show no misleading item counts');
+    await shot(g, 'gdrive-list-1440');
+    await g.click('.fl-row[data-id="GDOC"] .fl-name');
+    await g.waitForSelector('.fl-pv[data-id="GDOC"] [data-fk="open-web"]');
+    check(await g.$eval('[data-fk="open-web"]', (a) => a.textContent.trim() === 'Open in Google Drive' && a.classList.contains('btn-primary') && a.href.startsWith('https://docs.google.com/')), 'Google Doc: Open in Google Drive is the main action');
+    await g.waitForSelector('.fl-pane .fl-pdf-frame', { timeout: 8000 });
+    check((await g.getAttribute('.fl-pdf-frame', 'src')).startsWith('blob:'), 'Google Doc: previewed in the hub (exported as PDF through the function)');
+    check(!(await g.$('.fl-pv [data-fk="download"]')), 'Google Doc: no Download button (it opens in Google Drive)');
+    check(/Google Doc/.test(await g.textContent('.fl-pv .eyebrow')), 'Google Doc: labelled Google Doc');
+    await shot(g, 'gdrive-preview-doc-1440');
+    await g.click('.fl-row[data-id="IMG1"] .fl-name');
+    await g.waitForSelector('.fl-pane .fl-stage-img');
+    await shot(g, 'gdrive-preview-image-1440');
+    await g.click('.fl-seg-btn[data-view="grid"]');
+    await g.waitForSelector('.fl-tile');
+    await shot(g, 'gdrive-grid-1440');
+    await g.click('.fl-seg-btn[data-view="list"]');
+    // shared drives
+    await g.click('.fl-row[data-id="shared"] .fl-name');
+    await g.waitForSelector('.fl-row[data-id="SD1"]');
+    check(await g.$eval('[data-fk="new-folder"]', (b) => b.hidden), 'Shared drives (the list of drives): no New folder there');
+    await g.click('.fl-row[data-id="SD1"] .fl-name');
+    await g.waitForSelector('.fl-row[data-id="SDF"]');
+    check(/Shared drives.*Clients shared/.test(await g.textContent('.fl-crumbs')), 'shared drive: breadcrumbs read Shared drives / Clients shared');
+    await g.click('.fl-crumbs a:has-text("Shared drives")');
+    await g.waitForSelector('.fl-row[data-id="SD1"]');
+    await g.evaluate(() => { location.hash = '#files'; });
+    await g.waitForSelector('.fl-row[data-id="PDF1"]');
+    // a move across drives is refused, plainly
+    await g.click('.fl-row[data-id="PDF1"] [data-fk="more"]');
+    await g.click('.fl-menu-item:has-text("Move")');
+    await g.waitForSelector('.fl-pick-item[data-id="shared"]');
+    await g.click('.fl-pick-item[data-id="shared"]');
+    await g.waitForSelector('.fl-pick-item[data-id="SD1"]');
+    await g.click('.fl-pick-item[data-id="SD1"]');
+    await g.waitForFunction(() => /Move into Clients shared/.test(document.querySelector('.fl-pick-status')?.textContent || ''));
+    await g.click('.modal-foot .btn-primary');
+    await g.waitForFunction(() => /done in Google Drive itself/.test(document.querySelector('.toast-wrap')?.textContent || ''));
+    check(g.d.items.PDF1.parent === 'ROOT', 'Google: a move between My Drive and a shared drive is refused with a plain message');
+    // rename a Google Doc (no extension to protect), logged with the provider
+    await g.click('.fl-row[data-id="GDOC"] [data-fk="more"]');
+    await g.click('.fl-menu-item:has-text("Rename")');
+    await g.waitForSelector('#fl-rn');
+    await g.fill('#fl-rn', 'Scope of work v2');
+    await g.click('.modal-foot .btn-primary');
+    await g.waitForSelector('.fl-ch[data-op="rename"]');
+    check(g.d.items.GDOC.name === 'Scope of work v2' && g.d.changes[0].provider === 'gdrive', 'Google: rename reaches the drive and is logged for Google Drive');
+    await g.click('.fl-ch[data-op="rename"] [data-fk="undo"]');
+    await g.waitForFunction(() => [...document.querySelectorAll('.fl-name-main')].some((n) => n.textContent === 'Scope of work'));
+    check(g.d.items.GDOC.name === 'Scope of work', 'Google: undo puts the name back');
+    // link carries the provider
+    const CLG = '7e57f11e-0000-4000-8000-000000000002';
+    await g.evaluate(async (id) => {
+      const { state } = await import(document.querySelector('script[type=module]').src.replace('app.js', 'api.js'));
+      state.clients.unshift({ id, name: 'ZZFILES Harbour Dental', status: 'active', archived: false });
+    }, CLG);
+    await g.click('.fl-row[data-id="GDOC"] .fl-name');
+    await g.waitForSelector('.fl-pv[data-id="GDOC"] [data-fk="link"]');
+    await g.click('.fl-pv [data-fk="link"]');
+    await g.fill('.modal input[type=search]', 'zzfiles harbour');
+    await g.check(`.fl-rec input[value="client:${CLG}"]`);
+    await g.click('.modal-foot .btn-primary');
+    await g.waitForSelector('.fl-link-list li');
+    check(g.d.links[0]?.provider === 'gdrive', 'Google: a link is stored for Google Drive');
+    // 100-item folder, busy then retry
+    await g.evaluate(() => { location.hash = '#files/BIG'; });
+    await g.waitForFunction(() => document.querySelectorAll('.fl-row').length === 100);
+    check(true, 'Google: a 100-item folder lists all 100');
+    g.cfg.busyOnce = true;
+    await g.evaluate(() => { location.hash = '#files/PR'; });
+    await g.waitForSelector('.fl-empty [data-fk="retry"]');
+    check(/Google Drive is busy/.test(await g.textContent('.fl-empty')), 'Google: throttled shows "Google Drive is busy" with Try again');
+    await g.click('[data-fk="retry"]');
+    await g.waitForSelector('.fl-empty .empty-title:has-text("This folder is empty"), .fl-row', { timeout: 8000 });
+    check(g.errors.length === 0, `Google 1440: no console errors ${g.errors.join(' | ')}`);
+    await g.ctx.close();
+  }
+  {
+    const g = await openApp({ cfg: { provider: 'gdrive', connected: true, reconnect: true } });
+    await g.waitForSelector('.fl-reconnect');
+    check(/Google needs a fresh sign-in/.test(await g.textContent('.fl-reconnect')) && /six months/.test(await g.textContent('.fl-reconnect')), 'Google: revoked or lapsed sign-in shows the Google reconnect banner');
+    await shot(g, 'gdrive-reconnect-1440');
+    await g.ctx.close();
+  }
+  {
+    const g = await openApp({ cfg: { provider: 'gdrive', configured: true, connected: false } });
+    await g.waitForSelector('[data-fk="connect"]');
+    check(/Connect Google Drive/.test(await g.textContent('[data-fk="connect"]')), 'Google: the owner sees Connect Google Drive');
+    await shot(g, 'gdrive-connect-1440');
+    await g.ctx.close();
+  }
+  {
+    const g = await openApp({ cfg: { configured: false } });
+    await g.waitForSelector('[data-state="not-configured"]');
+    await shot(g, 'gdrive-not-configured-1440');
+    await g.ctx.close();
+  }
+  {
+    const g = await openApp({ viewport: { width: 390, height: 844 }, cfg: { provider: 'gdrive', connected: true } });
+    await waitRows(g);
+    check(await noHScroll(g), 'Google 390: no horizontal scroll');
+    await shot(g, 'gdrive-list-390');
+    await g.click('.fl-row[data-id="GDOC"] .fl-name');
+    await g.waitForSelector('.fl-sheet .fl-pv[data-id="GDOC"] [data-fk="open-pdf"]');
+    check(await noHScroll(g), 'Google 390: the Google Doc preview sheet fits');
+    await g.waitForTimeout(500);
+    await shot(g, 'gdrive-preview-doc-390');
+    await g.ctx.close();
+  }
+  {
+    const g = await openApp({ viewport: { width: 3440, height: 1440 }, scale: 1, cfg: { provider: 'gdrive', connected: true }, hash: '#files/CL' });
+    await waitRows(g);
+    await g.waitForSelector('.fl-shell[data-layout="wide"] .fl-tree-item.is-here');
+    await g.evaluate(() => { location.hash = '#files/GDOC'; });
+    await g.waitForSelector('.fl-pane .fl-pdf-frame', { timeout: 10000 });
+    await g.waitForTimeout(500);
+    await shot(g, 'gdrive-wide-3440');
+    check(g.errors.length === 0, `Google 3440: no console errors ${g.errors.join(' | ')}`);
+    await g.ctx.close();
+  }
 
   /* ============================================================ 390 */
   {
