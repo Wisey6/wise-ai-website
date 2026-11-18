@@ -429,7 +429,7 @@ export async function messagesFor(leadId) {
 
 const LEAD_FIELDS = ['business', 'contact_name', 'phone', 'email', 'website', 'suburb', 'industry', 'source',
   'number_source_url', 'status', 'campaign_id', 'sequence_step', 'last_contacted_at', 'last_reply_at',
-  'next_followup_at', 'unread', 'notes', 'tags', 'archived', 'hook', 'pain', 'est_monthly_value'];
+  'next_followup_at', 'unread', 'notes', 'tags', 'archived', 'hook', 'pain', 'est_monthly_value', 'owner_id'];
 
 function cleanLead(patch) {
   const out = {};

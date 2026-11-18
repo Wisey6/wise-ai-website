@@ -148,8 +148,10 @@ export function mountAgentDock() {
     panel = el('div', { class: 'agd-panel', id: 'agd-panel', role: 'region', 'aria-labelledby': 'agd-title', hidden: true }, head, el('div', { class: 'agd-scroll' }, body));
     panel.addEventListener('click', (e) => {
       const a = e.target.closest('a[href]');
-      if (a && a.getAttribute('href').startsWith('#')) setTimeout(() => close(false), 0);
+      if (a && a.getAttribute('href').startsWith('#')) close(false);
     });
+    // An Ask or Doer run starting: let the launcher pick up speed at once.
+    panel.addEventListener('submit', () => setTimeout(paintBusy, 30), true);
     document.body.append(panel);
   }
 
