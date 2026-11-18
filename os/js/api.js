@@ -9,7 +9,7 @@
 //    try/catch and toast the error.
 //  - fn() and sendSms() never throw on HTTP errors.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118b';
+import { SUPABASE_URL, SUPABASE_KEY, FUNCTIONS_URL } from './config.js?v=20261118d';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false }
@@ -27,13 +27,13 @@ function storageSet(k, v) { try { if (v === null) localStorage.removeItem(k); el
  * Exchange the PIN for a session via the hq-login edge function.
  * → {ok:true} | {ok:false, error:'bad_pin'|'locked'|'network'|..., remaining?, retry_after_s?}
  */
-export async function login(pin) {
+export async function login(pin, memberId) {
   let res;
   try {
     res = await fetch(`${FUNCTIONS_URL}hq-login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` },
-      body: JSON.stringify({ pin: String(pin), device_token: storageGet(DEVICE_KEY) || undefined })
+      body: JSON.stringify({ pin: String(pin), member_id: memberId || undefined, device_token: storageGet(DEVICE_KEY) || undefined })
     });
   } catch {
     return { ok: false, error: 'network' };
@@ -52,7 +52,110 @@ export async function login(pin) {
   const { error } = await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
   if (error) return { ok: false, error: 'session' };
   storageSet(PINLEN_KEY, String(String(pin).length));
-  return { ok: true };
+  if (data.member) {
+    state.me = data.member;
+    storageSet(WHO_KEY, data.member.id);
+    storageSet(`${PINLEN_KEY}.${data.member.id}`, String(String(pin).length));
+  }
+  return { ok: true, member: data.member || null };
+}
+
+/* -------------------------------------------------------------------- team
+   More than one person can sign in. Everyone sees the same hub; `state.me` is who
+   is signed in ({id, name, role, email_hint}) and `state.team` is everyone work can
+   be given to ([{id, name, initials, role, can_sign_in, active, sort}]).
+     await who()                  → [{id, name, initials}] the people on the lock screen (public)
+     lastWho()                    → the member id that last signed in on this device, or null
+     pinLengthFor(memberId)       → that person's PIN length on this device, or 0 if unknown
+     memberById(id), memberName(id, fallback), isMine(row)   helpers for owner_id
+     await teamSave({member, pin, sign_in, email})   owner only → {ok, member} | {ok:false, message}
+     await setMyEmail(email)      → {ok} | {ok:false, message}
+     await resetRequest(memberId) → {ok} | {ok:false, error, message}    (public, from the lock screen)
+     await resetConfirm(token, newPin) → {ok} | {ok:false, error, message} */
+const WHO_KEY = 'wiseos.who';
+
+async function publicFn(body) {
+  try {
+    const res = await fetch(`${FUNCTIONS_URL}hq-login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: SUPABASE_KEY, authorization: `Bearer ${SUPABASE_KEY}` },
+      body: JSON.stringify(body)
+    });
+    let data = {};
+    try { data = await res.json(); } catch { data = {}; }
+    return { status: res.status, data };
+  } catch {
+    return { status: 0, data: { error: 'network' } };
+  }
+}
+
+export async function who() {
+  const { status, data } = await publicFn({ action: 'who' });
+  return status === 200 && Array.isArray(data.people) ? data.people : [];
+}
+
+export const lastWho = () => storageGet(WHO_KEY) || null;
+export function pinLengthFor(memberId) {
+  const n = Number(storageGet(`${PINLEN_KEY}.${memberId}`));
+  return n >= 4 && n <= 12 ? n : 0;
+}
+
+export const memberById = (id) => (state.team || []).find((m) => m.id === id) || null;
+export const memberName = (id, fallback = 'Nobody yet') => memberById(id)?.name || fallback;
+/** True when the record is yours or has no owner (unowned work is everyone's to see). */
+export const isMine = (row) => !row?.owner_id || row.owner_id === state.me?.id;
+
+/** Refresh who is signed in (after a reload the session is gone, so this runs after login). */
+export async function loadMe() {
+  const { status, data } = await fn('hq-login', { action: 'me' });
+  if (status === 200 && data?.member) state.me = data.member;
+  notify();
+  return state.me;
+}
+
+const TEAM_ERRORS = {
+  owner_only: 'Only the owner can manage the team.',
+  weak_pin: 'A PIN is 4 to 12 digits.',
+  unauthorized: 'Your session has expired. Lock and unlock, then try again.',
+  email_not_configured: 'Email is not set up yet, so a reset link cannot be sent. Ask the owner to reset your PIN in Settings.',
+  too_many: 'Too many reset requests. Try again in an hour.',
+  bad_token: 'That reset link has expired or was already used. Ask for a new one.',
+  network: 'Could not reach the sign-in service. Check your connection.'
+};
+const teamError = (status, data) => {
+  const error = data?.error || (status === 0 ? 'network' : `http_${status}`);
+  return { ok: false, error, message: data?.detail || TEAM_ERRORS[error] || 'That did not work. Try again.' };
+};
+
+export async function teamSave({ member, pin, sign_in: signIn, email } = {}) {
+  const body = { action: 'team_save', member: member || {} };
+  if (pin) body.pin = String(pin);
+  if (signIn) body.sign_in = true;
+  if (typeof email === 'string') body.email = email;
+  const { status, data } = await fn('hq-login', body);
+  if (status === 200 && data?.ok) {
+    upsertInto(state.team, data.member);
+    state.team.sort((a, b) => (a.sort - b.sort) || String(a.created_at).localeCompare(String(b.created_at)));
+    notify();
+    return { ok: true, member: data.member };
+  }
+  return teamError(status, data);
+}
+
+export async function setMyEmail(email) {
+  const { status, data } = await fn('hq-login', { action: 'set_email', email: String(email || '') });
+  if (status === 200 && data?.ok) { await loadMe(); return { ok: true }; }
+  return teamError(status, data);
+}
+
+export async function resetRequest(memberId) {
+  const { status, data } = await publicFn({ action: 'reset_request', member_id: memberId });
+  return status === 200 && data?.ok ? { ok: true } : teamError(status, data);
+}
+
+export async function resetConfirm(token, newPin) {
+  const { status, data } = await publicFn({ action: 'reset_confirm', token: String(token || ''), new_pin: String(newPin || '') });
+  return status === 200 && data?.ok ? { ok: true } : teamError(status, data);
 }
 
 /** Length of the PIN that last unlocked this device (default 6). Never the PIN itself. */
@@ -68,6 +171,7 @@ export async function changePin(oldPin, newPin) {
   });
   if (status === 200 && data && data.ok) {
     storageSet(PINLEN_KEY, String(String(newPin).length));
+    if (state.me?.id) storageSet(`${PINLEN_KEY}.${state.me.id}`, String(String(newPin).length));
     return { ok: true };
   }
   return { ok: false, error: data?.error || `http_${status}`, remaining: data?.remaining, retry_after_s: data?.retry_after_s };
@@ -124,6 +228,22 @@ export const state = {
   events: [],
   suppressions: [],
   messages: [],
+  // stage 2: Sell, Deliver, Money, Know
+  clients: [],
+  deals: [],
+  proposals: [],
+  projects: [],
+  tasks: [],
+  roi_reports: [],
+  income: [],
+  costs: [],
+  library: [],
+  me: null,
+  team: [],
+  ai: null,
+  agents: null,
+  agent_runs: [],
+  agent_actions: [],
   sms: null,
   smsChecked: false,
   loaded: false,
@@ -197,9 +317,14 @@ export async function loadAll() {
     selectAll('suppressions', (q) => q.order('created_at', { ascending: false })),
     selectAll('messages', (q) => q.gte('created_at', daysAgoIso(30)).order('created_at', { ascending: true }))
   ]);
+  const business = await Promise.all(BUSINESS_TABLES.map((t) => selectAll(t, (q) => q.order('created_at', { ascending: false }))));
+  BUSINESS_TABLES.forEach((t, i) => { state[t] = business[i]; });
   Object.assign(state, { settings, leads, templates, campaigns, bookings, events, suppressions, messages, loaded: true });
   notify();
   refreshSmsStatus();
+  aiStatus();
+  loadAgents();
+  loadTeam();
   return state;
 }
 
@@ -224,10 +349,18 @@ function setConnection(c) {
   for (const cb of connectionListeners) cb(c);
 }
 
-const TABLE_KEY = { leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events' };
+/** Stage 2 tables. Each is loaded whole, kept live, and saved through saveRow / deleteRow. */
+export const BUSINESS_TABLES = ['clients', 'deals', 'proposals', 'projects', 'tasks', 'roi_reports', 'income', 'costs', 'library'];
+const TABLE_KEY = {
+  leads: 'leads', messages: 'messages', bookings: 'bookings', events: 'events',
+  agent_runs: 'agent_runs', agent_actions: 'agent_actions', team_members: 'team',
+  ...Object.fromEntries(BUSINESS_TABLES.map((t) => [t, t]))
+};
 
 function upsertInto(list, row, { prepend = false, key = 'id' } = {}) {
   const i = list.findIndex((r) => r[key] === row[key]);
+  // A late live-update echo of an older save must not overwrite a newer one.
+  if (i >= 0 && row.updated_at && list[i].updated_at && String(row.updated_at) < String(list[i].updated_at)) return;
   if (i >= 0) list[i] = { ...list[i], ...row };
   else if (prepend) list.unshift(row);
   else list.push(row);
@@ -245,7 +378,10 @@ function applyChange(table, type, row, old) {
   if (table === 'events') {
     upsertInto(list, row, { prepend: true });
     if (list.length > 200) list.length = 200;
-  } else if (table === 'leads') {
+  } else if (table === 'agent_runs' || table === 'agent_actions') {
+    upsertInto(list, row, { prepend: true });
+    if (list.length > 200) list.length = 200;
+  } else if (table === 'leads' || BUSINESS_TABLES.includes(table)) {
     upsertInto(list, row, { prepend: true });
   } else if (table === 'bookings') {
     upsertInto(list, row);
@@ -293,7 +429,7 @@ export async function messagesFor(leadId) {
 
 const LEAD_FIELDS = ['business', 'contact_name', 'phone', 'email', 'website', 'suburb', 'industry', 'source',
   'number_source_url', 'status', 'campaign_id', 'sequence_step', 'last_contacted_at', 'last_reply_at',
-  'next_followup_at', 'unread', 'notes', 'tags', 'archived', 'hook', 'pain', 'est_monthly_value'];
+  'next_followup_at', 'unread', 'notes', 'tags', 'archived', 'hook', 'pain', 'est_monthly_value', 'owner_id'];
 
 function cleanLead(patch) {
   const out = {};
@@ -452,6 +588,289 @@ export async function deleteTemplate(id) {
   fail(error, 'Could not delete the template');
   state.templates = state.templates.filter((t) => t.id !== id);
   notify();
+}
+
+/* ------------------------------------------------- stage 2 generic records
+   One pair of functions for every business table (see BUSINESS_TABLES):
+     saveRow('deals', {title, stage})            → inserts, returns the saved row
+     saveRow('deals', {id, stage: 'won'})        → patches that row, returns it
+     deleteRow('deals', id)
+   state[table] is updated at once (newest first) and views are notified; the
+   realtime channel keeps other tabs and devices in step. Both throw an Error
+   with a readable message on failure. */
+export async function saveRow(table, row) {
+  if (!BUSINESS_TABLES.includes(table)) throw new Error(`Unknown table ${table}`);
+  const { id, created_at: _c, updated_at: _u, ...rest } = row;
+  const q = id
+    ? sb.from(table).update(rest).eq('id', id).select().single()
+    : sb.from(table).insert(rest).select().single();
+  const { data, error } = await q;
+  fail(error, 'Could not save');
+  upsertInto(state[table], data, { prepend: true });
+  notify();
+  return data;
+}
+
+export async function deleteRow(table, id) {
+  if (!BUSINESS_TABLES.includes(table)) throw new Error(`Unknown table ${table}`);
+  const { error } = await sb.from(table).delete().eq('id', id);
+  fail(error, 'Could not delete');
+  const i = state[table].findIndex((r) => r.id === id);
+  if (i >= 0) state[table].splice(i, 1);
+  // Children removed or unlinked by the database: mirror that locally.
+  if (table === 'projects') state.tasks = state.tasks.filter((t) => t.project_id !== id);
+  if (table === 'clients') state.roi_reports = state.roi_reports.filter((r) => r.client_id !== id);
+  notify();
+}
+
+export const rowById = (table, id) => (state[table] || []).find((r) => r.id === id) || null;
+
+/** Turn a lead into a client (or return the client already made from it). Marks the lead won. */
+export async function leadToClient(lead) {
+  const existing = state.clients.find((c) => c.lead_id === lead.id);
+  if (existing) return existing;
+  const client = await saveRow('clients', {
+    name: lead.business || lead.contact_name || lead.phone || 'New client',
+    contact_name: lead.contact_name, email: lead.email, phone: lead.phone, website: lead.website,
+    industry: lead.industry, suburb: lead.suburb, lead_id: lead.id,
+    started_on: new Date().toISOString().slice(0, 10),
+    notes: lead.notes || null
+  });
+  if (lead.status !== 'won') await saveLead(lead.id, { status: 'won' });
+  return client;
+}
+
+/** Open a deal in the pipeline for a lead (or return the open one it already has). */
+export async function leadToDeal(lead) {
+  const open = state.deals.find((d) => d.lead_id === lead.id && !d.archived && !['won', 'lost'].includes(d.stage));
+  if (open) return open;
+  return saveRow('deals', {
+    title: lead.business || lead.contact_name || 'New deal', lead_id: lead.id, stage: 'qualified',
+    next_step: 'Intro call', notes: lead.pain || null
+  });
+}
+
+/* ------------------------------------------------------------ AI assistance
+   Button-triggered drafting through the ai-assist function. Nothing is ever sent
+   to a client from here: every result is a draft for the operator to read and edit.
+     await ai('hook', {lead, notes})                       → res.result {options[], ask}
+     await ai('reply', {lead, thread, booking_url})        → res.result {options[]}
+     await ai('proposal', {recipient, notes, roi})         → res.result {problem, solution, scope[]}
+     await ai('roi_summary', {client, period, numbers, metrics, notes}) → res.result {summary, next_steps}
+   Always returns an object and never throws: {ok:true, result, cost_usd} or
+   {ok:false, error, message} where `message` is ready to show in a toast.
+   state.ai = {configured, enabled, spent_usd, cap_usd} | null (refreshed by aiStatus()). */
+const AI_ERRORS = {
+  ai_not_configured: 'AI drafting is not connected yet. Add the API key in Supabase to turn it on.',
+  disabled: 'AI drafting is switched off in Settings.',
+  cap_reached: 'This month\'s AI budget is used up. Raise the cap in Settings to keep drafting.',
+  declined: 'The AI declined to write that one. Try rewording your notes.',
+  too_long: 'That was too much to draft in one go. Trim the notes and try again.',
+  bad_output: 'The draft came back garbled. Try again.',
+  ai_error: 'The AI service had a problem. Try again in a minute.',
+  unauthorized: 'Your session has expired. Lock and unlock, then try again.',
+  bad_request: 'There was nothing to work from. Add some notes first.',
+  network: 'Could not reach the AI service. Check your connection.'
+};
+
+export async function aiStatus() {
+  const { status, data } = await fn('ai-assist', { action: 'status' });
+  state.ai = status === 200 && data && typeof data.configured === 'boolean' ? data : null;
+  notify();
+  return state.ai;
+}
+
+export async function ai(task, context) {
+  const { status, data } = await fn('ai-assist', { task, context });
+  const res = data && typeof data === 'object' ? data : {};
+  if (state.ai && typeof res.spent_usd === 'number') state.ai = { ...state.ai, spent_usd: res.spent_usd };
+  if (status === 200 && res.ok) return res;
+  const error = res.error || (status === 0 ? 'network' : 'ai_error');
+  return { ...res, ok: false, error, message: res.detail || AI_ERRORS[error] || AI_ERRORS.ai_error };
+}
+
+/* ------------------------------------------------------------------- agents
+   Four scoped assistants behind the `agent` function: researcher, briefing, ask, doer.
+   They never change a record. A change they suggest is an agent_actions row that the
+   operator approves; applyAgentAction() then makes that one change here, in the browser,
+   with the operator's own session, through the allowlist below.
+     state.agents        {configured, enabled, agents{}, spent_usd, cap_usd, runs_today{}, limits{}} | null
+     state.agent_runs    latest 200, newest first, live
+     state.agent_actions latest 200, newest first, live
+     await agentRun('researcher', {lead_id})         await agentRun('briefing', {refresh})
+     await agentRun('ask', {question, history})      await agentRun('doer', {instruction})
+   agentRun never throws: {ok:true, ...} or {ok:false, error, message}. */
+const AGENT_ERRORS = {
+  ...AI_ERRORS,
+  disabled: 'That agent is switched off in Settings.',
+  cap_reached: 'This month\'s agent budget is used up. Raise it in Settings to keep going.',
+  daily_limit: 'That agent has hit its limit for today. It resets at midnight.',
+  empty: 'There is nothing in the hub for it to work from yet.',
+  bad_request: 'It needs a bit more to go on.'
+};
+
+export async function loadTeam() {
+  try {
+    const { data, error } = await sb.from('team_members').select('*').order('sort').order('created_at');
+    if (!error) state.team = data;
+  } catch { /* the team list simply stays empty */ }
+  notify();
+  if (!state.me) await loadMe();
+  return state.team;
+}
+
+export async function loadAgents() {
+  try {
+    const [runs, actions] = await Promise.all([
+      sb.from('agent_runs').select('*').order('at', { ascending: false }).limit(200),
+      sb.from('agent_actions').select('*').order('created_at', { ascending: false }).limit(200)
+    ]);
+    if (!runs.error) state.agent_runs = runs.data;
+    if (!actions.error) state.agent_actions = actions.data;
+  } catch { /* the agents area simply stays empty */ }
+  notify();
+  return agentStatus();
+}
+
+export async function agentStatus() {
+  const { status, data } = await fn('agent', { action: 'status' });
+  state.agents = status === 200 && data && typeof data.configured === 'boolean' ? data : null;
+  notify();
+  return state.agents;
+}
+
+export async function agentRun(agent, input = {}) {
+  const { status, data } = await fn('agent', { agent, ...input });
+  const res = data && typeof data === 'object' ? data : {};
+  if (state.agents && typeof res.spent_usd === 'number') state.agents = { ...state.agents, spent_usd: res.spent_usd };
+  if (status === 200 && res.ok) return res;
+  const error = res.error || (status === 0 ? 'network' : 'ai_error');
+  return { ...res, ok: false, error, message: res.detail || AGENT_ERRORS[error] || AGENT_ERRORS.ai_error };
+}
+
+const LEAD_STATUSES_AGENT = ['new', 'queued', 'contacted', 'replied', 'interested', 'booked', 'won', 'lost'];
+const DEAL_STAGES_AGENT = ['qualified', 'proposal', 'negotiation'];
+const isoDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const text = (v, max) => (typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null);
+
+/** The only changes an approved agent proposal can make. Anything else is refused. */
+const AGENT_APPLY = {
+  async 'lead.set_status'(p) {
+    const lead = leadById(p.lead_id);
+    if (!lead || lead.status === 'dnc' || !LEAD_STATUSES_AGENT.includes(p.status)) throw new Error('That lead or status is not allowed');
+    await saveLead(lead.id, { status: p.status });
+    return { open: `#leads/${lead.id}` };
+  },
+  async 'lead.set_followup'(p) {
+    const lead = leadById(p.lead_id);
+    if (!lead || lead.status === 'dnc' || !isoDate(p.date)) throw new Error('That lead or date is not allowed');
+    await saveLead(lead.id, { next_followup_at: new Date(`${p.date}T09:00:00`).toISOString() });
+    return { open: `#leads/${lead.id}` };
+  },
+  async 'lead.set_hook'(p) {
+    const lead = leadById(p.lead_id);
+    const hook = text(p.hook, 160);
+    if (!lead || !hook) throw new Error('That lead or line is not allowed');
+    await saveLead(lead.id, { hook });
+    return { open: `#leads/${lead.id}` };
+  },
+  async 'note.add'(p) {
+    const note = text(p.text, 500);
+    if (!note) throw new Error('The note is empty or too long');
+    const stamp = new Date().toLocaleDateString('en-AU');
+    if (p.lead_id) {
+      const lead = leadById(p.lead_id);
+      if (!lead) throw new Error('That lead no longer exists');
+      await saveLead(lead.id, { notes: `${lead.notes ? `${lead.notes}\n` : ''}[${stamp}] ${note}` });
+      return { open: `#leads/${lead.id}` };
+    }
+    const client = rowById('clients', p.client_id);
+    if (!client) throw new Error('That client no longer exists');
+    await saveRow('clients', { id: client.id, notes: `${client.notes ? `${client.notes}\n` : ''}[${stamp}] ${note}` });
+    return { open: `#clients/${client.id}` };
+  },
+  async 'task.create'(p) {
+    const title = text(p.title, 200);
+    if (!title) throw new Error('The task needs a title');
+    const row = { title };
+    if (p.client_id && rowById('clients', p.client_id)) row.client_id = p.client_id;
+    if (p.project_id && rowById('projects', p.project_id)) row.project_id = p.project_id;
+    if (isoDate(p.due_on)) row.due_on = p.due_on;
+    if (['low', 'medium', 'high'].includes(p.priority)) row.priority = p.priority;
+    await saveRow('tasks', row);
+    return { open: '#projects/tasks' };
+  },
+  async 'deal.create'(p) {
+    const title = text(p.title, 200);
+    if (!title) throw new Error('The deal needs a title');
+    const row = { title, stage: 'qualified' };
+    if (p.lead_id && leadById(p.lead_id)) row.lead_id = p.lead_id;
+    if (p.client_id && rowById('clients', p.client_id)) row.client_id = p.client_id;
+    if (Number(p.value) > 0) row.value = Number(p.value);
+    if (Number(p.monthly_value) > 0) row.monthly_value = Number(p.monthly_value);
+    if (text(p.next_step, 200)) row.next_step = text(p.next_step, 200);
+    const deal = await saveRow('deals', row);
+    return { open: `#pipeline/${deal.id}` };
+  },
+  async 'deal.update'(p) {
+    const deal = rowById('deals', p.deal_id);
+    if (!deal || ['won', 'lost'].includes(deal.stage)) throw new Error('That deal is closed or gone');
+    const patch = { id: deal.id };
+    if (p.stage !== undefined) {
+      if (!DEAL_STAGES_AGENT.includes(p.stage)) throw new Error('Closing a deal is yours to do');
+      patch.stage = p.stage;
+    }
+    if (text(p.next_step, 200)) patch.next_step = text(p.next_step, 200);
+    if (isoDate(p.next_step_on)) patch.next_step_on = p.next_step_on;
+    if (Number.isFinite(Number(p.probability)) && p.probability !== undefined) patch.probability = Math.min(100, Math.max(0, Math.round(Number(p.probability))));
+    await saveRow('deals', patch);
+    return { open: `#pipeline/${deal.id}` };
+  },
+  async 'message.draft'(p) {
+    const lead = leadById(p.lead_id);
+    const body = text(p.body, 600);
+    if (!lead || !body || lead.status === 'dnc' || isSuppressed(lead.phone)) throw new Error('That lead cannot be messaged');
+    // A draft only: it is placed in the inbox reply box for the operator to read and send.
+    try { sessionStorage.setItem(`wiseos.draft.${lead.id}`, body); } catch { throw new Error('Could not hand the draft to the inbox'); }
+    return { open: `#inbox/${lead.id}` };
+  },
+  async 'invoice.draft'(p) {
+    const client = rowById('clients', p.client_id);
+    const description = text(p.description, 200);
+    const amount = Number(p.amount);
+    if (!client || !description || !(amount > 0) || amount > 50000) throw new Error('That invoice is not allowed');
+    const row = await saveRow('income', { client_id: client.id, description, amount, kind: p.kind === 'retainer' ? 'retainer' : 'one_off', status: 'draft' });
+    return { open: `#income/${row.id}` };
+  }
+};
+
+async function decideAction(id, patch) {
+  const { data, error } = await sb.from('agent_actions').update({ ...patch, decided_at: new Date().toISOString(), decided_by: state.me?.id || null }).eq('id', id).select().single();
+  fail(error, 'Could not record the decision');
+  upsertInto(state.agent_actions, data, { prepend: true });
+  notify();
+  return data;
+}
+
+/** Apply one proposal the operator approved. → {ok:true, open} or {ok:false, message}. */
+export async function applyAgentAction(action) {
+  const current = state.agent_actions.find((a) => a.id === action.id) || action;
+  if (current.status !== 'proposed') return { ok: false, message: 'That suggestion has already been dealt with.' };
+  const apply = AGENT_APPLY[current.kind];
+  if (!apply) return { ok: false, message: 'That kind of change is not allowed.' };
+  try {
+    const out = await apply(current.payload || {});
+    await decideAction(current.id, { status: 'applied', result: 'Done' });
+    return { ok: true, ...out };
+  } catch (e) {
+    try { await decideAction(current.id, { status: 'failed', result: String(e.message || e).slice(0, 300) }); } catch { /* keep the original error */ }
+    return { ok: false, message: e.message || 'Could not apply that change.' };
+  }
+}
+
+export async function rejectAgentAction(id) {
+  try { await decideAction(id, { status: 'rejected' }); return { ok: true }; }
+  catch (e) { return { ok: false, message: e.message }; }
 }
 
 export async function saveCampaign(row) {

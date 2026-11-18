@@ -1,0 +1,146 @@
+/* =============================================================================
+   Wise AI agent launcher: the white owl on a slow "paint splodge" (near-black with
+   a blue hue), and the dropdown panel. Floats, so it carries --shadow-float. Sits
+   above pages and the rail, below drawers (80/90), modals (100), the palette (150)
+   and toasts (200). Hidden while a modal or the palette is open.
+   ========================================================================== */
+:root { --agd-size: 52px; --agd-top: 16px; --agd-right: 20px; --agd-ink: #0A0E11; --agd-blue: #2563EB; --agd-navy: #0B1E4D; }
+
+.agd-launch {
+  position: fixed; top: var(--agd-top); right: var(--agd-right); z-index: 60;
+  width: var(--agd-size); height: var(--agd-size); padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer;
+  display: grid; place-items: center; -webkit-tap-highlight-color: transparent;
+  transition: transform 180ms var(--ease);
+}
+.agd-launch:hover { transform: scale(1.04); }
+.agd-launch:active { transform: scale(.97); }
+.agd-launch:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 50%; }
+.agd-launch[aria-expanded="true"] .agd-mark { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--agd-blue), 0 10px 30px rgba(37,99,235,.28); }
+body:has(.modal-backdrop) .agd-launch, body:has(.pal) .agd-launch, body:has(.gate) .agd-launch,
+body:has(.modal-backdrop) .agd-panel, body:has(.pal) .agd-panel { visibility: hidden; }
+
+/* -- the mark: blob + hues + owl */
+.agd-mark {
+  position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%;
+  isolation: isolate; transition: box-shadow var(--dur-slow) var(--ease);
+}
+.agd-mark.is-sm { width: var(--agd-size); height: var(--agd-size); }
+.agd-mark.is-lg { width: 56px; height: 56px; flex: none; }
+.agd-blob {
+  position: absolute; inset: 0; overflow: hidden; z-index: 0;
+  background: radial-gradient(120% 120% at 30% 25%, #141B26 0%, var(--agd-ink) 55%);
+  border-radius: 46% 54% 52% 48% / 50% 44% 56% 50%;
+  box-shadow: 0 4px 12px rgba(10,14,17,.22);
+  animation: agd-morph 10s cubic-bezier(.45,.05,.55,.95) infinite alternate, agd-glow 6s ease-in-out infinite;
+}
+.agd-hue { position: absolute; border-radius: 50%; filter: blur(7px); mix-blend-mode: screen; pointer-events: none; }
+.agd-hue.is-a { width: 70%; height: 70%; left: -10%; top: 38%; background: radial-gradient(circle at 50% 50%, rgba(37,99,235,.78), rgba(37,99,235,0) 66%); animation: agd-drift-a 9s ease-in-out infinite alternate; }
+.agd-hue.is-b { width: 64%; height: 64%; right: -18%; top: -16%; background: radial-gradient(circle at 50% 50%, rgba(30,64,175,.6), rgba(11,30,77,0) 70%); animation: agd-drift-b 13s ease-in-out infinite alternate; }
+.agd-hue.is-c { width: 40%; height: 40%; left: 36%; top: 52%; background: radial-gradient(circle at 50% 50%, rgba(147,197,253,.26), rgba(147,197,253,0) 70%); animation: agd-drift-c 8s ease-in-out infinite alternate; }
+.is-lg .agd-hue { filter: blur(9px); }
+.agd-owl { position: relative; z-index: 1; display: block; width: 20px; height: 26px; overflow: hidden; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+.agd-owl img { height: 26px; width: auto; max-width: none; filter: brightness(0) invert(1); }
+.is-lg .agd-owl { width: 22px; height: 29px; }
+.is-lg .agd-owl img { height: 29px; }
+
+@keyframes agd-morph {
+  0%   { border-radius: 46% 54% 52% 48% / 50% 44% 56% 50%; transform: rotate(0deg) scale(1); }
+  25%  { border-radius: 60% 40% 38% 62% / 44% 60% 40% 56%; transform: rotate(18deg) scale(1.02); }
+  50%  { border-radius: 38% 62% 63% 37% / 60% 43% 57% 40%; transform: rotate(-10deg) scale(.985); }
+  75%  { border-radius: 62% 38% 46% 54% / 39% 58% 42% 61%; transform: rotate(12deg) scale(1.025); }
+  100% { border-radius: 49% 51% 38% 62% / 55% 40% 60% 45%; transform: rotate(-12deg) scale(1); }
+}
+@keyframes agd-drift-a { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(18%, -14%) scale(1.12); } 100% { transform: translate(34%, -30%) scale(.92); } }
+@keyframes agd-drift-b { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-22%, 26%) scale(1.15); } 100% { transform: translate(-8%, 40%) scale(.95); } }
+@keyframes agd-drift-c { 0% { transform: translate(0, 0); opacity: .6; } 100% { transform: translate(-30%, -40%); opacity: 1; } }
+@keyframes agd-glow {
+  0%, 100% { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 6px 0 rgba(37,99,235,.16); }
+  50% { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 14px 1px rgba(37,99,235,.32); }
+}
+/* An agent at work: a little faster, a little brighter. */
+.agd-launch.is-busy .agd-blob { animation-duration: 4.5s, 2.2s; }
+.agd-launch.is-busy .agd-hue.is-a { animation-duration: 3.6s; }
+.agd-launch.is-busy .agd-hue.is-b { animation-duration: 5s; }
+.agd-launch.is-busy .agd-hue.is-c { animation-duration: 3s; }
+.agd-launch.is-busy .agd-blob { box-shadow: 0 4px 12px rgba(10,14,17,.22), 0 0 20px 3px rgba(37,99,235,.42); }
+
+.agd-count {
+  position: absolute; top: -2px; right: -2px; z-index: 2; min-width: 19px; height: 19px; padding: 0 5px; border-radius: var(--radius-pill);
+  background: var(--paper); color: var(--ink); font-size: 10.5px; font-weight: 600; line-height: 19px; text-align: center; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px var(--ink), 0 2px 6px rgba(10,14,17,.2);
+}
+
+/* -- the panel */
+.agd-panel {
+  position: fixed; top: calc(var(--agd-top) + var(--agd-size) + 10px); right: var(--agd-right); z-index: 61;
+  width: min(420px, calc(100vw - 32px)); max-height: min(70vh, 760px); display: flex; flex-direction: column;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--shadow-float); overflow: hidden;
+  transform-origin: top right; opacity: 0; transform: translateY(-6px) scale(.985);
+  transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
+}
+.agd-panel.is-in { opacity: 1; transform: none; }
+.agd-head {
+  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-4) var(--space-4) var(--space-5); flex: none;
+  background: var(--void) radial-gradient(120% 140% at 0% 0%, #111A2A, var(--void) 60%); color: #fff;
+}
+.agd-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.agd-title { margin: 0; font-family: var(--font-display); font-weight: 900; font-size: 19px; letter-spacing: -.02em; line-height: 1.15; }
+.agd-for { font-size: var(--fs-meta); color: var(--platinum); }
+.agd-spend { font-size: 11.5px; color: var(--silver); }
+.agd-close { align-self: flex-start; width: 32px; height: 32px; border-radius: var(--radius-s); border: 0; background: transparent; color: var(--chrome); display: grid; place-items: center; cursor: pointer; }
+.agd-close:hover { background: rgba(255,255,255,.08); color: #fff; }
+.agd-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.agd-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+.agd-body { display: flex; flex-direction: column; }
+.agd-sec { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5); border-top: 1px solid var(--line); }
+.agd-sec:first-child { border-top: 0; }
+.agd-sec-h { margin: 0; font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--muted); }
+.agd-sec .ag-ask { max-width: none; gap: var(--space-2); }
+.agd-sec .ag-ask-log { max-height: 34vh; overflow-y: auto; }
+.agd-sec .ag-turn.is-a, .agd-sec .ag-turn.is-empty { max-width: none; }
+.agd-sec .ag-ask-bar .small.muted { display: none; }
+.agd-doer { display: flex; flex-direction: column; gap: var(--space-2); }
+.agd-doer-input { min-height: 60px; resize: vertical; }
+.agd-bar { gap: var(--space-2); }
+.agd-doer-out { display: flex; flex-direction: column; gap: var(--space-2); }
+.agd-doer-out:empty { display: none; }
+.agd-note p:last-child { color: var(--ink); line-height: var(--lh-body); padding-left: var(--space-3); border-left: 2px solid var(--line-2); font-size: var(--fs-sm); }
+.agd-approve { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--fs-sm); color: var(--ink); }
+.agd-quick-sec { padding-top: var(--space-2); padding-bottom: var(--space-3); }
+.agd-quick { list-style: none; margin: 0; padding: 0; }
+.agd-quick li + li { border-top: 1px solid var(--line-3); }
+.agd-quick a, .agd-quick button {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: var(--fs-sm); color: var(--ink); text-align: left; text-decoration: none;
+}
+.agd-quick a:hover span:first-of-type, .agd-quick button:hover span:first-of-type { text-decoration: underline; text-underline-offset: 3px; }
+.agd-quick .icon:first-child { color: var(--muted); }
+.agd-quick span:first-of-type { flex: 1; min-width: 0; }
+.agd-quick b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.agd-brief-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-off { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5); font-size: var(--fs-sm); color: var(--body); }
+
+/* Clear room for the launcher on desktop: the top row of each page stops short of it,
+   and toasts start below it. */
+@media (min-width: 761px) {
+  body:has(.agd-launch) .page > :first-child:not(.inbox-side) { margin-right: calc(var(--agd-size) + 12px); }
+  body:has(.agd-launch) .page.inbox { margin-right: calc(var(--agd-size) + 12px); }
+  body:has(.agd-launch) .toast-wrap { top: calc(var(--agd-top) + var(--agd-size) + 12px); }
+}
+
+/* Phones: bottom right above the tab bar; the panel is a sheet from the bottom. */
+@media (max-width: 760px) {
+  :root { --agd-size: 48px; }
+  .agd-launch { top: auto; right: 16px; bottom: calc(62px + 14px + env(safe-area-inset-bottom)); z-index: 34; }
+  .agd-panel {
+    top: auto; left: 0; right: 0; bottom: calc(63px + env(safe-area-inset-bottom)); width: auto; max-height: calc(100dvh - 62px - 72px - env(safe-area-inset-bottom));
+    border-radius: var(--radius-l) var(--radius-l) 0 0; border-bottom: 0; transform-origin: bottom center; transform: translateY(16px);
+  }
+  .agd-panel.is-in { transform: none; }
+  body:has(.more-layer) .agd-launch { visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agd-blob, .agd-hue, .agd-launch.is-busy .agd-blob, .agd-launch.is-busy .agd-hue { animation: none !important; }
+  .agd-panel { transition: none; }
+}

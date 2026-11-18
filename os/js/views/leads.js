@@ -3,11 +3,14 @@ import {
   el, $, $$, clear, fill, icon, badge, statusBadge, toast, modal, confirmDialog, field, input, select, textarea,
   timeAgo, dateTime, dayLabel, go, copyText, STATUSES, STATUS, prettyPhone, num, plural, money, busy, trapFocus,
   emptyState, downloadFile, toCsv
-} from '../ui.js?v=20261118b';
+} from '../ui.js?v=20261118d';
 import {
   state, saveLead, saveLeads, addLeads, deleteLead, logEvent, addMessage, suppress, messagesFor, onMessage, onChange,
-  normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms
-} from '../api.js?v=20261118b';
+  normalisePhone, isAuMobile, leadName, leadById, campaignById, isSuppressed, formatValue, composeSms,
+  leadToDeal, leadToClient, ai, saveRow
+} from '../api.js?v=20261118d';
+import { ownerPicker, ownerBadge, saveOwner, saveLeadOwners, meId, ownerFilterSelect, matchesOwner, activeTeam, ownerName } from '../owners.js?v=20261118d';
+import { agentsInfo, latestResearch, isResearching, runResearch, researchCard, canResearch } from './agents.js?v=20261118d';
 
 /* ------------------------------------------------------------ view state */
 const VIEW_KEY = 'wiseos.leads.view';
@@ -21,7 +24,8 @@ const ui = {
   mode: (() => { try { return localStorage.getItem(VIEW_KEY) || 'table'; } catch { return 'table'; } })(),
   limit: 150,
   selected: new Set(),
-  batchIds: null
+  batchIds: null,
+  owner: ''      // '' everyone | 'mine' | 'none' | member id
 };
 
 const SOURCES = [
@@ -51,6 +55,7 @@ function matches(l) {
   if (ui.status !== 'all' && l.status !== ui.status) return false;
   if (ui.campaign === 'none' ? l.campaign_id : ui.campaign && l.campaign_id !== ui.campaign) return false;
   if (ui.source && l.source !== ui.source) return false;
+  if (!matchesOwner(ui.owner, l)) return false;
   if (ui.q) {
     const q = ui.q.toLowerCase();
     const digits = q.replace(/\D/g, '');
@@ -123,14 +128,18 @@ export default function leadsView(ctx) {
   };
   drawModeTabs();
 
+  const ownerBox = el('span', { class: 'own-filter-box' });
   const toolbar = el('div', { class: 'leads-bar' },
     el('label', { class: 'search' }, icon('search', 16), search),
-    campaignSel, sourceSel, sortSel, el('span', { class: 'spacer' }), modeTabs);
+    campaignSel, sourceSel, ownerBox, sortSel, el('span', { class: 'spacer' }), modeTabs);
 
   const chips = el('div', { class: 'leads-chips', role: 'group', 'aria-label': 'Filter by status' });
   const bulk = el('div');
   const content = el('div');
-  root.append(head, toolbar, chips, bulk, content);
+  // Wide screens: a summary beside the table (hidden by CSS below 2200px).
+  const aside = el('aside', { class: 'leads-aside', 'aria-label': 'Leads at a glance' });
+  root.classList.add('has-aside');
+  root.append(head, toolbar, chips, bulk, content, aside);
 
   function drawCampaigns() {
     const opts = [{ id: '', label: 'All campaigns' }, ...st.campaigns.map((c) => ({ id: c.id, label: c.name })), { id: 'none', label: 'No campaign' }];
@@ -178,10 +187,17 @@ export default function leadsView(ctx) {
     };
     statusSel.addEventListener('change', () => statusSel.value && run({ status: statusSel.value }, `${plural(ids.length, 'lead')} set to ${STATUS[statusSel.value].label}`));
     campSel.addEventListener('change', () => campSel.value && run({ campaign_id: campSel.value === 'none' ? null : campSel.value }, `Campaign updated on ${plural(ids.length, 'lead')}`));
+    const ownSel = select('bulk-owner', [{ id: '', label: 'Assign to…' }, ...activeTeam().map((m) => ({ id: m.id, label: m.id === meId() ? `${m.name} (you)` : m.name })), { id: 'none', label: 'Nobody yet' }], '');
+    ownSel.classList.add('sm'); ownSel.style.width = 'auto'; ownSel.setAttribute('aria-label', 'Assign selected leads to');
+    ownSel.addEventListener('change', async () => {
+      if (!ownSel.value) return;
+      const oid = ownSel.value === 'none' ? null : ownSel.value;
+      try { await saveLeadOwners(ids, oid); toast(`${plural(ids.length, 'lead')} ${oid ? `assigned to ${ownerName(oid)}` : 'left with nobody'}`); ui.selected.clear(); paint(); } catch (e) { toast(e.message, 'bad'); }
+    });
     const archived = ui.special === 'archived';
     bulk.append(el('div', { class: 'bulk-bar', role: 'region', 'aria-label': 'Bulk actions' },
       el('b', { class: 'bulk-count' }, `${num(ids.length)} selected`),
-      statusSel, campSel,
+      statusSel, campSel, ownSel,
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: (e) => busy(e.currentTarget, () => run({ status: 'queued' }, `${plural(ids.length, 'lead')} queued`)) }, icon('send', 13), 'Queue'),
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: (e) => busy(e.currentTarget, () => run({ archived: !archived }, archived ? 'Restored' : `${plural(ids.length, 'lead')} archived`)) }, icon('archive', 13), archived ? 'Restore' : 'Archive'),
       el('span', { class: 'spacer' }),
@@ -227,12 +243,13 @@ export default function leadsView(ctx) {
 
     const table = el('table', { class: 'table leads-table' },
       el('thead', {}, el('tr', {},
-        el('th', { class: 'check-cell' }, headCheck), el('th', {}, 'Lead'), el('th', {}, 'Phone'), el('th', {}, 'Status'),
+        el('th', { class: 'check-cell' }, headCheck), el('th', {}, 'Lead'), el('th', { class: 'lead-owner-h' }, 'Owner'), el('th', {}, 'Phone'), el('th', {}, 'Status'),
         el('th', { title: 'Has a personal line' }, 'Personal'), el('th', { class: 'num' }, 'Value/mo'), el('th', {}, 'Campaign'),
         el('th', {}, 'Last activity'), el('th', {}, 'Follow-up'))),
       el('tbody', {}, shown.map((l) => el('tr', { class: `is-click${ui.selected.has(l.id) ? ' is-selected' : ''}`, onClick: () => openLead(l.id), dataset: { id: l.id } },
         el('td', { class: 'check-cell' }, rowCheck(l)),
         el('td', {}, nameCell(l)),
+        el('td', { class: 'lead-owner-cell' }, ownerPicker({ value: l.owner_id || null, compact: true, label: `Owner: ${leadName(l)}`, onChange: (oid) => saveOwner('leads', l.id, oid) })),
         el('td', { class: 'phone-cell' }, l.phone ? prettyPhone(l.phone) : el('span', { class: 'faint' }, '—'),
           l.phone && !isAuMobile(l.phone) ? el('span', { class: 'faint small' }, ' (not mobile)') : null),
         el('td', {}, statusBadge(l.status)),
@@ -249,6 +266,7 @@ export default function leadsView(ctx) {
       el('button', { type: 'button', class: 'lead-name-btn lead-cell', onClick: () => openLead(l.id) },
         el('b', {}, l.unread ? el('span', { class: 'unread-dot' }) : null, leadName(l)),
         el('span', {}, [prettyPhone(l.phone), l.suburb, (l.hook || '').trim() ? 'personalised' : null].filter(Boolean).join(' · '))),
+      ownerBadge(l.owner_id, { size: 'sm' }),
       statusBadge(l.status))));
 
     return el('div', { class: 'card flush leads-table-card' },
@@ -277,7 +295,8 @@ export default function leadsView(ctx) {
             el('span', { class: 'meta' },
               (l.hook || '').trim() ? el('span', { class: 'tick', title: 'Personalised' }, icon('check', 13)) : null,
               l.est_monthly_value ? el('span', { class: 'val' }, `${formatValue(l.est_monthly_value)}/mo`) : null,
-              el('span', {}, timeAgo(lastActivity(l)))));
+              el('span', {}, timeAgo(lastActivity(l))),
+              l.owner_id ? ownerBadge(l.owner_id, { size: 'sm' }) : null));
           card.addEventListener('dragstart', (e) => { dragId = l.id; e.dataTransfer.setData('text/plain', l.id); e.dataTransfer.effectAllowed = 'move'; card.classList.add('is-dragging'); });
           card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
           return card;
@@ -297,8 +316,33 @@ export default function leadsView(ctx) {
     }));
   }
 
+  function drawAside() {
+    const live = st.leads.filter((l) => !l.archived && matchesOwner(ui.owner, l));
+    const total = live.filter((l) => !['lost', 'dnc'].includes(l.status)).reduce((t, l) => t + (Number(l.est_monthly_value) || 0), 0);
+    const max = Math.max(1, ...STATUSES.map((x) => live.filter((l) => l.status === x.id).length));
+    const unread = live.filter((l) => l.unread).sort((a, b) => String(b.last_reply_at).localeCompare(String(a.last_reply_at))).slice(0, 6);
+    const due = live.filter((l) => l.next_followup_at && Date.parse(l.next_followup_at) <= Date.now() && !['dnc', 'lost', 'won'].includes(l.status));
+    fill(aside,
+      el('div', { class: 'la-total' }, el('p', { class: 'eyebrow' }, 'Open value'), el('span', { class: 'kpi-value tnum' }, `${money(total)}`), el('span', { class: 'small muted' }, `a month across ${plural(live.length, 'lead')}`)),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'By status'),
+        el('ul', { class: 'la-list' }, STATUSES.map((x) => {
+          const n = live.filter((l) => l.status === x.id).length;
+          return el('li', {},
+            el('button', { type: 'button', onClick: () => { ui.status = x.id; ui.special = ''; ui.selected.clear(); paint(); } }, statusBadge(x.id)),
+            el('span', { class: 'num' }, num(n)),
+            el('span', { class: 'la-bar', 'aria-hidden': 'true' }, el('i', { style: `width:${Math.round((n / max) * 100)}%` })));
+        }))),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Replies waiting'),
+        unread.length ? el('ul', { class: 'la-list' }, unread.map((l) => el('li', {}, el('a', { href: `#inbox/${l.id}` }, leadName(l)), el('span', { class: 'small muted' }, timeAgo(l.last_reply_at)))))
+          : el('p', { class: 'small muted' }, 'None right now.')),
+      el('div', {}, el('p', { class: 'eyebrow' }, 'Follow-ups due'),
+        el('p', { class: 'small' }, due.length ? el('a', { href: '#campaigns/followups' }, `${plural(due.length, 'follow-up')} ready to send`) : el('span', { class: 'muted' }, 'Nothing due.'))));
+  }
+
   function paint() {
     drawCampaigns();
+    drawAside();
+    if (document.activeElement !== ownerBox.firstChild) fill(ownerBox, ownerFilterSelect(ui.owner, (v) => { ui.owner = v; ui.selected.clear(); paint(); }, { label: 'Owner' }));
     drawChips();
     const all = st.leads.filter(matches);
     const list = sorted(all);
@@ -367,7 +411,9 @@ export async function openAddLead() {
   if (!values.business && !values.contact_name && !phone && !values.email) { toast('Add at least a name, phone or email', 'bad'); return; }
   if (phone && isSuppressed(phone)) { toast('That number is on the do-not-contact list', 'bad'); return; }
   try {
-    const row = await saveLead(null, { ...values, phone, source: 'manual', status: 'new' });
+    let row = await saveLead(null, { ...values, phone, source: 'manual', status: 'new' });
+    // New leads belong to whoever adds them.
+    if (meId()) { try { row = await saveOwner('leads', row.id, meId()) || row; } catch { /* the lead is saved; the owner can be set in the drawer */ } }
     logEvent('lead_added', row.id, `Added ${leadName(row)} by hand`).catch(() => {});
     toast(phone && !isAuMobile(phone) ? 'Lead added. Note: not an AU mobile, so it cannot be texted' : 'Lead added', phone && !isAuMobile(phone) ? 'warn' : 'ok');
     openLead(row.id);
@@ -644,6 +690,7 @@ export function openImport() {
     go2.addEventListener('click', () => busy(go2, async () => {
       try {
         const out = await addLeads(res.ready);
+        if (meId() && out.rows.length) { try { await saveLeadOwners(out.rows.map((r) => r.id), meId()); } catch { /* owners can be set afterwards */ } }
         logEvent('import', null, `Imported ${plural(out.inserted, 'lead')} from ${fileName}`).catch(() => {});
         toast(`Imported ${plural(out.inserted, 'lead')}`);
         stepDone(out, res);
@@ -696,10 +743,12 @@ export function openLead(id) {
   const sub = el('div', { class: 'ld-sub' });
   const actions = el('div', { class: 'ld-actions' });
   const eyebrow = el('p', { class: 'eyebrow' });
+  const ownerSel = ownerPicker({ value: lead0.owner_id || null, label: 'Lead owner', onChange: (oid) => saveOwner('leads', id, oid) });
 
   const drawHead = () => {
     const l = leadById(id);
     if (!l) return;
+    ownerSel.setValue(l.owner_id || null);
     nameH.textContent = leadName(l);
     if (document.activeElement !== statusSel) statusSel.value = l.status;
     eyebrow.textContent = `${SOURCE_LABEL[l.source] || l.source} · added ${timeAgo(l.created_at)}${l.archived ? ' · archived' : ''}`;
@@ -718,6 +767,44 @@ export function openLead(id) {
       l.email ? el('a', { class: 'btn btn-ghost btn-sm', href: `mailto:${encodeURIComponent(l.email).replace('%40', '@')}` }, icon('mail', 14), 'Email') : null,
       l.phone ? el('button', { type: 'button', class: 'btn btn-ghost btn-sm', onClick: () => copyText(l.phone, 'Number copied') }, icon('copy', 14), 'Copy') : null,
       web ? el('a', { class: 'btn btn-ghost btn-sm', href: web, target: '_blank', rel: 'noopener noreferrer' }, icon('external', 14), 'Website') : null);
+    fill(business, ...businessLinks(l));
+    business.hidden = !business.childNodes.length;
+  };
+
+  /* Interested, booked and won leads move on into the pipeline and the client list. */
+  const business = el('div', { class: 'ld-actions ld-business', 'aria-label': 'Pipeline and client' });
+  const businessLinks = (l) => {
+    if (!['interested', 'booked', 'won'].includes(l.status)) return [];
+    const deal = state.deals.find((d) => d.lead_id === l.id && !d.archived);
+    const client = state.clients.find((c) => c.lead_id === l.id);
+    const dealBtn = deal
+      ? el('a', { class: 'btn btn-ghost btn-sm', href: `#pipeline/${deal.id}`, dataset: { act: 'open-deal' } }, icon('tag', 14), `Deal: ${deal.title}`)
+      : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'create-deal' } }, icon('tag', 14), 'Create deal');
+    if (!deal) {
+      dealBtn.addEventListener('click', () => busy(dealBtn, async () => {
+        try {
+          const lead = leadById(id);
+          let d = await leadToDeal(lead);
+          // The deal carries the lead's owner across (or whoever opened it).
+          if (!d.owner_id) d = await saveRow('deals', { id: d.id, owner_id: lead.owner_id || meId() });
+          toast('Deal opened in the pipeline'); go(`#pipeline/${d.id}`);
+        } catch (e) { toast(e.message, 'bad'); }
+      }));
+    }
+    const clientBtn = client
+      ? el('a', { class: 'btn btn-ghost btn-sm', href: `#clients/${client.id}`, dataset: { act: 'open-client' } }, icon('leads', 14), `Client: ${client.name}`)
+      : el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'make-client' } }, icon('leads', 14), 'Make client');
+    if (!client) {
+      clientBtn.addEventListener('click', () => busy(clientBtn, async () => {
+        try {
+          const lead = leadById(id);
+          let c = await leadToClient(lead);
+          if (!c.owner_id) c = await saveRow('clients', { id: c.id, owner_id: lead.owner_id || meId() });
+          toast('Added to clients'); go(`#clients/${c.id}`);
+        } catch (e) { toast(e.message, 'bad'); }
+      }));
+    }
+    return [dealBtn, clientBtn];
   };
 
   /* --------------------------------------------- personal line + ROI */
@@ -771,6 +858,103 @@ export function openLead(id) {
       toast('Estimate saved to the lead');
     } catch (e) { toast(e.message, 'bad'); }
   }));
+  /* AI: shape Tyler's own observation into a personal line. It never invents one. */
+  const aiBox = el('div', { class: 'ld-ai', dataset: { ai: 'hook' } });
+  let aiBuilt = false;
+  const aiOn = () => Boolean(state.ai?.configured && state.ai.enabled);
+  const buildAi = () => {
+    const l = leadById(id) || l0;
+    const seen = textarea('ai-notes', l.notes || '', 'e.g. three Google reviews this month say nobody called them back');
+    seen.rows = 2;
+    const out = el('div', { class: 'ld-ai-out', 'aria-live': 'polite' });
+    const ask = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', dataset: { act: 'ai-suggest' } }, icon('spark', 14), 'Suggest lines');
+    const panel = el('div', { class: 'ld-ai-panel', hidden: true },
+      field('What did you notice about this business?', seen, 'The line has to come from something you actually saw: a review, their website, a job you know about. The AI only shapes your words; it will not make one up.'),
+      el('div', { class: 'row' }, ask),
+      out);
+    const toggle = el('button', { type: 'button', class: 'link-btn ld-ai-toggle', 'aria-expanded': 'false', dataset: { act: 'ai-hook' } }, icon('spark', 13), 'Suggest a personal line');
+    toggle.addEventListener('click', () => {
+      panel.hidden = !panel.hidden;
+      toggle.setAttribute('aria-expanded', String(!panel.hidden));
+      if (!panel.hidden) seen.focus();
+    });
+    ask.addEventListener('click', () => busy(ask, async () => {
+      const lead = leadById(id) || l0;
+      fill(out, el('p', { class: 'small muted' }, 'Drafting, this takes a few seconds…'));
+      const res = await ai('hook', {
+        lead: { business: lead.business, contact_name: lead.contact_name, industry: lead.industry, suburb: lead.suburb, website: lead.website },
+        notes: seen.value.trim()
+      });
+      if (!res.ok) { clear(out); toast(res.message, 'bad'); return; }
+      const options = (res.result?.options || []).filter((o) => typeof o === 'string' && o.trim());
+      if (!options.length) {
+        fill(out, el('p', { class: 'callout ld-ai-ask' }, icon('search', 15), el('span', {}, res.result?.ask || 'Look at their reviews or website and note one specific thing first.')));
+        return;
+      }
+      fill(out,
+        el('p', { class: 'small muted' }, 'Pick one to put in the personal line. Read it, change it if it is not quite you, then save.'),
+        el('ul', { class: 'ld-ai-opts' }, options.map((o) => el('li', {},
+          el('button', {
+            type: 'button', class: 'ld-ai-opt', dataset: { act: 'ai-pick' },
+            onClick: async () => {
+              const cur = hookIn.value.trim();
+              if (cur && cur !== o.trim()) {
+                const ok = await confirmDialog('Replace the personal line?', `“${cur}” will be replaced with the suggestion. Nothing is saved until you press Save personal line.`, { confirmLabel: 'Replace', danger: false });
+                if (!ok) return;
+              }
+              hookIn.value = o.trim();
+              drawPreview();
+              hookIn.focus();
+              toast('Suggestion added. Read it, then save the personal line.', 'info');
+            }
+          }, o.trim())))));
+    }));
+    fill(aiBox, toggle, panel);
+  };
+  const drawAi = () => {
+    if (aiOn() && !aiBuilt) { buildAi(); aiBuilt = true; }
+    else if (!aiOn() && aiBuilt) { clear(aiBox); aiBuilt = false; }
+  };
+  drawAi();
+  cleanup.push(onChange(drawAi));
+
+  /* Researcher agent: what their own pages say, shown here; nothing is saved until Tyler chooses. */
+  const researchBox = el('section', { class: 'ld-section ld-research', 'aria-label': 'Research', dataset: { ldResearch: '' } });
+  let researchKey = null;
+  const drawResearch = () => {
+    const l = leadById(id) || l0;
+    const ready = agentsInfo().ready('researcher');
+    const r = ready ? latestResearch(id) : null;
+    const working = isResearching(id);
+    const key = ready ? [r?.run_id, r?.at, working, l.hook, l.pain, l.status, l.number_source_url].join('|') : 'off';
+    if (key === researchKey) return;
+    researchKey = key;
+    researchBox.hidden = !ready;
+    if (!ready) { clear(researchBox); return; }
+    const btn = el('button', { type: 'button', class: `btn ${r ? 'btn-ghost' : 'btn-primary'} btn-sm`, dataset: { act: 'research' }, disabled: working || !canResearch(l) || null },
+      icon(r ? 'refresh' : 'search', 14), working ? 'Researching…' : r ? 'Research again' : 'Research this business');
+    btn.addEventListener('click', () => runResearch(id));
+    fill(researchBox,
+      el('div', { class: 'ld-section-head' },
+        el('div', { class: 'stack tight' }, el('p', { class: 'eyebrow' }, 'Researcher agent'), el('h2', { class: 'h2' }, 'What their own pages say')),
+        r ? btn : null),
+      r ? null : el('div', { class: 'ld-research-intro' },
+        el('p', { class: 'small muted' }, canResearch(l)
+          ? 'Reads their website and listing and reports only what it saw, with links. It writes nothing to the lead; you choose what to keep.'
+          : 'Nothing to look up yet: add their website, or at least the business name and suburb.'),
+        btn),
+      working ? el('p', { class: 'small muted ag-working' }, 'Reading their pages. This takes up to a minute.') : null,
+      r ? researchCard(l, r, {
+        onSaved: (k, v) => {
+          if (k === 'hook') { hookIn.value = v; drawPreview(); }
+          if (k === 'pain') { painIn.value = v; drawPreview(); }
+          if (k === 'status') drawHead();
+        }
+      }) : null);
+  };
+  drawResearch();
+  cleanup.push(onChange(drawResearch));
+
   const savePersonal = el('button', { type: 'button', class: 'btn btn-primary btn-sm' }, 'Save personal line');
   savePersonal.addEventListener('click', () => busy(savePersonal, async () => {
     try {
@@ -783,6 +967,7 @@ export function openLead(id) {
     el('div', { class: 'ld-section-head' },
       el('div', { class: 'stack tight' }, el('p', { class: 'eyebrow' }, 'Why they should care'), el('h2', { class: 'h2' }, 'Personal line and value'))),
     field('Personal line', hookIn, 'One specific thing you noticed about this business. Goes in as {hook}.'),
+    aiBox,
     el('div', { class: 'form-grid' },
       field('Their pain', painIn, '{pain}'),
       field('Worth to them ($/month)', valueIn, '{value}')),
@@ -897,14 +1082,15 @@ export function openLead(id) {
     }
   }, icon('trash', 13), 'Delete');
 
-  const body = el('div', { class: 'drawer-body' }, personal, conversation, details);
+  const body = el('div', { class: 'drawer-body' }, researchBox, personal, conversation, details);
   const drawer = el('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
     el('div', { class: 'drawer-head' },
       el('div', { class: 'ld-title' },
         el('div', { class: 'stack tight', style: 'flex:1;min-width:0' }, eyebrow, nameH),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close lead', onClick: () => close() }, icon('x', 18))),
-      el('div', { class: 'row' }, statusSel, sub),
-      actions),
+      el('div', { class: 'row' }, statusSel, ownerSel, sub),
+      actions,
+      business),
     body,
     el('div', { class: 'drawer-foot' }, archiveBtn, el('span', { class: 'spacer' }), dncBtn, delBtn));
   const backdrop = el('div', { class: 'drawer-backdrop', onClick: () => close() });

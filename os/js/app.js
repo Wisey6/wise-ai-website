@@ -1,10 +1,12 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118b';
-import { createPalette } from './palette.js?v=20261118b';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261118d';
+import { createPalette } from './palette.js?v=20261118d';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
-  refreshSmsStatus, knownPinLength, leadById, leadName
-} from './api.js?v=20261118b';
+  refreshSmsStatus, knownPinLength, leadById, leadName,
+  who, lastWho, pinLengthFor, resetRequest, resetConfirm, isMine
+} from './api.js?v=20261118d';
+import { ownerBadge, initialsOf } from './owners.js?v=20261118d';
 
 /* ------------------------------------------------------------ route registry
    The single source of truth for navigation. Top-level entries are either a
@@ -14,35 +16,35 @@ import {
    `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
    the foot of the collapsed dock; `href` links out (new tab). */
 export const NAV = [
-  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118b') },
+  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261118d') },
   { group: 'Grow', icon: 'grow', items: [
-    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118b') },
-    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118b') },
-    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118b') },
-    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118b') }
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261118d') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261118d') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261118d') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261118d') }
   ] },
   { group: 'Sell', icon: 'tag', items: [
-    { id: 'pipeline', label: 'Pipeline', soon: true },
-    { id: 'proposals', label: 'Proposals', soon: true },
+    { id: 'pipeline', label: 'Pipeline', icon: 'tag', view: () => import('./views/pipeline.js?v=20261118d') },
+    { id: 'proposals', label: 'Proposals', icon: 'book', view: () => import('./views/proposals.js?v=20261118d') },
     { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../roi.html' }
   ] },
   { group: 'Deliver', icon: 'deliver', items: [
-    { id: 'clients', label: 'Clients', soon: true },
-    { id: 'projects', label: 'Projects', soon: true },
-    { id: 'roi-reports', label: 'ROI reports', soon: true }
+    { id: 'clients', label: 'Clients', icon: 'leads', view: () => import('./views/clients.js?v=20261118d') },
+    { id: 'projects', label: 'Projects', icon: 'deliver', view: () => import('./views/projects.js?v=20261118d') },
+    { id: 'roi-reports', label: 'ROI reports', icon: 'spark', view: () => import('./views/roi-reports.js?v=20261118d') }
   ] },
   { group: 'Money', icon: 'money', items: [
-    { id: 'income', label: 'Income', soon: true },
-    { id: 'costs', label: 'Costs', soon: true },
-    { id: 'runway', label: 'Runway', soon: true }
+    { id: 'income', label: 'Income', icon: 'money', view: () => import('./views/income.js?v=20261118d') },
+    { id: 'costs', label: 'Costs', icon: 'money', view: () => import('./views/costs.js?v=20261118d') },
+    { id: 'runway', label: 'Runway', icon: 'spark', view: () => import('./views/runway.js?v=20261118d') }
   ] },
   { group: 'Know', icon: 'book', items: [
-    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118b') },
-    { id: 'library', label: 'Library', soon: true }
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261118d') },
+    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261118d') }
   ] },
   { sep: true },
-  { id: 'agents', label: 'Agents', icon: 'agents', soon: true },
-  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118b') }
+  { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261118d') },
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261118d') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
 /** Live sections (the ones with a view), in navigation order. */
@@ -60,15 +62,27 @@ let booted = false;
 /* ================================================================ PIN gate */
 
 function renderGate() {
-  // Windows-style lock: a resting screen with the clock and a lock to click,
-  // then a single numbers-only PIN field. No on-screen keypad.
+  // Windows-style lock: a resting screen with the clock; clicking or typing opens
+  // "who is signing in" (the person last here is preselected), then that person's
+  // numbers-only PIN field. No on-screen keypad. Forgot PIN and the emailed reset
+  // link (#reset/<token>) are steps of the same screen.
   let busy = false;
-  let lockedUntil = 0;
   let countdownTimer = null;
-  let open = false;
+  let step = 'rest';           // rest | people | pin | forgot | reset
+  let people = null;           // [{id, name, initials}] once known; [] = picker unavailable
+  let chosen = null;           // the person whose PIN field is showing (null = the owner, fallback)
+  let firstDigitWaiting = '';
+  const lockedUntil = new Map(); // per person: member id (or 'owner') → ms
+  const lockKey = () => chosen?.id || 'owner';
 
-  // Auto-submit only when this device has unlocked before, so we know the PIN's length.
+  const resetMatch = /^#reset\/([A-Za-z0-9_-]{16,256})$/.exec(location.hash || '');
+  const resetToken = resetMatch ? resetMatch[1] : null;
+
+  // Auto-submit only when this device knows the PIN's length for that person.
   const storedLen = () => { try { return Number(localStorage.getItem('wiseos.pinlen')) || 0; } catch { return 0; } };
+  const lenFor = () => (chosen ? pinLengthFor(chosen.id) : storedLen());
+
+  const peopleReady = who().then((list) => { people = Array.isArray(list) ? list : []; return people; }).catch(() => { people = []; return people; });
 
   const clock = el('div', { class: 'gate-clock', 'aria-hidden': 'true' });
   const date = el('div', { class: 'gate-date' });
@@ -83,11 +97,23 @@ function renderGate() {
   const hint = el('div', { class: 'gate-hint', role: 'status' });
   const setHint = (text, tone = '') => { hint.textContent = text; hint.className = `gate-hint${tone ? ` is-${tone}` : ''}`; };
 
-  const input = el('input', {
+  const pinInput = (name, label, placeholder) => el('input', {
     class: 'pin-input', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '12',
     autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false',
-    placeholder: 'PIN', 'aria-label': 'PIN', name: 'wiseos-pin'
+    placeholder, 'aria-label': label, name
   });
+  const digitsOnly = (inp, onInput) => {
+    inp.addEventListener('beforeinput', (e) => {
+      if (e.data && /\D/.test(e.data) && e.inputType !== 'insertFromPaste') e.preventDefault();
+    });
+    inp.addEventListener('input', () => {
+      const clean = inp.value.replace(/\D/g, '').slice(0, 12);
+      if (clean !== inp.value) inp.value = clean;
+      onInput?.(clean);
+    });
+  };
+
+  const input = pinInput('wiseos-pin', 'PIN', 'PIN');
   const go = el('button', { type: 'submit', class: 'pin-go', 'aria-label': 'Unlock' }, icon('arrow', 18));
   const field = el('form', { class: 'pin-field', novalidate: true }, input, go);
 
@@ -100,37 +126,46 @@ function renderGate() {
   const foot = el('span', {}, REST_FOOT);
 
   const setDisabled = (d) => { input.disabled = d; go.disabled = d; };
+  const fillNode = (node, ...kids) => { clear(node); node.append(...kids.flat().filter(Boolean)); };
 
-  const shake = () => {
-    field.classList.remove('is-shake');
-    void field.offsetWidth;
-    field.classList.add('is-shake');
-    setTimeout(() => field.classList.remove('is-shake'), 450);
+  const shake = (node = field) => {
+    node.classList.remove('is-shake');
+    void node.offsetWidth;
+    node.classList.add('is-shake');
+    setTimeout(() => node.classList.remove('is-shake'), 450);
   };
 
-  const startCountdown = (secs) => {
-    lockedUntil = Date.now() + secs * 1000;
-    setDisabled(true);
+  const ring = (p, size = 'lg') => el('span', { class: `gate-ring is-${size}`, 'aria-hidden': 'true' },
+    p ? (String(p.initials || '').trim() || String(p.name || '?').trim().slice(0, 1)).toUpperCase().slice(0, 3) : icon('lock', 20));
+
+  const pinHint = () => (lenFor() ? 'Enter your PIN' : 'Enter your PIN, then press Enter');
+
+  const startCountdown = (secs, key = lockKey()) => {
+    lockedUntil.set(key, Date.now() + secs * 1000);
+    paintCountdown();
+  };
+  function paintCountdown() {
     clearInterval(countdownTimer);
-    const step = () => {
-      const left = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000));
-      if (!left) {
+    const until = lockedUntil.get(lockKey()) || 0;
+    if (step !== 'pin' || Date.now() >= until) { if (step === 'pin') setDisabled(false); return; }
+    setDisabled(true);
+    const tickDown = () => {
+      const left = Math.max(0, Math.ceil(((lockedUntil.get(lockKey()) || 0) - Date.now()) / 1000));
+      if (!left || step !== 'pin') {
         clearInterval(countdownTimer);
-        setDisabled(false);
-        setHint('Enter your PIN');
-        if (open) input.focus();
+        if (step === 'pin') { setDisabled(false); setHint(pinHint()); input.focus(); }
         return;
       }
       const m = Math.floor(left / 60);
       const sec = String(left % 60).padStart(2, '0');
       setHint(`Too many attempts. Try again in ${m}:${sec}`, 'bad');
     };
-    step();
-    countdownTimer = setInterval(step, 1000);
-  };
+    tickDown();
+    countdownTimer = setInterval(tickDown, 1000);
+  }
 
   const submit = async () => {
-    if (busy || Date.now() < lockedUntil) return;
+    if (busy || Date.now() < (lockedUntil.get(lockKey()) || 0)) return;
     const pin = input.value;
     if (pin.length < 4) {
       if (pin.length) { setHint('PINs are at least 4 digits', 'warn'); shake(); }
@@ -140,17 +175,18 @@ function renderGate() {
     field.classList.add('is-busy');
     setDisabled(true);
     setHint('Unlocking…');
-    const res = await login(pin);
+    const who0 = chosen;
+    const res = await login(pin, who0?.id);
     busy = false;
     field.classList.remove('is-busy');
     if (res.ok) {
-      setHint('Welcome back');
+      setHint(who0 ? `Welcome back, ${who0.name}` : 'Welcome back');
       return; // the auth listener boots the shell
     }
     input.value = '';
     if (res.error === 'locked') {
       shake();
-      startCountdown(Number(res.retry_after_s) || 300);
+      startCountdown(Number(res.retry_after_s) || 300, who0?.id || 'owner');
       return;
     }
     setDisabled(false);
@@ -158,7 +194,7 @@ function renderGate() {
     if (res.error === 'bad_pin') {
       shake();
       const r = Number(res.remaining);
-      setHint(Number.isFinite(r)
+      setHint(Number.isFinite(r) && res.remaining !== null && res.remaining !== undefined
         ? `That PIN didn't match. ${r} attempt${r === 1 ? '' : 's'} left before a lockout.`
         : "That PIN didn't match.", 'bad');
       if (navigator.vibrate) navigator.vibrate(120);
@@ -169,45 +205,184 @@ function renderGate() {
     }
   };
 
-  // Numbers only, however the text arrives (typing, paste, autofill, IME).
-  input.addEventListener('beforeinput', (e) => {
-    if (e.data && /\D/.test(e.data) && e.inputType !== 'insertFromPaste') e.preventDefault();
-  });
-  input.addEventListener('input', () => {
-    const clean = input.value.replace(/\D/g, '').slice(0, 12);
-    if (clean !== input.value) input.value = clean;
-    if (hint.classList.contains('is-bad') || hint.classList.contains('is-warn')) setHint('Enter your PIN');
-    const n = storedLen();
+  digitsOnly(input, (clean) => {
+    if (hint.classList.contains('is-bad') || hint.classList.contains('is-warn') || hint.classList.contains('is-ok')) {
+      if (Date.now() >= (lockedUntil.get(lockKey()) || 0)) setHint(pinHint());
+    }
+    const n = lenFor();
     if (n >= 4 && clean.length === n) submit();
   });
   field.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
 
-  const openField = (firstDigit = '') => {
-    if (open) return;
-    open = true;
-    gate.classList.add('is-open');
-    foot.textContent = 'Numbers only · Esc to go back';
-    fillNode(panel, field, hint);
-    setHint(storedLen() ? 'Enter your PIN' : 'Enter your PIN, then press Enter');
-    if (Date.now() < lockedUntil) setDisabled(true);
-    input.value = firstDigit;
-    input.focus();
-    if (firstDigit) input.dispatchEvent(new Event('input', { bubbles: true }));
-  };
-  const closeField = () => {
-    if (!open || busy) return;
-    open = false;
+  const linkBtn = (label, onClick, data) => el('button', { type: 'button', class: 'gate-link', dataset: data || {}, onClick }, label);
+  const lastPerson = () => (people || []).find((p) => p.id === (chosen?.id || lastWho())) || null;
+
+  /* ---------------------------------------------------------------- steps */
+  function setStep(s, footText) {
+    step = s;
+    gate.dataset.step = s;
+    gate.classList.toggle('is-open', s !== 'rest');
+    foot.textContent = footText;
+    clearInterval(countdownTimer);
+  }
+
+  function showRest() {
+    if (busy) return;
+    setStep('rest', REST_FOOT);
     input.value = '';
-    gate.classList.remove('is-open');
-    foot.textContent = REST_FOOT;
     fillNode(panel, unlockBtn);
     unlockBtn.focus();
-  };
-  const fillNode = (node, ...kids) => { clear(node); node.append(...kids); };
+  }
 
-  unlockBtn.addEventListener('click', () => openField());
+  function showPeople(note = '') {
+    setStep('people', 'Choose who is signing in · Esc to go back');
+    const pre = lastPerson();
+    const btns = people.map((p) => el('button', {
+      type: 'button', class: `gate-person${pre && pre.id === p.id ? ' is-last' : ''}`, dataset: { member: p.id },
+      'aria-label': `${p.name}${pre && pre.id === p.id ? ' (signed in last on this device)' : ''}`,
+      onClick: () => showPin(p)
+    }, ring(p, 'lg'), el('span', { class: 'gate-person-name' }, p.name)));
+    const list = el('div', { class: 'gate-people', role: 'group', 'aria-label': 'Who is signing in' }, btns);
+    list.addEventListener('keydown', (e) => {
+      const i = btns.indexOf(document.activeElement);
+      if (i < 0) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); btns[(i + 1) % btns.length].focus(); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length].focus(); }
+    });
+    fillNode(panel, el('p', { class: 'gate-ask' }, 'Who is signing in?'), list, hint);
+    setHint(note || '', note ? 'ok' : '');
+    (btns.find((b) => b.dataset.member === pre?.id) || btns[0])?.focus();
+  }
 
-  const gate = el('div', { class: 'gate', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Wise AI OS is locked' },
+  function showPin(person, digit = '', note = '') {
+    chosen = person || null;
+    setStep('pin', 'Numbers only · Esc to go back');
+    const multi = (people || []).length > 1;
+    const links = el('div', { class: 'gate-links' },
+      multi ? linkBtn('Not you?', () => showPeople(), { act: 'not-you' }) : null,
+      multi && chosen ? el('span', { class: 'gate-sep', 'aria-hidden': 'true' }) : null,
+      chosen ? linkBtn('Forgot PIN?', () => showForgot(), { act: 'forgot' }) : null);
+    fillNode(panel,
+      chosen ? el('div', { class: 'gate-who', dataset: { member: chosen.id } }, ring(chosen, 'lg'), el('span', { class: 'gate-who-name' }, chosen.name)) : null,
+      field, hint, links.childNodes.length ? links : null);
+    input.value = '';
+    setHint(note || pinHint(), note ? 'ok' : '');
+    setDisabled(false);
+    input.focus();
+    if (digit) { input.value = digit; input.dispatchEvent(new Event('input', { bubbles: true })); }
+    paintCountdown();
+  }
+
+  function showForgot() {
+    if (!chosen) return;
+    const p = chosen;
+    setStep('forgot', 'Esc to go back');
+    const send = el('button', { type: 'button', class: 'gate-btn is-primary', dataset: { act: 'send-reset' } }, 'Email me a reset link');
+    const back = linkBtn('Back to sign in', () => showPin(p), { act: 'back' });
+    const msg = el('p', { class: 'gate-msg' }, `We will email a one-time link to the address on file for ${p.name}. It lasts 20 minutes.`);
+    const actions = el('div', { class: 'gate-actions' }, send, back);
+    fillNode(panel, el('div', { class: 'gate-who' }, ring(p, 'lg'), el('span', { class: 'gate-who-name' }, 'Forgot your PIN?')), msg, actions, hint);
+    setHint('');
+    send.focus();
+    send.addEventListener('click', async () => {
+      if (busy) return;
+      busy = true;
+      send.disabled = true;
+      setHint('Sending…');
+      const r = await resetRequest(p.id);
+      busy = false;
+      if (r.ok) {
+        msg.textContent = `If there is an email on file for ${p.name}, a reset link is on its way. It lasts 20 minutes.`;
+        fillNode(actions, linkBtn('Back to sign in', () => showPin(p), { act: 'back' }));
+        setHint('');
+        actions.querySelector('button')?.focus();
+        return;
+      }
+      send.disabled = false;
+      const owner = (people || [])[0];
+      if (r.error === 'email_not_configured') {
+        msg.textContent = owner && owner.id !== p.id
+          ? `Email is not set up yet. Ask ${owner.name} to reset your PIN in Settings.`
+          : 'Email is not set up yet, so a reset link cannot be sent.';
+        fillNode(actions, linkBtn('Back to sign in', () => showPin(p), { act: 'back' }));
+        setHint('');
+        actions.querySelector('button')?.focus();
+      } else if (r.error === 'too_many') {
+        setHint('Too many reset requests. Try again in an hour.', 'warn');
+      } else {
+        setHint(r.message || 'That did not work. Try again.', 'warn');
+      }
+    });
+  }
+
+  function showReset(token) {
+    setStep('reset', 'Numbers only, 4 to 12 digits');
+    const a = pinInput('new-pin', 'New PIN', 'New PIN');
+    const b = pinInput('new-pin-again', 'New PIN again', 'New PIN again');
+    const save = el('button', { type: 'submit', class: 'gate-btn is-primary', dataset: { act: 'save-pin' } }, 'Save new PIN');
+    const form = el('form', { class: 'gate-reset', novalidate: true },
+      el('div', { class: 'pin-field is-plain' }, a), el('div', { class: 'pin-field is-plain' }, b), save);
+    digitsOnly(a, () => setHint(''));
+    digitsOnly(b, () => setHint(''));
+    const done = () => { try { history.replaceState(null, '', location.pathname + location.search); } catch { /* */ } };
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (busy) return;
+      if (!/^\d{4,12}$/.test(a.value)) { setHint('A PIN is 4 to 12 digits.', 'warn'); shake(a.parentNode); a.focus(); return; }
+      if (a.value !== b.value) { setHint('The two PINs do not match.', 'warn'); shake(b.parentNode); b.focus(); return; }
+      busy = true;
+      save.disabled = true;
+      setHint('Saving…');
+      const r = await resetConfirm(token, a.value);
+      busy = false;
+      save.disabled = false;
+      if (r.ok) {
+        done();
+        await peopleReady;
+        const p = lastPerson();
+        if ((people || []).length > 1 && !p) showPeople('PIN changed. Sign in with the new one.');
+        else showPin(p || (people || [])[0] || null, '', 'PIN changed. Sign in with the new one.');
+        return;
+      }
+      if (r.error === 'bad_token') {
+        done();
+        fillNode(panel,
+          el('div', { class: 'gate-who' }, ring(null, 'lg'), el('span', { class: 'gate-who-name' }, 'That link has expired')),
+          el('p', { class: 'gate-msg' }, 'Reset links last 20 minutes and work once. Ask for a new one from the sign-in screen.'),
+          el('div', { class: 'gate-actions' }, linkBtn('Back to sign in', () => openSignIn(), { act: 'back' })), hint);
+        setHint('');
+        panel.querySelector('.gate-actions button')?.focus();
+        return;
+      }
+      setHint(r.error === 'weak_pin' ? 'A PIN is 4 to 12 digits.' : (r.message || 'That did not work. Try again.'), 'warn');
+    });
+    fillNode(panel, el('div', { class: 'gate-who' }, ring(null, 'lg'), el('span', { class: 'gate-who-name' }, 'Choose a new PIN')), form, hint,
+      el('div', { class: 'gate-links' }, linkBtn('Cancel', () => { done(); showRest(); }, { act: 'cancel' })));
+    setHint('');
+    a.focus();
+  }
+
+  async function openSignIn(digit = '') {
+    if (step !== 'rest' && step !== 'reset' && step !== 'forgot') return;
+    if (people === null) {
+      firstDigitWaiting += digit;
+      gate.classList.add('is-open');
+      const list = await peopleReady;
+      digit = firstDigitWaiting;
+      firstDigitWaiting = '';
+      if (step !== 'rest' && step !== 'reset' && step !== 'forgot') return;
+      if (!list) return;
+    }
+    if (!people.length) { showPin(null, digit); return; }          // picker unavailable: the owner's PIN field
+    if (people.length === 1) { showPin(people[0], digit); return; }
+    const p = lastPerson();
+    if (p) showPin(p, digit);
+    else showPeople(digit ? '' : '');
+  }
+
+  unlockBtn.addEventListener('click', () => openSignIn());
+
+  const gate = el('div', { class: 'gate', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Wise AI OS is locked', dataset: { step: 'rest' } },
     el('div', { class: 'gate-top' },
       el('div', { class: 'gate-brand' }, el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
       el('div', { class: 'gate-lock', 'aria-hidden': 'true' }, icon('lock', 13), 'Locked')),
@@ -216,32 +391,43 @@ function renderGate() {
     el('div', { class: 'gate-foot' }, foot)
   );
 
-  // Clicking anywhere on the resting screen opens the PIN field, as on Windows.
+  // Clicking anywhere on the resting screen opens sign-in, as on Windows.
   gate.addEventListener('click', (e) => {
-    if (!open && !e.target.closest('button, a, input')) openField();
+    if (step === 'rest' && !e.target.closest('button, a, input')) openSignIn();
   });
+
+  const back = () => {
+    if (busy) return;
+    if (step === 'pin') {
+      if ((people || []).length > 1) showPeople(); else showRest();
+    } else if (step === 'forgot') showPin(chosen);
+    else if (step === 'people') showRest();
+  };
 
   const onKey = (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (!open) {
-      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); openField(e.key); }
-      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openField(); }
+    if (step === 'rest') {
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); openSignIn(e.key); }
+      else if (e.key === 'Enter' || e.key === ' ') { if (document.activeElement === unlockBtn || !gate.contains(document.activeElement)) { e.preventDefault(); openSignIn(); } }
       else if (e.key === 'Tab') trapFocus(e, gate);
       return;
     }
-    if (e.key === 'Escape') { e.preventDefault(); closeField(); }
+    if (e.key === 'Escape') { e.preventDefault(); back(); }
     else if (e.key === 'Tab') trapFocus(e, gate);
-    else if (document.activeElement !== input && /^[0-9]$/.test(e.key) && !input.disabled) {
+    else if (step === 'pin' && document.activeElement !== input && /^[0-9]$/.test(e.key) && !input.disabled) {
       // A digit typed while focus is elsewhere still lands in the field.
       e.preventDefault();
       input.focus();
       input.value = (input.value + e.key).slice(0, 12);
       input.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (step === 'people' && /^[0-9]$/.test(e.key)) {
+      setHint('Choose who is signing in first', 'warn');
     }
   };
   document.addEventListener('keydown', onKey);
 
   document.body.append(gate);
+  if (resetToken) showReset(resetToken);
 
   return {
     destroy() {
@@ -260,14 +446,15 @@ const viewCache = new Map();
 let current = { route: null, param: null, node: null };
 let navCounts = [];
 let connNodes = [];
+let meNodes = [];
 let palette = null;
 let rail = null;
 
 const soonTag = () => el('span', { class: 'soon-tag' }, 'Soon');
 
 function countBadge(r, cls = 'nav-count') {
-  if (r.badge !== 'unread') return null;
-  const c = el('span', { class: cls, hidden: true });
+  if (r.badge !== 'unread' && r.badge !== 'approvals') return null;
+  const c = el('span', { class: cls, hidden: true, dataset: { count: r.badge } });
   navCounts.push(c);
   return c;
 }
@@ -322,6 +509,32 @@ function connIndicator(extraCls = '') {
   return node;
 }
 
+/** Who is signed in: initials + name (or the ring alone in the dock). Repainted on state changes. */
+function meChip(variant = 'full') {
+  const node = el('a', { class: `me-chip is-${variant}`, href: '#settings', dataset: { me: '' }, tabindex: variant === 'dock' ? '-1' : null });
+  meNodes.push({ node, variant });
+  paintMe({ node, variant });
+  return node;
+}
+function paintMe({ node, variant }) {
+  const me = state.me;
+  const key = me ? `${me.id}|${me.name}|${(state.team || []).length}` : '';
+  if (node.dataset.key === key) return;
+  node.dataset.key = key;
+  node.hidden = !me;
+  if (!me) return;
+  node.title = `Signed in as ${me.name}. Your sign-in settings`;
+  node.setAttribute('aria-label', `Signed in as ${me.name}. Open your sign-in settings`);
+  const ring = me.id && (state.team || []).some((m) => m.id === me.id)
+    ? ownerBadge(me.id, { size: variant === 'dock' ? 'md' : 'sm', title: false })
+    : el('span', { class: 'own-ring is-sm is-me' }, initialsOf(me) || '?');
+  node.replaceChildren(ring, ...(variant === 'dock' ? [] : [el('span', { class: 'me-chip-name' }, me.name)]));
+}
+function updateMe() {
+  meNodes = meNodes.filter((n) => n.node.isConnected);
+  for (const n of meNodes) paintMe(n);
+}
+
 function searchTrigger(cls, compact = false) {
   return el('button', {
     type: 'button', class: cls, dataset: { palette: '' }, 'aria-haspopup': 'dialog',
@@ -345,27 +558,36 @@ function buildRail() {
     el('div', { class: 'rail-search' }, searchTrigger('nav-search')),
     navMap('rail'),
     el('div', { class: 'rail-foot' },
+      meChip(),
       connIndicator(),
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-lock', onClick: () => lock(), title: 'Lock (signs out)' },
         icon('lock', 15), el('span', { class: 'lbl' }, 'Lock'))));
 
+  // The collapsed dock shows one icon per AREA (Today, Grow, Sell, Deliver, Money,
+  // Know, Agents), lit when the current route is inside it; hovering or focusing
+  // still expands to the full grouped map. Grow carries the unread count, Agents
+  // the approvals count.
   const dockItem = (r) => (r.view
-    ? el('a', { class: 'dock-item', href: `#${r.id}`, tabindex: '-1', dataset: { route: r.id } }, icon(r.icon, 19), countBadge(r, 'dock-count'))
+    ? el('a', { class: 'dock-item', href: `#${r.id}`, tabindex: '-1', title: r.label, dataset: { route: r.id } }, icon(r.icon, 19), countBadge(r, 'dock-count'))
     : el('span', { class: 'dock-item is-soon' }, icon(r.icon, 19)));
-  const live = ROUTES.filter((r) => !r.foot);
-  const planned = NAV.filter((n) => (n.items ? groupSoon(n) : !n.sep && n.soon));
+  const areaItem = (g) => {
+    const live = g.items.filter((i) => i.view);
+    if (!live.length) return el('span', { class: 'dock-item is-soon', title: g.group }, icon(g.icon, 19));
+    const badged = live.find((i) => i.badge);
+    return el('a', { class: 'dock-item dock-area', href: `#${live[0].id}`, tabindex: '-1', title: g.group, dataset: { area: g.group, routes: live.map((i) => i.id).join(' ') } },
+      icon(g.icon, 19), badged ? countBadge(badged, 'dock-count') : null);
+  };
+  const areas = NAV.filter((n) => !n.sep && !(n.foot)).map((n) => (n.items ? areaItem(n) : dockItem(n)));
   const menuBtn = el('button', { type: 'button', class: 'dock-menu', tabindex: '-1' },
     el('span', { class: 'dock-mark' }, el('img', { src: LOGO, alt: '' })));
   const dock = el('div', { class: 'rail-dock', 'aria-hidden': 'true' },
     menuBtn,
     el('button', { type: 'button', class: 'dock-item dock-search', tabindex: '-1', onClick: (e) => palette?.open(e.currentTarget) }, icon('search', 19)),
-    el('div', { class: 'dock-list' },
-      live.map(dockItem),
-      el('span', { class: 'dock-sep' }),
-      planned.map(dockItem)),
+    el('div', { class: 'dock-list' }, areas),
     el('div', { class: 'dock-foot' },
       ROUTES.filter((r) => r.foot).map(dockItem),
       connIndicator('conn-dock'),
+      meChip('dock'),
       el('button', { type: 'button', class: 'dock-item', tabindex: '-1', onClick: () => lock() }, icon('lock', 18))));
 
   const node = el('aside', { class: 'rail', 'aria-label': 'Main navigation' }, dock, full);
@@ -488,6 +710,7 @@ function openMore(trigger) {
       el('button', { type: 'button', class: 'icon-btn more-close', 'aria-label': 'Close menu', onClick: () => closeMore() }, icon('x', 18))),
     navMap('sheet'),
     el('div', { class: 'rail-foot' },
+      meChip(),
       connIndicator(),
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-lock', onClick: () => lock() }, icon('lock', 15), el('span', { class: 'lbl' }, 'Lock'))));
   const layer = el('div', { class: 'more-layer' }, el('div', { class: 'more-scrim', onClick: () => closeMore() }), sheet);
@@ -519,6 +742,7 @@ function renderShell() {
   clear(app);
   navCounts = [];
   connNodes = [];
+  meNodes = [];
   const parts = buildRail();
 
   const topbar = el('header', { class: 'topbar' },
@@ -576,15 +800,19 @@ function markActive() {
     a.classList.toggle('is-active', on);
     if (a.tagName === 'A') { if (a.dataset.route === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }
   }
+  for (const a of document.querySelectorAll('.dock-area[data-routes]')) a.classList.toggle('is-active', a.dataset.routes.split(' ').includes(id));
 }
 
 function updateBadges() {
-  const unread = state.leads.filter((l) => l.unread && !l.archived).length;
+  // Unread replies on your own leads and on leads nobody owns yet.
+  const unread = state.leads.filter((l) => l.unread && !l.archived && isMine(l)).length;
+  const approvals = (state.agent_actions || []).filter((a) => a.status === 'proposed').length;
   navCounts = navCounts.filter((c) => c.isConnected);
   for (const c of navCounts) {
-    c.hidden = !unread;
-    c.textContent = unread > 99 ? '99+' : String(unread);
-    c.setAttribute('aria-label', `${unread} unread`);
+    const n = c.dataset.count === 'approvals' ? approvals : unread;
+    c.hidden = !n;
+    c.textContent = n > 99 ? '99+' : String(n);
+    c.setAttribute('aria-label', c.dataset.count === 'approvals' ? `${n} waiting for approval` : `${n} unread`);
   }
   const r = ROUTES.find((x) => x.id === current.route);
   document.title = `${unread ? `(${unread}) ` : ''}${r ? `${r.label} · ` : ''}Wise AI OS`;
@@ -665,6 +893,7 @@ async function render({ navigated = false } = {}) {
 
 function onStateChange() {
   updateBadges();
+  updateMe();
   if (!current.node || !state.loaded) return;
   if (typeof current.node.onState === 'function') {
     try { current.node.onState(); } catch (err) { setTimeout(() => { throw err; }, 0); }
@@ -686,6 +915,8 @@ function watchEvents() {
     if (table !== 'events' || type !== 'INSERT' || !row) return;
     const lead = row.lead_id ? leadById(row.lead_id) : null;
     const who = lead ? leadName(lead) : null;
+    // Replies on someone else's lead are theirs to see; yours and unowned ones toast here.
+    if (row.kind === 'sms_reply' && lead && !isMine(lead)) return;
     if (row.kind === 'sms_reply') toast(who ? `New reply from ${who}` : 'New SMS reply', 'info');
     else if (row.kind === 'booking') toast(who ? `New booking: ${who}` : 'New booking', 'ok');
     else if (row.kind === 'website_lead') toast(who ? `New website lead: ${who}` : 'New website lead', 'info');
@@ -716,6 +947,8 @@ async function boot(gate) {
   booted = true;
   gate?.destroy();
   renderShell();
+  // The Wise AI agent launcher (top right; above the tab bar on phones). Loaded after the shell.
+  import('./agent-dock.js?v=20261118d').then((m) => m.mountAgentDock()).catch((e) => setTimeout(() => { throw e; }, 0));
   palette = createPalette({ routes: ROUTES, onLock: () => lock(), onTogglePin: () => rail.togglePin() });
   shellKeys();
   window.addEventListener('hashchange', () => render({ navigated: true }));

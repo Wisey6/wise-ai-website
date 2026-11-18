@@ -34,6 +34,15 @@ const e164 = (m) => `+61${m.slice(1)}`;
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
+// The agent function costs money: it is never called for real from tests. Status only.
+await ctx.route('**/functions/v1/agent', (route) => {
+  const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
+  if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+  let body = {};
+  try { body = JSON.parse(route.request().postData() || '{}'); } catch { /* */ }
+  const status = { configured: true, enabled: true, agents: { researcher: true, briefing: true, ask: true, doer: true }, spent_usd: 0, cap_usd: 25, runs_today: { researcher: 0, briefing: 0, ask: 0, doer: 0 }, limits: { researcher: 40, briefing: 4, ask: 150, doer: 30 } };
+  return route.fulfill({ status: body.action === 'status' ? 200 : 403, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(body.action === 'status' ? status : { error: 'disabled' }) });
+});
 const page = await ctx.newPage();
 const errors = [];
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`${m.type()}: ${m.text()}`); });
@@ -72,8 +81,12 @@ try {
   check(/\d/.test(await page.locator('.gate-clock').textContent()), 'gate shows a clock');
   check(await page.locator('.gate .pin-input').count() === 0, 'gate rests with no PIN field until the lock is clicked');
   await page.locator('.gate .gate-unlock').click();
+  // More than one person can sign in: a fresh device asks who first (the owner is listed first).
+  await page.waitForSelector('.gate .gate-person, .gate .pin-input');
+  const pickOwner = async () => { if (await page.locator('.gate .gate-person').count()) await page.locator('.gate .gate-person').first().click(); };
+  await pickOwner();
   await page.waitForSelector('.gate .pin-input');
-  check(await page.evaluate(() => document.activeElement?.classList.contains('pin-input')), 'clicking the lock opens and focuses the PIN field');
+  check(await page.evaluate(() => document.activeElement?.classList.contains('pin-input')), 'clicking the lock (and choosing who) opens and focuses the PIN field');
   check(await page.locator('.gate .pin-input').getAttribute('inputmode') === 'numeric'
     && await page.locator('.gate .pin-input').getAttribute('type') === 'password', 'PIN field is masked and numeric');
   await page.keyboard.type('a1b-2 c');
@@ -81,6 +94,7 @@ try {
   await page.locator('.gate .pin-input').evaluate((n) => { n.value = '12x34'; n.dispatchEvent(new Event('input', { bubbles: true })); });
   check(await page.locator('.gate .pin-input').inputValue() === '1234', 'pasted text is stripped to digits');
   await page.keyboard.press('Escape');
+  if (await page.locator('.gate .gate-person').count()) await page.keyboard.press('Escape');   // PIN → people → resting
   check(await page.locator('.gate .pin-input').count() === 0 && await page.locator('.gate .gate-unlock').count() === 1, 'Escape returns to the resting lock');
   await page.keyboard.press('7');
   check(await page.locator('.gate .pin-input').inputValue() === '7', 'typing a digit on the resting screen opens the field with it');
@@ -105,7 +119,7 @@ try {
   check(await page.locator('.gate').count() === 0, 'gate is removed after unlock');
 
   /* -------------------------------------------------------------- routes */
-  for (const r of ['home', 'leads', 'inbox', 'campaigns', 'bookings', 'playbook', 'settings']) {
+  for (const r of ['home', 'leads', 'inbox', 'campaigns', 'bookings', 'playbook', 'library', 'agents', 'settings']) {
     const before = errors.length;
     await page.evaluate((h) => { location.hash = h; }, `#${r}`);
     await page.waitForTimeout(700);
@@ -154,17 +168,19 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(350);
   check(await railState() === 'dock', 'Escape tucks the sidebar away');
-  // Planned items are not navigation.
-  const soon = await page.evaluate(() => [...document.querySelectorAll('.rail-full .nav-item.is-soon')].map((n) => ({
-    href: n.getAttribute('href'), dis: n.getAttribute('aria-disabled'), tab: n.tabIndex, tag: n.tagName
-  })));
-  check(soon.length >= 10 && soon.every((s) => !s.href && s.dis === 'true' && s.tab === -1 && s.tag === 'SPAN'), `planned sections are dimmed, disabled and not focusable (${soon.length})`);
-  await page.mouse.move(30, 420);
-  await page.waitForTimeout(500);
-  const hashBefore = await page.evaluate(() => location.hash);
-  await page.locator('.rail-full .nav-item.is-soon', { hasText: 'Proposals' }).click();
-  await page.waitForTimeout(200);
-  check((await page.evaluate(() => location.hash)) === hashBefore, 'clicking a planned section does not navigate');
+  // Every section is live now (Agents included); nothing in the map is a dimmed placeholder.
+  check(await page.locator('.rail-full .nav-item.is-soon').count() === 0, 'no planned (dimmed) sections remain in the sidebar');
+  const live = await page.evaluate(() => [...document.querySelectorAll('.rail-full a.nav-item[data-route]')].map((n) => n.dataset.route));
+  check(['pipeline', 'proposals', 'clients', 'projects', 'roi-reports', 'income', 'costs', 'runway', 'library', 'agents'].every((r) => live.includes(r)), 'Sell, Deliver, Money, Library and Agents are live links in the sidebar');
+  // The collapsed dock: one icon per area, lit when the route is inside it.
+  const dockAreas = await page.evaluate(() => [...document.querySelectorAll('.rail-dock .dock-list .dock-item')].map((n) => n.dataset.area || n.dataset.route));
+  check(JSON.stringify(dockAreas) === JSON.stringify(['home', 'Grow', 'Sell', 'Deliver', 'Money', 'Know', 'agents']), `the dock shows one icon per area (${dockAreas.join(', ')})`);
+  check(await page.locator('.rail-dock .dock-foot a[data-route="settings"]').count() === 1, 'Settings sits at the foot of the dock');
+  await page.evaluate(() => { location.hash = '#campaigns'; });
+  await page.waitForTimeout(400);
+  check(await page.locator('.dock-area[data-area="Grow"].is-active').count() === 1, 'the Grow icon is lit on a Grow section');
+  await page.evaluate(() => { location.hash = '#home'; });
+  await page.waitForTimeout(400);
   const roiHref = await page.locator('.rail-full a.nav-item', { hasText: 'ROI calculator' }).getAttribute('href');
   check(roiHref === '../roi.html', 'ROI calculator links to the public page');
   await page.mouse.move(900, 500);
@@ -205,6 +221,8 @@ try {
   await page.waitForSelector('.pal [role=combobox]');
   check(await page.evaluate(() => document.activeElement?.getAttribute('role') === 'combobox'), 'Ctrl+K opens the palette with the input focused');
   check(await page.locator('.pal-box[role=dialog][aria-modal=true] [role=listbox] [role=option]').count() > 5, 'palette lists sections and actions');
+  const palLabels = await page.locator('.pal-opt .pal-label').allTextContents();
+  check(['Pipeline', 'Clients', 'Income', 'Library', 'New deal', 'New invoice', 'New library entry'].every((l) => palLabels.includes(l)), 'palette lists the new sections and their actions');
   await page.keyboard.type('camp');
   const firstOpt = await page.locator('.pal-opt.is-sel .pal-label').textContent();
   check(firstOpt === 'Campaigns', `palette filters as you type (${firstOpt})`);
@@ -264,6 +282,7 @@ try {
     return data?.status;
   }, e164(m1));
   check(st1 === 'interested', `status changes via drawer (db: ${st1})`);
+  check(await page.locator('.drawer [data-act=create-deal]').count() === 1 && await page.locator('.drawer [data-act=make-client]').count() === 1, 'an interested lead offers Create deal and Make client');
 
   // ROI estimator writes est_monthly_value and pain.
   await page.click('.roi summary');
@@ -411,6 +430,8 @@ try {
   await page.waitForSelector('.more-sheet');
   check(await page.locator('.more-sheet .nav-group').count() === 5, 'More sheet shows the grouped map');
   check(await page.locator('.more-sheet .nav-item.is-soon[href]').count() === 0, 'More sheet planned items are not links');
+  const sheetRoutes = await page.$$eval('.more-sheet a.nav-item[data-route]', (ns) => ns.map((n) => n.dataset.route));
+  check(['pipeline', 'proposals', 'clients', 'projects', 'roi-reports', 'income', 'costs', 'runway', 'library'].every((r) => sheetRoutes.includes(r)), 'More sheet lists every new section');
   await shot(page, 'more-375');
   await page.locator('.more-sheet a[data-route="settings"]').click();
   await page.waitForTimeout(600);
