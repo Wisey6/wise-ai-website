@@ -7,12 +7,12 @@
 //   Text messages       api.js        state.sms (sms-send status), refreshSmsStatus()
 //   Bookings            api.js        state.bookings (a Cal.com booking has arrived)
 //   AI model            agents.js     agentsInfo() (state.agents: key present, spend, cap)
-import { el, icon, toast, busy, copyText, confirmDialog, fill } from '../ui.js?v=20261119a';
-import { state, refreshSmsStatus } from '../api.js?v=20261119a';
-import { FUNCTIONS_URL } from '../config.js?v=20261119a';
-import { agentsInfo } from './agents.js?v=20261119a';
-import { gdriveCall } from '../files-api.js?v=20261119a';
-import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261119a';
+import { el, icon, toast, busy, copyText, confirmDialog, fill } from '../ui.js?v=20261119b';
+import { state, refreshSmsStatus } from '../api.js?v=20261119b';
+import { FUNCTIONS_URL } from '../config.js?v=20261119b';
+import { agentsInfo } from './agents.js?v=20261119b';
+import { gdriveCall } from '../files-api.js?v=20261119b';
+import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261119b';
 
 export const MAIL_LINE = 'The assistant can search and read your inbox and write drafts. Nothing is sent until you press Send.';
 export const CAL_LINE = 'In your calendar it can look, find free times and add or change your own events; guests are invited only when you press the button.';

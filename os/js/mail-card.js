@@ -2,12 +2,12 @@
 // assistant wrote shows To / Cc / Subject and the text, with Send (the only way an email leaves
 // the hub, pressed by the person), Edit in Gmail and Discard. The card's state comes from the
 // person's own mail_drafts rows, so it is right after a reload. Text nodes only, never HTML.
-import { el, icon, timeOnly } from './ui.js?v=20261119a';
-import { state } from './api.js?v=20261119a';
+import { el, icon, timeOnly } from './ui.js?v=20261119b';
+import { state } from './api.js?v=20261119b';
 import {
   cancelProposal, confirmProposal, draftState, discardDraft, gmailDraftLink, loadMailDrafts, loadProposals, mailConnected, mailStamp, onMailChange,
   proposalState, refreshMailStatus, sendDraft
-} from './mail-api.js?v=20261119a';
+} from './mail-api.js?v=20261119b';
 
 export { mailConnected, mailStamp, onMailChange };
 

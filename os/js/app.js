@@ -1,12 +1,12 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261119a';
-import { createPalette } from './palette.js?v=20261119a';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261119b';
+import { createPalette } from './palette.js?v=20261119b';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
   refreshSmsStatus, knownPinLength, leadById, leadName,
   who, lastWho, pinLengthFor, resetRequest, resetConfirm, isMine
-} from './api.js?v=20261119a';
-import { ownerBadge, initialsOf } from './owners.js?v=20261119a';
+} from './api.js?v=20261119b';
+import { ownerBadge, initialsOf } from './owners.js?v=20261119b';
 
 /* ------------------------------------------------------------ route registry
    The single source of truth for navigation. Top-level entries are either a
@@ -16,36 +16,36 @@ import { ownerBadge, initialsOf } from './owners.js?v=20261119a';
    `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
    the foot of the collapsed dock; `href` links out (new tab). */
 export const NAV = [
-  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261119a') },
+  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261119b') },
   { group: 'Grow', icon: 'grow', items: [
-    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261119a') },
-    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261119a') },
-    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261119a') },
-    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261119a') }
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261119b') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261119b') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261119b') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261119b') }
   ] },
   { group: 'Sell', icon: 'tag', items: [
-    { id: 'pipeline', label: 'Pipeline', icon: 'tag', view: () => import('./views/pipeline.js?v=20261119a') },
-    { id: 'proposals', label: 'Proposals', icon: 'book', view: () => import('./views/proposals.js?v=20261119a') },
+    { id: 'pipeline', label: 'Pipeline', icon: 'tag', view: () => import('./views/pipeline.js?v=20261119b') },
+    { id: 'proposals', label: 'Proposals', icon: 'book', view: () => import('./views/proposals.js?v=20261119b') },
     { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../roi.html' }
   ] },
   { group: 'Deliver', icon: 'deliver', items: [
-    { id: 'clients', label: 'Clients', icon: 'leads', view: () => import('./views/clients.js?v=20261119a') },
-    { id: 'projects', label: 'Projects', icon: 'deliver', view: () => import('./views/projects.js?v=20261119a') },
-    { id: 'roi-reports', label: 'ROI reports', icon: 'spark', view: () => import('./views/roi-reports.js?v=20261119a') }
+    { id: 'clients', label: 'Clients', icon: 'leads', view: () => import('./views/clients.js?v=20261119b') },
+    { id: 'projects', label: 'Projects', icon: 'deliver', view: () => import('./views/projects.js?v=20261119b') },
+    { id: 'roi-reports', label: 'ROI reports', icon: 'spark', view: () => import('./views/roi-reports.js?v=20261119b') }
   ] },
   { group: 'Money', icon: 'money', items: [
-    { id: 'income', label: 'Income', icon: 'money', view: () => import('./views/income.js?v=20261119a') },
-    { id: 'costs', label: 'Costs', icon: 'money', view: () => import('./views/costs.js?v=20261119a') },
-    { id: 'runway', label: 'Runway', icon: 'spark', view: () => import('./views/runway.js?v=20261119a') }
+    { id: 'income', label: 'Income', icon: 'money', view: () => import('./views/income.js?v=20261119b') },
+    { id: 'costs', label: 'Costs', icon: 'money', view: () => import('./views/costs.js?v=20261119b') },
+    { id: 'runway', label: 'Runway', icon: 'spark', view: () => import('./views/runway.js?v=20261119b') }
   ] },
   { group: 'Know', icon: 'book', items: [
-    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261119a') },
-    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261119a') },
-    { id: 'files', label: 'Files', icon: 'archive', view: () => import('./views/files.js?v=20261119a') }
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261119b') },
+    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261119b') },
+    { id: 'files', label: 'Files', icon: 'archive', view: () => import('./views/files.js?v=20261119b') }
   ] },
   { sep: true },
-  { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261119a') },
-  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261119a') }
+  { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261119b') },
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261119b') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
 /** Live sections (the ones with a view), in navigation order. */
@@ -1134,7 +1134,7 @@ async function boot(gate) {
   gate?.destroy();
   renderShell();
   // The Wise AI agent launcher (top right; above the tab bar on phones). Loaded after the shell.
-  import('./agent-dock.js?v=20261119a').then((m) => m.mountAgentDock()).catch((e) => setTimeout(() => { throw e; }, 0));
+  import('./agent-dock.js?v=20261119b').then((m) => m.mountAgentDock()).catch((e) => setTimeout(() => { throw e; }, 0));
   palette = createPalette({ routes: ROUTES, onLock: () => lock(), onTogglePin: () => rail.togglePin() });
   shellKeys();
   window.addEventListener('hashchange', () => render({ navigated: true }));

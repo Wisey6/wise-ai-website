@@ -8,18 +8,18 @@
 import {
   el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural,
   money, titleCase, STATUS
-} from './ui.js?v=20261119a';
+} from './ui.js?v=20261119b';
 import {
   state, chatSend, chatMessages, chatRename, chatArchive, chatDelete, undoChange, memoryDelete,
   agentStatus, saveSettings, rowById, sb
-} from './api.js?v=20261119a';
-import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261119a';
-import { agentsInfo, usd } from './views/agents.js?v=20261119a';
-import { ownerName } from './owners.js?v=20261119a';
-import { spotRecord } from './spot.js?v=20261119a';
-import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261119a';
-import { navigate, reducedMotion } from './motion.js?v=20261119a';
-import { voiceInput } from './voice.js?v=20261119a';
+} from './api.js?v=20261119b';
+import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261119b';
+import { agentsInfo, usd } from './views/agents.js?v=20261119b';
+import { ownerName } from './owners.js?v=20261119b';
+import { spotRecord } from './spot.js?v=20261119b';
+import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261119b';
+import { navigate, reducedMotion } from './motion.js?v=20261119b';
+import { voiceInput } from './voice.js?v=20261119b';
 
 export const MAX_MESSAGE = 4000;
 
@@ -33,8 +33,9 @@ export const CHAT_EXAMPLES = [
 ];
 
 export const CHAT_MODELS = [
+  { id: 'auto', label: 'Automatic (recommended)', line: 'Uses the fast, cheap model for everyday asks and steps up to the smart one only when a request needs it. The lowest cost for the same answers.' },
   { id: 'claude-haiku-5-5', label: 'Fast and cheap', line: 'Quick answers and simple changes. It can miss detail in longer, many-part requests.' },
-  { id: 'claude-sonnet-5-5', label: 'Smart (recommended)', line: 'Handles most questions and multi-step changes well, at a sensible cost per message.' },
+  { id: 'claude-sonnet-5-5', label: 'Smart', line: 'Handles most questions and multi-step changes well, at a sensible cost per message.' },
   { id: 'claude-opus-5-5', label: 'Smartest, costs about twice as much', line: 'Best on tricky requests that touch many records. Uses the budget about twice as fast.' }
 ];
 const MODEL_NAME = { 'claude-haiku-5-5': 'Haiku', 'claude-sonnet-5-5': 'Sonnet', 'claude-opus-5-5': 'Opus' };
