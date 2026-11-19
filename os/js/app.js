@@ -1,12 +1,12 @@
 // Wise AI OS shell: PIN gate, router, navigation, idle lock, live indicators.
-import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261119a';
-import { createPalette } from './palette.js?v=20261119a';
+import { el, $, clear, icon, toast, go, trapFocus } from './ui.js?v=20261119b';
+import { createPalette } from './palette.js?v=20261119b';
 import {
   sb, state, login, lock, loadAll, subscribe, onChange, onRealtime, onConnection,
   refreshSmsStatus, knownPinLength, leadById, leadName,
   who, lastWho, pinLengthFor, resetRequest, resetConfirm, isMine
-} from './api.js?v=20261119a';
-import { ownerBadge, initialsOf } from './owners.js?v=20261119a';
+} from './api.js?v=20261119b';
+import { ownerBadge, initialsOf } from './owners.js?v=20261119b';
 
 /* ------------------------------------------------------------ route registry
    The single source of truth for navigation. Top-level entries are either a
@@ -16,36 +16,36 @@ import { ownerBadge, initialsOf } from './owners.js?v=20261119a';
    `tab` marks the routes in the phone tab bar (max 4); `foot` puts a section at
    the foot of the collapsed dock; `href` links out (new tab). */
 export const NAV = [
-  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261119a') },
+  { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261119b') },
   { group: 'Grow', icon: 'grow', items: [
-    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261119a') },
-    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261119a') },
-    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261119a') },
-    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261119a') }
+    { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261119b') },
+    { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261119b') },
+    { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261119b') },
+    { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261119b') }
   ] },
   { group: 'Sell', icon: 'tag', items: [
-    { id: 'pipeline', label: 'Pipeline', icon: 'tag', view: () => import('./views/pipeline.js?v=20261119a') },
-    { id: 'proposals', label: 'Proposals', icon: 'book', view: () => import('./views/proposals.js?v=20261119a') },
+    { id: 'pipeline', label: 'Pipeline', icon: 'tag', view: () => import('./views/pipeline.js?v=20261119b') },
+    { id: 'proposals', label: 'Proposals', icon: 'book', view: () => import('./views/proposals.js?v=20261119b') },
     { id: 'roi-calculator', label: 'ROI calculator', icon: 'dollar', href: '../roi.html' }
   ] },
   { group: 'Deliver', icon: 'deliver', items: [
-    { id: 'clients', label: 'Clients', icon: 'leads', view: () => import('./views/clients.js?v=20261119a') },
-    { id: 'projects', label: 'Projects', icon: 'deliver', view: () => import('./views/projects.js?v=20261119a') },
-    { id: 'roi-reports', label: 'ROI reports', icon: 'spark', view: () => import('./views/roi-reports.js?v=20261119a') }
+    { id: 'clients', label: 'Clients', icon: 'leads', view: () => import('./views/clients.js?v=20261119b') },
+    { id: 'projects', label: 'Projects', icon: 'deliver', view: () => import('./views/projects.js?v=20261119b') },
+    { id: 'roi-reports', label: 'ROI reports', icon: 'spark', view: () => import('./views/roi-reports.js?v=20261119b') }
   ] },
   { group: 'Money', icon: 'money', items: [
-    { id: 'income', label: 'Income', icon: 'money', view: () => import('./views/income.js?v=20261119a') },
-    { id: 'costs', label: 'Costs', icon: 'money', view: () => import('./views/costs.js?v=20261119a') },
-    { id: 'runway', label: 'Runway', icon: 'spark', view: () => import('./views/runway.js?v=20261119a') }
+    { id: 'income', label: 'Income', icon: 'money', view: () => import('./views/income.js?v=20261119b') },
+    { id: 'costs', label: 'Costs', icon: 'money', view: () => import('./views/costs.js?v=20261119b') },
+    { id: 'runway', label: 'Runway', icon: 'spark', view: () => import('./views/runway.js?v=20261119b') }
   ] },
   { group: 'Know', icon: 'book', items: [
-    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261119a') },
-    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261119a') },
-    { id: 'files', label: 'Files', icon: 'archive', view: () => import('./views/files.js?v=20261119a') }
+    { id: 'playbook', label: 'Playbook', icon: 'book', view: () => import('./views/playbook.js?v=20261119b') },
+    { id: 'library', label: 'Library', icon: 'book', view: () => import('./views/library.js?v=20261119b') },
+    { id: 'files', label: 'Files', icon: 'archive', view: () => import('./views/files.js?v=20261119b') }
   ] },
   { sep: true },
-  { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261119a') },
-  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261119a') }
+  { id: 'agents', label: 'Agents', icon: 'agents', badge: 'approvals', view: () => import('./views/agents.js?v=20261119b') },
+  { id: 'settings', label: 'Settings', icon: 'settings', foot: true, view: () => import('./views/settings.js?v=20261119b') }
 ];
 const NAV_ITEMS = NAV.flatMap((n) => (n.items ? n.items.map((i) => Object.assign(i, { area: n.group })) : n.sep ? [] : [n]));
 /** Live sections (the ones with a view), in navigation order. */
@@ -53,7 +53,6 @@ const ROUTES = NAV_ITEMS.filter((r) => r.view);
 const groupSoon = (g) => g.items.every((i) => i.soon || i.href);
 const IDLE_MS = 15 * 60 * 1000;
 const LOGO = '../logo.svg';
-const NAV_KEY = 'wiseos.nav';
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
 const SHORTCUT = IS_MAC ? '⌘K' : 'Ctrl K';
 
@@ -545,17 +544,23 @@ function searchTrigger(cls, compact = false) {
 }
 
 /* -------------------------------------------------------------- the rail
-   Desktop: a slim icon dock (D) that expands into layout A's grouped map as an
-   overlay on hover / keyboard focus, or stays open beside the content when
-   pinned. The dock is a pointer-only visual duplicate (aria-hidden); the full
-   map is the accessible navigation and expands as soon as focus enters it. */
+   Desktop (>= 1100px): the sidebar is OPEN by default, a fixed-width list of
+   every group and its pages, the current page marked. Nothing on it moves when
+   the pointer passes over it. The toggle in its head (or `[`) folds it into the
+   64px icon strip; the choice is remembered on this device (wiseos.sidebar).
+   Folded (the default from 761px to 1099px): one icon per group that never
+   moves. Hovering or focusing a group's icon shows a small flyout right beside
+   it with that group's pages; single-page items show a tooltip. Only one of the
+   two halves is live at a time (the other is inert). */
+const SIDEBAR_KEY = 'wiseos.sidebar';
+
 function buildRail() {
-  const pinBtn = el('button', { type: 'button', class: 'rail-pin', 'aria-pressed': 'false' }, icon('panel-pin', 17));
+  const toggleBtn = el('button', { type: 'button', class: 'rail-toggle', 'aria-controls': 'rail', dataset: { navToggle: 'collapse' } }, icon('panel', 17));
   const full = el('div', { class: 'rail-full' },
     el('div', { class: 'rail-head' },
       el('a', { class: 'rail-brand', href: '#home', 'aria-label': 'Wise AI OS home' },
         el('img', { src: LOGO, alt: 'Wise AI' }), el('span', { class: 'os-tag' }, 'OS')),
-      pinBtn),
+      toggleBtn),
     el('div', { class: 'rail-search' }, searchTrigger('nav-search')),
     navMap('rail'),
     el('div', { class: 'rail-foot' },
@@ -564,141 +569,305 @@ function buildRail() {
       el('button', { type: 'button', class: 'btn btn-ghost btn-sm btn-lock', onClick: () => lock(), title: 'Lock (signs out)' },
         icon('lock', 15), el('span', { class: 'lbl' }, 'Lock'))));
 
-  // The collapsed dock shows one icon per AREA (Today, Grow, Sell, Deliver, Money,
-  // Know, Agents), lit when the current route is inside it; hovering or focusing
-  // still expands to the full grouped map. Grow carries the unread count, Agents
-  // the approvals count.
-  const dockItem = (r) => (r.view
-    ? el('a', { class: 'dock-item', href: `#${r.id}`, tabindex: '-1', title: r.label, dataset: { route: r.id } }, icon(r.icon, 19), countBadge(r, 'dock-count'))
-    : el('span', { class: 'dock-item is-soon' }, icon(r.icon, 19)));
-  const areaItem = (g) => {
-    const live = g.items.filter((i) => i.view);
-    if (!live.length) return el('span', { class: 'dock-item is-soon', title: g.group }, icon(g.icon, 19));
-    const badged = live.find((i) => i.badge);
-    return el('a', { class: 'dock-item dock-area', href: `#${live[0].id}`, tabindex: '-1', title: g.group, dataset: { area: g.group, routes: live.map((i) => i.id).join(' ') } },
-      icon(g.icon, 19), badged ? countBadge(badged, 'dock-count') : null);
+  // The folded strip: one icon per AREA (Today, Grow, Sell, Deliver, Money, Know,
+  // Agents), lit when the current route is inside it. Grow carries the unread
+  // count, Agents the approvals count. Each group icon owns a flyout (its pages).
+  const tipped = (node, tip) => { node.dataset.tip = tip; return node; };
+  const dockItem = (r) => tipped(el('a', { class: 'dock-item dock-nav', href: `#${r.id}`, 'aria-label': r.label, dataset: { route: r.id } },
+    icon(r.icon, 19), countBadge(r, 'dock-count')), r.label);
+  const flyEntry = (r) => (r.href
+    ? el('a', { class: 'fly-item is-external', href: r.href, target: '_blank', rel: 'noopener' },
+      el('span', { class: 'nav-label' }, r.label), el('span', { class: 'nav-ext' }, icon('external', 12)), el('span', { class: 'sr-only' }, ' (opens in a new tab)'))
+    : el('a', { class: 'fly-item', href: `#${r.id}`, dataset: { route: r.id } }, el('span', { class: 'nav-label' }, r.label), countBadge(r)));
+  const areaItem = (g, i) => {
+    const live = g.items.filter((it) => it.view);
+    const badged = live.find((it) => it.badge);
+    const id = `rail-fly-${i}`;
+    const trig = el('a', {
+      class: 'dock-item dock-area dock-nav', href: `#${live[0].id}`, 'aria-label': g.group, 'aria-expanded': 'false', 'aria-controls': id,
+      dataset: { area: g.group, routes: live.map((it) => it.id).join(' ') }
+    }, icon(g.icon, 19), badged ? countBadge(badged, 'dock-count') : null);
+    const fly = el('div', { class: 'rail-fly', id, hidden: true, role: 'group', 'aria-label': `${g.group} pages`, dataset: { fly: g.group } },
+      el('div', { class: 'rail-fly-box' },
+        el('div', { class: 'rail-fly-head', 'aria-hidden': 'true' }, g.group),
+        el('ul', { class: 'rail-fly-list' }, g.items.filter((it) => it.view || it.href).map((it) => el('li', {}, flyEntry(it))))));
+    return el('div', { class: 'dock-slot', dataset: { slot: g.group } }, trig, fly);
   };
-  const areas = NAV.filter((n) => !n.sep && !(n.foot)).map((n) => (n.items ? areaItem(n) : dockItem(n)));
-  const menuBtn = el('button', { type: 'button', class: 'dock-menu', tabindex: '-1' },
-    el('span', { class: 'dock-mark' }, el('img', { src: LOGO, alt: '' })));
-  const dock = el('div', { class: 'rail-dock', 'aria-hidden': 'true' },
-    menuBtn,
-    el('button', { type: 'button', class: 'dock-item dock-search', tabindex: '-1', onClick: (e) => palette?.open(e.currentTarget) }, icon('search', 19)),
+  const areas = NAV.filter((n) => !n.sep && !n.foot).map((n, i) => (n.items ? areaItem(n, i) : dockItem(n)));
+  const expandBtn = tipped(el('button', { type: 'button', class: 'dock-item dock-expand dock-nav', 'aria-label': 'Expand sidebar', 'aria-controls': 'rail', 'aria-expanded': 'false', dataset: { navToggle: 'expand' } },
+    icon('panel', 18)), 'Expand sidebar  [');
+  const searchBtn = tipped(el('button', { type: 'button', class: 'dock-item dock-search dock-nav', 'aria-label': `Search or jump to (${SHORTCUT})`, 'aria-haspopup': 'dialog', dataset: { palette: '' }, onClick: (e) => palette?.open(e.currentTarget) },
+    icon('search', 19)), `Search or jump to  ${SHORTCUT}`);
+  const me = meChip('dock');
+  me.classList.add('dock-nav');
+  me.removeAttribute('tabindex');
+  const tip = el('div', { class: 'rail-tip', 'aria-hidden': 'true', hidden: true });
+  const dock = el('nav', { class: 'rail-dock', 'aria-label': 'Sections' },
+    el('a', { class: 'dock-menu dock-nav', href: '#home', 'aria-label': 'Wise AI OS home' },
+      el('span', { class: 'dock-mark' }, el('img', { src: LOGO, alt: '' }))),
+    expandBtn,
+    searchBtn,
     el('div', { class: 'dock-list' }, areas),
     el('div', { class: 'dock-foot' },
       ROUTES.filter((r) => r.foot).map(dockItem),
       connIndicator('conn-dock'),
-      meChip('dock'),
-      el('button', { type: 'button', class: 'dock-item', tabindex: '-1', onClick: () => lock() }, icon('lock', 18))));
+      tipped(me, 'Your sign-in'),
+      tipped(el('button', { type: 'button', class: 'dock-item dock-nav', 'aria-label': 'Lock', onClick: () => lock() }, icon('lock', 18)), 'Lock (signs out)')),
+    tip);
 
-  const node = el('aside', { class: 'rail', 'aria-label': 'Main navigation' }, dock, full);
-  return { node, full, dock, pinBtn, menuBtn };
+  const node = el('aside', { class: 'rail', id: 'rail', 'aria-label': 'Main navigation' }, dock, full);
+  return { node, full, dock, toggleBtn, expandBtn, tip };
 }
 
-function readPinned() { try { return localStorage.getItem(NAV_KEY) === 'pinned'; } catch { return false; } }
-function savePinned(p) { try { localStorage.setItem(NAV_KEY, p ? 'pinned' : 'dock'); } catch { /* private mode: per-session only */ } }
+function readSidebar() { try { return localStorage.getItem(SIDEBAR_KEY) === 'collapsed' ? 'collapsed' : 'open'; } catch { return 'open'; } }
+function saveSidebar(v) { try { localStorage.setItem(SIDEBAR_KEY, v); } catch { /* private mode: this visit only */ } }
+
+const inTri = ([x, y], [ax, ay], [bx, by], [cx, cy]) => {
+  const s = (px, py, qx, qy, rx, ry) => (px - rx) * (qy - ry) - (qx - rx) * (py - ry);
+  const d1 = s(x, y, ax, ay, bx, by); const d2 = s(x, y, bx, by, cx, cy); const d3 = s(x, y, cx, cy, ax, ay);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+};
 
 function railController(shell, parts) {
-  const { node, full, dock, pinBtn, menuBtn } = parts;
+  const { node, full, dock, toggleBtn, expandBtn, tip } = parts;
   const wide = matchMedia('(min-width: 1100px)');
-  const desktop = matchMedia('(min-width: 761px)');
-  let pinned = readPinned();
-  let open = false;
-  let openedBy = null;
-  let hover = false;
-  let suppress = false; // after choosing an item, ignore hover until the pointer leaves
-  let tOpen = 0;
-  let tClose = 0;
+  let pref = readSidebar();   // the remembered choice for wide screens
+  let midOpen = false;        // 761-1099px: opened for now, not remembered
+  const isOpen = () => (wide.matches ? pref === 'open' : midOpen);
 
-  const effPinned = () => pinned && wide.matches;
+  /* ---------------------------------------------------------- open / folded */
   const apply = () => {
-    const pin = effPinned();
-    const expanded = pin || open;
-    shell.classList.toggle('nav-pinned', pin);
-    node.classList.toggle('is-expanded', expanded);
-    node.classList.toggle('is-peek', expanded && !pin);
-    node.dataset.state = pin ? 'pinned' : expanded ? 'peek' : 'dock';
-    pinBtn.setAttribute('aria-pressed', String(pinned));
-    const lbl = pinned ? 'Unpin sidebar' : 'Keep sidebar open';
-    pinBtn.setAttribute('aria-label', lbl);
-    pinBtn.title = `${lbl} ( [ )`;
-    menuBtn.setAttribute('aria-expanded', String(expanded));
+    const open = isOpen();
+    const had = document.activeElement;
+    shell.classList.toggle('nav-open', open);
+    node.dataset.state = open ? 'open' : 'collapsed';
+    node.classList.toggle('is-expanded', open);
+    full.inert = !open;
+    dock.inert = open;
+    toggleBtn.setAttribute('aria-expanded', String(open));
+    toggleBtn.setAttribute('aria-label', 'Collapse sidebar');
+    toggleBtn.title = 'Collapse sidebar ( [ )';
+    expandBtn.setAttribute('aria-expanded', String(open));
+    if (open) { hideFly(); hideTip(); }
+    // The toggle that was pressed disappears: keep focus on its twin.
+    if (had === toggleBtn && !open) expandBtn.focus({ preventScroll: true });
+    else if (had === expandBtn && open) toggleBtn.focus({ preventScroll: true });
   };
-  const setOpen = (v, by = null) => {
-    clearTimeout(tOpen); clearTimeout(tClose);
-    if (open === v) { if (v && by) openedBy = by; return; }
-    open = v;
-    openedBy = v ? by : null;
-    if (!v && full.contains(document.activeElement) && !effPinned()) {
-      // A mouse click left focus in the map; let it go rather than hide a focused control.
-      if (!document.activeElement.matches(':focus-visible')) document.activeElement.blur();
-    }
-    apply();
-  };
-  const closeSoon = () => { clearTimeout(tClose); tClose = setTimeout(() => setOpen(false), 250); };
-
-  node.addEventListener('pointerenter', (e) => {
-    if (e.pointerType === 'touch') return;
-    hover = true;
-    clearTimeout(tClose);
-    if (!open && !effPinned() && !suppress) { clearTimeout(tOpen); tOpen = setTimeout(() => setOpen(true, 'hover'), 120); }
-  });
-  node.addEventListener('pointerleave', (e) => {
-    if (e.pointerType === 'touch') return;
-    hover = false;
-    suppress = false;
-    clearTimeout(tOpen);
-    if (open && openedBy !== 'click' && !(openedBy === 'focus' && full.contains(document.activeElement))) closeSoon();
-  });
-  node.addEventListener('focusin', (e) => {
-    if (dock.contains(e.target)) return; // pointer-only duplicate
-    clearTimeout(tClose);
-    if (!open && !effPinned()) setOpen(true, 'focus');
-  });
-  node.addEventListener('focusout', (e) => {
-    if (e.relatedTarget && node.contains(e.relatedTarget)) return;
-    if (open && openedBy === 'focus' && !hover) closeSoon();
-  });
-  node.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && open && !effPinned()) {
-      e.stopPropagation();
-      setOpen(false);
-      $('#view')?.focus({ preventScroll: true });
-    }
-  });
-  // Choosing a destination tucks the overlay away.
-  node.addEventListener('click', (e) => {
-    const a = e.target.closest('a[href]');
-    if (!a) return;
-    if (open && !effPinned()) { suppress = hover; setOpen(false); }
-  });
-  // Touch / no-hover: the dock's mark opens the overlay; tapping outside closes it.
-  menuBtn.addEventListener('click', () => {
-    if (effPinned()) return;
-    setOpen(!open, 'click');
-  });
-  document.addEventListener('pointerdown', (e) => {
-    if (open && !effPinned() && !node.contains(e.target) && (openedBy === 'click' || e.pointerType === 'touch')) setOpen(false);
-  });
-  pinBtn.addEventListener('click', () => togglePin());
-  wide.addEventListener('change', apply);
-  desktop.addEventListener('change', () => { if (!desktop.matches) setOpen(false); });
-
   function togglePin() {
-    if (!wide.matches) { setOpen(!open, 'click'); return; }
-    pinned = !pinned;
-    savePinned(pinned);
-    if (!pinned) {
-      // Unpinned: stay open only while the pointer (or keyboard focus) is in the rail.
-      open = hover || full.contains(document.activeElement);
-      openedBy = open ? (hover ? 'hover' : 'focus') : null;
-    } else {
-      open = false;
-    }
+    if (wide.matches) { pref = pref === 'open' ? 'collapsed' : 'open'; saveSidebar(pref); } else midOpen = !midOpen;
     apply();
   }
+  toggleBtn.addEventListener('click', togglePin);
+  expandBtn.addEventListener('click', togglePin);
+  wide.addEventListener('change', () => { midOpen = false; apply(); });
+  matchMedia('(min-width: 761px)').addEventListener('change', () => { midOpen = false; hideFly(); hideTip(); apply(); });
+
+  // Arrow keys move through the open list, as Tab does.
+  full.querySelector('.nav').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = [...full.querySelectorAll('.nav a.nav-item')];
+    const i = items.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+  });
+
+  /* -------------------------------------------------------------- tooltips */
+  let tipFor = null;
+  let tTip = 0;
+  let tipShownAt = 0;
+  function showTip(target) {
+    clearTimeout(tTip);
+    if (isOpen() || !target.isConnected) return;
+    tipFor = target;
+    tip.textContent = target.dataset.tip;
+    tip.hidden = false;
+    const r = target.getBoundingClientRect();
+    tip.style.left = `${Math.round(r.right + 10)}px`;
+    tip.style.top = `${Math.round(r.top + r.height / 2 - tip.offsetHeight / 2)}px`;
+    tipShownAt = Date.now();
+  }
+  function hideTip() { clearTimeout(tTip); tipFor = null; tip.hidden = true; }
+
+  /* --------------------------------------------------------------- flyouts */
+  const slots = [...dock.querySelectorAll('.dock-slot')].map((s) => ({ s, trig: s.querySelector('.dock-area'), fly: s.querySelector('.rail-fly') }));
+  let openSlot = null;
+  let hoverSlot = null;
+  let suppress = null;        // after choosing, a slot stays shut until the pointer leaves it
+  let lastPointer = 'mouse';
+  let tOpen = 0;
+  let tClose = 0;
+  let tSwitch = 0;
+  const trail = [];
+
+  function place(slot) {
+    const r = slot.trig.getBoundingClientRect();
+    const f = slot.fly;
+    // The flyout starts at the icon's right edge; its transparent left padding
+    // bridges the gap to the panel, so the pointer never crosses empty space.
+    f.style.left = `${Math.round(r.right)}px`;
+    const h = f.offsetHeight;
+    f.style.top = `${Math.round(Math.max(8, Math.min(r.top - 7, window.innerHeight - h - 8)))}px`;
+  }
+  function showFly(slot) {
+    clearTimeout(tOpen); clearTimeout(tClose); clearTimeout(tSwitch);
+    if (isOpen()) return;
+    hideTip();
+    if (openSlot === slot) return;
+    if (openSlot) hideFly();
+    openSlot = slot;
+    slot.fly.hidden = false;
+    place(slot);
+    slot.s.classList.add('is-open');
+    slot.trig.setAttribute('aria-expanded', 'true');
+  }
+  function hideFly() {
+    clearTimeout(tOpen); clearTimeout(tClose); clearTimeout(tSwitch);
+    const slot = openSlot;
+    if (!slot) return;
+    openSlot = null;
+    const refocus = slot.fly.contains(document.activeElement);
+    slot.fly.hidden = true;
+    slot.s.classList.remove('is-open');
+    slot.trig.setAttribute('aria-expanded', 'false');
+    if (refocus) focusQuietly(slot.trig);
+  }
+  // Return focus to an icon without reopening its flyout.
+  let quiet = false;
+  function focusQuietly(n) { quiet = true; try { n.focus({ preventScroll: true }); } finally { quiet = false; } }
+  const closeSoon = (ms = 280) => {
+    clearTimeout(tClose);
+    tClose = setTimeout(() => {
+      if (openSlot && (openSlot.fly.matches(':hover') || openSlot.trig.matches(':hover'))) return;
+      if (openSlot && openSlot.s.contains(document.activeElement) && document.activeElement.matches(':focus-visible')) return;
+      hideFly();
+    }, ms);
+  };
+  // Heading for the open flyout? Then brushing over a neighbouring icon on the way does not switch.
+  function aimingAtOpen() {
+    const now = performance.now();
+    const recent = trail.filter((t) => now - t[2] < 250);
+    if (!openSlot || recent.length < 2) return false;
+    const [px, py] = recent[0];
+    const [x, y] = recent[recent.length - 1];
+    if (x <= px) return false;
+    const b = openSlot.fly.querySelector('.rail-fly-box').getBoundingClientRect();
+    return inTri([x, y], [px, py], [b.left, b.top - 24], [b.left, b.bottom + 24]);
+  }
+  node.addEventListener('pointermove', (e) => {
+    lastPointer = e.pointerType || 'mouse';
+    trail.push([e.clientX, e.clientY, performance.now()]);
+    if (trail.length > 6) trail.shift();
+  }, { passive: true });
+  node.addEventListener('pointerdown', (e) => { lastPointer = e.pointerType || 'mouse'; }, { passive: true });
+
+  for (const slot of slots) {
+    const { trig, fly } = slot;
+    trig.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'touch') return;
+      hoverSlot = slot;
+      clearTimeout(tOpen); clearTimeout(tClose);
+      if (suppress === slot || isOpen()) return;
+      if (openSlot === slot) return;
+      if (openSlot) {
+        trail.push([e.clientX, e.clientY, performance.now()]);   // enter fires before the move
+        if (aimingAtOpen()) {
+          clearTimeout(tSwitch);
+          tSwitch = setTimeout(() => { if (hoverSlot === slot && trig.matches(':hover')) showFly(slot); }, 160);
+        } else showFly(slot);
+        return;
+      }
+      tOpen = setTimeout(() => showFly(slot), 110);
+    });
+    trig.addEventListener('pointerleave', (e) => {
+      if (e.pointerType === 'touch') return;
+      if (hoverSlot === slot) hoverSlot = null;
+      if (suppress === slot) suppress = null;
+      clearTimeout(tOpen);
+      if (openSlot === slot) closeSoon();
+    });
+    fly.addEventListener('pointerenter', () => { clearTimeout(tClose); clearTimeout(tSwitch); });
+    fly.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch' && openSlot === slot) closeSoon(); });
+    trig.addEventListener('focus', () => { if (!quiet && trig.matches(':focus-visible')) showFly(slot); });
+    slot.s.addEventListener('focusout', (e) => {
+      if (e.relatedTarget && slot.s.contains(e.relatedTarget)) return;
+      if (openSlot === slot && !trig.matches(':hover') && !fly.matches(':hover')) hideFly();
+    });
+    trig.addEventListener('click', (e) => {
+      // A tap on a touch screen opens the flyout first; a second tap goes to the first page.
+      if (lastPointer === 'touch' && openSlot !== slot) { e.preventDefault(); showFly(slot); return; }
+      suppress = slot;
+      hideFly();
+    });
+    trig.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        showFly(slot);
+        fly.querySelector('a')?.focus();
+      }
+    });
+    fly.addEventListener('keydown', (e) => {
+      const links = [...fly.querySelectorAll('a')];
+      const i = links.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        links[(i + (e.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length]?.focus();
+      } else if (e.key === 'Home' || e.key === 'End') {
+        e.preventDefault();
+        links[e.key === 'Home' ? 0 : links.length - 1]?.focus();
+      } else if (e.key === 'ArrowLeft' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        hideFly();
+        focusQuietly(trig);
+      }
+    });
+    fly.addEventListener('click', (e) => {
+      if (!e.target.closest('a[href]')) return;
+      suppress = slot.trig.matches(':hover') ? slot : null;
+      hideFly();
+      if (document.activeElement && fly.contains(document.activeElement)) document.activeElement.blur();
+    });
+  }
+
+  // Tooltips for the single-page icons and the tools.
+  for (const t of dock.querySelectorAll('[data-tip]')) {
+    t.addEventListener('pointerenter', (e) => {
+      if (e.pointerType === 'touch' || isOpen()) return;
+      hideFly();
+      clearTimeout(tTip);
+      tTip = setTimeout(() => showTip(t), Date.now() - tipShownAt < 600 ? 0 : 260);
+    });
+    t.addEventListener('pointerleave', () => { clearTimeout(tTip); if (!tip.hidden) { tipShownAt = Date.now(); hideTip(); } });
+    t.addEventListener('focus', () => { if (t.matches(':focus-visible')) { hideFly(); showTip(t); } });
+    t.addEventListener('blur', () => { if (tipFor === t) hideTip(); });
+    t.addEventListener('click', () => hideTip());
+  }
+
+  // Up and down move through the strip's icons.
+  dock.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const items = [...dock.querySelectorAll('.dock-nav')].filter((n) => !n.hidden);
+    const i = items.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && (openSlot || tipFor)) {
+      const back = openSlot && openSlot.s.contains(document.activeElement) ? openSlot.trig : null;
+      hideFly(); hideTip();
+      if (back) focusQuietly(back);
+    }
+  });
+  document.addEventListener('pointerdown', (e) => { if (openSlot && !openSlot.s.contains(e.target)) hideFly(); });
+  dock.querySelector('.dock-list').addEventListener('scroll', () => { hideFly(); hideTip(); }, { passive: true });
+  window.addEventListener('resize', () => { hideFly(); hideTip(); });
+  window.addEventListener('hashchange', () => { hideFly(); hideTip(); });
+
   apply();
-  return { togglePin, close: () => setOpen(false), get pinned() { return pinned; } };
+  return { togglePin, toggle: togglePin, close: hideFly, get pinned() { return isOpen(); }, get open() { return isOpen(); } };
 }
 
 /* ------------------------------------------------------- phone More sheet */
@@ -965,7 +1134,7 @@ async function boot(gate) {
   gate?.destroy();
   renderShell();
   // The Wise AI agent launcher (top right; above the tab bar on phones). Loaded after the shell.
-  import('./agent-dock.js?v=20261119a').then((m) => m.mountAgentDock()).catch((e) => setTimeout(() => { throw e; }, 0));
+  import('./agent-dock.js?v=20261119b').then((m) => m.mountAgentDock()).catch((e) => setTimeout(() => { throw e; }, 0));
   palette = createPalette({ routes: ROUTES, onLock: () => lock(), onTogglePin: () => rail.togglePin() });
   shellKeys();
   window.addEventListener('hashchange', () => render({ navigated: true }));

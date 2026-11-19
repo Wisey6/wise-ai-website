@@ -7,10 +7,11 @@
 // conversation is kept on the server, the unsent text is kept here). A reply that lands
 // while it is folded shows for a few seconds above the pill, and a dot stays until it is
 // opened. It makes the changes you ask for, lists each with an Undo, and never sends.
-import { el, icon, fill, busy, plural } from './ui.js?v=20261119a';
-import { state, onChange } from './api.js?v=20261119a';
-import { chatSurface, chatBusy, onChatChange, lastReply } from './chat.js?v=20261119a';
-import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261119a';
+import { el, icon, fill, busy, plural } from './ui.js?v=20261119b';
+import { state, onChange } from './api.js?v=20261119b';
+import { chatSurface, chatBusy, onChatChange, lastReply } from './chat.js?v=20261119b';
+import { agentsInfo, pendingActions, todaysBriefing, writeBriefing, usd } from './views/agents.js?v=20261119b';
+import { reducedMotion } from './motion.js?v=20261119b';
 
 const LOGO = '../logo.svg';
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
@@ -27,7 +28,32 @@ export function agentMark(size = 'sm') {
 
 const editable = (t) => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 const onAgentsPage = () => /^#agents(\/|$)/.test(location.hash);
-const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const reduced = reducedMotion;
+
+/* Motion (tokens in os.css, rule 8). The pill → bar change is one shape: the bar is laid
+   out at its final width at once (nothing inside reflows mid-flight) and its skin, a
+   paper pill with an ink edge and a soft shadow, is revealed from the pill's outline with
+   clip-path; the owl slides from the pill's spot to the bar's, and the words arrive a beat
+   after the shape. Folding plays it back. Only clip-path, transform and opacity move. */
+const MORPH_MS = 360;
+const FOLD_MS = 300;
+const EASE_OUT = 'cubic-bezier(.16,1,.3,1)';
+const EASE_IN = 'cubic-bezier(.5,0,.75,0)';
+const EASE_IN_OUT = 'cubic-bezier(.65,0,.35,1)';
+let springCurve = '';
+const spring = () => {
+  if (springCurve) return springCurve;
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--ease-spring').trim();
+  try { document.createElement('i').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1, easing: v }).cancel(); springCurve = v; } catch { springCurve = 'cubic-bezier(.3,1.25,.55,1)'; }
+  return springCurve || 'cubic-bezier(.3,1.25,.55,1)';
+};
+/** The presence layers around the owl: a breathing ring (idle), a held ring (listening),
+ *  two counter-turning arcs (thinking). Which one shows is set by data-presence. */
+const presenceLayers = () => [
+  el('span', { class: 'agd-ring' }),
+  el('span', { class: 'agd-listen' }),
+  el('span', { class: 'agd-arcs' }, el('span', { class: 'agd-arc is-a' }), el('span', { class: 'agd-arc is-b' }))
+];
 
 /** A tiny single-stroke chevron (up), for "Earlier" and expand. */
 function chevronUp(size = 15) {
@@ -46,7 +72,7 @@ export function mountAgentDock() {
   const label = el('span', { class: 'agd-label' }, 'Ask Wise AI');
   const kbd = el('kbd', { class: 'agd-kbd', 'aria-hidden': 'true' }, AGENT_SHORTCUT);
   const tip = el('span', { class: 'agd-tip', role: 'tooltip', id: 'agd-tip' });
-  const orb = el('span', { class: 'agd-orb', 'aria-hidden': 'true' }, el('span', { class: 'agd-ring' }), agentMark('sm'), el('span', { class: 'agd-dot' }), badge);
+  const orb = el('span', { class: 'agd-orb', 'aria-hidden': 'true' }, ...presenceLayers(), agentMark('sm'), el('span', { class: 'agd-dot' }), badge);
   const launch = el('button', {
     type: 'button', class: 'agd-launch', 'aria-label': 'Ask Wise AI', 'aria-expanded': 'false', 'aria-controls': 'agd-panel',
     'aria-keyshortcuts': 'Control+J Meta+J', 'aria-describedby': 'agd-tip', dataset: { agentDock: '', state: 'idle' }
@@ -55,8 +81,9 @@ export function mountAgentDock() {
   /* ---------------------------------------------------------- the brief line */
   const peekText = el('span', { class: 'agd-peek-text' });
   const peekMeta = el('span', { class: 'agd-peek-meta' });
+  const peekTime = el('span', { class: 'agd-peek-time', 'aria-hidden': 'true' });
   const peek = el('button', { type: 'button', class: 'agd-peek', hidden: true, dataset: { agdPeek: '' }, 'aria-label': 'Open the reply' },
-    el('span', { class: 'agd-peek-by' }, 'Wise AI'), peekText, peekMeta);
+    el('span', { class: 'agd-peek-by' }, 'Wise AI'), peekText, peekMeta, peekTime);
   const peekLive = el('p', { class: 'sr-only', 'aria-live': 'polite' });
 
   /* ---------------------------------------------------------- the bar and what sits above it */
@@ -73,7 +100,8 @@ export function mountAgentDock() {
   const newBtn = el('button', { type: 'button', class: 'agd-tool', dataset: { act: 'agd-new' }, 'aria-label': 'New conversation', title: 'New conversation' }, icon('plus', 16));
   const expandBtn = el('button', { type: 'button', class: 'agd-tool', dataset: { act: 'agd-expand' }, 'aria-pressed': 'false', 'aria-label': 'Show the whole conversation', title: 'Whole conversation' }, chevronUp(16));
   const tools = el('span', { class: 'agd-tools' }, histBtn, newBtn, expandBtn);
-  const barOrb = el('span', { class: 'agd-bar-orb', 'aria-hidden': 'true' }, el('span', { class: 'agd-ring' }), agentMark('sm'));
+  const barOrb = el('span', { class: 'agd-bar-orb', 'aria-hidden': 'true' }, ...presenceLayers(), agentMark('sm'));
+  const skin = el('span', { class: 'agd-skin', 'aria-hidden': 'true' }, el('span', { class: 'agd-skin-ring' }), el('span', { class: 'agd-skin-edge' }), el('span', { class: 'agd-skin-fill' }));
   const closeBtn = el('button', { type: 'button', class: 'agd-hbtn agd-close', 'aria-label': 'Close the assistant', title: 'Close (Esc)' }, icon('x', 16));
   const shrinkBtn = el('button', { type: 'button', class: 'agd-hbtn', dataset: { act: 'agd-shrink' }, 'aria-label': 'Show less', title: 'Show less' }, el('span', { class: 'agd-flip' }, chevronUp(16)));
   const headTitle = el('h2', { class: 'agd-title', id: 'agd-title' }, 'Wise AI');
@@ -91,6 +119,24 @@ export function mountAgentDock() {
 
   const isOpen = () => root.dataset.agdState === 'open';
 
+  /* presence: what the owl is doing. idle · listening (the bar has the cursor) · dictating
+     (the microphone is on) · thinking (a reply is on its way) · done (a brief settle when
+     it lands) · error (one small nudge and a dim). Each is a layer that cross-fades. */
+  let flashState = '';
+  let flashTimer = 0;
+  function flash(st, ms) {
+    flashState = st;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { flashState = ''; paint(); }, ms);
+  }
+  function presence(w) {
+    if (chat?.voice?.listening) return 'dictating';
+    if (w) return 'thinking';
+    if (flashState) return flashState;
+    if (isOpen() && document.activeElement === chat?.input) return 'listening';
+    return 'idle';
+  }
+
   function working() {
     return chatBusy() || Boolean(document.querySelector('.ag-working, [data-act=brief-write][disabled], [data-act=brief-refresh][disabled]'));
   }
@@ -104,6 +150,8 @@ export function mountAgentDock() {
     const w = working();
     const st = isOpen() ? 'open' : w ? 'working' : ready ? 'ready' : 'idle';
     if (launch.dataset.state !== st) launch.dataset.state = st;
+    const pr = presence(w);
+    if (root.dataset.presence !== pr) root.dataset.presence = pr;
     launch.classList.toggle('is-busy', w);
     barOrb.classList.toggle('is-busy', w);
     launch.classList.toggle('is-ready', ready && !isOpen());
@@ -121,19 +169,36 @@ export function mountAgentDock() {
   }
   const paintBusy = () => {
     const w = chatBusy();
+    if (wasBusy && !w) flash(lastReply()?.error ? 'error' : 'done', lastReply()?.error ? 900 : 1300);
     if (wasBusy && !w && !isOpen() && !onAgentsPage()) { ready = true; showPeek(); }
     wasBusy = w;
     paint();
   };
 
   /* ---------------------------------------------------------- brief line above the pill */
-  function hidePeek() {
+  // The brief line rises out of the pill, holds (a hairline under it runs down the time
+  // left, and stops while the pointer is on it) and fades back into the pill.
+  let peekAnim = null;
+  let peekOut = null;
+  function hidePeek(instant = false) {
     clearTimeout(peekTimer); peekTimer = 0;
+    peekAnim?.cancel(); peekAnim = null;
     if (peek.hidden) return;
     peek.classList.remove('is-in');
-    setTimeout(() => { if (!peek.classList.contains('is-in')) peek.hidden = true; }, reduced() ? 0 : 220);
+    peekOut?.cancel(); peekOut = null;
+    if (instant) { peek.hidden = true; return; }
+    const move = !reduced();
+    peekOut = peek.animate([{ opacity: 1 }, { opacity: 0, transform: move ? 'translate(-50%, 6px) scale(.97)' : 'translate(-50%, 0)' }], { duration: 280, easing: EASE_IN_OUT, fill: 'forwards' });
+    peekOut.finished.then(() => { if (!peek.classList.contains('is-in')) peek.hidden = true; peekOut?.cancel(); peekOut = null; }, () => {});
   }
-  function armPeek(ms) { clearTimeout(peekTimer); peekLeft = ms; peekStarted = Date.now(); peekTimer = setTimeout(hidePeek, ms); }
+  function armPeek(ms) {
+    clearTimeout(peekTimer); peekLeft = ms; peekStarted = Date.now(); peekTimer = setTimeout(hidePeek, ms);
+    if (peekAnim) {
+      const p = peekAnim.effect.getComputedTiming().progress;
+      const left = (1 - (typeof p === 'number' ? p : 1)) * PEEK_MS;
+      if (left > 0) { peekAnim.updatePlaybackRate(left / ms); peekAnim.play(); }
+    }
+  }
   function showPeek() {
     const r = lastReply();
     if (!r || !r.text) return;
@@ -141,11 +206,20 @@ export function mountAgentDock() {
     peekMeta.textContent = r.error ? 'Open to try again' : r.changes ? `${plural(r.changes, 'change')} · Open` : 'Open';
     peek.classList.toggle('is-error', Boolean(r.error));
     peekLive.textContent = r.error ? r.text : `Wise AI replied: ${peekText.textContent}`;
+    const was = !peek.hidden && peek.classList.contains('is-in');
+    peekOut?.cancel(); peekOut = null;
     peek.hidden = false;
-    requestAnimationFrame(() => peek.classList.add('is-in'));
+    peek.classList.add('is-in');
+    if (!was) {
+      const move = !reduced();
+      peek.animate([{ opacity: 0, transform: move ? 'translate(-50%, 12px) scale(.96)' : 'translate(-50%, 0)' }, { opacity: 1, transform: 'translate(-50%, 0)' }],
+        { duration: move ? 440 : 200, easing: move ? spring() : EASE_OUT, fill: 'backwards' });
+    }
+    peekAnim?.cancel();
+    peekAnim = reduced() ? null : peekTime.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: PEEK_MS, easing: 'linear', fill: 'forwards' });
     armPeek(PEEK_MS);
   }
-  peek.addEventListener('mouseenter', () => { if (peekTimer) { clearTimeout(peekTimer); peekTimer = 0; peekLeft = Math.max(1500, peekLeft - (Date.now() - peekStarted)); } });
+  peek.addEventListener('mouseenter', () => { peekAnim?.pause(); if (peekTimer) { clearTimeout(peekTimer); peekTimer = 0; peekLeft = Math.max(1500, peekLeft - (Date.now() - peekStarted)); } });
   peek.addEventListener('mouseleave', () => { if (!peek.hidden && !peekTimer) armPeek(peekLeft || 2500); });
   peek.addEventListener('click', () => open());
 
@@ -216,6 +290,8 @@ export function mountAgentDock() {
         mode: 'dock', active: () => isOpen(), onUpdate: () => { drawHead(); }, lead: barOrb, tools,
         footer: el('div', { class: 'agd-foot', 'aria-label': 'Quick links' }, quick, meta)
       });
+      chat.composer.querySelector('.cx-box')?.prepend(skin);
+      chat.composer.addEventListener('cx-voice', () => paint());
       chat.scroller.addEventListener('scroll', () => { if (!expanded && chat.scroller.scrollTop < 4 && chat.scroller.scrollHeight > chat.scroller.clientHeight + 8) earlier.classList.add('is-top'); else earlier.classList.remove('is-top'); }, { passive: true });
     }
     const late = !barSlot.contains(chat.composer);
@@ -250,10 +326,102 @@ export function mountAgentDock() {
     if (e.target.closest('.cx-item-open, .cx-new')) setTimeout(drawHead, 0);
   });
   root.addEventListener('submit', () => setTimeout(paintBusy, 30), true);
+  root.addEventListener('focusin', () => paint());
+  root.addEventListener('focusout', () => setTimeout(paint, 0));
+
+  /* ---------------------------------------------------------- the morph */
+  let morph = null;   // { anims, end }
+  function stopMorph() {
+    if (!morph) return;
+    const m = morph; morph = null;
+    m.anims.forEach((a) => a.cancel());
+    m.end?.();
+  }
+  const rectOf = (n) => n.getBoundingClientRect();
+  // Compositor (transform) and main-thread (clip-path) animations would otherwise start a
+  // frame or two apart and the owl would leave its outline behind: one start time for all.
+  // They also start on the next frame, not when they were made: the work of opening takes
+  // a frame or two on a slow machine, and the first frames shown would otherwise be skipped.
+  const syncStart = (anims) => {
+    if (!anims.length || document.timeline?.currentTime == null) return;
+    for (const a of anims) a.pause();
+    requestAnimationFrame((t) => { for (const a of anims) if (a.playState === 'paused') a.startTime = t; });
+  };
+  /** The pill's outline as a clip-path on the bar's skin: inset from the bar's edges. */
+  const insetFor = (pill, bar, grow, r) => `inset(${pill.top - bar.top + grow}px ${bar.right - pill.right + grow}px ${bar.bottom - pill.bottom + grow}px ${pill.left - bar.left + grow}px round ${r}px)`;
+  const fullInset = (r) => `inset(0px 0px 0px 0px round ${r}px)`;
+  const SKIN = [['.agd-skin-edge', 0, 23], ['.agd-skin-fill', -1, 22], ['.agd-skin-ring', 3, 26]];
+  /** Everything in the bar except the skin and the owl: arrives a beat after the shape. */
+  const barParts = () => [...(chat?.composer.querySelector('.cx-box')?.children || [])].filter((n) => n !== skin && n !== barOrb);
+
+  function morphOpen(pill) {
+    const box = chat?.composer.querySelector('.cx-box');
+    const words = launch.querySelector('.agd-words');
+    const anims = [];
+    const go = (n, k, o) => { if (n) anims.push(n.animate(k, o)); };
+    root.classList.add('is-morphing');
+    if (box && pill && !reduced()) {
+      const bar = rectOf(box);
+      for (const [sel, grow, r] of SKIN) go(skin.querySelector(sel), [{ clipPath: insetFor(pill.box, bar, grow, r) }, { clipPath: fullInset(r) }], { duration: MORPH_MS, easing: EASE_OUT });
+      const o = rectOf(barOrb);
+      go(barOrb, [{ transform: `translate(${pill.orb.left - o.left}px, ${pill.orb.top - o.top}px)` }, { transform: 'none' }], { duration: MORPH_MS, easing: EASE_OUT });
+      for (const n of barParts()) go(n, [{ opacity: 0 }, { opacity: 1 }], { duration: 220, delay: 110, easing: EASE_OUT, fill: 'backwards' });
+      go(words, [{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: EASE_IN, fill: 'forwards' });
+      go(panel, [{ opacity: 0, transform: 'translateY(14px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 460, delay: 50, easing: spring(), fill: 'backwards' });
+    } else {
+      // reduced motion (or nothing to measure): the bar and the sheet fade in where they are
+      go(skin, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT });
+      for (const n of barParts().concat(barOrb)) go(n, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT, fill: 'backwards' });
+      go(words, [{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' });
+      go(panel, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT, fill: 'backwards' });
+    }
+    syncStart(anims);
+    const m = { anims, end: () => root.classList.remove('is-morphing') };
+    morph = m;
+    Promise.all(anims.map((a) => a.finished)).then(() => { if (morph === m) stopMorph(); }, () => {});
+  }
+
+  function morphClose(after) {
+    const box = chat?.composer.querySelector('.cx-box');
+    const words = launch.querySelector('.agd-words');
+    const anims = [];
+    const go = (n, k, o) => { if (n) anims.push(n.animate(k, o)); };
+    root.classList.add('is-morphing', 'is-closing');
+    if (box && !reduced()) {
+      const bar = rectOf(box);
+      const pill = rectOf(launch);
+      const po = rectOf(launch.querySelector('.agd-orb'));
+      const o = rectOf(barOrb);
+      for (const n of barParts()) go(n, [{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: EASE_IN, fill: 'forwards' });
+      for (const [sel, grow, r] of SKIN) go(skin.querySelector(sel), [{ clipPath: fullInset(r) }, { clipPath: insetFor(pill, bar, grow, r) }], { duration: FOLD_MS, easing: EASE_IN_OUT, fill: 'forwards' });
+      go(barOrb, [{ transform: 'none' }, { transform: `translate(${po.left - o.left}px, ${po.top - o.top}px)` }], { duration: FOLD_MS, easing: EASE_IN_OUT, fill: 'forwards' });
+      go(words, [{ opacity: 0 }, { opacity: 1 }], { duration: 140, delay: FOLD_MS - 120, easing: EASE_OUT, fill: 'both' });
+      go(panel, [{ opacity: 1 }, { opacity: 0, transform: 'translateY(10px) scale(.985)' }], { duration: 200, easing: EASE_IN, fill: 'forwards' });
+    } else {
+      go(skin, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
+      for (const n of barParts().concat(barOrb)) go(n, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
+      go(words, [{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: 80, fill: 'both' });
+      go(panel, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
+    }
+    syncStart(anims);
+    const m = { anims, end: () => {
+      // the pill takes over from the skin in the same frame: no fade of its own border
+      launch.style.transition = 'none';
+      root.classList.remove('is-morphing', 'is-closing');
+      after();
+      void launch.offsetWidth;
+      launch.style.transition = '';
+    } };
+    morph = m;
+    Promise.all(anims.map((a) => a.finished)).then(() => { if (morph === m) stopMorph(); }, () => {});
+  }
 
   function open() {
     if (isOpen()) { chat?.focus(); return; }
-    hidePeek();
+    stopMorph();
+    hidePeek(true);
+    // the pill, where the shape starts from (measured before anything changes)
+    const pill = !launch.hidden && launch.getClientRects().length ? { box: rectOf(launch), orb: rectOf(orb) } : null;
     root.dataset.agdState = 'open';
     panel.hidden = false;
     drawBody(); drawQuick();
@@ -263,22 +431,30 @@ export function mountAgentDock() {
     ready = false;
     paint();
     document.body.classList.add('agd-open');
-    requestAnimationFrame(() => { root.classList.add('is-in'); panel.classList.add('is-in'); paintEarlier(); });
-    setTimeout(() => {
-      if (chat) chat.focus();
-      else panel.querySelector('a, button:not(.agd-close)')?.focus({ preventScroll: true });
-    }, 30);
+    root.classList.add('is-in'); panel.classList.add('is-in');
+    morphOpen(pill);
+    requestAnimationFrame(paintEarlier);
+    // The cursor goes in straight away, so typing during the morph is never lost.
+    if (chat) chat.focus(0);
+    else setTimeout(() => panel.querySelector('a, button:not(.agd-close)')?.focus({ preventScroll: true }), 30);
   }
   function close(focusBack = true) {
     if (!isOpen()) return;
+    stopMorph();
     const hadFocus = root.contains(document.activeElement);
     root.classList.remove('is-in');
     panel.classList.remove('is-in');
     root.dataset.agdState = 'rest';
-    panel.hidden = true;
-    earlier.hidden = true;
-    if (expanded) { expanded = false; }
-    if (chat && chat.view !== 'chat') chat.setView('chat');
+    chat?.voice?.stop();
+    expanded = false;
+    // what is above the bar folds away as it is; it is tidied once out of sight
+    morphClose(() => {
+      if (isOpen()) return;
+      panel.hidden = true;
+      earlier.hidden = true;
+      if (chat && chat.view !== 'chat') chat.setView('chat');
+      drawHead();
+    });
     launch.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('agd-open');
     paint();

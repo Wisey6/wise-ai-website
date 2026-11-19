@@ -3,14 +3,15 @@
 import {
   el, icon, badge, toast, field, input, select, emptyState, dateTime, prettyPhone,
   copyText, busy, toCsv, downloadFile, plural, num, money, confirmDialog, fill
-} from '../ui.js?v=20261119a';
-import { state, saveSettings, changePin, suppress, normalisePhone, refreshSmsStatus, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261119a';
-import { FUNCTIONS_URL } from '../config.js?v=20261119a';
-import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261119a';
-import { chatModelPicker } from '../chat.js?v=20261119a';
-import { setMyEmail, teamSave } from '../api.js?v=20261119a';
-import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261119a';
-import { mailStatus, refreshMailStatus, connectMail, disconnectMail, takeMailFlag, onMailChange, MAIL_ERRORS } from '../mail-api.js?v=20261119a';
+} from '../ui.js?v=20261119b';
+import { state, saveSettings, changePin, suppress, normalisePhone, saveRow, aiStatus, agentStatus, sb } from '../api.js?v=20261119b';
+import { AGENTS, CHAT_AGENT, agentsInfo, settingSwitch } from './agents.js?v=20261119b';
+import { chatModelPicker } from '../chat.js?v=20261119b';
+import { setMyEmail, teamSave } from '../api.js?v=20261119b';
+import { ownerBadge, initialsOf, meId } from '../owners.js?v=20261119b';
+import { connectionsList, MAIL_LINE, CAL_LINE } from './connections.js?v=20261119b';
+
+export { MAIL_LINE, CAL_LINE };
 
 const DAYS = [[1, 'Mon'], [2, 'Tue'], [3, 'Wed'], [4, 'Thu'], [5, 'Fri'], [6, 'Sat'], [7, 'Sun']];
 const TIMEZONES = ['Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Australia/Hobart',
@@ -36,7 +37,7 @@ export function validateSettings(p) {
   return null;
 }
 
-export default function settings() {
+export default function settings({ param } = {}) {
   const s = state.settings || {};
   const root = el('div', { class: 'page set' });
   if (!state.settings) {
@@ -252,49 +253,25 @@ export default function settings() {
   const signIn = yourSignIn();
   const team = teamGroup();
 
-  /* ------------------------------------------------ integrations */
-  const integ = el('div', { class: 'stack' });
-  function renderIntegrations() {
-    const sms = state.sms;
-    const bookingsSeen = (state.bookings || []).some((b) => b.cal_uid);
+  /* ------------------------------------------------ connections */
+  const conns = connectionsList();
+  const alerts = el('div', { class: 'stack' });
+  const renderAlerts = () => {
     const cur = state.settings || {};
-    integ.replaceChildren(
-      integration('Twilio · SMS',
-        sms === null ? badge('Send service not reachable', 'warn') : sms.configured ? badge('Connected', 'ok') : badge('Not set up', 'warn'),
-        sms?.configured ? `Sending is live. ${num(sms.sent_today)} of ${num(sms.daily_cap)} sent today.` : 'Until this is set up, send from your phone with “Copy & mark sent”. Everything is still recorded.',
-        [
-          'In Twilio, get an Australian mobile number that can send SMS (Australian numbers need a regulatory bundle approved first).',
-          'In Supabase → Edge Functions → Secrets, add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER (the number as +614…).',
-          'In Twilio → Phone Numbers → your number → Messaging, set “A message comes in” to Webhook, HTTP POST, with the URL below.',
-          'Delivery receipts are requested on every send automatically. Text the number from your phone to check replies arrive in the Inbox.'
-        ],
-        [['Incoming messages webhook', `${FUNCTIONS_URL}twilio-webhook`]]),
-      integration('Cal.com · bookings',
-        bookingsSeen ? badge('Receiving bookings', 'ok') : badge('No bookings received yet', 'mute'),
-        'Bookings arrive here and are matched to the lead by phone, then email.',
-        [
-          'In Cal.com → Settings → Developer → Webhooks, add a new webhook with the URL below.',
-          'Tick Booking Created, Booking Rescheduled and Booking Cancelled.',
-          'Set a secret (a long random string) and add the same value in Supabase secrets as CAL_WEBHOOK_SECRET.',
-          'Ask for the phone number on your event type so bookings match the right lead.'
-        ],
-        [['Booking webhook', `${FUNCTIONS_URL}cal-webhook`]]),
-      integration('Resend · email alerts',
-        cur.notify_email ? badge(`Alerts go to ${cur.notify_email}`, 'info') : badge('No notification email', 'warn'),
-        'The API key cannot be checked from here. If replies arrive but no email does, check this.',
-        [
-          'In Resend, add and verify the wise-ai.au domain (add the DNS records it gives you).',
-          'Create an API key with sending access and add it in Supabase secrets as RESEND_API_KEY.',
-          'Set the notification email above. Alerts come from dailybrief@wise-ai.au.'
-        ],
-        []));
-  }
-  const recheck = el('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, icon('refresh', 14), 'Recheck');
-  recheck.addEventListener('click', () => busy(recheck, async () => {
-    await refreshSmsStatus();
-    renderIntegrations();
-    toast(state.sms?.configured ? 'SMS is connected' : state.sms ? 'SMS is not set up yet' : 'Send service not reachable', state.sms?.configured ? 'ok' : 'warn');
-  }));
+    alerts.replaceChildren(integration('Email alerts (Resend)',
+      cur.notify_email ? badge(`Alerts go to ${cur.notify_email}`, 'info') : badge('No notification email', 'warn'),
+      'Emails you about each reply, booking and website lead. The assistant does not use it. The API key cannot be checked from here: if replies arrive but no email does, check this.',
+      [
+        'In Resend, add and verify the wise-ai.au domain (add the DNS records it gives you).',
+        'Create an API key with sending access and add it in Supabase, Edge Functions, Secrets, as RESEND_API_KEY.',
+        'Set the notification email under Bookings and notifications above. Alerts come from dailybrief@wise-ai.au.'
+      ],
+      []));
+  };
+  const connSec = group('Connections', 'What the assistant is plugged into', 'Each connection says what it lets the assistant do, and what it cannot. Keys and passwords are never typed in here: setup steps point to Supabase and Google.',
+    conns.node, alerts);
+  connSec.dataset.sec = 'connections';
+  connSec.id = 'connections';
 
   /* ------------------------------------------------ suppressions */
   const supBody = el('div');
@@ -348,9 +325,7 @@ export default function settings() {
     agentsSettings.node,
     signIn.node,
     team.node,
-    group('Connections', 'Integrations', 'What is connected, and the steps to connect the rest.',
-      el('div', { class: 'set-int-tools' }, recheck),
-      integ),
+    connSec,
     group('Compliance', 'Do-not-contact list', 'Numbers here are never texted, even if the lead is deleted or re-imported. Removal is not offered: once someone opts out, they stay out.',
       el('div', { class: 'set-sup-tools' }, supForm, el('span', { class: 'spacer' }), supSearch,
         el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onClick: exportSup }, icon('download', 14), 'Export CSV')),
@@ -362,15 +337,34 @@ export default function settings() {
     group('Data', 'Import from the old HQ console', 'Brings clients, deals, projects, tasks, income, costs and library entries across from /admin, with their links kept. Run it once; after that the old console can be retired.',
       importTool()));
 
-  renderIntegrations();
+  renderAlerts();
   renderSup();
+  // #settings/connections (or any section's name): open at that section.
+  // Sections above can still grow as they load (usage, the team), so it stays anchored
+  // for a moment, until the person scrolls or clicks.
+  if (param) {
+    setTimeout(() => {
+      const sec = root.querySelector(`[data-sec="${CSS.escape(param)}"]`);
+      if (!sec || !sec.isConnected) return;
+      const anchor = () => sec.scrollIntoView({ block: 'start' });
+      anchor();
+      const h = sec.querySelector('.h2');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+      const ro = new ResizeObserver(() => anchor());
+      ro.observe(root);
+      const stop = () => { ro.disconnect(); for (const ev of ['wheel', 'pointerdown', 'keydown', 'touchstart']) window.removeEventListener(ev, stop, true); };
+      for (const ev of ['wheel', 'pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, stop, true);
+      setTimeout(stop, 2500);
+    }, 0);
+  }
   root.onState = () => {
     agentsSettings.update();
     signIn.update();
     team.update();
     // Forms keep what is typed; only the live panels refresh.
     if ((state.ai?.spent_usd ?? null) !== usageFor && usage !== null) loadUsage(); else renderAiLive();
-    renderIntegrations();
+    conns.update();
+    renderAlerts();
     renderSup();
     if (!Object.keys(changed()).length) refreshDirty();
   };
@@ -424,7 +418,9 @@ function agentsGroup() {
       el('p', { class: 'small muted' }, 'Separate from AI drafting above: drafting has its own monthly cap, and this budget covers only the agents.'),
       el('div', { class: 'row' },
         el('a', { class: 'btn btn-ghost btn-sm', href: '#agents' }, icon('agents', 14), 'Open Agents'),
-        el('a', { class: 'btn btn-ghost btn-sm', href: '#agents/runs' }, icon('list', 14), 'Run log'))));
+        el('a', { class: 'btn btn-ghost btn-sm', href: '#agents/runs' }, icon('list', 14), 'Run log'),
+        el('a', { class: 'btn btn-ghost btn-sm', href: '#settings/connections' }, icon('link', 14), 'Connections'))));
+  node.dataset.sec = 'agents';
   return { node, update };
 }
 
@@ -515,74 +511,12 @@ function yourSignIn() {
       : [el('span', { class: 'muted' }, 'No email on file yet, so a forgotten PIN can only be reset by the owner.')]));
   }
   update();
-  const mail = mailRow();
   const node = group('Your sign-in', 'Your PIN and reset email', 'Each person signs in with their own PIN. Five wrong PINs lock that person out for a while, and the lock gets longer each time.',
     who,
     el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Change your PIN'), pinForm),
     el('div', { class: 'set-sub' }, el('h3', { class: 'h3' }, 'Email for PIN resets'), hint, emailForm),
-    mail.node);
+    el('p', { class: 'small muted set-moved', dataset: { movedMail: '' } }, 'Connecting your email and calendar is now under ', el('a', { href: '#settings/connections' }, 'Connections'), '.'));
   node.dataset.sec = 'sign-in';
-  return { node, update: () => { update(); mail.update(); } };
-}
-
-/* ---------------------------------------------------- Email and calendar
-   Each person connects their OWN Google account (Gmail and calendar). Only they can use it:
-   the assistant searches, reads and drafts in it when they ask; nothing is sent until they
-   press Send on a draft. */
-export const MAIL_LINE = 'The assistant can search and read your inbox and write drafts. Nothing is sent until you press Send.';
-export const CAL_LINE = 'In your calendar it can look, find free times and add or change your own events; guests are invited only when you press the button.';
-function mailRow() {
-  const status = el('div', { class: 'set-mail-status', dataset: { mailStatus: '' } });
-  const note = el('p', { class: 'small muted', dataset: { mailNote: '' } }, MAIL_LINE, ' ', CAL_LINE);
-  const err = el('p', { class: 'set-err', role: 'alert', dataset: { mailErr: '' } });
-  const acts = el('div', { class: 'row', dataset: { mailActs: '' } });
-  const node = el('div', { class: 'set-sub', dataset: { mailRow: '' } }, el('h3', { class: 'h3' }, 'Email and calendar'), status, note, err, acts);
-  const connectBtn = (label) => {
-    const b = el('button', { type: 'button', class: 'btn btn-primary', dataset: { act: 'mail-connect' } }, icon('mail', 15), label);
-    b.addEventListener('click', () => busy(b, async () => {
-      err.textContent = '';
-      const r = await connectMail();
-      if (!r.ok) err.textContent = r.message;
-    }));
-    return b;
-  };
-  const disconnectBtn = () => {
-    const b = el('button', { type: 'button', class: 'btn btn-ghost', dataset: { act: 'mail-disconnect' } }, 'Disconnect');
-    b.addEventListener('click', async () => {
-      const ok = await confirmDialog('Disconnect your email?', 'The assistant will no longer be able to search, read or draft in your email. Drafts already in Gmail stay there.', { confirmLabel: 'Disconnect' });
-      if (!ok) return;
-      busy(b, async () => {
-        const r = await disconnectMail();
-        if (r.ok) toast('Your email is disconnected.'); else err.textContent = r.message;
-      });
-    });
-    return b;
-  };
-  function update() {
-    const s = mailStatus();
-    if (!s) { fill(status, el('span', { class: 'muted' }, 'Checking…')); fill(acts); node.dataset.state = 'loading'; return; }
-    if (!s.ok) { fill(status, badge('Not reachable', 'warn'), el('span', { class: 'small muted' }, ' ', s.message || MAIL_ERRORS.network)); fill(acts); node.dataset.state = 'error'; return; }
-    if (!s.configured) { fill(status, badge('Not set up', 'warn'), el('span', { class: 'small muted' }, ' Google sign-in is not set up for the hub yet.')); fill(acts); node.dataset.state = 'not-configured'; return; }
-    if (s.connected && s.needs_reconnect) {
-      fill(status, badge('Sign in again', 'warn'), el('span', { class: 'small' }, ' ', s.email || 'Your Google account'), el('span', { class: 'small muted' }, ' needs signing in again.'));
-      fill(acts, connectBtn('Reconnect'), disconnectBtn()); node.dataset.state = 'reconnect'; return;
-    }
-    if (s.connected) {
-      fill(status, badge('Connected', 'ok'), el('span', { class: 'small' }, ' as ', el('strong', {}, s.email || 'your Google account')),
-        s.can_draft ? null : el('span', { class: 'small muted' }, '. Reading only: connect again and tick every box to allow drafts.'));
-      fill(acts, s.can_draft ? null : connectBtn('Connect again'), disconnectBtn()); node.dataset.state = 'connected'; return;
-    }
-    fill(status, badge('Not connected', 'mute'));
-    fill(acts, connectBtn('Connect'));
-    node.dataset.state = 'not-connected';
-  }
-  let seen = false;
-  const off = onMailChange(() => { if (node.isConnected) seen = true; else if (seen) { off(); return; } update(); });
-  update();
-  refreshMailStatus(true);
-  // Back from Google's sign-in: say how it went once.
-  const flag = takeMailFlag();
-  if (flag) { toast(flag.text, flag.tone); if (flag.flag === 'api_off') err.textContent = MAIL_ERRORS.mail_api_off; }
   return { node, update };
 }
 
@@ -715,11 +649,11 @@ function teamGroup() {
 
 /** A small modal with a form; resolves the values or null. */
 function modal2(title, body, confirmLabel) {
-  return import('../ui.js?v=20261119a').then(({ modal }) => modal({ title, body, confirmLabel }));
+  return import('../ui.js?v=20261119b').then(({ modal }) => modal({ title, body, confirmLabel }));
 }
 /** Show a PIN the owner just set, once. */
 function showOnce(name, pin) {
-  return import('../ui.js?v=20261119a').then(({ modal }) => modal({
+  return import('../ui.js?v=20261119b').then(({ modal }) => modal({
     title: `${name}'s PIN`, hideConfirm: true, cancelLabel: 'Done',
     body: el('div', { class: 'stack' },
       el('p', {}, `Tell ${name} this PIN in person. It is not shown again.`),

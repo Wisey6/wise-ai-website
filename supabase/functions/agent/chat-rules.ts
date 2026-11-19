@@ -424,20 +424,52 @@ export function maskRow(r: Row): Row {
 }
 
 const ISO_TS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** "Mon" for a calendar date (YYYY-MM-DD), worked out in code (the model never computes weekdays). */
+export function weekdayOf(day: string): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  return Number.isNaN(d.getTime()) ? "" : WEEKDAYS[d.getUTCDay()];
+}
+
+/** "YYYY-MM-DD" of an instant in the zone. */
+export function localDay(v: string | Date, tz: string): string {
+  const d = typeof v === "string" ? new Date(v) : v;
+  const p: Record<string, string> = {};
+  for (const x of new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d)) p[x.type] = x.value;
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
 /**
- * Tool results for the model: JSON with every timestamp shown as local time ("2026-11-20 09:00")
- * in the hub's zone, so the model never sees (or explains) UTC.
+ * Tool results for the model: JSON with every timestamp shown as local time with its weekday
+ * ("Mon 2026-11-30 09:00", the hub's zone) and every plain date with its weekday ("Mon 2026-11-30"),
+ * so the model never sees UTC and never has to work out a weekday.
  */
 export function resultJson(out: unknown, tz: string): string {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   return JSON.stringify(out, (_k, v) => {
-    if (typeof v !== "string" || !ISO_TS.test(v)) return v;
+    if (typeof v !== "string") return v;
+    if (ISO_DAY.test(v)) { const w = weekdayOf(v); return w ? `${w} ${v}` : v; }
+    if (!ISO_TS.test(v)) return v;
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return v;
     const p: Record<string, string> = {};
     for (const x of fmt.formatToParts(d)) p[x.type] = x.value;
-    return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+    const day = `${p.year}-${p.month}-${p.day}`;
+    return `${weekdayOf(day)} ${day} ${p.hour}:${p.minute}`;
   });
+}
+
+const WD_PREFIX = /^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+(\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2})?)\s*$/i;
+/** Tool inputs: "Mon 2026-11-30" (copied from a result) becomes "2026-11-30"; "Mon 2026-11-30 09:00" becomes "2026-11-30T09:00". */
+export function stripWeekdays(input: Row): Row {
+  const out: Row = {};
+  for (const [k, v] of Object.entries(input ?? {})) {
+    const m = typeof v === "string" ? WD_PREFIX.exec(v.trim()) : null;
+    out[k] = m ? m[1].replace(" ", "T") : v;
+  }
+  return out;
 }
 
 /** Makes a search term safe for a PostgREST or() filter. */
@@ -593,7 +625,7 @@ const nonEmpty = (v: unknown) => (typeof v === "string" ? v.trim().length > 0 : 
 /** Email tools whose results are written by people outside the business. */
 export const MAIL_READ_TOOLS = ["search_email", "read_email", "read_thread"];
 /** Tools still allowed after email was read in the same turn (drafting is harmless: only the person can send). */
-export const MAIL_TAINT_ALLOWED = ["find", "get", "numbers", "find_files", "open_file", "read_file", "search_email", "read_email", "read_thread", "draft_email", "update_draft", "draft_message", "forget",
+export const MAIL_TAINT_ALLOWED = ["find", "get", "numbers", "load_tools", "find_files", "open_file", "read_file", "search_email", "read_email", "read_thread", "draft_email", "update_draft", "draft_message", "forget",
   // The person's own calendar: reading, and adding or changing their own events (undoable, nobody is emailed;
   // anything with guests waits for their button). Removing an event waits like any removal.
   "find_events", "get_event", "free_times", "save_event"];

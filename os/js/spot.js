@@ -3,7 +3,7 @@
 // Works on what the views already expose (no view knows about this): the row, card or
 // list item carrying the record's id, and a drawer that opened for it. If nothing
 // matches, it does nothing. The ring's look lives in os-agents.css (.is-spotted).
-const RING_MS = 1600;
+const RING_MS = 1500;   // keep in step with .is-spotted in os-agents.css
 const WAIT_MS = 3200;
 
 /** How each kind of record is marked on its page. Most views use data-id. */

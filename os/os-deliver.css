@@ -272,7 +272,7 @@ details[open].dl-group > summary .dl-group-head::after, details[open].dl-tgroup 
   body:has(.rr-doc) .rail, body:has(.rr-doc) .topbar, body:has(.rr-doc) .tabbar, body:has(.rr-doc) .toast-wrap,
   body:has(.rr-doc) .more-layer, body:has(.rr-doc) .rr-head, body:has(.rr-doc) .rr-editor, body:has(.rr-doc) .rr-preview-label,
   body:has(.rr-doc) .rr-page > :not(.rr-split) { display: none !important; }
-  body:has(.rr-doc) .shell, body:has(.rr-doc) .shell.nav-pinned { padding: 0 !important; }
+  body:has(.rr-doc) .shell, body:has(.rr-doc) .shell.nav-open { padding: 0 !important; }
   body:has(.rr-doc) .main { padding: 0 !important; }
   body:has(.rr-doc) .page { max-width: none; animation: none; gap: 0; }
   body:has(.rr-doc) .rr-split { display: block; }

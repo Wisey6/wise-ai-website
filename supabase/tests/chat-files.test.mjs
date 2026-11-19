@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import * as R from "../functions/agent/files-rules.ts";
-import { CHAT_SYSTEM, CHAT_TOOLS } from "../functions/agent/chat-prompt.ts";
+import { CHAT_SYSTEM, CHAT_TOOLS, GROUP_RULES } from "../functions/agent/chat-prompt.ts";
 
 test("search words drop filler and keep at most five", () => {
   assert.deepEqual(R.searchWords("can you find the proposal for the dental clinic"), ["proposal", "dental", "clinic"]);
@@ -122,12 +122,16 @@ test("orientation line: connected, not connected, needs reconnecting", () => {
 });
 
 test("the prompt knows the business folder and the file tools are defined and strict-safe", () => {
-  assert.match(CHAT_SYSTEM, /ONE Google Drive folder/);
-  assert.match(CHAT_SYSTEM, /never delete or trash a file/);
-  assert.match(CHAT_SYSTEM, /at most 3 files/i);
+  // The files rules travel with the files group (loaded on demand), not in the cached system prompt.
+  assert.match(GROUP_RULES.files, /ONE Google Drive folder/);
+  assert.match(GROUP_RULES.files, /Never delete or trash a file/);
+  assert.match(GROUP_RULES.files, /At most 3 moves or renames/i);
+  assert.match(CHAT_SYSTEM, /files \(the business's Google Drive\)/);
   const names = CHAT_TOOLS.map((t) => t.name);
-  for (const n of ["find_files", "open_file", "read_file", "organise_file", "new_folder", "link_file"]) assert.ok(names.includes(n), n);
-  assert.deepEqual(names, [...names].sort(), "tools sorted for a stable prompt cache");
+  for (const n of ["find_files", "open_file", "read_file", "organise_file", "new_folder", "link_file"]) {
+    assert.ok(names.includes(n), n);
+    assert.equal(CHAT_TOOLS.find((t) => t.name === n).defer_loading, true, `${n} is deferred`);
+  }
   // The API allows at most 24 optional parameters across strict tools.
   const optional = CHAT_TOOLS.filter((t) => t.strict).reduce((n, t) => n + Object.keys(t.input_schema.properties).length - t.input_schema.required.length, 0);
   assert.ok(optional <= 24, `strict optional params ${optional}`);
@@ -176,8 +180,8 @@ test("a zip entry that inflates past the cap is refused even when its header lie
   assert.equal((await R.unzipEntry(new Uint8Array(buf), "word/document.xml", 100_000)).length, 50_000);
 });
 
-test("tool results show timestamps in local time, never UTC", async () => {
+test("tool results show timestamps in local time with the weekday, never UTC", async () => {
   const { resultJson } = await import("../functions/agent/chat-rules.ts");
   assert.equal(resultJson({ a: "2026-11-19T23:00:00+00:00", b: "2026-11-20", n: 3, c: [{ d: "2026-11-18T05:06:24.37726Z" }] }, "Australia/Brisbane"),
-    '{"a":"2026-11-20 09:00","b":"2026-11-20","n":3,"c":[{"d":"2026-11-18 15:06"}]}');
+    '{"a":"Fri 2026-11-20 09:00","b":"Fri 2026-11-20","n":3,"c":[{"d":"Wed 2026-11-18 15:06"}]}');
 });

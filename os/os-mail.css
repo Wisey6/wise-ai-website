@@ -28,3 +28,30 @@
 .cx-event-when, .cx-event-guests { color: var(--muted); font-size: var(--fs-meta); overflow-wrap: anywhere; }
 .cx-event-guests { text-align: right; max-width: 40%; }
 .cx-cal.is-done, .cx-cal.is-cancelled, .cx-cal.is-expired { background: transparent; }
+
+/* Motion (tokens in os.css). Send: the button presses; while it goes, a hairline runs
+   along the card's top; when it lands, the actions fold away, the tick draws and the
+   card settles. Transform, opacity and stroke only. */
+.cx-mail { position: relative; transition: border-color var(--dur-2) var(--ease-out); }
+.cx-mail-send { transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out); }
+.cx-mail-send:active:not(:disabled) { transform: scale(.96); }
+.cx-mail.is-busy::before, .cx-mail.is-sending::before {
+  content: ''; position: absolute; left: 10px; right: 10px; top: -1px; height: 1.5px; border-radius: 1px; background: var(--ink);
+  transform-origin: 0 50%; animation: cx-mail-going 1.1s var(--ease-in-out) infinite;
+}
+@keyframes cx-mail-going { 0% { transform: scaleX(0); opacity: 1; } 70% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+.cx-mail-state { display: inline-flex; align-items: center; gap: 4px; }
+.cx-mail-tick { flex: none; color: var(--up-t); }
+.cx-mail-tick path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.cx-mail.is-just-sent { animation: cx-mail-settle 460ms var(--ease-spring) var(--sent-delay, 0ms) backwards; }
+.cx-mail.is-just-sent .cx-mail-tick path { animation: cx-tick-draw 340ms var(--ease-out) calc(var(--sent-delay, 0ms) + 80ms) backwards; }
+.cx-mail.is-just-sent .cx-mail-state { animation: mo-fade var(--dur-2) var(--ease-out) var(--sent-delay, 0ms) backwards; }
+@keyframes cx-mail-settle { 0% { transform: scale(.985); border-color: var(--ink); } 100% { transform: none; } }
+@keyframes cx-tick-draw { from { stroke-dashoffset: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .cx-mail-send:active:not(:disabled) { transform: none; }
+  .cx-mail.is-busy::before, .cx-mail.is-sending::before { animation: none !important; transform: none; opacity: .5; }
+  .cx-mail.is-just-sent { animation: none !important; }
+  .cx-mail.is-just-sent .cx-mail-tick path { animation: none !important; }
+  .cx-mail.is-just-sent .cx-mail-state { animation: mo-fade var(--dur-2) linear var(--sent-delay, 0ms) backwards !important; }
+}

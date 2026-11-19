@@ -584,6 +584,8 @@ try {
     await page.setViewportSize({ width: w, height: h });
     await open(page, '#leads', 800);
     await page.mouse.move(w - 100, h / 2);
+    // The sidebar opens by default now; fold it to check the icon strip.
+    if (await page.locator('.rail').getAttribute('data-state') === 'open') { await page.evaluate(() => document.activeElement?.blur()); await page.keyboard.press('['); }
     await page.waitForTimeout(600);
     const dock = await page.evaluate(() => {
       const list = document.querySelector('.dock-list');
@@ -600,7 +602,7 @@ try {
     check(!dock.clipped && dock.bottom <= h, `nothing is cut off in the dock at ${w}x${h} (bottom ${Math.round(dock.bottom)})`);
     check(dock.grow === true, `the Grow area is lit on #leads (${w}x${h})`);
     if (SHOTS) await page.screenshot({ path: join(SHOTS, `dock-${w}x${h}.png`), clip: { x: 0, y: 0, width: 320, height: h } });
-    await page.mouse.move(30, h / 2);
+    await page.keyboard.press('[');
     await page.waitForTimeout(600);
     const map = await page.evaluate(() => { const n = document.querySelector('.rail-full .nav'); const f = document.querySelector('.rail-full .rail-foot'); return { foot: f.getBoundingClientRect().bottom }; });
     check(map.foot <= h + 1, `the expanded map fits (scrolls inside itself) at ${w}x${h}`);

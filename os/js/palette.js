@@ -1,8 +1,8 @@
 // Wise AI OS command palette: "Search or jump to…" (Ctrl+K / ⌘K).
 // Sections, quick actions and a live search of leads, clients, deals, projects
 // and library entries. Record data only ever reaches the page as text nodes through el().
-import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js?v=20261119a';
-import { state, leadName } from './api.js?v=20261119a';
+import { el, icon, go, STATUS, prettyPhone, trapFocus } from './ui.js?v=20261119b';
+import { state, leadName } from './api.js?v=20261119b';
 
 const MAX_LEADS = 8;
 const MAX_RECORDS = 4;
@@ -39,7 +39,8 @@ export function createPalette({ routes, onLock, onTogglePin }) {
     { label: 'Approvals', icon: 'check', meta: 'Agents', keywords: 'approve suggestions proposals agent waiting', run: () => go('#agents/approvals') },
     { label: 'Research a lead', icon: 'search', meta: 'Researcher', keywords: 'researcher agent website lookup', run: () => go('#agents') },
     { label: 'Open the Wise AI agent', icon: 'agents', meta: '.', keywords: 'agent owl launcher ask doer panel', run: () => window.dispatchEvent(new CustomEvent('wiseos:agent-dock')) },
-    { label: 'Pin or unpin the sidebar', icon: 'panel', meta: '[', keywords: 'sidebar dock collapse expand', desktopOnly: true, run: () => onTogglePin?.() },
+    { label: 'Collapse or expand the sidebar', icon: 'panel', meta: '[', keywords: 'sidebar dock collapse expand pin unpin fold', desktopOnly: true, run: () => onTogglePin?.() },
+    { label: 'Connections', icon: 'link', meta: 'Settings', keywords: 'connectors integrations gmail email calendar google drive twilio sms text cal.com bookings anthropic ai stripe bank connect', run: () => go('#settings/connections') },
     { label: 'Lock', icon: 'lock', meta: 'Sign out', keywords: 'sign out log out', run: () => onLock?.() }
   ];
 

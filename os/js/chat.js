@@ -8,16 +8,18 @@
 import {
   el, icon, fill, clear, toast, busy, confirmDialog, modal, field, input, timeAgo, timeOnly, dayKey, dayLabel, plural,
   money, titleCase, STATUS
-} from './ui.js?v=20261119a';
+} from './ui.js?v=20261119b';
 import {
   state, chatSend, chatMessages, chatRename, chatArchive, chatDelete, undoChange, memoryDelete,
   agentStatus, saveSettings, rowById, sb
-} from './api.js?v=20261119a';
-import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261119a';
-import { agentsInfo, usd } from './views/agents.js?v=20261119a';
-import { ownerName } from './owners.js?v=20261119a';
-import { spotRecord } from './spot.js?v=20261119a';
-import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261119a';
+} from './api.js?v=20261119b';
+import { safeHash, ASK_PREFILL_KEY } from './ask.js?v=20261119b';
+import { agentsInfo, usd } from './views/agents.js?v=20261119b';
+import { ownerName } from './owners.js?v=20261119b';
+import { spotRecord } from './spot.js?v=20261119b';
+import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261119b';
+import { navigate, reducedMotion } from './motion.js?v=20261119b';
+import { voiceInput } from './voice.js?v=20261119b';
 
 export const MAX_MESSAGE = 4000;
 
@@ -31,8 +33,9 @@ export const CHAT_EXAMPLES = [
 ];
 
 export const CHAT_MODELS = [
+  { id: 'auto', label: 'Automatic (recommended)', line: 'Uses the fast, cheap model for everyday asks and steps up to the smart one only when a request needs it. The lowest cost for the same answers.' },
   { id: 'claude-haiku-5-5', label: 'Fast and cheap', line: 'Quick answers and simple changes. It can miss detail in longer, many-part requests.' },
-  { id: 'claude-sonnet-5-5', label: 'Smart (recommended)', line: 'Handles most questions and multi-step changes well, at a sensible cost per message.' },
+  { id: 'claude-sonnet-5-5', label: 'Smart', line: 'Handles most questions and multi-step changes well, at a sensible cost per message.' },
   { id: 'claude-opus-5-5', label: 'Smartest, costs about twice as much', line: 'Best on tricky requests that touch many records. Uses the budget about twice as fast.' }
 ];
 const MODEL_NAME = { 'claude-haiku-5-5': 'Haiku', 'claude-sonnet-5-5': 'Sonnet', 'claude-opus-5-5': 'Opus' };
@@ -68,6 +71,8 @@ const S = {
   undoing: new Set(),
   undoErr: new Map(),
   undoneLocal: new Map(), // change id → undone_at, from undo results (file changes are not in agent_changes)
+  justUndone: new Map(),  // change id → when it was undone here (for the strike-through drawing in)
+  arrived: new Map(),     // 'u:<at>' | 'w:<at>' | message id → when it reached this page (entry animations are timed from it)
   seq: 0
 };
 const keyOf = (id = S.current) => id || 'new';
@@ -156,6 +161,8 @@ async function send(text) {
   S.errors.delete(key);
   S.drafts.set(key, '');
   const at = new Date().toISOString();
+  S.arrived.set(`u:${at}`, Date.now());
+  S.arrived.set(`w:${at}`, Date.now());
   S.pending.set(key, { text: t, at });
   emit();
   const res = await chatSend({ chat_id: chatId || undefined, message: t });
@@ -171,6 +178,7 @@ async function send(text) {
   const m = res.message && typeof res.message === 'object' ? res.message : {};
   const n = ++S.seq;
   const mid = m.id ?? `local-a-${n}`;
+  S.arrived.set(String(mid), Date.now());
   S.extra.set(String(mid), { changes: arr(res.changes), draft: res.draft && safeHash(`#inbox/${res.draft.lead_id}`) ? res.draft : null });
   const you = { id: `local-u-${n}`, role: 'user', text: t, at, steps: [], links: [], changes: [] };
   const reply = norm({ ...m, id: mid, role: 'assistant', at: m.at || new Date().toISOString(), model: m.model || res.model, cost_usd: m.cost_usd ?? res.cost_usd });
@@ -191,7 +199,7 @@ async function doUndo(changeId) {
   emit();
   const r = await undoChange(changeId);
   S.undoing.delete(changeId);
-  if (r.ok) { S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast(r.kind === 'file' ? 'Undone. The file is back the way it was.' : r.kind === 'file_link' ? 'Undone. The file is no longer linked.' : 'Undone. The record is back the way it was.'); }
+  if (r.ok) { S.justUndone.set(changeId, Date.now()); S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast(r.kind === 'file' ? 'Undone. The file is back the way it was.' : r.kind === 'file_link' ? 'Undone. The file is no longer linked.' : 'Undone. The record is back the way it was.'); }
   else if (r.error === 'already_undone') { S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast('That change was already undone.'); }
   else { S.undoErr.set(changeId, r.detail || r.message || 'Could not undo that.'); toast(r.detail || r.message || 'Could not undo that.', 'bad'); }
   emit();
@@ -567,7 +575,7 @@ function tilesFor(m) {
 }
 
 /** One result tile. A link to the record when it has a page; Undo sits beside it, never inside. */
-function tile(t) {
+function tile(t, i = 0, motion = null) {
   const c = t.change || null;
   const undone = Boolean(c?.undone_at);
   const busyU = c ? S.undoing.has(c.id) : false;
@@ -584,7 +592,11 @@ function tile(t) {
   ];
   const label = [t.verb, d.name, d.meta].filter(Boolean).join(', ');
   const main = t.hash
-    ? el('a', { class: 'cx-tile-main', href: t.hash, title: t.tip || null, 'aria-label': `${label}. Open`, dataset: { act: 'open-tile' }, onClick: () => spotRecord({ table: d.table, id: d.id, hash: t.hash }) }, inner)
+    ? el('a', { class: 'cx-tile-main', href: t.hash, title: t.tip || null, 'aria-label': `${label}. Open`, dataset: { act: 'open-tile' }, onClick: (e) => {
+      // a plain click cross-fades to the page (new tab and the like stay with the browser)
+      if (!e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navigate(t.hash); }
+      spotRecord({ table: d.table, id: d.id, hash: t.hash });
+    } }, inner)
     : el('div', { class: 'cx-tile-main', title: t.tip || null }, inner);
   let side = null;
   if (c) {
@@ -596,43 +608,153 @@ function tile(t) {
   }
   const data = { tile: t.type, kind: d.kind };
   if (c) { data.change = c.id; if (c.op) data.op = c.op; }
-  return el('li', { class: `cx-tile is-${t.type}${undone ? ' is-undone' : ''}${t.hash ? '' : ' is-static'}${err ? ' has-err' : ''}`, dataset: data }, main, side);
+  const li = el('li', { class: `cx-tile is-${t.type}${undone ? ' is-undone' : ''}${t.hash ? '' : ' is-static'}${err ? ' has-err' : ''}`, dataset: data }, main, side);
+  // Undone just now: the line draws through the name and the tile settles.
+  const ja = undone && c ? Date.now() - (S.justUndone.get(c.id) || 0) : Infinity;
+  if (ja < 1400) { li.classList.add('is-undoing'); li.style.setProperty('--undo-delay', `${-ja}ms`); }
+  // Tiles follow the words, one after another (at most eight steps).
+  if (motion) entering(li, motion.age, motion.after + Math.min(i, 7) * 26);
+  return li;
 }
 
-/** The tiles under a reply, or nothing. */
-function tilesBlock(m) {
+/** The tiles under a reply, or nothing. motion: {age, after} when the reply has just landed. */
+function tilesBlock(m, motion = null) {
   const tiles = tilesFor(m);
   if (!tiles.length) return null;
   const did = tiles.some((t) => t.type !== 'see');
   return el('div', { class: 'cx-tiles-wrap', dataset: did ? { did: '' } : { links: '' } },
-    el('ul', { class: 'cx-tiles', 'aria-label': did ? 'What it did' : 'Where to look' }, tiles.map(tile)));
+    el('ul', { class: 'cx-tiles', 'aria-label': did ? 'What it did' : 'Where to look' }, tiles.map((t, i) => tile(t, i, motion))));
 }
 /** A short fingerprint of a reply's tiles, so the log redraws when a record or an undo changes. */
 const tilesStamp = (m) => tilesFor(m).map((t) => `${t.d.name}|${t.d.meta}|${t.hash || ''}|${t.change ? `${t.change.undone_at || ''}${S.undoing.has(t.change.id)}${S.undoErr.get(t.change.id) || ''}` : ''}`).join('~');
 
+/* ================================================================== motion
+   New things in the conversation arrive with a short rise and fade; a reply's words
+   come in progressively, then its tiles one after another. Every animation is timed
+   from when the thing reached the page (S.arrived) and written as a CSS animation
+   with a (possibly negative) delay, so a redraw in the middle simply carries on where
+   it was, and anything older than a moment is drawn plainly. Reduced motion: fades
+   only, and the words are all there at once. */
+const ENTER_WINDOW = 2600;   // ms after arrival in which something still animates in
+const ageOf = (key) => { const t = S.arrived.get(String(key)); return t ? Date.now() - t : Infinity; };
+/** Mark a node as arriving `delay` ms after its arrival time (nothing if it is old). */
+function entering(node, age, delay = 0, cls = 'is-entering') {
+  if (!node || age > ENTER_WINDOW + delay) return node;
+  node.classList.add(cls);
+  node.style.setProperty('--enter-delay', `${Math.round(delay - age)}ms`);
+  return node;
+}
+
+/** How long a reveal of n words (or n blocks) takes: quick, and capped for long replies. */
+const REVEAL_MAX = 560;
+const WORD_STEP = 22;
+function revealPlan(words, blocks) {
+  if (words <= 140) return { by: 'word', step: Math.min(WORD_STEP, REVEAL_MAX / Math.max(1, words)), total: Math.min(REVEAL_MAX, words * WORD_STEP) };
+  return { by: 'block', step: Math.min(80, REVEAL_MAX / Math.max(1, blocks)), total: Math.min(REVEAL_MAX, blocks * 80) };
+}
+/**
+ * Wrap the words of `root` (text nodes only, DOM built with el()) in spans that fade in one
+ * after another; delayOf(i) is word i's delay in ms (negative: it started that long ago).
+ * by 'block' fades whole paragraphs and list items instead (long replies).
+ * → the number of words (or blocks) in root.
+ */
+const BLOCKS = ':scope > p, :scope > ul > li, :scope > ol > li';
+function wrapWords(root, delayOf, by = 'word') {
+  if (by === 'block') {
+    const blocks = [...root.querySelectorAll(BLOCKS)];
+    blocks.forEach((b, i) => { b.classList.add('cx-w'); b.style.animationDelay = `${Math.round(delayOf(i))}ms`; });
+    return blocks.length;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) texts.push(n);
+  let i = 0;
+  for (const t of texts) {
+    const parts = t.data.split(/(\s+)/);
+    if (parts.length === 1 && !parts[0]) continue;
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) { frag.append(part); continue; }
+      const w = document.createElement('span');
+      w.className = 'cx-w';
+      w.style.animationDelay = `${Math.round(delayOf(i))}ms`;
+      w.textContent = part;
+      frag.append(w);
+      i++;
+    }
+    t.replaceWith(frag);
+  }
+  return i;
+}
+const countWords = (text) => (String(text || '').match(/\S+/g) || []).length;
+
+/**
+ * The reply renderer: richText into `container`, revealed progressively. Today the whole
+ * reply arrives at once and is fed in one appendText(); a streamed reply would call
+ * appendText(chunk) as each chunk lands, and only the new words fade in. done() ends it.
+ */
+export function replyRenderer(container, { age = 0 } = {}) {
+  let buffer = '';
+  let shown = 0;          // words already placed (and animating or done)
+  let started = Date.now() - age;
+  const reduced = reducedMotion();
+  return {
+    appendText(chunk) {
+      buffer += String(chunk || '');
+      fill(container, buffer.trim() ? richText(buffer) : el('p', { class: 'muted' }, 'No reply came back.'));
+      const total = countWords(buffer);
+      if (reduced || !buffer.trim()) { shown = total; return; }
+      const blocks = container.querySelectorAll(BLOCKS).length;
+      const plan = revealPlan(total, blocks);
+      const since = Date.now() - started;
+      if (since > plan.total + 400 && shown === 0) { shown = total; return; }   // an old reply: plain
+      // Words already placed keep their timing; words new in this chunk follow on from now.
+      const before = shown;
+      if (plan.by === 'block' && before === 0) wrapWords(container, (i) => i * plan.step - since, 'block');
+      else if (before === 0) wrapWords(container, (i) => i * plan.step - since);
+      else wrapWords(container, (i) => (i < before ? -10000 : (i - before) * plan.step));   // a later chunk: only the new words fade in, from now
+      shown = total;
+    },
+    done() { started = Date.now(); },
+    get words() { return shown; },
+    get revealMs() { return reduced ? 0 : revealPlan(countWords(buffer), container.querySelectorAll(BLOCKS).length).total; }
+  };
+}
+
 function youMsg(m, { pending = false } = {}) {
-  return el('li', { class: `cx-msg is-you${pending ? ' is-pending' : ''}`, dataset: { msg: String(m.id ?? ''), role: 'user' } },
+  const li = el('li', { class: `cx-msg is-you${pending ? ' is-pending' : ''}`, dataset: { msg: String(m.id ?? ''), role: 'user' } },
     el('div', { class: 'cx-you', title: m.at ? timeOnly(m.at) : null }, m.text));
+  return entering(li, ageOf(`u:${m.at}`));
 }
 
 function agentMsg(m) {
   const reads = readsOf(m);
   const draftHash = m.draft ? safeHash(`#inbox/${m.draft.lead_id}`) : null;
   const meta = [MODEL_NAME[m.model] || null, Number(m.cost_usd) > 0 ? usd(m.cost_usd) : null].filter(Boolean).join(' · ');
+  // A reply that has just landed: the name line rises in, the words come in progressively,
+  // then the cards and tiles. An older one is drawn plainly (its age is past the window).
+  const age = ageOf(m.id);
+  const text = el('div', { class: 'cx-text' });
+  const words = replyRenderer(text, { age });
+  words.appendText(m.text);
+  const after = words.revealMs + 60;
+  const motion = age < ENTER_WINDOW + after ? { age, after } : null;
+  const late = (node) => (motion && node ? entering(node, age, after, 'is-entering') : node);
   return el('li', { class: 'cx-msg is-agent', dataset: { msg: String(m.id ?? ''), role: 'assistant' } },
-    el('p', { class: 'cx-by' }, el('span', { class: 'cx-by-name' }, 'Wise AI'), m.at ? el('span', { class: 'cx-by-time' }, timeOnly(m.at)) : null),
-    el('div', { class: 'cx-text' }, m.text.trim() ? richText(m.text) : el('p', { class: 'muted' }, 'No reply came back.')),
-    draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
+    entering(el('p', { class: 'cx-by' }, el('span', { class: 'cx-by-name' }, 'Wise AI'), m.at ? el('span', { class: 'cx-by-time' }, timeOnly(m.at)) : null), age),
+    text,
+    late(draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
       el('span', {}, 'Draft is in the inbox reply box. Nothing was sent.'),
-      el('a', { href: draftHash }, 'Open the inbox', icon('arrow', 12))) : null,
-    emailCards(m, [...S.msgs.values()].flatMap((e) => e.list || [])),
-    tilesBlock(m),
-    reads.length || meta
+      el('a', { href: draftHash }, 'Open the inbox', icon('arrow', 12))) : null),
+    late(emailCards(m, [...S.msgs.values()].flatMap((e) => e.list || []))),
+    tilesBlock(m, motion),
+    late(reads.length || meta
       ? el('div', { class: 'cx-foot' },
         reads.length ? el('details', { class: 'cx-reads' }, el('summary', {}, `Looked up ${plural(reads.length, 'thing')}`),
           el('ul', {}, reads.map((s) => el('li', {}, stepText(s) || humanTool(s.tool))))) : null,
         meta ? el('span', { class: 'cx-cost tnum' }, meta) : null)
-      : null);
+      : null));
 }
 
 function sendIcon() {
@@ -744,9 +866,20 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   const sendBtn = el('button', { type: 'submit', class: 'cx-send', 'aria-label': 'Send', title: 'Send (Enter)', dataset: { act: 'chat-send' } }, sendIcon());
   const count = el('span', { class: 'cx-count tnum', hidden: true });
   const notice = el('div', { class: 'cx-notice' });
-  const form = el('form', { class: 'cx-composer', novalidate: true },
-    notice,
-    el('div', { class: 'cx-box' }, lead, box, tools, sendBtn),
+  const live = el('p', { class: 'sr-only', 'aria-live': 'polite' });
+  const form = el('form', { class: 'cx-composer', novalidate: true }, notice);
+  // Dictation (where the browser can): a microphone beside Send. voice.js
+  const voice = voiceInput({
+    box, form,
+    onInput: () => { S.drafts.set(keyOf(), box.value); grow(); drawCount(); paintSend(); },
+    submit: () => form.requestSubmit(),
+    announce: (t) => { live.textContent = t; },
+    active: () => (dock ? !document.querySelector('.cx.is-page') : node.isConnected)
+  });
+  if (dock) form.addEventListener('cx-voice-shortcut', () => window.dispatchEvent(new Event('wiseos:agent-dock')));
+  form.append(
+    ...[voice.note].filter(Boolean),
+    el('div', { class: 'cx-box' }, lead, box, tools, voice.button, voice.menu, sendBtn),
     el('div', { class: 'cx-under' }, el('span', { class: 'cx-hint' }, el('kbd', {}, 'Enter'), 'to send', el('span', { class: 'cx-hint-sep', 'aria-hidden': 'true' }, '·'), el('kbd', {}, 'Shift'), el('kbd', {}, 'Enter'), 'for a new line'), count));
   let grownFor = null;
   const grow = () => {
@@ -775,7 +908,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     const t = box.value.trim();
     if (!t) { box.focus(); return; }
     if (!ready() || S.pending.has(keyOf())) return;
-    scrollNext = 'bottom';
+    scrollNext = 'send';
     send(t);
     box.value = ''; grow(); drawCount();
     box.focus();
@@ -788,7 +921,6 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   };
 
   /* -- conversation */
-  const live = el('p', { class: 'sr-only', 'aria-live': 'polite' });
   const log = el('ol', { class: 'cx-log', 'aria-label': 'Conversation' });
   const scroller = el('div', { class: 'cx-scroll' }, log);
   const convTitle = el('h2', { class: 'cx-title', id: `cx-title-${mode}` });
@@ -885,6 +1017,9 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
 
   let logKey = null;
   let lastCount = 0;
+  let lastSeenMsgs = 0;
+  let drawnKey = null;
+  let wasSettled = false;
   function drawLog(force = false) {
     const k = keyOf();
     const entry = S.current ? S.msgs.get(S.current) : null;
@@ -894,7 +1029,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     const lk = JSON.stringify([k, entry?.status, msgs.map((m) => m.id), Boolean(pend), changeStamp, mailStamp()]);
     if (!force && lk === logKey) return;
     logKey = lk;
-    const atBottom = dock ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40 : true;
+    const atBottom = dock ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40 : pageNearEnd();
     const prevTop = scroller.scrollTop;
     const items = [];
     if (S.current && !msgs.length && entry?.status !== 'error' && !pend) items.push(el('li', { class: 'cx-loading', dataset: { chatLoading: '' } }, el('span', { class: 'cx-pulse', 'aria-hidden': 'true' }), 'Opening the conversation…'));
@@ -910,26 +1045,68 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     }
     if (pend) {
       items.push(youMsg({ id: 'pending', text: pend.text, at: pend.at }, { pending: true }));
-      items.push(el('li', { class: 'cx-working', dataset: { working: '' } },
+      // The live status line: the time it has taken (fixed width, so nothing shifts as it
+      // ticks) and what it is doing, with a soft shimmer running through the words.
+      items.push(entering(el('li', { class: 'cx-working', dataset: { working: '' } },
         el('span', { class: 'cx-pulse', 'aria-hidden': 'true' }),
         el('span', { class: 'cx-working-text' }, phrase(0)),
-        el('span', { class: 'cx-working-time tnum' })));
+        el('span', { class: 'cx-working-time tnum', 'aria-hidden': 'true' }, '0:00')), ageOf(`w:${pend.at}`), 140));
     }
     fill(log, items);
-    // Keep the reader where they were unless something new arrived.
-    const grew = msgs.length > lastCount || Boolean(pend);
-    if (msgs.length > lastCount && lastCount && !pend) live.textContent = 'Reply received.';
-    lastCount = msgs.length;
+    // Keep the reader where they were unless something new arrived; never pull them down
+    // while they are reading further up: a "New reply" chip says there is more below.
+    const newCount = msgs.length + (pend ? 1 : 0);
+    // A conversation just opened, or its history just loaded: that is not "new", it goes
+    // straight to the end without any animation.
+    const fresh = drawnKey !== k || !wasSettled;
+    drawnKey = k;
+    wasSettled = !S.current || entry?.status === 'ok' || Boolean(pend);
+    if (fresh && scrollNext !== 'send') { lastSeenMsgs = msgs.length; lastCount = newCount; if (!scrollNext) scrollNext = 'bottom'; }
+    const grew = newCount > lastCount;
+    const replied = msgs.length > lastSeenMsgs;
+    if (replied && lastSeenMsgs && !pend) live.textContent = 'Reply received.';
+    lastSeenMsgs = msgs.length;
+    lastCount = newCount;
+    const mine = scrollNext === 'send';
+    const smooth = reducedMotion() ? 'auto' : 'smooth';
     if (dock) {
-      if (scrollNext === 'bottom' || (grew && atBottom)) scroller.scrollTop = scroller.scrollHeight;
-      else scroller.scrollTop = prevTop;
-    } else if ((scrollNext === 'bottom' || grew) && log.lastElementChild && node.isConnected && msgs.length + (pend ? 1 : 0) > 1) {
+      if (scrollNext === 'bottom') { scroller.scrollTop = scroller.scrollHeight; showChip(false); }
+      else if (grew && (atBottom || mine)) { scroller.scrollTop = prevTop; scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth }); showChip(false); }
+      else { scroller.scrollTop = prevTop; if (grew && replied) showChip(true); }
+    } else if (log.lastElementChild && node.isConnected && newCount > 1) {
       const last = log.lastElementChild;
-      requestAnimationFrame(() => last.scrollIntoView({ block: 'end', behavior: scrollNext === 'bottom' && !grew ? 'auto' : 'smooth' }));
+      if (scrollNext === 'bottom') requestAnimationFrame(() => last.scrollIntoView({ block: 'end', behavior: 'auto' }));
+      else if (grew && (atBottom || mine)) { requestAnimationFrame(() => last.scrollIntoView({ block: 'end', behavior: smooth })); showChip(false); }
+      else if (grew && replied) showChip(true);
     }
     scrollNext = null;
     tickWorking();
   }
+
+  /* -- "New reply": shown when a reply lands while the reader is further up */
+  const chip = el('button', { type: 'button', class: 'cx-newchip', hidden: true, dataset: { act: 'chat-newreply' } }, 'New reply', el('span', { class: 'cx-newchip-arrow', 'aria-hidden': 'true' }, '↓'));
+  form.prepend(chip);
+  function showChip(on) {
+    if (chip.hidden === !on) return;
+    if (on) { chip.hidden = false; chip.classList.remove('is-out'); return; }
+    if (reducedMotion()) { chip.hidden = true; return; }
+    chip.classList.add('is-out');
+    setTimeout(() => { if (chip.classList.contains('is-out')) { chip.hidden = true; chip.classList.remove('is-out'); } }, 160);
+  }
+  chip.addEventListener('click', () => {
+    const smooth = reducedMotion() ? 'auto' : 'smooth';
+    if (dock) scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth });
+    else log.lastElementChild?.scrollIntoView({ block: 'end', behavior: smooth });
+    showChip(false);
+    box.focus({ preventScroll: true });
+  });
+  function pageNearEnd() {
+    const last = log.lastElementChild;
+    if (!last || !node.isConnected) return true;
+    return last.getBoundingClientRect().top < window.innerHeight - 40;
+  }
+  scroller.addEventListener('scroll', () => { if (!chip.hidden && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40) showChip(false); }, { passive: true });
+  window.addEventListener('scroll', () => { if (!dock && !chip.hidden && node.isConnected && log.lastElementChild && log.lastElementChild.getBoundingClientRect().bottom < window.innerHeight - 60) showChip(false); }, { passive: true });
 
   function tickWorking() {
     const pend = S.pending.get(keyOf());
@@ -938,9 +1115,16 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
       const p = S.pending.get(keyOf());
       const w = log.querySelector('.cx-working');
       if (!p || !w) return;
-      const s = Math.max(0, Math.round((Date.now() - Date.parse(p.at)) / 1000));
-      w.querySelector('.cx-working-text').textContent = phrase(s);
-      w.querySelector('.cx-working-time').textContent = s >= 3 ? `${s} s` : '';
+      const s = Math.max(0, Math.floor((Date.now() - Date.parse(p.at)) / 1000));
+      const t = w.querySelector('.cx-working-text');
+      const words = phrase(s);
+      if (t.textContent !== words) {
+        t.textContent = words;
+        if (!reducedMotion()) t.animate([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.16,1,.3,1)' });
+      }
+      const clock = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      const c = w.querySelector('.cx-working-time');
+      if (c.textContent !== clock) c.textContent = clock;
     };
     paint();
     if (!timer) timer = setInterval(() => { if (!node.isConnected && !dock) { clearInterval(timer); timer = 0; return; } paint(); }, 1000);
@@ -972,7 +1156,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
       const t = box.value.trim() || err.text;
       if (!t) return;
       box.value = ''; grow(); drawCount();
-      scrollNext = 'bottom';
+      scrollNext = 'send';
       send(t);
     });
     const dismiss = el('button', { type: 'button', class: 'cx-icon-btn', 'aria-label': 'Dismiss', onClick: () => { S.errors.delete(k); noticeKey = null; drawNotice(); } }, icon('x', 14));
@@ -1000,7 +1184,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     if (S.current) ensureMsgs(S.current);
     if (view === 'history' || !dock) ensurePreviews();
     drawHead();
-    drawHistory();
+    if (view === 'history' || !dock) drawHistory();   // the dock shows one pane at a time
     drawLog();
     drawNotice();
     paintSend();
@@ -1009,9 +1193,10 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     onUpdate?.();
   }
 
-  function focus() {
+  function focus(delay = 20) {
     if (view !== 'chat' && dock && node.contains(form)) return;   // the composer is hidden with the conversation
-    setTimeout(() => { box.focus({ preventScroll: true }); const n = box.value.length; box.setSelectionRange(n, n); }, 20);
+    const go = () => { box.focus({ preventScroll: true }); const n = box.value.length; box.setSelectionRange(n, n); };
+    if (delay === 0) go(); else setTimeout(go, delay);
   }
 
   /** The dropdown opening: an empty new conversation gives way to the newest one. */
@@ -1034,7 +1219,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   grow();
   update();
   return {
-    node, update, focus, onOpen, setView, composer: form, input: box, scroller,
+    node, update, focus, onOpen, setView, composer: form, input: box, scroller, voice,
     get view() { return view; },
     title: () => (S.current ? chatById(S.current)?.title || 'Conversation' : 'New conversation'),
     newChat: () => { newChat(); setView('chat'); focus(); },

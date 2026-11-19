@@ -1,8 +1,8 @@
 // "Files" on a client, project or deal page: the Google Drive (or OneDrive) files linked to that record from the
 // Files page. Self-contained: reads the hub's file_links rows (never Microsoft), keeps itself
 // current through realtime, and quietly hides itself if the links cannot be read.
-import { el, icon, fill, timeAgo } from '../ui.js?v=20261119a';
-import { linksForRecord, watchFiles } from '../files-api.js?v=20261119a';
+import { el, icon, fill, timeAgo } from '../ui.js?v=20261119b';
+import { linksForRecord, watchFiles } from '../files-api.js?v=20261119b';
 
 const KIND_OF = (name, isFolder, mime) => {
   if (isFolder) return 'folder';

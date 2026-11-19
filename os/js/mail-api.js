@@ -5,9 +5,9 @@
 //
 // Sending happens only here, when the person presses Send on a draft card: the assistant has no
 // way to send.
-import { fn, sb, state } from './api.js?v=20261119a';
+import { fn, sb, state } from './api.js?v=20261119b';
 
-const SETTINGS_PATH = 'Settings, under Your sign-in';
+const SETTINGS_PATH = 'Settings, under Connections';
 
 /** Plain-English text for each failure code and for the ?mail= sign-in result. */
 export const MAIL_ERRORS = {

@@ -2,7 +2,7 @@
 // `onedrive` for OneDrive; both answer the same actions with the same shapes), the hub's own
 // link and change rows, and record labels for linking. Imports api.js with the same ?v= stamp
 // as every other module so there is only one copy of `state`.
-import { fn, sb, state, leadName } from './api.js?v=20261119a';
+import { fn, sb, state, leadName } from './api.js?v=20261119b';
 
 /** The two providers. Google Drive is the business's drive; OneDrive stays available, dormant. */
 export const PROVIDERS = {
@@ -19,6 +19,9 @@ async function call(name, action, body = {}) {
   if (status === 0) return { ok: false, error: 'network', message: 'Cannot reach the hub. Check your connection.' };
   return { ok: false, error: 'server_error', message: 'Something went wrong. Try again in a minute.' };
 }
+
+/** Call the Google Drive function whatever the Files page is showing (Settings, Connections). */
+export async function gdriveCall(action, body = {}) { return call('gdrive', action, body); }
 
 /** Call the current provider's function. Never throws: resolves to the body with `ok`. */
 export async function od(action, body = {}) { return call(current.fn, action, body); }

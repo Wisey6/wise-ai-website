@@ -6,13 +6,13 @@
 import {
   el, icon, fill, clear, toast, busy, badge, confirmDialog, emptyState, timeAgo, dateTime, timeOnly, dayKey,
   money, num, plural, STATUS, go
-} from '../ui.js?v=20261119a';
+} from '../ui.js?v=20261119b';
 import {
   state, notify, saveLead, saveSettings, agentRun, agentStatus, applyAgentAction, rejectAgentAction,
   leadById, leadName, rowById
-} from '../api.js?v=20261119a';
-import { safeHash } from '../ask.js?v=20261119a';
-import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261119a';
+} from '../api.js?v=20261119b';
+import { safeHash } from '../ask.js?v=20261119b';
+import { chatSurface, takeChatPrefill, selectChat } from '../chat.js?v=20261119b';
 
 /* ================================================================ shared bits */
 
@@ -217,7 +217,7 @@ export function researchCard(lead, r, { onSaved } = {}) {
         : el('div', { class: 'row' }, el('button', {
           type: 'button', class: 'btn btn-danger btn-sm', dataset: { act: 'mark-dnc' },
           onClick: async () => {
-            const { markDnc } = await import('./leads.js?v=20261119a');
+            const { markDnc } = await import('./leads.js?v=20261119b');
             const ok = await markDnc(cur());
             if (ok) onSaved?.('status', 'dnc');
           }
@@ -585,7 +585,8 @@ export default function agentsView(ctx) {
   root.append(
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Assistants'), el('h1', { class: 'h1' }, 'Agents'),
-        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything on its own: an email it drafts goes only when you press Send.'))),
+        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything on its own: an email it drafts goes only when you press Send.'),
+        el('a', { class: 'ag-conn-link small', href: '#settings/connections', dataset: { connLink: '' } }, icon('link', 13), 'What it is connected to'))),
     head, tabsBox, body);
 
   const updaters = [];
