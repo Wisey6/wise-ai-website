@@ -486,18 +486,20 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
       // Assistant content goes back unchanged (thinking blocks included); all results in ONE user message.
       messages.push({ role: "assistant", content: res.content });
       const results: Msg[] = [];
+      const afters: string[] = [];
       for (const u of uses) {
         if (toolCalls >= MAX_TOOL_CALLS) {
           results.push({ type: "tool_result", tool_use_id: u.id, is_error: true, content: "Step limit for this message reached. Stop now and tell the person what you did and what is left to do." });
           continue;
         }
         toolCalls++;
-        const out = await runTool(t, u.name, u.input ?? {});
+        const { after, ...out } = await runTool(t, u.name, u.input ?? {});
         if (out.is_error) toolErrors++;
         else if (READ_TOOLS.includes(u.name)) readCalls++;
+        if (after) afters.push(after);
         results.push({ type: "tool_result", tool_use_id: u.id, ...out });
       }
-      messages.push({ role: "user", content: results });
+      messages.push({ role: "user", content: [...results, ...afters.map((text) => ({ type: "text", text }))] });
     }
     if (iterations >= MAX_ITERATIONS && !finalText && !declined) stopNote = "I hit my step limit for one message before finishing.";
   };
@@ -618,7 +620,7 @@ async function updateRun(t: Turn, r: { status: string; model: string; totals: To
 // ------------------------------------------------------------------ tools
 
 // deno-lint-ignore no-explicit-any
-type ToolOut = { content: string | any[]; is_error?: boolean };
+type ToolOut = { content: string | any[]; is_error?: boolean; after?: string };
 const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_file", ...MAIL_READ_TOOLS];
 
 async function runTool(t: Turn, name: string, rawInput: Row): Promise<ToolOut> {
@@ -665,11 +667,11 @@ function loadTools(t: Turn, input: Row): ToolOut {
   const already = t.loaded.has(g);
   t.loaded.add(g);
   if (already) return { content: `The ${g} tools are already loaded.` };
+  // A tool_result that surfaces tools may hold only tool_reference blocks; the group's rules go in a
+  // text block after the results (see the loop).
   return {
-    content: [
-      { type: "text", text: `Loaded the ${g} tools.\n${GROUP_RULES[g] ?? ""}` },
-      ...GROUP_NAMES[g].map((name) => ({ type: "tool_reference", tool_name: name })),
-    ],
+    content: GROUP_NAMES[g].map((name) => ({ type: "tool_reference", tool_name: name })),
+    after: `<tool_notes>\nLoaded the ${g} tools.\n${GROUP_RULES[g] ?? ""}\n</tool_notes>`,
   };
 }
 
