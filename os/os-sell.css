@@ -226,7 +226,7 @@ body:has(.deal-card.is-dragging) .pipe-tally-item { border-color: var(--line-2);
   body:has(.prop-sheet) .toast-wrap, body:has(.prop-sheet) .drawer, body:has(.prop-sheet) .drawer-backdrop,
   body:has(.prop-sheet) .modal-backdrop, body:has(.prop-sheet) .pal,
   .prop-top, .prop-editor, .prop-preview-label { display: none !important; }
-  body:has(.prop-sheet) .shell, body:has(.prop-sheet) .shell.nav-pinned { padding: 0 !important; min-height: 0; }
+  body:has(.prop-sheet) .shell, body:has(.prop-sheet) .shell.nav-open { padding: 0 !important; min-height: 0; }
   body:has(.prop-sheet) .main { padding: 0 !important; }
   .page.prop-edit-page { max-width: none; animation: none; display: block; }
   .prop-split { display: block; }

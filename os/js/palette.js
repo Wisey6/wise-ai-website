@@ -39,7 +39,8 @@ export function createPalette({ routes, onLock, onTogglePin }) {
     { label: 'Approvals', icon: 'check', meta: 'Agents', keywords: 'approve suggestions proposals agent waiting', run: () => go('#agents/approvals') },
     { label: 'Research a lead', icon: 'search', meta: 'Researcher', keywords: 'researcher agent website lookup', run: () => go('#agents') },
     { label: 'Open the Wise AI agent', icon: 'agents', meta: '.', keywords: 'agent owl launcher ask doer panel', run: () => window.dispatchEvent(new CustomEvent('wiseos:agent-dock')) },
-    { label: 'Pin or unpin the sidebar', icon: 'panel', meta: '[', keywords: 'sidebar dock collapse expand', desktopOnly: true, run: () => onTogglePin?.() },
+    { label: 'Collapse or expand the sidebar', icon: 'panel', meta: '[', keywords: 'sidebar dock collapse expand pin unpin fold', desktopOnly: true, run: () => onTogglePin?.() },
+    { label: 'Connections', icon: 'link', meta: 'Settings', keywords: 'connectors integrations gmail email calendar google drive twilio sms text cal.com bookings anthropic ai stripe bank connect', run: () => go('#settings/connections') },
     { label: 'Lock', icon: 'lock', meta: 'Sign out', keywords: 'sign out log out', run: () => onLock?.() }
   ];
 

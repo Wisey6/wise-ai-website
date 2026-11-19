@@ -145,57 +145,87 @@ p { margin: 0; text-wrap: pretty; }
 .section-head .stack { gap: 6px; }
 
 /* ------------------------------------------------------------------- shell
-   Desktop: a fixed rail. Collapsed it is a 64px icon dock; hover or keyboard
-   focus expands it to the 240px grouped map as an overlay (no reflow); pinned it
-   stays open and the content makes room. Phones: top bar + bottom tab bar. */
+   Desktop: a fixed rail. From 1100px it is OPEN by default: a 240px list of
+   groups and their pages that never moves under the pointer. Folded (the
+   person's choice, remembered; the default from 761px to 1099px) it is a 64px
+   strip of group icons; each group icon shows its pages in a flyout beside it,
+   and nothing in the strip moves. The content makes room for whichever is
+   showing. Phones: top bar + bottom tab bar. */
 .shell { padding-left: var(--dock); min-height: 100vh; min-height: 100dvh; transition: padding-left var(--dur-slow) var(--ease); }
-.shell.nav-pinned { padding-left: var(--rail-w); }
+.shell.nav-open { padding-left: var(--rail-w); }
 .shell-main { min-width: 0; }
 .rail {
   position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; width: var(--dock); overflow: hidden;
   background: var(--void); color: var(--chrome);
-  transition: width var(--dur-slow) var(--ease), box-shadow var(--dur-slow) var(--ease);
+  transition: width var(--dur-slow) var(--ease);
 }
 .rail.is-expanded { width: var(--rail-w); }
-.rail.is-peek { box-shadow: 24px 0 64px rgba(10,14,17,.22); }
 .rail-dock, .rail-full { position: absolute; top: 0; bottom: 0; left: 0; display: flex; flex-direction: column; }
-.rail-dock { width: var(--dock); align-items: center; padding: var(--space-4) 0 var(--space-3); transition: opacity .14s ease; }
-.rail-full { width: var(--rail-w); opacity: 0; pointer-events: none; transition: opacity .16s ease; }
-.rail.is-expanded .rail-dock { opacity: 0; pointer-events: none; }
-.rail.is-expanded .rail-full { opacity: 1; pointer-events: auto; transition: opacity .2s ease .05s; }
+.rail-dock { width: var(--dock); align-items: center; padding: var(--space-4) 0 var(--space-3); transition: opacity .12s ease .06s; }
+.rail-full { width: var(--rail-w); opacity: 0; visibility: hidden; transition: opacity .12s ease, visibility 0s linear .12s; }
+.rail.is-expanded .rail-dock { opacity: 0; visibility: hidden; transition: opacity .1s ease, visibility 0s linear .1s; }
+.rail.is-expanded .rail-full { opacity: 1; visibility: visible; transition: opacity .16s ease .06s, visibility 0s; }
 
-/* dock */
-.dock-menu { width: 40px; height: 40px; flex: none; border-radius: var(--radius-m); border: 0; display: grid; place-items: center; background: transparent; margin-bottom: var(--space-3); cursor: pointer; transition: background var(--dur); }
+/* folded strip */
+.dock-menu { width: 40px; height: 40px; flex: none; border-radius: var(--radius-m); border: 0; display: grid; place-items: center; background: transparent; margin-bottom: var(--space-2); cursor: pointer; transition: background var(--dur); }
 .dock-menu:hover { background: rgba(255,255,255,.07); }
 .dock-mark { width: 20px; height: 26px; overflow: hidden; display: block; }
 .dock-mark img { height: 26px; width: auto; max-width: none; filter: brightness(0) invert(1); }
-.dock-list { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 2px 0; }
+.dock-list { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); min-height: 0; overflow-y: auto; scrollbar-width: none; padding: 2px 12px; margin: 0 -12px; }
 .dock-list::-webkit-scrollbar { display: none; }
+.dock-slot { display: contents; }
 .dock-item {
   position: relative; width: 40px; height: 40px; flex: none; border-radius: var(--radius-m); border: 0; background: transparent; color: var(--silver);
   display: grid; place-items: center; cursor: pointer; text-decoration: none; transition: background var(--dur), color var(--dur);
 }
-.dock-item:hover { background: rgba(255,255,255,.07); color: #fff; text-decoration: none; }
+.dock-item:hover, .dock-slot.is-open > .dock-item { background: rgba(255,255,255,.07); color: #fff; text-decoration: none; }
 .dock-item.is-active { background: rgba(255,255,255,.1); color: #fff; }
 .dock-item.is-active::before { content: ''; position: absolute; left: -12px; top: 10px; bottom: 10px; width: 2px; border-radius: 0 2px 2px 0; background: #fff; }
 .dock-item.is-soon { color: #4A5056; cursor: default; }
 .dock-item.is-soon:hover { background: transparent; color: #4A5056; }
+.dock-expand { color: var(--steel); margin-bottom: 2px; }
 .dock-search { margin-bottom: 6px; color: var(--silver); }
 .dock-sep { width: 20px; height: 1px; background: rgba(232,235,237,.1); margin: var(--space-2) 0; flex: none; }
 .dock-count { position: absolute; top: 4px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-pill); background: #fff; color: var(--ink); font-size: 10px; font-weight: 600; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--void); font-variant-numeric: tabular-nums; }
 .dock-foot { margin-top: auto; padding-top: var(--space-3); display: flex; flex-direction: column; align-items: center; gap: var(--space-1); }
 .conn.conn-dock { flex-direction: column; gap: 6px; padding: var(--space-2) 0 6px; font-family: var(--font-display); font-size: 8.5px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
 
-/* full map */
+/* A group's flyout: right beside its icon. The transparent left padding is the
+   bridge from the icon to the panel, so the pointer never crosses a gap. */
+.rail-fly { position: fixed; z-index: 45; padding: 0 0 0 14px; min-width: 214px; }
+.rail-fly-box {
+  background: var(--void); color: var(--chrome); border: 1px solid rgba(232,235,237,.12); border-radius: var(--radius-m);
+  box-shadow: 0 1px 2px rgba(10,14,17,.2), 0 18px 48px rgba(10,14,17,.32); padding: 6px; animation: fly-in var(--dur) var(--ease);
+}
+.rail-fly-head {
+  height: 30px; display: flex; align-items: center; padding: 0 10px;
+  font-family: var(--font-display); font-size: 10px; font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--silver);
+}
+.rail-fly-list { list-style: none; margin: 0; padding: 0; }
+.fly-item {
+  display: flex; align-items: center; gap: var(--space-2); height: 34px; padding: 0 10px; border-radius: var(--radius-s);
+  color: var(--chrome); font-size: 13.5px; font-weight: 500; white-space: nowrap; text-decoration: none; transition: background var(--dur), color var(--dur);
+}
+.fly-item:hover { background: rgba(255,255,255,.06); color: #fff; text-decoration: none; }
+.fly-item.is-active { background: rgba(255,255,255,.09); color: #fff; }
+.fly-item:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.fly-item .nav-count { margin-left: auto; }
+.rail-tip {
+  position: fixed; z-index: 46; pointer-events: none; white-space: pre; padding: 5px 10px; border-radius: var(--radius-s);
+  background: var(--void); color: #fff; border: 1px solid rgba(232,235,237,.14); box-shadow: 0 8px 24px rgba(10,14,17,.28);
+  font-size: var(--fs-meta); font-weight: 500; line-height: 1.4; animation: fly-in var(--dur) var(--ease);
+}
+@keyframes fly-in { from { opacity: 0; transform: translateX(-4px); } }
+
+/* open list */
 .rail-head { display: flex; align-items: center; gap: var(--space-2); padding: 18px var(--space-3) var(--space-2) 22px; }
 .rail-brand { display: flex; align-items: center; gap: var(--space-3); color: #fff; text-decoration: none; min-width: 0; }
 .rail-brand:hover { text-decoration: none; }
 .rail-brand img { height: 20px; width: auto; filter: brightness(0) invert(1); }
 .os-tag { font-family: var(--font-display); font-weight: 600; font-size: 10px; letter-spacing: .26em; color: var(--silver); border: 0; border-left: 1px solid rgba(232,235,237,.18); border-radius: 0; padding: 1px 0 1px var(--space-3); line-height: 14px; }
-.rail-pin { margin-left: auto; width: 32px; height: 32px; border-radius: var(--radius-s); border: 1px solid transparent; background: transparent; color: var(--silver); display: grid; place-items: center; cursor: pointer; transition: background var(--dur), color var(--dur), border-color var(--dur); }
-.rail-pin:hover { background: rgba(255,255,255,.07); color: #fff; }
-.rail-pin[aria-pressed="true"] { color: #fff; background: rgba(255,255,255,.08); border-color: rgba(232,235,237,.14); }
-.rail :focus-visible, .rail-pin:focus-visible, .rail-brand:focus-visible, .nav-search:focus-visible, .dock-menu:focus-visible, .dock-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.rail-toggle { margin-left: auto; width: 32px; height: 32px; border-radius: var(--radius-s); border: 1px solid transparent; background: transparent; color: var(--steel); display: grid; place-items: center; cursor: pointer; transition: background var(--dur), color var(--dur); }
+.rail-toggle:hover { background: rgba(255,255,255,.07); color: #fff; }
+.rail :focus-visible, .rail-toggle:focus-visible, .rail-brand:focus-visible, .nav-search:focus-visible, .dock-menu:focus-visible, .dock-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .rail-search { padding: var(--space-2) var(--space-3) var(--space-1); }
 .nav-search {
   display: flex; align-items: center; gap: 9px; width: 100%; height: 36px; padding: 0 var(--space-2) 0 var(--space-3); border-radius: var(--radius-s); cursor: pointer;
@@ -238,6 +268,16 @@ p { margin: 0; text-wrap: pretty; }
 .nav-sep { height: 1px; background: rgba(232,235,237,.08); margin: var(--space-3) 10px var(--space-2); flex: none; }
 .nav-count { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-pill); background: #fff; color: var(--ink); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
 .rail-foot { padding: var(--space-3) var(--space-3) var(--space-3); border-top: 1px solid rgba(232,235,237,.08); display: flex; align-items: center; justify-content: space-between; gap: 6px; flex: none; }
+/* The open sidebar fits the whole map on a 900px-tall laptop without scrolling. */
+.rail-full .rail-head { padding: 14px var(--space-3) var(--space-1) 22px; }
+.rail-full .rail-search { padding: 6px var(--space-3) 2px; }
+.rail-full .nav { padding: 6px var(--space-3) 10px; }
+.rail-full .nav-item { height: 28px; }
+.rail-full .nav-top { height: 32px; }
+.rail-full .nav-group { margin-top: 10px; }
+.rail-full .nav-group-label { height: 22px; margin-bottom: 1px; }
+.rail-full .nav-sep { margin: 10px 10px 6px; }
+.rail-full .rail-foot { padding: 10px var(--space-3); }
 .conn { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-meta); color: var(--silver); padding: var(--space-1) 6px; white-space: nowrap; }
 .conn-label { color: var(--platinum); font-weight: 500; }
 .conn-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--amber); }
@@ -248,7 +288,6 @@ p { margin: 0; text-wrap: pretty; }
 .btn.btn-lock:hover { color: #fff; background: rgba(255,255,255,.06); border-color: rgba(232,235,237,.3); }
 .btn-lock:focus-visible { outline-color: #fff; }
 kbd { font-family: var(--font-ui); font-size: 10.5px; font-weight: 500; color: var(--silver); border: 1px solid rgba(232,235,237,.18); border-radius: 5px; padding: 0 5px; line-height: 17px; white-space: nowrap; }
-@media (max-width: 1099px) { .rail-pin { display: none; } }
 
 #view:focus { outline: none; }
 .main { min-width: 0; padding: var(--space-6) clamp(16px, 3vw, 48px) var(--space-7); }
@@ -260,7 +299,7 @@ kbd { font-family: var(--font-ui); font-size: 10.5px; font-weight: 500; color: v
 /* Phone chrome */
 .topbar, .tabbar { display: none; }
 @media (max-width: 760px) {
-  .shell, .shell.nav-pinned { padding-left: 0; }
+  .shell, .shell.nav-open { padding-left: 0; }
   .rail { display: none; }
   .topbar {
     display: flex; position: sticky; top: 0; z-index: 30; height: 56px; align-items: center; gap: 10px;
