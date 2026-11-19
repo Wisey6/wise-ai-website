@@ -741,17 +741,19 @@ function railController(shell, parts) {
   };
   // Heading for the open flyout? Then brushing over a neighbouring icon on the way does not switch.
   function aimingAtOpen() {
-    if (!openSlot || trail.length < 2) return false;
-    const [px, py] = trail[0];
-    const [x, y] = trail[trail.length - 1];
+    const now = performance.now();
+    const recent = trail.filter((t) => now - t[2] < 250);
+    if (!openSlot || recent.length < 2) return false;
+    const [px, py] = recent[0];
+    const [x, y] = recent[recent.length - 1];
     if (x <= px) return false;
     const b = openSlot.fly.querySelector('.rail-fly-box').getBoundingClientRect();
     return inTri([x, y], [px, py], [b.left, b.top - 24], [b.left, b.bottom + 24]);
   }
   node.addEventListener('pointermove', (e) => {
     lastPointer = e.pointerType || 'mouse';
-    trail.push([e.clientX, e.clientY]);
-    if (trail.length > 4) trail.shift();
+    trail.push([e.clientX, e.clientY, performance.now()]);
+    if (trail.length > 6) trail.shift();
   }, { passive: true });
   node.addEventListener('pointerdown', (e) => { lastPointer = e.pointerType || 'mouse'; }, { passive: true });
 
@@ -764,6 +766,7 @@ function railController(shell, parts) {
       if (suppress === slot || isOpen()) return;
       if (openSlot === slot) return;
       if (openSlot) {
+        trail.push([e.clientX, e.clientY, performance.now()]);   // enter fires before the move
         if (aimingAtOpen()) {
           clearTimeout(tSwitch);
           tSwitch = setTimeout(() => { if (hoverSlot === slot && trig.matches(':hover')) showFly(slot); }, 160);

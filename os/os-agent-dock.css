@@ -20,10 +20,10 @@
   position: fixed; z-index: 60; left: var(--agd-off); right: 0; bottom: calc(var(--agd-gap) + var(--agd-kb, 0px)); margin: 0 auto;
   width: var(--agd-rest); max-width: calc(100vw - var(--agd-off) - 32px);
   display: flex; flex-direction: column; align-items: stretch;
-  transition: width 260ms var(--ease), left var(--dur-slow) var(--ease);
+  transition: left var(--dur-slow) var(--ease);   /* width never animates: the skin morphs instead */
 }
 .agd-dock[hidden] { display: none; }
-.agd-dock[data-agd-state=open] { width: min(var(--agd-wide), 92vw, calc(100vw - var(--agd-off) - 48px)); }
+.agd-dock[data-agd-state=open], .agd-dock.is-closing { width: min(var(--agd-wide), 92vw, calc(100vw - var(--agd-off) - 48px)); }
 
 /* -- the small pill */
 .agd-launch {
@@ -31,11 +31,18 @@
   border: 1px solid var(--line-2); border-radius: var(--radius-pill); background: var(--paper); color: var(--ink);
   font: inherit; font-size: var(--fs-sm); font-weight: 500; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent;
   box-shadow: var(--agd-shadow);
-  transition: box-shadow var(--dur-slow) var(--ease), border-color var(--dur) var(--ease), transform 140ms var(--ease);
+  transition: box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
 .agd-launch[hidden], .agd-dock[data-agd-state=open] .agd-launch { display: none; }
-.agd-launch:hover { border-color: var(--ink); box-shadow: 0 1px 2px rgba(10,14,17,.08), 0 14px 36px rgba(10,14,17,.18); }
-.agd-launch:active { transform: scale(.97); }
+.agd-launch:hover { border-color: var(--ink); box-shadow: 0 1px 2px rgba(10,14,17,.08), 0 14px 36px rgba(10,14,17,.18); transform: translateY(-1px); }
+.agd-launch:active { transform: scale(.97); transition-duration: 60ms; }
+/* during the morph the pill is only its words (and the owl's spot): the bar's skin draws the shape */
+.agd-dock.is-morphing .agd-launch:not([hidden]) {
+  display: inline-flex; position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; z-index: 2; width: min(var(--agd-rest), calc(100vw - var(--agd-off) - 32px));
+  transform: none; border-color: transparent; background: transparent; box-shadow: none; pointer-events: none; transition: none;
+}
+.agd-dock.is-morphing .agd-launch .agd-orb { visibility: hidden; }
+.agd-dock.is-closing .agd-launch .agd-tip { display: none; }
 .agd-launch:focus-visible { outline: 2px solid var(--agd-blue); outline-offset: 3px; }
 
 .agd-orb, .agd-bar-orb { position: relative; flex: none; display: grid; place-items: center; width: var(--agd-orb); height: var(--agd-orb); }
@@ -49,23 +56,46 @@
 .agd-owl img { height: 20px; width: auto; max-width: none; filter: brightness(0) invert(1); }
 .agd-launch:hover .agd-mark { background: #0E2766; }
 
-/* alive: a soft breathing ring at rest, a turning arc while it works */
-.agd-ring { position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(37,99,235,0); pointer-events: none; }
-.agd-launch[data-state=idle] .agd-ring { animation: agd-breathe 4.8s ease-in-out infinite; }
-.agd-launch.is-busy .agd-ring, .agd-bar-orb.is-busy .agd-ring {
-  border-color: rgba(37,99,235,.16); border-top-color: var(--agd-blue); border-right-color: var(--agd-blue);
-  animation: agd-turn 1.1s linear infinite;
-}
-@keyframes agd-breathe { 0%, 100% { border-color: rgba(37,99,235,0); transform: scale(.92); } 50% { border-color: rgba(37,99,235,.32); transform: scale(1); } }
-@keyframes agd-turn { to { transform: rotate(360deg); } }
+/* presence: the owl is the assistant. Each state is its own layer around the mark and they
+   cross-fade (opacity only); the loops run on transform/opacity and pause when not shown.
+   idle: a very slow breath · listening: a held ring · dictating: the held ring with a slow
+   ripple · thinking: two soft arcs turning against each other · done: a small settle ·
+   error: one small nudge and a dim. Navy, white and the hub blue only. */
+.agd-ring, .agd-listen, .agd-arcs, .agd-arc { position: absolute; inset: -4px; border-radius: 50%; pointer-events: none; }
+.agd-ring, .agd-listen, .agd-arcs { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
+.agd-ring { border: 1.5px solid rgba(37,99,235,.34); animation: agd-breathe 5.6s ease-in-out infinite paused; }
+.agd-listen { border: 1.5px solid rgba(37,99,235,.55); transform: scale(.9); transition: opacity var(--dur-3) var(--ease-out), transform var(--dur-3) var(--ease-spring); }
+.agd-listen::after { content: ''; position: absolute; inset: -1.5px; border-radius: 50%; border: 1.5px solid rgba(37,99,235,.4); opacity: 0; animation: agd-ripple 1.8s var(--ease-out) infinite paused; }
+.agd-arc { inset: 0; border: 1.5px solid transparent; }
+.agd-arc.is-a { border-top-color: var(--agd-blue); border-left-color: rgba(37,99,235,.35); animation: agd-orbit 1.5s cubic-bezier(.45,.05,.55,.95) infinite paused; }
+.agd-arc.is-b { inset: 2.5px; border-bottom-color: rgba(37,99,235,.55); animation: agd-orbit-back 2.3s cubic-bezier(.45,.05,.55,.95) infinite paused; }
+.agd-mark { transition: opacity var(--dur-3) var(--ease-out), background-color var(--dur-2) var(--ease-out); }
+
+.agd-dock[data-presence=idle] .agd-launch .agd-ring { opacity: 1; animation-play-state: running; }
+.agd-dock[data-presence=idle] .agd-bar-orb .agd-ring { opacity: .45; }
+.agd-dock[data-presence=listening] .agd-listen, .agd-dock[data-presence=dictating] .agd-listen { opacity: 1; transform: none; }
+.agd-dock[data-presence=dictating] .agd-listen::after { animation-play-state: running; }
+.agd-dock[data-presence=thinking] .agd-arcs { opacity: 1; }
+.agd-dock[data-presence=thinking] .agd-arc { animation-play-state: running; }
+.agd-dock[data-presence=done] .agd-mark { animation: agd-settle 620ms var(--ease-spring); }
+.agd-dock[data-presence=done] .agd-listen { opacity: .7; transform: none; transition-duration: var(--dur-2), var(--dur-3); }
+.agd-dock[data-presence=error] .agd-orb, .agd-dock[data-presence=error] .agd-bar-orb { animation: agd-nudge 380ms var(--ease-in-out); }
+.agd-dock[data-presence=error] .agd-mark { opacity: .72; }
+@keyframes agd-breathe { 0%, 100% { opacity: 0; transform: scale(.9); } 50% { opacity: 1; transform: scale(1); } }
+@keyframes agd-ripple { 0% { opacity: .55; transform: scale(1); } 100% { opacity: 0; transform: scale(1.32); } }
+@keyframes agd-orbit { to { transform: rotate(360deg); } }
+@keyframes agd-orbit-back { from { transform: rotate(120deg); } to { transform: rotate(-240deg); } }
+@keyframes agd-settle { 0% { transform: scale(1); } 35% { transform: scale(.92); } 100% { transform: scale(1); } }
+@keyframes agd-nudge { 20% { transform: translateX(-2px); } 45% { transform: translateX(2px); } 70% { transform: translateX(-1px); } 100% { transform: none; } }
 
 .agd-dot {
   position: absolute; top: -1px; right: -1px; width: 11px; height: 11px; border-radius: 50%;
-  background: var(--agd-blue); box-shadow: 0 0 0 2px var(--paper); transform: scale(0); transition: transform var(--dur-slow) var(--ease);
+  background: var(--agd-blue); box-shadow: 0 0 0 2px var(--paper); transform: scale(0); transition: transform var(--dur-3) var(--ease-spring);
 }
 .agd-launch.is-ready .agd-dot { transform: scale(1); }
 .agd-launch.is-ready { border-color: var(--agd-blue); }
 .agd-launch.is-ready .agd-label { color: var(--agd-blue); }
+.agd-label { transition: color var(--dur-2) var(--ease-out); }
 .agd-count {
   position: absolute; bottom: -4px; right: -6px; z-index: 2; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
   background: var(--ink); color: #fff; font-size: 10.5px; font-weight: 600; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums;
@@ -87,15 +117,24 @@
 
 /* -- the bar: the chat composer, moved here */
 .agd-barslot { display: none; }
-.agd-dock[data-agd-state=open] .agd-barslot { display: block; animation: agd-fade 180ms var(--ease) both; }
-@keyframes agd-fade { from { opacity: 0; } }
+.agd-dock[data-agd-state=open] .agd-barslot, .agd-dock.is-closing .agd-barslot { display: block; }
 .agd-dock .cx-composer { gap: 8px; padding: 0; background: none; border: 0; }
 .agd-dock .cx-under { display: none; }
+/* The bar's look is its skin (agent-dock.js): an ink edge, a paper fill and the blue focus
+   ring, three clip-path layers that the morph reveals from the pill's outline, under one
+   soft drop shadow. The box itself is transparent. */
 .agd-dock .cx-box {
-  align-items: flex-end; gap: 6px; min-height: var(--agd-h); padding: 5px 5px 5px 5px; border-radius: 23px; border-color: var(--ink);
-  box-shadow: 0 1px 2px rgba(10,14,17,.08), 0 16px 40px rgba(10,14,17,.18);
+  position: relative; isolation: isolate; align-items: flex-end; gap: 6px; min-height: var(--agd-h); padding: 5px 5px 5px 5px; border-radius: 23px;
+  border-color: transparent; background: transparent; box-shadow: none;
 }
-.agd-dock .cx-box:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(37,99,235,.14), 0 16px 40px rgba(10,14,17,.18); }
+.agd-dock .cx-box:focus-within { border-color: transparent; box-shadow: none; }
+.agd-dock .cx-box > :not(.agd-skin) { position: relative; z-index: 1; }
+.agd-skin { position: absolute; inset: -1px; z-index: 0; pointer-events: none; contain: layout style; filter: drop-shadow(0 1px 1px rgba(10,14,17,.07)) drop-shadow(0 12px 16px rgba(10,14,17,.13)); }
+.agd-skin-edge, .agd-skin-fill, .agd-skin-ring { position: absolute; display: block; }
+.agd-skin-edge { inset: 0; border-radius: 23px; background: var(--ink); }
+.agd-skin-fill { inset: 1px; border-radius: 22px; background: var(--paper); }
+.agd-skin-ring { inset: -3px; border-radius: 26px; background: rgba(37,99,235,.16); opacity: 0; transition: opacity var(--dur-2) var(--ease-out); }
+.agd-dock .cx-box:focus-within .agd-skin-ring { opacity: 1; }
 .agd-dock .cx-input { min-height: 34px; padding: 6px 4px 6px 6px; font-size: var(--fs-body); line-height: 22px; }
 .agd-dock .cx-send { width: 34px; height: 34px; }
 .agd-tools { display: inline-flex; align-items: center; gap: 0; flex: none; }
@@ -113,9 +152,8 @@
 .agd-panel {
   position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); display: flex; flex-direction: column; justify-content: flex-end;
   max-height: min(45vh, calc(100dvh - var(--agd-gap) - var(--agd-h) - var(--agd-kb, 0px) - 40px));
-  opacity: 0; transform: translateY(8px); transition: opacity var(--dur) var(--ease), transform var(--dur-slow) var(--ease);
+  transform-origin: 50% 100%;   /* the sheet rises out of the bar (agent-dock.js animates it) */
 }
-.agd-panel.is-in { opacity: 1; transform: none; }
 .agd-head { display: none; }
 .agd-body { min-height: 0; display: flex; flex-direction: column; }
 .agd-dock .cx.is-dock { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -175,10 +213,11 @@
   position: absolute; left: 50%; bottom: calc(100% + 10px); width: min(440px, calc(100vw - 32px)); transform: translate(-50%, 6px);
   display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "by meta" "text text"; gap: 4px var(--space-3); padding: 10px 14px 12px; text-align: left;
   border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--paper); color: var(--ink); font: inherit; cursor: pointer;
-  box-shadow: var(--agd-shadow); opacity: 0; transition: opacity 200ms var(--ease), transform 220ms var(--ease);
+  box-shadow: var(--agd-shadow); transform: translate(-50%, 0); transform-origin: 50% 100%; overflow: hidden;
 }
 .agd-peek[hidden] { display: none; }
-.agd-peek.is-in { opacity: 1; transform: translate(-50%, 0); }
+/* the time it has left, as a hairline that runs down (it stops while the pointer is on it) */
+.agd-peek-time { position: absolute; left: 14px; right: 14px; bottom: 0; height: 1.5px; border-radius: 1px; background: var(--line-2); transform-origin: 0 50%; pointer-events: none; }
 .agd-peek:hover { border-color: var(--ink); }
 .agd-peek:focus-visible { outline: 2px solid var(--agd-blue); outline-offset: 2px; }
 .agd-peek-by { grid-area: by; font-family: var(--font-display); font-size: var(--fs-eyebrow); font-weight: 600; letter-spacing: var(--track-eyebrow); text-transform: uppercase; color: var(--ink); }
@@ -254,8 +293,14 @@ body:has(.modal-backdrop) .agd-dock, body:has(.pal) .agd-dock, body:has(.gate) .
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .agd-launch[data-state=idle] .agd-ring { animation: none; }
-  .agd-launch.is-busy .agd-ring, .agd-bar-orb.is-busy .agd-ring { animation: none; border-color: var(--agd-blue); }
-  .agd-dock, .agd-launch, .agd-dot, .agd-tip, .agd-panel, .agd-peek { transition: none; }
-  .agd-dock[data-agd-state=open] .agd-barslot { animation: none; }
+  /* fades only: the states still cross-fade, nothing turns, breathes or moves */
+  .agd-ring, .agd-arc, .agd-listen::after, .agd-mark, .agd-orb, .agd-bar-orb { animation: none !important; }
+  .agd-dock[data-presence=idle] .agd-launch .agd-ring { opacity: .6; transform: none; }
+  .agd-arc.is-a { border-right-color: rgba(37,99,235,.35); }
+  .agd-listen { transform: none; }
+  .agd-ring, .agd-listen, .agd-arcs, .agd-mark, .agd-skin-ring { transition: opacity var(--dur-2) linear !important; }
+  .agd-dot { transition: none; }
+  .agd-launch, .agd-launch:hover, .agd-launch:active { transform: none; transition: none; }
+  .agd-peek-time { display: none; }
+  .agd-dock, .agd-tip { transition: none; }
 }

@@ -25,7 +25,16 @@
       · -7 48 · -8 64. Rows 44-52px; touch targets >= 40px.
    7. Radii modest: --radius-xs 6 · --radius-s 8 · --radius-m 10 · --radius-l 14
       · --radius-pill 999 (buttons, segmented tabs and count chips only).
-   8. Motion: --dur 160ms (--dur-slow 220ms) with --ease cubic-bezier(.16,1,.3,1).
+   8. Motion: one family. Durations --dur-1 120 (press, hover) · --dur-2 200 (fades,
+      small state changes) · --dur-3 320 (shapes, sheets, entries) · --dur-4 480 (big
+      moves, the reply reveal). Curves --ease-out (arrivals; same as --ease),
+      --ease-in (departures, shorter), --ease-in-out (things that move from A to B),
+      --ease-spring (a calm ~3% settle, linear() with a cubic-bezier fallback).
+      Animate transform and opacity only (clip-path where a shape changes); never
+      width/height/top/left on anything in the page flow. will-change only while a
+      transition runs. Entry animations use fill-mode backwards so hover transforms
+      still work afterwards. Reduced motion: fades only, no movement (end of file).
+      Older aliases: --dur 160ms, --dur-slow 220ms, --ease.
       Focus: 2px ink outline, 3px offset (white on dark: .on-dark / dark regions).
 
    Text colours: --ink (primary) · --body (paragraphs) · --muted (secondary)
@@ -76,6 +85,10 @@
 
   /* -- motion */
   --ease: cubic-bezier(.16,1,.3,1); --dur: 160ms; --dur-slow: 220ms;
+  --ease-out: cubic-bezier(.16,1,.3,1); --ease-in: cubic-bezier(.5,0,.75,0); --ease-in-out: cubic-bezier(.65,0,.35,1);
+  --ease-spring: cubic-bezier(.3,1.25,.55,1);
+  --dur-1: 120ms; --dur-2: 200ms; --dur-3: 320ms; --dur-4: 480ms;
+  --rise: 8px;   /* how far things travel when they arrive */
   --focus-ring: 2px solid var(--ink);
 
   /* -- legacy aliases (kept so older rules keep working) */
@@ -85,6 +98,10 @@
   --focus: 0 0 0 3px rgba(10,14,17,.12);
   --dock: 64px; --rail-w: 240px; --ease-nav: var(--ease);
   color-scheme: light;
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --ease-spring: linear(0, .096, .271, .474, .648, .795, .897, .968, 1.007, 1.028, 1.034, 1.032, 1.027, 1.021, 1.014, 1.008, 1.005, 1.002, 1, .999, 1); }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -1082,3 +1099,39 @@ a.feed-row:hover { text-decoration: none; background: linear-gradient(90deg, var
 
 .gate-unlock:focus-visible { outline: none; }
 .gate-unlock:focus-visible .gate-unlock-ring { outline: 2px solid #fff; outline-offset: 4px; }
+
+/* ---------------------------------------------------------------- motion
+   Shared keyframes and page-level smoothness (see rule 8 at the top).
+   Entry animations: fill-mode backwards, so a hover transform still works after. */
+@keyframes mo-fade { from { opacity: 0; } }
+@keyframes mo-rise { from { opacity: 0; transform: translateY(var(--rise, 8px)); } }
+@keyframes mo-pop { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+/* Loading placeholders wait 150 ms before showing, so a fast load never flashes them. */
+.skeleton { animation: mo-fade var(--dur-2) var(--ease-out) 150ms backwards, shimmer 1.2s 150ms infinite; }
+.page[aria-busy] { animation: mo-fade var(--dur-2) var(--ease-out) 150ms backwards; }
+/* A new page: a quick fade with a short rise (the old page cross-fades out when the
+   browser has View Transitions; js/motion.js). */
+.page { animation: mo-rise var(--dur-3) var(--ease-out) backwards; --rise: 4px; }
+/* Toasts: a short rise in, a fade and drop out; the stack closes up (js/motion.js). */
+.toast { animation: mo-rise var(--dur-3) var(--ease-spring) backwards; --rise: 10px; }
+.toast.is-leaving { opacity: 0; transform: translateY(-4px) scale(.98); transition: opacity var(--dur-2) var(--ease-in), transform var(--dur-2) var(--ease-in); }
+@media (max-width: 760px) { .toast.is-leaving { transform: translateY(6px) scale(.98); } }
+/* View transitions (navigations only): the view fades across; the chrome and the
+   assistant stay put. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+#view { view-transition-name: os-view; }
+::view-transition-old(os-view) { animation: mo-vt-out var(--dur-2) var(--ease-in) both; }
+::view-transition-new(os-view) { animation: mo-vt-in var(--dur-3) var(--ease-out) both; }
+::view-transition-group(os-view) { animation-duration: 0s; }
+@keyframes mo-vt-out { to { opacity: 0; } }
+@keyframes mo-vt-in { from { opacity: 0; transform: translateY(4px); } }
+html.mo-vt .page { animation: none; }   /* the transition already does the arrival */
+@media (prefers-reduced-motion: reduce) {
+  /* fades only: keep opacity changes, drop every movement */
+  :root { --rise: 0px; }
+  .page, .toast, .skeleton { animation-name: mo-fade !important; animation-duration: var(--dur-2) !important; }
+  .skeleton { animation: mo-fade var(--dur-2) 150ms backwards !important; }
+  ::view-transition-new(os-view) { animation: mo-fade var(--dur-2) both !important; }
+  ::view-transition-old(os-view) { animation: mo-vt-out var(--dur-2) both !important; }
+  .toast.is-leaving { transform: none; transition: opacity var(--dur-2) !important; }
+}

@@ -29,9 +29,10 @@ import {
   ARCHIVE_TABLES, KINDS, type LinkCandidate, Refusal, type Step, TABLE_KIND, buildHistory, buildPatch, checkChatRequest, checkPatch,
   diffPatch, fallbackTitle, labelFor, resultJson, linkFor, maskPhone, maskRow, ownsChat, pickLinks, searchTerm, splitTitle, trimText,
   undoConflicts, undoInsertPlan, undoBlocked, FILE_LINK_KIND, RECORD_WRITE_TOOLS, businessMemoryAllowed, callTimeout, taintCheck, taints,
-  MAIL_READ_TOOLS, KIND_LABEL, REMOVABLE, removalBlocked, removalCap, restoreRow,
+  MAIL_READ_TOOLS, KIND_LABEL, REMOVABLE, removalBlocked, removalCap, restoreRow, localDay, stripWeekdays,
 } from "./chat-rules.ts";
-import { CHAT_SYSTEM, CHAT_TOOLS } from "./chat-prompt.ts";
+import { CHAT_SYSTEM, CORE_TOOL_NAMES, GROUP_RULES, GROUP_TOOL_NAMES, TOOL_GROUPS, type ToolGroup, allTools } from "./chat-prompt.ts";
+import { OPUS, type ChatModelSetting, escalation, firstModel, modelSetting, pickGroups } from "./chat-route.ts";
 import { FILE_TOOLS, fileOrientation, undoFileChange } from "./files.ts";
 import { type EmailDraft, MAIL_TOOL_DEFS, MAIL_TOOL_NAMES, MAIL_TOOLS, mailContext } from "./mail.ts";
 import { CAL_TOOL_DEFS, CAL_TOOL_NAMES, CAL_TOOLS, calendarContext, undoCalendarChange } from "./calendar.ts";
@@ -43,9 +44,18 @@ type Row = Record<string, any>;
 // deno-lint-ignore no-explicit-any
 type Msg = any;
 
-export const OPUS = "claude-opus-5-5";
+export { OPUS };
 export const CHAT_MODELS = [HAIKU, SONNET, OPUS];
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+// Deferred tool groups are surfaced up front with role:"system" tool_addition blocks (beta). If the
+// API refuses that, the turn carries on without it and the model loads groups with load_tools.
+const TOOL_CHANGES_BETA = "mid-conversation-tool-changes-2026-07-01";
+// One tools array for every person and every turn (byte-stable: one cache entry). Groups are deferred.
+const ALL_TOOLS = allTools(MAIL_TOOL_DEFS as never, CAL_TOOL_DEFS as never);
+const GROUP_NAMES: Record<ToolGroup, string[]> = {
+  ...GROUP_TOOL_NAMES, email: MAIL_TOOL_DEFS.map((x) => x.name), calendar: CAL_TOOL_DEFS.map((x) => x.name),
+};
+let toolChangesOk = true; // flips off for this instance if the beta is refused
 const MAX_ITERATIONS = 12;
 const MAX_TOOL_CALLS = 24;
 const MAX_TOKENS = 16000;
@@ -71,6 +81,8 @@ type Turn = ChatCtx & {
   calTools: boolean; calLine: string; eventProposals: Row[]; calOps?: number;
   // Removals this message, and how many are allowed (3, or 20 after the person said yes to a listed plan).
   removals: number; removeCap: number;
+  // Tool groups loaded this turn (up front or by load_tools); 'scout' results of find_leads.
+  loaded?: Set<ToolGroup>; filesConnected?: boolean;
   // deno-lint-ignore no-explicit-any
   mailState?: any;
 };
@@ -310,13 +322,14 @@ function client(timeout: number) {
 }
 
 
-async function callModel(model: string, messages: Msg[], timeout: number, extraTools: Row[]): Promise<Msg> {
+async function callModel(model: string, messages: Msg[], timeout: number, betas: string[]): Promise<Msg> {
+  // Haiku is the everyday model and people come back after pauses: its static prefix (tools +
+  // system) is cached for an hour (2x write, re-read at 0.1x). Sonnet/Opus are occasional: 5 minutes.
+  const cacheSys = model === HAIKU ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" };
   const params: Row = {
     model, max_tokens: MAX_TOKENS,
-    system: [{ type: "text", text: CHAT_SYSTEM, cache_control: { type: "ephemeral" } }],
-    // The email and calendar tools come last and only for someone who connected them, so each
-    // tool list is byte-stable (and cached) on its own.
-    tools: extraTools.length ? [...CHAT_TOOLS, ...extraTools] : CHAT_TOOLS,
+    system: [{ type: "text", text: CHAT_SYSTEM, cache_control: cacheSys }],
+    tools: ALL_TOOLS,
     tool_choice: { type: "auto" },
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
@@ -325,19 +338,40 @@ async function callModel(model: string, messages: Msg[], timeout: number, extraT
   };
   const c = client(timeout);
   // Sonnet and Opus opt in to the server-side refusal fallback; Haiku has none.
+  const allBetas = [...betas, ...(model !== HAIKU ? [FALLBACK_BETA] : [])];
+  const extra: Row = model !== HAIKU ? { fallbacks: "default" } : {};
   // deno-lint-ignore no-explicit-any
-  if (model !== HAIKU) return await c.beta.messages.create({ ...params, betas: [FALLBACK_BETA], fallbacks: "default" } as any);
+  if (allBetas.length) return await c.beta.messages.create({ ...params, ...extra, betas: allBetas } as any);
   // deno-lint-ignore no-explicit-any
   return await c.messages.create(params as any);
 }
 
+/** A role:"system" message that surfaces deferred tool groups (tool_addition by reference). */
+function toolAddition(groups: ToolGroup[]): Msg | null {
+  const names = groups.flatMap((g) => GROUP_NAMES[g]);
+  if (!names.length) return null;
+  return { role: "system", content: names.map((name) => ({ type: "tool_addition", tool: { type: "tool_reference", name } })) };
+}
+
 const textOf = (content: Msg[]) => content.filter((b) => b?.type === "text").map((b) => b.text).join("").trim();
+
+/** Which of the person's connections are live (for loading tool groups). */
+function connections(t: Turn) {
+  return { files: t.filesConnected !== false, email: t.mailTools, calendar: t.calTools };
+}
+
+/** The group rules text for groups loaded up front (it rides in the person's message, after the context). */
+function rulesText(groups: ToolGroup[]): string {
+  const g = groups.filter((x) => GROUP_RULES[x]);
+  return g.length ? `<tool_notes>\nTools loaded for this message: ${g.join(", ")}.\n${g.map((x) => GROUP_RULES[x]).join("\n\n")}\n</tool_notes>` : "";
+}
 
 export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   const { db, req, settings } = ctx;
   const check = checkChatRequest(body);
   if (!check.ok) return json(req, 400, { ok: false, error: "bad_request", detail: check.detail });
-  const model = CHAT_MODELS.includes(String(settings.agent_chat_model)) ? String(settings.agent_chat_model) : SONNET;
+  const setting: ChatModelSetting = modelSetting(settings.agent_chat_model);
+  const nominal = setting === "auto" || setting === "haiku" ? HAIKU : setting === "opus" ? OPUS : SONNET;
 
   // The chat must be the caller's own.
   let chat: Row | null = null;
@@ -350,12 +384,12 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   const today = localDate(ctx.now, ctx.tz);
   if (overBudget(ctx.spent, ctx.cap)) {
     const id = await insertRun(ctx, { status: "capped", input: { blocked: "cap_reached" }, error: "cap_reached" });
-    return json(req, 402, { ok: false, error: "cap_reached", run_id: id, model, cost_usd: 0, spent_usd: ctx.spent, cap_usd: ctx.cap });
+    return json(req, 402, { ok: false, error: "cap_reached", run_id: id, model: nominal, cost_usd: 0, spent_usd: ctx.spent, cap_usd: ctx.cap });
   }
   const runs = must<Row[]>(await db.from("agent_runs").select("status").eq("agent", "chat").gte("at", dayWindowStart(ctx.now, ctx.tz)));
   if (overDailyLimit("chat", runs.filter((r) => r.status !== "capped").length)) {
     const id = await insertRun(ctx, { status: "capped", input: { blocked: "daily_limit" }, error: "daily_limit" });
-    return json(req, 429, { ok: false, error: "daily_limit", limit: DAILY_LIMITS.chat, run_id: id, model, cost_usd: 0, spent_usd: ctx.spent, cap_usd: ctx.cap });
+    return json(req, 429, { ok: false, error: "daily_limit", limit: DAILY_LIMITS.chat, run_id: id, model: nominal, cost_usd: 0, spent_usd: ctx.spent, cap_usd: ctx.cap });
   }
 
   if (!chat) chat = must<Row>(await db.from("agent_chats").insert({ member_id: ctx.member.id }).select("*").single());
@@ -364,46 +398,79 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   must(await db.from("agent_chat_messages").insert({ chat_id: chat.id, role: "user", text: check.message }));
   const runId = await insertRun(ctx, { status: "error", input: { chat_id: chat.id, chars: check.message.length }, error: "running" });
 
-  const t: Turn = {
-    ...ctx, today, chatId: chat.id, runId, team: await loadTeam(db), steps: [], changes: [], links: [], draft: null,
+  const fresh = (): Turn => ({
+    ...ctx, today, chatId: chat!.id, runId, team: [], steps: [], changes: [], links: [], draft: null,
     userMessage: check.message, tainted: false, writesAfterTaint: 0,
     mailTools: false, mailLine: "", mailTainted: false, emailDrafts: [], calTools: false, calLine: "", eventProposals: [],
     removals: 0, removeCap: removalCap(check.message, [...prior].reverse().find((m) => m.role === "assistant" && m.model !== "recap")?.text ?? null),
-  };
+    loaded: new Set<ToolGroup>(),
+  });
+  let t: Turn = fresh();
+  const team = await loadTeam(db);
+  t.team = team;
   const [mc, cc] = await Promise.all([mailContext({ db, member: ctx.member, chatId: chat.id }), calendarContext({ db, member: ctx.member, tz: ctx.tz })]);
-  t.mailTools = mc.tools;
-  t.mailLine = mc.text;
-  t.calTools = cc.tools;
-  t.calLine = cc.text;
-  const extraTools = [...(t.mailTools ? MAIL_TOOL_DEFS : []), ...(t.calTools ? CAL_TOOL_DEFS : [])];
+  const ctxText = await contextBlock({ ...t, mailLine: mc.text, calLine: cc.text }, first);
+  const filesConnected = !/not connected|not set up|signing in again|could not be checked/i.test(ctxText.split("\n").find((l) => /^Business files|Google Drive/i.test(l)) ?? "");
+  const setConn = (x: Turn) => { x.mailTools = mc.tools; x.mailLine = mc.text; x.calTools = cc.tools; x.calLine = cc.text; x.filesConnected = filesConnected; x.team = team; };
+  setConn(t);
+  const groups = pickGroups(check.message, connections(t));
+  const choice = firstModel(setting, check.message, groups);
   const history = buildHistory(prior as never);
-  const messages: Msg[] = [
-    ...history,
-    {
-      role: "user", content: [
-        { type: "text", text: check.message, cache_control: { type: "ephemeral" } },
-        { type: "text", text: await contextBlock(t, first) },
-      ],
-    },
-  ];
+  const notes = rulesText(groups);
+  const initial = (): Msg[] => {
+    const m: Msg[] = [
+      ...history,
+      {
+        role: "user", content: [
+          { type: "text", text: check.message, cache_control: { type: "ephemeral" } },
+          { type: "text", text: ctxText + (notes ? `\n${notes}` : "") },
+        ],
+      },
+    ];
+    const add = toolChangesOk ? toolAddition(groups) : null;
+    if (add) m.push(add);
+    return m;
+  };
 
-  let totals: Totals = emptyTotals();
+  const byModel: Record<string, Totals> = {};
+  const totalCost = () => Object.entries(byModel).reduce((sum, [m, tt]) => sum + costOf(m, tt), 0);
+  const allTotals = () => Object.values(byModel).reduce((a, b) => addUsage(a, { input_tokens: b.input, output_tokens: b.output, cache_creation_input_tokens: b.cacheWrite, cache_read_input_tokens: b.cacheRead }), emptyTotals());
+  let model = choice.model;
   let usedModel = model;
-  let finalText = "";
-  let stopNote = "";
-  let toolCalls = 0;
-  let iterations = 0;
-  let declined = false;
-  try {
-    for (; iterations < MAX_ITERATIONS; iterations++) {
+  const route: Row = { setting, first: model, reason: choice.reason, groups, escalated: null };
+  let finalText = "", stopNote = "", toolCalls = 0, iterations = 0, calls = 0, declined = false;
+  let toolErrors = 0, readCalls = 0;
+
+  // One pass of the tool loop on the current model; returns when the model gives a final answer.
+  const loop = async (messages: Msg[]) => {
+    finalText = ""; stopNote = ""; declined = false;
+    for (iterations = 0; iterations < MAX_ITERATIONS; iterations++) {
       const elapsed = Date.now() - ctx.started;
-      if (iterations > 0 && elapsed > TURN_SOFT_MS) { stopNote = "I ran out of time for one message before finishing."; break; }
-      const res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS), extraTools);
-      totals = addUsage(totals, res.usage);
+      if (calls > 0 && elapsed > TURN_SOFT_MS) { stopNote = "I ran out of time for one message before finishing."; break; }
+      // Haiku stumbling on tools twice: the rest of this turn goes to Sonnet (on 'auto').
+      if (setting === "auto" && model === HAIKU && toolErrors >= 2) { model = SONNET; route.escalated = "tool errors"; }
+      const betas = messages.some((m) => m.role === "system") ? [TOOL_CHANGES_BETA] : [];
+      let res: Msg;
+      try {
+        res = await callModel(model, messages, callTimeout(elapsed, CALL_TIMEOUT_MS, TURN_HARD_MS), betas);
+      } catch (e) {
+        // The tool_addition beta refused: drop those messages and let the model use load_tools.
+        if (betas.length && e instanceof Anthropic.BadRequestError && /tool_addition|tool_reference|system|beta|role/i.test(e.message)) {
+          console.error("tool_addition refused, falling back to load_tools", e.message);
+          toolChangesOk = false;
+          for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "system") messages.splice(i, 1);
+          route.tool_addition = "refused";
+          iterations--;
+          continue;
+        }
+        throw e;
+      }
+      calls++;
+      byModel[String(res.model ?? model)] = addUsage(byModel[String(res.model ?? model)] ?? emptyTotals(), res.usage);
       usedModel = String(res.model ?? model);
       // Running cost on the run row after every call, so a cut-off turn is still counted.
-      const soFar = costOf(usedModel, totals);
-      await updateRun(t, { status: "error", model: usedModel, totals, cost: soFar, error: "running", output: { chat_id: t.chatId, iterations: iterations + 1, tool_calls: toolCalls } });
+      const soFar = totalCost();
+      await updateRun(t, { status: "error", model: usedModel, totals: allTotals(), cost: soFar, error: "running", output: { chat_id: t.chatId, iterations: calls, tool_calls: toolCalls, route } });
       if (overBudget(ctx.spent + soFar, ctx.cap) && res.stop_reason === "tool_use") {
         stopNote = "I reached the monthly AI spending limit partway through, so I stopped.";
         break;
@@ -411,11 +478,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
       if (res.stop_reason === "refusal") { declined = true; break; }
       if (res.stop_reason === "pause_turn") { messages.push({ role: "assistant", content: res.content }); continue; }
       const uses = (res.content as Msg[]).filter((b) => b.type === "tool_use");
-      if (res.stop_reason === "max_tokens") {
-        finalText = textOf(res.content);
-        stopNote = "My reply was cut short.";
-        break;
-      }
+      if (res.stop_reason === "max_tokens") { finalText = textOf(res.content); stopNote = "My reply was cut short."; break; }
       if (!uses.length) { finalText = textOf(res.content); break; }
       // Assistant content goes back unchanged (thinking blocks included); all results in ONE user message.
       messages.push({ role: "assistant", content: res.content });
@@ -426,20 +489,42 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
           continue;
         }
         toolCalls++;
-        results.push({ type: "tool_result", tool_use_id: u.id, ...(await runTool(t, u.name, u.input ?? {})) });
+        const out = await runTool(t, u.name, u.input ?? {});
+        if (out.is_error) toolErrors++;
+        else if (READ_TOOLS.includes(u.name)) readCalls++;
+        results.push({ type: "tool_result", tool_use_id: u.id, ...out });
       }
       messages.push({ role: "user", content: results });
     }
-    if (iterations >= MAX_ITERATIONS && !finalText && !declined) {
-      stopNote = "I hit my step limit for one message before finishing.";
+    if (iterations >= MAX_ITERATIONS && !finalText && !declined) stopNote = "I hit my step limit for one message before finishing.";
+  };
+
+  const acted = () => t.steps.some((x) => x.ok && x.kind !== "read") || t.changes.length > 0 || Boolean(t.draft) || t.emailDrafts.length > 0 || t.eventProposals.length > 0;
+  try {
+    await loop(initial());
+    // 'auto': a cheap check on Haiku's answer; redo the turn on Sonnet when it failed and changed nothing.
+    if (setting === "auto" && model === HAIKU && !stopNote) {
+      const why = escalation({ finalText, declined, toolErrors, readCalls, writeCalls: acted() ? 1 : 0, message: check.message });
+      if (why && !acted()) {
+        route.escalated = why;
+        route.haiku_text_chars = finalText.length;
+        model = SONNET;
+        t = fresh(); setConn(t);
+        toolErrors = 0; readCalls = 0; toolCalls = 0;
+        await loop(initial());
+      }
     }
   } catch (e) {
-    return await chatFailure(t, e, totals, usedModel);
+    return await chatFailure(t, e, allTotals(), usedModel, totalCost());
   }
+  const totals = allTotals();
+  const cost = totalCost();
+  route.final = usedModel;
+  route.models = Object.fromEntries(Object.entries(byModel).map(([m, tt]) => [m, { cost: Math.round(costOf(m, tt) * 1e6) / 1e6, input: tt.input, cache_read: tt.cacheRead, cache_write: tt.cacheWrite, output: tt.output }]));
+  route.loaded = [...(t.loaded ?? [])];
 
-  const cost = costOf(usedModel, totals);
   if (declined) {
-    await updateRun(t, { status: "declined", model: usedModel, totals, cost, error: "refusal", output: { chat_id: t.chatId } });
+    await updateRun(t, { status: "declined", model: usedModel, totals, cost, error: "refusal", output: { chat_id: t.chatId, route } });
     if (t.changes.length || t.emailDrafts.length) await saveAssistant(t, "I stopped partway through that request.", usedModel, cost);
     return json(req, 200, { ok: false, error: "declined", chat_id: t.chatId, changes: t.changes, run_id: t.runId, model: usedModel, cost_usd: cost, spent_usd: ctx.spent + cost, cap_usd: ctx.cap });
   }
@@ -463,8 +548,9 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     await updateRun(t, {
       status: saved ? "ok" : "error", model: usedModel, totals, cost, ...(saved ? {} : { error: "save_failed" }),
       output: {
-        chat_id: t.chatId, message_id: msg?.id ?? null, iterations: iterations + 1, tool_calls: toolCalls, changes: t.changes.map((c) => c.id),
+        chat_id: t.chatId, message_id: msg?.id ?? null, iterations: calls, tool_calls: toolCalls, changes: t.changes.map((c) => c.id),
         draft: Boolean(t.draft), email_drafts: t.emailDrafts.length, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, input_tokens: totals.input, output_tokens: totals.output,
+        route,
       },
     });
   }
@@ -474,7 +560,8 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     message: { id: msg.id, role: "assistant", text, steps: t.steps, links: msg.links, at: msg.at },
     changes: t.changes, ...(t.draft ? { draft: t.draft } : {}), ...(t.emailDrafts.length ? { email_drafts: t.emailDrafts } : {}),
     ...(t.eventProposals.length ? { event_proposals: t.eventProposals } : {}),
-    usage: { input_tokens: totals.input, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, output_tokens: totals.output, iterations: iterations + 1, tool_calls: toolCalls },
+    usage: { input_tokens: totals.input, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, output_tokens: totals.output, iterations: calls, tool_calls: toolCalls },
+    route: { first: route.first, escalated: route.escalated, groups: route.groups, loaded: route.loaded },
     run_id: t.runId, model: usedModel, cost_usd: cost, spent_usd: ctx.spent + cost, cap_usd: ctx.cap,
   });
 }
@@ -486,8 +573,8 @@ async function saveAssistant(t: Turn, text: string, model: string, cost: number)
   }).select("id, at, links").single());
 }
 
-async function chatFailure(t: Turn, e: unknown, totals: Totals, model: string): Promise<Response> {
-  const cost = costOf(model, totals);
+async function chatFailure(t: Turn, e: unknown, totals: Totals, model: string, costIn?: number): Promise<Response> {
+  const cost = costIn ?? costOf(model, totals);
   let status = 502, error = "ai_error", detail = "The AI service returned an error.";
   if (e instanceof Anthropic.AuthenticationError) { status = 503; error = "ai_not_configured"; detail = "The API key was rejected."; }
   else if (e instanceof Anthropic.RateLimitError) detail = "Rate limited. Try again in a minute.";
@@ -1102,3 +1189,22 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
   },
 };
 
+
+// ------------------------------------------------------------------ diagnostics (owner only)
+
+/** The parts of a chat request, for token_profile. History from the given chat (own chats only). */
+export async function profileParts(ctx: ChatCtx, chatId: unknown): Promise<import("./profile.ts").ProfileParts> {
+  let prior: Row[] = [];
+  if (isUuid(chatId)) {
+    const chat = must<Row | null>(await ctx.db.from("agent_chats").select("*").eq("id", chatId).maybeSingle());
+    if (ownsChat(chat, ctx.member.id)) prior = must<Row[]>(await ctx.db.from("agent_chat_messages").select("role, text, steps, model").eq("chat_id", chatId).order("id").limit(2000));
+  }
+  const t = {
+    ...ctx, today: localDate(ctx.now, ctx.tz), chatId: "00000000-0000-0000-0000-000000000000", runId: null, team: await loadTeam(ctx.db), steps: [], changes: [], links: [], draft: null,
+    userMessage: "", tainted: false, writesAfterTaint: 0, mailTools: false, mailLine: "", mailTainted: false, emailDrafts: [], calTools: false, calLine: "", eventProposals: [],
+    removals: 0, removeCap: 3,
+  } as Turn;
+  const [mc, cc] = await Promise.all([mailContext({ db: ctx.db, member: ctx.member, chatId: null }), calendarContext({ db: ctx.db, member: ctx.member, tz: ctx.tz })]);
+  t.mailLine = mc.text; t.calLine = cc.text;
+  return { system: CHAT_SYSTEM, tools: [...CHAT_TOOLS, ...MAIL_TOOL_DEFS, ...CAL_TOOL_DEFS], context: await contextBlock(t, false), history: buildHistory(prior as never) };
+}

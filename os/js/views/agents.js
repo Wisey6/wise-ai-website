@@ -585,7 +585,8 @@ export default function agentsView(ctx) {
   root.append(
     el('header', { class: 'page-head' },
       el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Assistants'), el('h1', { class: 'h1' }, 'Agents'),
-        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything on its own: an email it drafts goes only when you press Send.'))),
+        el('p', { class: 'lede ag-lede' }, 'Talk to the assistant and it does the work: it looks things up across the hub and makes the changes you ask for, each one listed with an Undo. It never sends anything on its own: an email it drafts goes only when you press Send.'),
+        el('a', { class: 'ag-conn-link small', href: '#settings/connections', dataset: { connLink: '' } }, icon('link', 13), 'What it is connected to'))),
     head, tabsBox, body);
 
   const updaters = [];

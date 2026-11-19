@@ -18,6 +18,8 @@ import { agentsInfo, usd } from './views/agents.js?v=20261119a';
 import { ownerName } from './owners.js?v=20261119a';
 import { spotRecord } from './spot.js?v=20261119a';
 import { emailCards, mailBoot, mailConnected, mailStamp, onMailChange, MAIL_EXAMPLE } from './mail-card.js?v=20261119a';
+import { navigate, reducedMotion } from './motion.js?v=20261119a';
+import { voiceInput } from './voice.js?v=20261119a';
 
 export const MAX_MESSAGE = 4000;
 
@@ -68,6 +70,8 @@ const S = {
   undoing: new Set(),
   undoErr: new Map(),
   undoneLocal: new Map(), // change id → undone_at, from undo results (file changes are not in agent_changes)
+  justUndone: new Map(),  // change id → when it was undone here (for the strike-through drawing in)
+  arrived: new Map(),     // 'u:<at>' | 'w:<at>' | message id → when it reached this page (entry animations are timed from it)
   seq: 0
 };
 const keyOf = (id = S.current) => id || 'new';
@@ -156,6 +160,8 @@ async function send(text) {
   S.errors.delete(key);
   S.drafts.set(key, '');
   const at = new Date().toISOString();
+  S.arrived.set(`u:${at}`, Date.now());
+  S.arrived.set(`w:${at}`, Date.now());
   S.pending.set(key, { text: t, at });
   emit();
   const res = await chatSend({ chat_id: chatId || undefined, message: t });
@@ -171,6 +177,7 @@ async function send(text) {
   const m = res.message && typeof res.message === 'object' ? res.message : {};
   const n = ++S.seq;
   const mid = m.id ?? `local-a-${n}`;
+  S.arrived.set(String(mid), Date.now());
   S.extra.set(String(mid), { changes: arr(res.changes), draft: res.draft && safeHash(`#inbox/${res.draft.lead_id}`) ? res.draft : null });
   const you = { id: `local-u-${n}`, role: 'user', text: t, at, steps: [], links: [], changes: [] };
   const reply = norm({ ...m, id: mid, role: 'assistant', at: m.at || new Date().toISOString(), model: m.model || res.model, cost_usd: m.cost_usd ?? res.cost_usd });
@@ -191,7 +198,7 @@ async function doUndo(changeId) {
   emit();
   const r = await undoChange(changeId);
   S.undoing.delete(changeId);
-  if (r.ok) { S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast(r.kind === 'file' ? 'Undone. The file is back the way it was.' : r.kind === 'file_link' ? 'Undone. The file is no longer linked.' : 'Undone. The record is back the way it was.'); }
+  if (r.ok) { S.justUndone.set(changeId, Date.now()); S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast(r.kind === 'file' ? 'Undone. The file is back the way it was.' : r.kind === 'file_link' ? 'Undone. The file is no longer linked.' : 'Undone. The record is back the way it was.'); }
   else if (r.error === 'already_undone') { S.undoneLocal.set(changeId, r.undone_at || new Date().toISOString()); toast('That change was already undone.'); }
   else { S.undoErr.set(changeId, r.detail || r.message || 'Could not undo that.'); toast(r.detail || r.message || 'Could not undo that.', 'bad'); }
   emit();
@@ -610,9 +617,103 @@ function tilesBlock(m) {
 /** A short fingerprint of a reply's tiles, so the log redraws when a record or an undo changes. */
 const tilesStamp = (m) => tilesFor(m).map((t) => `${t.d.name}|${t.d.meta}|${t.hash || ''}|${t.change ? `${t.change.undone_at || ''}${S.undoing.has(t.change.id)}${S.undoErr.get(t.change.id) || ''}` : ''}`).join('~');
 
+/* ================================================================== motion
+   New things in the conversation arrive with a short rise and fade; a reply's words
+   come in progressively, then its tiles one after another. Every animation is timed
+   from when the thing reached the page (S.arrived) and written as a CSS animation
+   with a (possibly negative) delay, so a redraw in the middle simply carries on where
+   it was, and anything older than a moment is drawn plainly. Reduced motion: fades
+   only, and the words are all there at once. */
+const ENTER_WINDOW = 2600;   // ms after arrival in which something still animates in
+const ageOf = (key) => { const t = S.arrived.get(String(key)); return t ? Date.now() - t : Infinity; };
+/** Mark a node as arriving `delay` ms after its arrival time (nothing if it is old). */
+function entering(node, age, delay = 0, cls = 'is-entering') {
+  if (!node || age > ENTER_WINDOW + delay) return node;
+  node.classList.add(cls);
+  node.style.setProperty('--enter-delay', `${Math.round(delay - age)}ms`);
+  return node;
+}
+
+/** How long a reveal of n words (or n blocks) takes: quick, and capped for long replies. */
+const REVEAL_MAX = 560;
+const WORD_STEP = 22;
+function revealPlan(words, blocks) {
+  if (words <= 140) return { by: 'word', step: Math.min(WORD_STEP, REVEAL_MAX / Math.max(1, words)), total: Math.min(REVEAL_MAX, words * WORD_STEP) };
+  return { by: 'block', step: Math.min(80, REVEAL_MAX / Math.max(1, blocks)), total: Math.min(REVEAL_MAX, blocks * 80) };
+}
+/**
+ * Wrap the words of `root` (text nodes only, DOM built with el()) in spans that fade in one
+ * after another. Words before `from` are left as they are (already shown). `base` is the
+ * delay of word `from` in ms (negative: the reveal started that long ago).
+ * → the number of words in root.
+ */
+function wrapWords(root, { from = 0, step = WORD_STEP, base = 0, by = 'word' } = {}) {
+  if (by === 'block') {
+    const blocks = [...root.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li')];
+    blocks.forEach((b, i) => { if (i >= from) { b.classList.add('cx-w'); b.style.animationDelay = `${Math.round(base + (i - from) * step)}ms`; } });
+    return blocks.length;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) texts.push(n);
+  let i = 0;
+  for (const t of texts) {
+    const parts = t.data.split(/(\s+)/);
+    if (parts.length === 1 && !parts[0]) continue;
+    const frag = document.createDocumentFragment();
+    for (const part of parts) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) { frag.append(part); continue; }
+      if (i >= from) {
+        const w = document.createElement('span');
+        w.className = 'cx-w';
+        w.style.animationDelay = `${Math.round(base + (i - from) * step)}ms`;
+        w.textContent = part;
+        frag.append(w);
+      } else frag.append(part);
+      i++;
+    }
+    t.replaceWith(frag);
+  }
+  return i;
+}
+const countWords = (text) => (String(text || '').match(/\S+/g) || []).length;
+
+/**
+ * The reply renderer: richText into `container`, revealed progressively. Today the whole
+ * reply arrives at once and is fed in one appendText(); a streamed reply would call
+ * appendText(chunk) as each chunk lands, and only the new words fade in. done() ends it.
+ */
+export function replyRenderer(container, { age = 0 } = {}) {
+  let buffer = '';
+  let shown = 0;          // words already placed (and animating or done)
+  let started = Date.now() - age;
+  const reduced = reducedMotion();
+  return {
+    appendText(chunk) {
+      buffer += String(chunk || '');
+      fill(container, buffer.trim() ? richText(buffer) : el('p', { class: 'muted' }, 'No reply came back.'));
+      const total = countWords(buffer);
+      if (reduced || !buffer.trim()) { shown = total; return; }
+      const blocks = container.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').length;
+      const plan = revealPlan(total, blocks);
+      const sinceStart = Date.now() - started;
+      if (sinceStart > plan.total + 400 && shown === 0) { shown = total; return; }   // an old reply: plain
+      // words already shown keep their timing (they started `sinceStart` ago); new ones follow on
+      if (plan.by === 'block' && shown === 0) wrapWords(container, { by: 'block', step: plan.step, base: -sinceStart });
+      else wrapWords(container, { from: 0, step: plan.step, base: -sinceStart });
+      shown = total;
+    },
+    done() { started = Date.now(); },
+    get words() { return shown; },
+    get revealMs() { const t = countWords(buffer); return reduced ? 0 : revealPlan(t, container.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').length).total; }
+  };
+}
+
 function youMsg(m, { pending = false } = {}) {
-  return el('li', { class: `cx-msg is-you${pending ? ' is-pending' : ''}`, dataset: { msg: String(m.id ?? ''), role: 'user' } },
+  const li = el('li', { class: `cx-msg is-you${pending ? ' is-pending' : ''}`, dataset: { msg: String(m.id ?? ''), role: 'user' } },
     el('div', { class: 'cx-you', title: m.at ? timeOnly(m.at) : null }, m.text));
+  return entering(li, ageOf(`u:${m.at}`));
 }
 
 function agentMsg(m) {
@@ -1009,9 +1110,10 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     onUpdate?.();
   }
 
-  function focus() {
+  function focus(delay = 20) {
     if (view !== 'chat' && dock && node.contains(form)) return;   // the composer is hidden with the conversation
-    setTimeout(() => { box.focus({ preventScroll: true }); const n = box.value.length; box.setSelectionRange(n, n); }, 20);
+    const go = () => { box.focus({ preventScroll: true }); const n = box.value.length; box.setSelectionRange(n, n); };
+    if (delay === 0) go(); else setTimeout(go, delay);
   }
 
   /** The dropdown opening: an empty new conversation gives way to the newest one. */

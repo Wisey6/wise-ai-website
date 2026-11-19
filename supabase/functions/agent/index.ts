@@ -50,7 +50,8 @@ import {
   overDailyLimit, decodeActions, referencedIds, scrubText, validateActions,
 } from "./validate.ts";
 import { allowedHashes, buildSnapshot, isEmptyHub, serialiseSnapshot, type SnapshotRows } from "./snapshot.ts";
-import { CHAT_MODELS, type Member, chatAction, runChat } from "./chat.ts";
+import { CHAT_MODELS, type Member, chatAction, profileParts, runChat } from "./chat.ts";
+import { tokenProfile } from "./profile.ts";
 import { checkChatRequest } from "./chat-rules.ts";
 import {
   ASK_SCHEMA, ASK_SYSTEM, BRIEFING_SCHEMA, BRIEFING_SYSTEM, DOER_SCHEMA, DOER_SYSTEM,
@@ -488,13 +489,23 @@ Deno.serve(async (req) => {
     }
 
     // The assistant's own actions and turns need to know who is asking.
-    const isChat = body.agent === "chat" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete"].includes(String(body.action));
+    const isChat = body.agent === "chat" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete", "token_profile"].includes(String(body.action));
     let member: Member | null = null;
     if (isChat) {
       const { data: m, error: mErr } = await db.rpc("hq_member_for_user", { p_user_id: userId });
       if (mErr) throw mErr;
       if (!m?.member_id) return json(req, 401, { ok: false, error: "unauthorized" });
       member = { id: String(m.member_id), name: String(m.name), role: String(m.role) };
+    }
+    if (body.action === "token_profile") {
+      // Owner-only diagnostics: token counts of the chat's parts (count_tokens, no model call, no cost).
+      if (member!.role !== "owner") return json(req, 403, { ok: false, error: "owner_only" });
+      if (!configured) return json(req, 503, { ok: false, error: "ai_not_configured" });
+      const parts = await profileParts({ ...ctx, member: member! }, body.chat_id);
+      const models = [HAIKU, SONNET];
+      const out = [];
+      for (const m of models) out.push(await tokenProfile(m, parts));
+      return json(req, 200, { ok: true, profile: out });
     }
     if (body.action !== undefined && isChat) return await chatAction({ ...ctx, member: member! }, body);
     if (body.agent === "chat") {

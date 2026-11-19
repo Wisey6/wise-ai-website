@@ -603,3 +603,36 @@ textarea.camp-tpl-body { min-height: 128px; font-size: var(--fs-body); }
   .set-day { min-width: 0; flex: 1 1 0; padding: 0; font-size: var(--fs-meta); }
   .set-int-name { min-width: 0; }
 }
+
+/* ------------------------------------------------- Settings: Connections
+   One row per connection: name and what it lets the assistant do | status (dot + word) | the
+   one action. "How to set up" expands numbered steps under the row. */
+.set-sec[data-sec="connections"] > .set-sec-body { max-width: 1060px; }
+.con-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.con-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 170px 200px; grid-template-areas: "main status acts" "steps steps steps";
+  align-items: start; gap: var(--space-2) var(--space-5); padding: var(--space-4) 0; border-bottom: 1px solid var(--line);
+}
+.con-main { grid-area: main; display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.con-name { margin: 0; font-size: var(--fs-body); font-weight: 600; line-height: var(--lh-title); color: var(--ink); }
+.con-does { font-size: var(--fs-sm); color: var(--body); line-height: var(--lh-body); max-width: 60ch; }
+.con-note[hidden], .con-err:empty { display: none; }
+.con-status { grid-area: status; padding-top: 2px; min-width: 0; }
+.con-badge { white-space: normal; flex-wrap: wrap; row-gap: 0; }
+.con-who { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.con-acts { grid-area: acts; display: flex; gap: var(--space-2); justify-content: flex-end; flex-wrap: wrap; }
+.con-acts:empty { display: none; }
+.con-how .con-chev { display: inline-flex; transition: transform var(--dur) var(--ease); }
+.con-how[aria-expanded="true"] .con-chev { transform: rotate(180deg); }
+.con-steps { grid-area: steps; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) 0 var(--space-2); max-width: 72ch; font-size: var(--fs-sm); }
+.con-row.is-muted .con-name, .con-row.is-muted .con-does { color: var(--faint); }
+.con-row.is-muted .con-name { font-weight: 500; }
+.set-sec .h2:focus { outline: none; }
+.set-moved a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.ag-conn-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); margin-top: var(--space-1); width: fit-content; }
+.ag-conn-link:hover { color: var(--ink); }
+@media (max-width: 1100px) { .con-row { grid-template-columns: minmax(0, 1fr) 160px 180px; } }
+@media (max-width: 760px) {
+  .con-row { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "status" "acts" "steps"; }
+  .con-acts { justify-content: flex-start; }
+}
