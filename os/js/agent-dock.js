@@ -188,7 +188,7 @@ export function mountAgentDock() {
     peekOut?.cancel(); peekOut = null;
     if (instant) { peek.hidden = true; return; }
     const move = !reduced();
-    peekOut = peek.animate([{ opacity: 1 }, { opacity: 0, transform: move ? 'translate(-50%, 6px) scale(.97)' : 'translate(-50%, 0)' }], { duration: 200, easing: EASE_IN, fill: 'forwards' });
+    peekOut = peek.animate([{ opacity: 1 }, { opacity: 0, transform: move ? 'translate(-50%, 6px) scale(.97)' : 'translate(-50%, 0)' }], { duration: 280, easing: EASE_IN_OUT, fill: 'forwards' });
     peekOut.finished.then(() => { if (!peek.classList.contains('is-in')) peek.hidden = true; peekOut?.cancel(); peekOut = null; }, () => {});
   }
   function armPeek(ms) {
@@ -404,7 +404,14 @@ export function mountAgentDock() {
       go(panel, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
     }
     syncStart(anims);
-    const m = { anims, end: () => { root.classList.remove('is-morphing', 'is-closing'); after(); } };
+    const m = { anims, end: () => {
+      // the pill takes over from the skin in the same frame: no fade of its own border
+      launch.style.transition = 'none';
+      root.classList.remove('is-morphing', 'is-closing');
+      after();
+      void launch.offsetWidth;
+      launch.style.transition = '';
+    } };
     morph = m;
     Promise.all(anims.map((a) => a.finished)).then(() => { if (morph === m) stopMorph(); }, () => {});
   }

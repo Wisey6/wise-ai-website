@@ -163,6 +163,7 @@
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4) var(--space-5);
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--agd-shadow);
   scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
+  overflow-anchor: none;   /* chat.js keeps the reader's place itself */
 }
 /* only the most recent part shows; the top edge fades out when there is more */
 .agd-dock.has-more:not(.is-expanded) .cx-scroll {
@@ -277,7 +278,7 @@ body:has(.modal-backdrop) .agd-dock, body:has(.pal) .agd-dock, body:has(.gate) .
   :root { --agd-off: 0px; --agd-gap: calc(62px + 10px + env(safe-area-inset-bottom)); --agd-rest: 172px; --agd-h: 46px; }
   .agd-dock { left: 0; z-index: 34; }
   .agd-dock.is-kb { bottom: calc(8px + var(--agd-kb)); z-index: 61; }
-  .agd-dock[data-agd-state=open] { width: calc(100vw - 16px); z-index: 61; }
+  .agd-dock[data-agd-state=open], .agd-dock.is-closing { width: calc(100vw - 16px); z-index: 61; }
   .agd-kbd { display: none; }
   .agd-tip { display: none; }
   .agd-dock .cx-examples { grid-template-columns: 1fr; }

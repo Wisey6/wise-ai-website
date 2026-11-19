@@ -8,11 +8,23 @@
 // - Toasts close up smoothly when one leaves (a FLIP on the stack, transform only).
 // No dependencies; safe to import more than once.
 
+/**
+ * View Transitions are wired but held off: in measured runs (software rendering, 1440 and
+ * 3440 wide) the snapshot of the old and new page cost a 60–200 ms frame, where the plain
+ * page arrival (.page, os.css) stays at about one frame. Turn this on after a trace on
+ * the real machines (GPU) shows the cross-fade holds 60 fps.
+ */
+export const VIEW_TRANSITIONS = false;
+const canTransition = () => VIEW_TRANSITIONS && Boolean(document.startViewTransition) && !document.hidden && !running;
+
 export const reducedMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
 
 const routeOf = (h) => String(h || '').replace(/^#\/?/, '').split('/')[0] || 'home';
 let lastRoute = routeOf(location.hash);
 let running = null;
+// The page's own arrival (.page, os.css) would replay when the transition ends: the
+// transition is the arrival, so the new page is marked as already in.
+const settle = () => { for (const p of document.querySelectorAll('#view .page')) p.style.animation = 'none'; };
 
 /**
  * Wrap a navigation's update. `update` may return a promise (the hub's render is async).
@@ -23,11 +35,11 @@ export function viewTransition(update) {
   const to = routeOf(location.hash);
   const changed = to !== lastRoute;
   lastRoute = to;
-  if (!changed || !document.startViewTransition || document.hidden || running) return update();
+  if (!changed || !canTransition()) return update();
   const root = document.documentElement;
   root.classList.add('mo-vt');
   try {
-    running = document.startViewTransition(() => Promise.resolve(update()).catch(() => {}));
+    running = document.startViewTransition(() => Promise.resolve(update()).catch(() => {}).then(settle));
   } catch { root.classList.remove('mo-vt'); return update(); }
   const done = () => { running = null; root.classList.remove('mo-vt'); };
   running.finished.then(done, done);
@@ -38,7 +50,7 @@ export function viewTransition(update) {
 export function navigate(hash) {
   const h = String(hash || '');
   if (!h.startsWith('#') || location.hash === h) { if (location.hash === h) window.dispatchEvent(new HashChangeEvent('hashchange')); return; }
-  if (!document.startViewTransition || document.hidden || running || routeOf(h) === routeOf(location.hash)) { location.hash = h; return; }
+  if (!canTransition() || routeOf(h) === routeOf(location.hash)) { location.hash = h; return; }
   // The hub renders on hashchange; the new view is in place a task after it (capped at 400 ms).
   const root = document.documentElement;
   root.classList.add('mo-vt');
@@ -47,7 +59,7 @@ export function navigate(hash) {
     running = document.startViewTransition(() => new Promise((res) => {
       const t = setTimeout(res, 400);
       // (not a requestAnimationFrame: frames are held while a transition's update runs)
-      window.addEventListener('hashchange', () => setTimeout(() => { clearTimeout(t); res(); }, 0), { once: true });
+      window.addEventListener('hashchange', () => setTimeout(() => { clearTimeout(t); settle(); res(); }, 0), { once: true });
       location.hash = h;
     }));
   } catch { root.classList.remove('mo-vt'); location.hash = h; return; }

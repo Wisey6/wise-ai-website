@@ -169,8 +169,8 @@ try {
     check(w1.clock !== w2.clock && Math.abs(w1.x - w2.x) < 0.5 && /^\d:\d\d$/.test(w2.clock), `the status line ticks without shifting (${w1.clock} → ${w2.clock}, x ${w1.x.toFixed(1)} → ${w2.x.toFixed(1)})`);
     await page.waitForFunction(() => document.querySelectorAll('.agd-dock .cx-msg.is-agent').length >= 4, null, { timeout: 9000 });
     await page.waitForTimeout(300);
-    const kept = await page.evaluate(() => ({ top: document.querySelector('.agd-dock .cx-scroll').scrollTop, chip: !document.querySelector('.agd-dock .cx-newchip').hidden }));
-    check(kept.top < 10 && kept.chip, `a reply that lands while you read further up does not pull you down; a "New reply" chip shows (scrollTop ${Math.round(kept.top)})`);
+    const kept = await page.evaluate(() => { const s = document.querySelector('.agd-dock .cx-scroll'); return { top: s.scrollTop, gap: s.scrollHeight - s.scrollTop - s.clientHeight, chip: !document.querySelector('.agd-dock .cx-newchip').hidden }; });
+    check(kept.top < 24 && kept.gap > 200 && kept.chip, `a reply that lands while you read further up does not pull you down; a "New reply" chip shows (scrollTop ${Math.round(kept.top)})`);
     // the words came in progressively and all of them arrive
     const rev = await page.evaluate(() => { const m = [...document.querySelectorAll('.agd-dock .cx-msg.is-agent')].pop(); const ws = [...m.querySelectorAll('.cx-text .cx-w')]; return { n: ws.length, text: m.querySelector('.cx-text').innerText }; });
     await page.waitForTimeout(900);

@@ -1125,7 +1125,6 @@ a.feed-row:hover { text-decoration: none; background: linear-gradient(90deg, var
 ::view-transition-group(os-view) { animation-duration: 0s; }
 @keyframes mo-vt-out { to { opacity: 0; } }
 @keyframes mo-vt-in { from { opacity: 0; transform: translateY(4px); } }
-html.mo-vt .page { animation: none; }   /* the transition already does the arrival */
 @media (prefers-reduced-motion: reduce) {
   /* fades only: keep opacity changes, drop every movement */
   :root { --rise: 0px; }
