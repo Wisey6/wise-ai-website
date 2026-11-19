@@ -39,14 +39,15 @@ export function navigate(hash) {
   const h = String(hash || '');
   if (!h.startsWith('#') || location.hash === h) { if (location.hash === h) window.dispatchEvent(new HashChangeEvent('hashchange')); return; }
   if (!document.startViewTransition || document.hidden || running || routeOf(h) === routeOf(location.hash)) { location.hash = h; return; }
-  // The hub renders on hashchange; the new view is ready a frame after it (capped at 400 ms).
+  // The hub renders on hashchange; the new view is in place a task after it (capped at 400 ms).
   const root = document.documentElement;
   root.classList.add('mo-vt');
   lastRoute = routeOf(h);
   try {
     running = document.startViewTransition(() => new Promise((res) => {
       const t = setTimeout(res, 400);
-      window.addEventListener('hashchange', () => requestAnimationFrame(() => { clearTimeout(t); res(); }), { once: true });
+      // (not a requestAnimationFrame: frames are held while a transition's update runs)
+      window.addEventListener('hashchange', () => setTimeout(() => { clearTimeout(t); res(); }, 0), { once: true });
       location.hash = h;
     }));
   } catch { root.classList.remove('mo-vt'); location.hash = h; return; }

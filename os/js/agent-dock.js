@@ -340,7 +340,13 @@ export function mountAgentDock() {
   const rectOf = (n) => n.getBoundingClientRect();
   // Compositor (transform) and main-thread (clip-path) animations would otherwise start a
   // frame or two apart and the owl would leave its outline behind: one start time for all.
-  const syncStart = (anims) => { const t = document.timeline?.currentTime; if (t != null) for (const a of anims) a.startTime = t; };
+  // They also start on the next frame, not when they were made: the work of opening takes
+  // a frame or two on a slow machine, and the first frames shown would otherwise be skipped.
+  const syncStart = (anims) => {
+    if (!anims.length || document.timeline?.currentTime == null) return;
+    for (const a of anims) a.pause();
+    requestAnimationFrame((t) => { for (const a of anims) if (a.playState === 'paused') a.startTime = t; });
+  };
   /** The pill's outline as a clip-path on the bar's skin: inset from the bar's edges. */
   const insetFor = (pill, bar, grow, r) => `inset(${pill.top - bar.top + grow}px ${bar.right - pill.right + grow}px ${bar.bottom - pill.bottom + grow}px ${pill.left - bar.left + grow}px round ${r}px)`;
   const fullInset = (r) => `inset(0px 0px 0px 0px round ${r}px)`;

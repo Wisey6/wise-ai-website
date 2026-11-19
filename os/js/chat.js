@@ -1183,7 +1183,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     if (S.current) ensureMsgs(S.current);
     if (view === 'history' || !dock) ensurePreviews();
     drawHead();
-    drawHistory();
+    if (view === 'history' || !dock) drawHistory();   // the dock shows one pane at a time
     drawLog();
     drawNotice();
     paintSend();

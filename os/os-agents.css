@@ -701,6 +701,8 @@ a.cx-tile-main:active { background: var(--hover); }
 .cx-tile.is-undoing { animation: cx-settle 420ms var(--ease-spring) var(--undo-delay, 0ms) backwards; }
 .cx-tile.is-undoing .cx-tile-state { animation: mo-fade var(--dur-2) var(--ease-out) calc(var(--undo-delay, 0ms) + 140ms) backwards; }
 @keyframes cx-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cx-tile.is-undoing .cx-tile-name, .cx-tile.is-undoing .cx-tile-verb { animation: cx-undo-ink 360ms var(--ease-out) var(--undo-delay, 0ms) backwards; }
+@keyframes cx-undo-ink { from { color: var(--ink); } }
 @keyframes cx-settle { 0% { transform: scale(.985); } }
 .cx-tile-undo:active:not(:disabled) { transform: scale(.96); }
 

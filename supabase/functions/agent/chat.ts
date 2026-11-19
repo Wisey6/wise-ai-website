@@ -533,6 +533,8 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   }
 
   let { text, title } = splitTitle(finalText);
+  // The hub adds the "[What I did: ...]" record itself; a model that imitates it is cleaned up here.
+  text = text.replace(/^\s*\[What I did:[^\n]*\]\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
   if (stopNote) {
     const did = t.steps.filter((s) => s.ok && s.kind !== "read").map((s) => `- ${s.text}`);
     text = [text, `${stopNote} ${did.length ? "Done so far:\n" + did.join("\n") : "Nothing was changed."}\nAsk me to carry on for the rest.`].filter(Boolean).join("\n\n");
