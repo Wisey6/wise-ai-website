@@ -16,6 +16,28 @@ export const MAIL_EXAMPLE = 'Any replies in my email today that need an answer?'
 const COLLAPSE_LINES = 10;
 const arr = (v) => (Array.isArray(v) ? v : []);
 const expanded = new Set();
+// Motion: a draft that turns into Sent while it is on screen gets a short, satisfying
+// change (the tick draws, the card settles). Timed from when it was seen, so a redraw
+// mid-way carries on (os-mail.css).
+const lastStatus = new Map();   // draft id → the status it was last drawn with
+const sentAt = new Map();       // draft id → when it was seen turning into Sent
+function stateChange(id, status) {
+  const prev = lastStatus.get(id);
+  lastStatus.set(id, status);
+  if (status === 'sent' && prev && prev !== 'sent' && !sentAt.has(id)) sentAt.set(id, Date.now());
+  const age = sentAt.has(id) ? Date.now() - sentAt.get(id) : Infinity;
+  return age < 1400 ? age : null;
+}
+function tickIcon() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: '14', height: '14', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true', class: 'cx-mail-tick' })) svg.setAttribute(k, v);
+  const p = document.createElementNS(ns, 'path');
+  p.setAttribute('d', 'M5 12.5l4.5 4.5L19 7.5');
+  p.setAttribute('pathLength', '1');
+  svg.append(p);
+  return svg;
+}
 
 let booted = false;
 /** Ask once (after sign-in) for the connection and the person's drafts. */
@@ -58,9 +80,11 @@ export function emailCard(e, { stale = false } = {}) {
   const open = expanded.has(e.draft_id);
   const shown = long && !open ? `${lines.slice(0, COLLAPSE_LINES).join('\n').slice(0, 900).trimEnd()}…` : body;
 
+  const justSent = stateChange(e.draft_id, busy ? 'sending' : status);
   const head = el('p', { class: 'cx-mail-head' }, icon('mail', 14),
     el('span', { class: 'cx-mail-kind' }, e.is_reply ? 'Reply draft' : 'Email draft'),
     el('span', { class: 'cx-mail-state', dataset: { mailState: status } },
+      status === 'sent' ? tickIcon() : null,
       status === 'sent' ? `Sent ${row?.sent_at ? timeOnly(row.sent_at) : ''}`.trim()
         : status === 'discarded' ? 'Discarded'
           : status === 'sending' || busy ? 'Sending…'
@@ -85,9 +109,10 @@ export function emailCard(e, { stale = false } = {}) {
       el('a', { class: 'btn btn-ghost btn-sm', href: gmailDraftLink(row, e.gmail_url), target: '_blank', rel: 'noopener noreferrer', dataset: { act: 'mail-edit' } }, 'Edit in Gmail'),
       el('button', { type: 'button', class: 'link-btn cx-mail-discard', dataset: { act: 'mail-discard' }, onClick: () => discardDraft(e.draft_id) }, 'Discard'));
   }
-  const card = el('div', { class: `cx-mail is-${status}${busy ? ' is-busy' : ''}`, dataset: { mailDraft: e.draft_id, state: status } },
+  const card = el('div', { class: `cx-mail is-${status}${busy ? ' is-busy' : ''}${justSent !== null ? ' is-just-sent' : ''}`, dataset: { mailDraft: e.draft_id, state: status } },
     head, meta, text, more, acts,
     error && status === 'draft' ? el('p', { class: 'cx-mail-err', role: 'alert' }, error) : null);
+  if (justSent !== null) card.style.setProperty('--sent-delay', `${-justSent}ms`);
   return card;
 }
 

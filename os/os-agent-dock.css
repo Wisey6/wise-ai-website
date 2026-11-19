@@ -128,7 +128,7 @@
   border-color: transparent; background: transparent; box-shadow: none;
 }
 .agd-dock .cx-box:focus-within { border-color: transparent; box-shadow: none; }
-.agd-dock .cx-box > :not(.agd-skin) { position: relative; z-index: 1; }
+.agd-dock .cx-box > :not(.agd-skin, .cx-ghost, .cx-mic-menu) { position: relative; z-index: 1; }
 .agd-skin { position: absolute; inset: -1px; z-index: 0; pointer-events: none; contain: layout style; filter: drop-shadow(0 1px 1px rgba(10,14,17,.07)) drop-shadow(0 12px 16px rgba(10,14,17,.13)); }
 .agd-skin-edge, .agd-skin-fill, .agd-skin-ring { position: absolute; display: block; }
 .agd-skin-edge { inset: 0; border-radius: 23px; background: var(--ink); }

@@ -340,13 +340,21 @@ export default function settings({ param } = {}) {
   renderAlerts();
   renderSup();
   // #settings/connections (or any section's name): open at that section.
+  // Sections above can still grow as they load (usage, the team), so it stays anchored
+  // for a moment, until the person scrolls or clicks.
   if (param) {
     setTimeout(() => {
       const sec = root.querySelector(`[data-sec="${CSS.escape(param)}"]`);
       if (!sec || !sec.isConnected) return;
-      sec.scrollIntoView({ block: 'start' });
+      const anchor = () => sec.scrollIntoView({ block: 'start' });
+      anchor();
       const h = sec.querySelector('.h2');
       if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+      const ro = new ResizeObserver(() => anchor());
+      ro.observe(root);
+      const stop = () => { ro.disconnect(); for (const ev of ['wheel', 'pointerdown', 'keydown', 'touchstart']) window.removeEventListener(ev, stop, true); };
+      for (const ev of ['wheel', 'pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, stop, true);
+      setTimeout(stop, 2500);
     }, 0);
   }
   root.onState = () => {

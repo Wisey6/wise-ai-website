@@ -9,7 +9,7 @@ import {
   undoConflicts, undoInsertPlan, taints, taintCheck, businessMemoryAllowed, callTimeout, TAINT_WRITE_CAP, undoBlocked, FILE_LINK_KIND,
 } from "../functions/agent/chat-rules.ts";
 import * as M from "../functions/agent/money.ts";
-import { CHAT_SYSTEM, CHAT_TOOLS } from "../functions/agent/chat-prompt.ts";
+import { CHAT_SYSTEM, CHAT_TOOLS, CORE_TOOL_NAMES, allTools } from "../functions/agent/chat-prompt.ts";
 import * as F from "../../os/js/views/money-math.js";
 
 const TODAY = "2026-11-18";
@@ -301,7 +301,13 @@ test("chat requests and ownership", () => {
 test("system prompt and tools are byte-stable and within the strict-tool limits", () => {
   assert.ok(!/\d{4}-\d{2}-\d{2}/.test(CHAT_SYSTEM), "no dates in the system prompt");
   const names = CHAT_TOOLS.map((t) => t.name);
-  assert.deepEqual(names, [...names].sort());
+  // Fixed order: the core tools (sorted) first, then each deferred group (sorted within it).
+  assert.deepEqual(allTools([], []).map((t) => t.name), names, "deterministic");
+  const core = CHAT_TOOLS.filter((t) => !t.defer_loading).map((t) => t.name);
+  assert.deepEqual(core, [...core].sort());
+  assert.deepEqual(core, CORE_TOOL_NAMES);
+  assert.ok(CHAT_TOOLS.findIndex((t) => t.defer_loading) === core.length, "deferred tools come after the core");
+  assert.ok(core.length <= 10, "a small core");
   const strict = CHAT_TOOLS.filter((t) => t.strict);
   assert.ok(strict.length <= 20);
   const optional = strict.reduce((n, t) => n + Object.keys(t.input_schema.properties).length - t.input_schema.required.length, 0);

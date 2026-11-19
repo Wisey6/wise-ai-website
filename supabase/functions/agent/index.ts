@@ -52,6 +52,7 @@ import {
 import { allowedHashes, buildSnapshot, isEmptyHub, serialiseSnapshot, type SnapshotRows } from "./snapshot.ts";
 import { CHAT_MODELS, type Member, chatAction, profileParts, runChat } from "./chat.ts";
 import { tokenProfile } from "./profile.ts";
+import { CHAT_MODEL_SETTINGS, modelSetting } from "./chat-route.ts";
 import { checkChatRequest } from "./chat-rules.ts";
 import {
   ASK_SCHEMA, ASK_SYSTEM, BRIEFING_SCHEMA, BRIEFING_SYSTEM, DOER_SCHEMA, DOER_SYSTEM,
@@ -478,13 +479,14 @@ Deno.serve(async (req) => {
 
     if (body.action === "status") {
       const runs = await runsToday(ctx);
-      const chatModel = CHAT_MODELS.includes(String(settings.agent_chat_model)) ? String(settings.agent_chat_model) : SONNET;
+      const chatSetting = modelSetting(settings.agent_chat_model);
+      const chatModel = chatSetting === "sonnet" ? SONNET : chatSetting === "opus" ? CHAT_MODELS[2] : HAIKU;
       return json(req, 200, {
         configured, enabled,
         agents: Object.fromEntries(AGENTS.map((a) => [a, agentOn(a)])),
         spent_usd: ctx.spent, cap_usd: ctx.cap, runs_today: runs, limits: DAILY_LIMITS,
-        chat_model: chatModel,
-        chat: { enabled: enabled && agentOn("chat"), runs_today: runs.chat, limit: DAILY_LIMITS.chat, model: chatModel },
+        chat_model: chatModel, chat_model_setting: chatSetting, chat_model_options: CHAT_MODEL_SETTINGS,
+        chat: { enabled: enabled && agentOn("chat"), runs_today: runs.chat, limit: DAILY_LIMITS.chat, model: chatModel, setting: chatSetting },
       });
     }
 

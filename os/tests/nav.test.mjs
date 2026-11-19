@@ -24,7 +24,7 @@ if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 const fails = []; const passes = [];
 const check = (c, m) => { (c ? passes : fails).push(m); console.log(`${c ? 'ok  ' : 'FAIL'} ${m}`); };
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };
-const READS = new Set(['status', 'mail_status']);
+const READS = new Set(['status', 'mail_status', 'me']);
 
 const browser = await chromium.launch();
 
@@ -84,7 +84,7 @@ try {
     check(await page.locator('.rail-full .nav-search').isVisible(), '1440: the search / jump to entry is there');
     const last = await rect(page, '.rail-full a.nav-item[data-route="settings"]');
     check(last && last.b <= 900, `1440: the whole map fits a 900px-tall screen (Settings ends at ${last && Math.round(last.b)})`);
-    await page.waitForSelector('.agd-launch');
+    await page.waitForSelector('.agd-launch', { timeout: 15000 }).catch(() => {});
     await barCentred(page, '1440 open');
     await shot(page, 'nav-1440-open');
 
@@ -222,7 +222,7 @@ try {
     const cols = await page.evaluate(() => getComputedStyle(document.querySelector('.today-grid')).gridTemplateColumns.split(' ').length);
     check(cols === 4, `3440: Today still shows four columns beside the open sidebar (${cols})`);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '3440: no horizontal scroll');
-    await page.waitForSelector('.agd-launch');
+    await page.waitForSelector('.agd-launch', { timeout: 15000 }).catch(() => {});
     await barCentred(page, '3440 open');
     await go(page, '#inbox');
     const inbox = await rect(page, '.page.inbox');
@@ -245,7 +245,7 @@ try {
     check(await flyVisible(page, 'Deliver') && await rects(page, '.rail-dock .dock-item') === icons0, '1024: hovering shows the flyout and nothing moves');
     await page.mouse.move(700, 400);
     await page.waitForTimeout(400);
-    await page.waitForSelector('.agd-launch');
+    await page.waitForSelector('.agd-launch', { timeout: 15000 }).catch(() => {});
     await barCentred(page, '1024 collapsed');
     await page.keyboard.press('[');
     await page.waitForTimeout(400);

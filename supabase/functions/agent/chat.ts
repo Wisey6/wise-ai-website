@@ -410,7 +410,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
   t.team = team;
   const [mc, cc] = await Promise.all([mailContext({ db, member: ctx.member, chatId: chat.id }), calendarContext({ db, member: ctx.member, tz: ctx.tz })]);
   const ctxText = await contextBlock({ ...t, mailLine: mc.text, calLine: cc.text }, first);
-  const filesConnected = !/not connected|not set up|signing in again|could not be checked/i.test(ctxText.split("\n").find((l) => /^Business files|Google Drive/i.test(l)) ?? "");
+  const filesConnected = !/not connected|signing in again/i.test(ctxText.split("\n").find((l) => /^Business files|Google Drive/i.test(l)) ?? "");
   const setConn = (x: Turn) => { x.mailTools = mc.tools; x.mailLine = mc.text; x.calTools = cc.tools; x.calLine = cc.text; x.filesConnected = filesConnected; x.team = team; };
   setConn(t);
   const groups = pickGroups(check.message, connections(t));
@@ -429,6 +429,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     ];
     const add = toolChangesOk ? toolAddition(groups) : null;
     if (add) m.push(add);
+    t.loaded = new Set(add ? groups : []);
     return m;
   };
 
@@ -466,6 +467,8 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
         throw e;
       }
       calls++;
+      // Per-call cache picture for the run log (counts only): r = read, w = written, i = uncached input.
+      (route.calls ??= []).push({ m: String(res.model ?? model).replace("claude-", ""), r: res.usage?.cache_read_input_tokens ?? 0, w: res.usage?.cache_creation_input_tokens ?? 0, i: res.usage?.input_tokens ?? 0, o: res.usage?.output_tokens ?? 0 });
       byModel[String(res.model ?? model)] = addUsage(byModel[String(res.model ?? model)] ?? emptyTotals(), res.usage);
       usedModel = String(res.model ?? model);
       // Running cost on the run row after every call, so a cut-off turn is still counted.
@@ -561,7 +564,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
     changes: t.changes, ...(t.draft ? { draft: t.draft } : {}), ...(t.emailDrafts.length ? { email_drafts: t.emailDrafts } : {}),
     ...(t.eventProposals.length ? { event_proposals: t.eventProposals } : {}),
     usage: { input_tokens: totals.input, cache_read_input_tokens: totals.cacheRead, cache_creation_input_tokens: totals.cacheWrite, output_tokens: totals.output, iterations: calls, tool_calls: toolCalls },
-    route: { first: route.first, escalated: route.escalated, groups: route.groups, loaded: route.loaded },
+    route: { first: route.first, escalated: route.escalated, groups: route.groups, loaded: route.loaded, calls: route.calls },
     run_id: t.runId, model: usedModel, cost_usd: cost, spent_usd: ctx.spent + cost, cap_usd: ctx.cap,
   });
 }
@@ -612,10 +615,14 @@ async function updateRun(t: Turn, r: { status: string; model: string; totals: To
 
 // ------------------------------------------------------------------ tools
 
-type ToolOut = { content: string; is_error?: boolean };
+// deno-lint-ignore no-explicit-any
+type ToolOut = { content: string | any[]; is_error?: boolean };
 const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_file", ...MAIL_READ_TOOLS];
 
-async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
+async function runTool(t: Turn, name: string, rawInput: Row): Promise<ToolOut> {
+  // Dates copied from results carry a weekday ("Mon 2026-11-30"); tools take the bare date.
+  const input = stripWeekdays(rawInput);
+  if (name === "load_tools") return loadTools(t, input);
   try {
     // Prompt-injection containment: once this turn has read untrusted text, risky writes wait for the person.
     const blocked = taintCheck(name, input, t);
@@ -626,8 +633,9 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
       : CAL_TOOL_NAMES.includes(name) ? (t.calTools ? CAL_TOOLS[name] : undefined) : TOOLS[name];
     const out = await fn?.(t, input);
     if (!out) {
-      const names = [...CHAT_TOOLS, ...(t.mailTools ? MAIL_TOOL_DEFS : []), ...(t.calTools ? CAL_TOOL_DEFS : [])].map((x) => x.name);
-      return { is_error: true, content: `Unknown tool "${name}". The tools are: ${names.join(", ")}.` };
+      if (MAIL_TOOL_NAMES.includes(name)) return { is_error: true, content: "Their email is not connected. Say so in one line: they connect it in Settings, under Your sign-in, Email and calendar." };
+      if (CAL_TOOL_NAMES.includes(name)) return { is_error: true, content: "Their calendar is not connected. Say so in one line: Settings, under Your sign-in, Email and calendar." };
+      return { is_error: true, content: `Unknown tool "${name}". The core tools are: ${CORE_TOOL_NAMES.join(", ")}; others load with load_tools.` };
     }
     if (wasTainted && RECORD_WRITE_TOOLS.includes(name) && !out.unchanged) t.writesAfterTaint++;
     if (taints(name, input, out)) { t.tainted = true; if (MAIL_READ_TOOLS.includes(name)) t.mailTainted = true; }
@@ -643,6 +651,24 @@ async function runTool(t: Turn, name: string, input: Row): Promise<ToolOut> {
     t.steps.push({ tool: name, kind: "note", ok: false, text: `${name} failed` });
     return { is_error: true, content: "The hub could not do that just now (a database error). Tell the person it did not work." };
   }
+}
+
+/** load_tools: tool_reference blocks surface a deferred group for the rest of this turn, with its rules. */
+function loadTools(t: Turn, input: Row): ToolOut {
+  const g = String(input.group ?? "") as ToolGroup;
+  if (!(TOOL_GROUPS as readonly string[]).includes(g)) return { is_error: true, content: `group must be one of: ${TOOL_GROUPS.join(", ")}` };
+  if (g === "email" && !t.mailTools) return { content: "Email is not available: " + (t.mailLine || "not connected.") };
+  if (g === "calendar" && !t.calTools) return { content: "Calendar is not available: " + (t.calLine || "not connected.") };
+  t.loaded ??= new Set();
+  const already = t.loaded.has(g);
+  t.loaded.add(g);
+  if (already) return { content: `The ${g} tools are already loaded.` };
+  return {
+    content: [
+      { type: "text", text: `Loaded the ${g} tools.\n${GROUP_RULES[g] ?? ""}` },
+      ...GROUP_NAMES[g].map((name) => ({ type: "tool_reference", tool_name: name })),
+    ],
+  };
 }
 
 const refuse = (m: string): never => { throw new Refusal(m); };
@@ -787,7 +813,7 @@ function describe(t: Turn, table: string, diff: Row): string {
     if (v === null || v === "") val = "cleared";
     else if (k === "owner_id") val = t.team.find((m) => m.id === v)?.name ?? "someone";
     else if (k.endsWith("_id")) val = "linked";
-    else if (k === "next_followup_at") val = resultJson(v, t.tz).slice(1, 11);
+    else if (k === "next_followup_at") val = localDay(String(v), t.tz);
     else if (k === "notes") val = "note added";
     else if (k === "phone" || k === "email") val = "set";
     else if (typeof v === "number" && ["amount", "value", "monthly_value", "est_monthly_value"].includes(k)) val = `$${v.toLocaleString("en-AU")}`;
@@ -1206,5 +1232,11 @@ export async function profileParts(ctx: ChatCtx, chatId: unknown): Promise<impor
   } as Turn;
   const [mc, cc] = await Promise.all([mailContext({ db: ctx.db, member: ctx.member, chatId: null }), calendarContext({ db: ctx.db, member: ctx.member, tz: ctx.tz })]);
   t.mailLine = mc.text; t.calLine = cc.text;
-  return { system: CHAT_SYSTEM, tools: [...CHAT_TOOLS, ...MAIL_TOOL_DEFS, ...CAL_TOOL_DEFS], context: await contextBlock(t, false), history: buildHistory(prior as never) };
+  return {
+    system: CHAT_SYSTEM, tools: ALL_TOOLS, context: await contextBlock(t, false), history: buildHistory(prior as never),
+    variants: {
+      core_only: { system: CHAT_SYSTEM, tools: ALL_TOOLS.filter((x) => !(x as Row).defer_loading) },
+      all_loaded: { system: CHAT_SYSTEM, tools: ALL_TOOLS.map((x) => { const { defer_loading: _d, ...rest } = x as Row; return rest; }) },
+    },
+  };
 }

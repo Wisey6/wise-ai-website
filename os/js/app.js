@@ -726,11 +726,15 @@ function railController(shell, parts) {
     const slot = openSlot;
     if (!slot) return;
     openSlot = null;
-    if (slot.fly.contains(document.activeElement)) slot.trig.focus({ preventScroll: true });
+    const refocus = slot.fly.contains(document.activeElement);
     slot.fly.hidden = true;
     slot.s.classList.remove('is-open');
     slot.trig.setAttribute('aria-expanded', 'false');
+    if (refocus) focusQuietly(slot.trig);
   }
+  // Return focus to an icon without reopening its flyout.
+  let quiet = false;
+  function focusQuietly(n) { quiet = true; try { n.focus({ preventScroll: true }); } finally { quiet = false; } }
   const closeSoon = (ms = 280) => {
     clearTimeout(tClose);
     tClose = setTimeout(() => {
@@ -784,7 +788,7 @@ function railController(shell, parts) {
     });
     fly.addEventListener('pointerenter', () => { clearTimeout(tClose); clearTimeout(tSwitch); });
     fly.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch' && openSlot === slot) closeSoon(); });
-    trig.addEventListener('focus', () => { if (trig.matches(':focus-visible')) showFly(slot); });
+    trig.addEventListener('focus', () => { if (!quiet && trig.matches(':focus-visible')) showFly(slot); });
     slot.s.addEventListener('focusout', (e) => {
       if (e.relatedTarget && slot.s.contains(e.relatedTarget)) return;
       if (openSlot === slot && !trig.matches(':hover') && !fly.matches(':hover')) hideFly();
@@ -816,7 +820,7 @@ function railController(shell, parts) {
         e.preventDefault();
         e.stopPropagation();
         hideFly();
-        trig.focus();
+        focusQuietly(trig);
       }
     });
     fly.addEventListener('click', (e) => {
@@ -854,7 +858,7 @@ function railController(shell, parts) {
     if (e.key === 'Escape' && (openSlot || tipFor)) {
       const back = openSlot && openSlot.s.contains(document.activeElement) ? openSlot.trig : null;
       hideFly(); hideTip();
-      back?.focus();
+      if (back) focusQuietly(back);
     }
   });
   document.addEventListener('pointerdown', (e) => { if (openSlot && !openSlot.s.contains(e.target)) hideFly(); });

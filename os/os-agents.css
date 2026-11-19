@@ -613,24 +613,29 @@ a.cx-tile-main:hover .cx-tile-title .icon { color: var(--ink); transform: transl
   .cx-tile:has(> .cx-tile-undo, > .cx-tile-state) .cx-tile-title { padding-right: 66px; }
 }
 
-/* spot: the record a tile led to gets a soft ring, once */
-.is-spotted { animation: cx-spot 1600ms var(--ease) var(--spot-delay, 0ms) 1 both; }
+/* spot: the record a tile led to gets a soft ring, once. Same family as the click that
+   led there: the ring arrives by closing in from a wider, fainter one (--ease-out, as
+   the bar folds and the page cross-fades), holds, then fades (--ease-in-out). */
+.is-spotted { animation: cx-spot 1500ms linear var(--spot-delay, 0ms) 1 both; }
 tr.is-spotted { animation: none; }
-tr.is-spotted > td, tr.is-spotted > th { animation: cx-spot-cell 1600ms var(--ease) var(--spot-delay, 0ms) 1 both; }
+tr.is-spotted > td, tr.is-spotted > th { animation: cx-spot-cell 1500ms linear var(--spot-delay, 0ms) 1 both; }
 .drawer.is-spotted { animation-name: cx-spot-inset; }
 @keyframes cx-spot {
-  0% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
-  14%, 62% { box-shadow: 0 0 0 3px rgba(37,99,235,.32); }
+  0% { box-shadow: 0 0 0 12px rgba(37,99,235,0); animation-timing-function: cubic-bezier(.16,1,.3,1); }
+  22% { box-shadow: 0 0 0 3px rgba(37,99,235,.34); animation-timing-function: linear; }
+  62% { box-shadow: 0 0 0 3px rgba(37,99,235,.32); animation-timing-function: cubic-bezier(.65,0,.35,1); }
   100% { box-shadow: 0 0 0 3px rgba(37,99,235,0); }
 }
 @keyframes cx-spot-cell {
-  0% { box-shadow: inset 0 0 0 0 rgba(37,99,235,0); background-color: transparent; }
-  14%, 62% { box-shadow: inset 0 2px 0 rgba(37,99,235,.32), inset 0 -2px 0 rgba(37,99,235,.32); background-color: rgba(37,99,235,.05); }
+  0% { box-shadow: inset 0 0 0 0 rgba(37,99,235,0); background-color: transparent; animation-timing-function: cubic-bezier(.16,1,.3,1); }
+  22% { box-shadow: inset 0 2px 0 rgba(37,99,235,.32), inset 0 -2px 0 rgba(37,99,235,.32); background-color: rgba(37,99,235,.05); animation-timing-function: linear; }
+  62% { box-shadow: inset 0 2px 0 rgba(37,99,235,.32), inset 0 -2px 0 rgba(37,99,235,.32); background-color: rgba(37,99,235,.05); animation-timing-function: cubic-bezier(.65,0,.35,1); }
   100% { box-shadow: inset 0 2px 0 rgba(37,99,235,0), inset 0 -2px 0 rgba(37,99,235,0); background-color: transparent; }
 }
 @keyframes cx-spot-inset {
-  0% { box-shadow: inset 0 0 0 0 rgba(37,99,235,0), var(--shadow-float); }
-  14%, 62% { box-shadow: inset 0 0 0 3px rgba(37,99,235,.28), var(--shadow-float); }
+  0% { box-shadow: inset 0 0 0 0 rgba(37,99,235,0), var(--shadow-float); animation-timing-function: cubic-bezier(.16,1,.3,1); }
+  22% { box-shadow: inset 0 0 0 3px rgba(37,99,235,.28), var(--shadow-float); animation-timing-function: linear; }
+  62% { box-shadow: inset 0 0 0 3px rgba(37,99,235,.28), var(--shadow-float); animation-timing-function: cubic-bezier(.65,0,.35,1); }
   100% { box-shadow: inset 0 0 0 3px rgba(37,99,235,0), var(--shadow-float); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -639,4 +644,111 @@ tr.is-spotted > td, tr.is-spotted > th { animation: cx-spot-cell 1600ms var(--ea
   .drawer.is-spotted { box-shadow: inset 0 0 0 3px rgba(37,99,235,.28), var(--shadow-float); }
   tr.is-spotted > td { box-shadow: inset 0 2px 0 rgba(37,99,235,.32), inset 0 -2px 0 rgba(37,99,235,.32); }
   .cx-tile, .cx-tile-title .icon, .cx-tile-undo { transition: none; }
+}
+
+/* =============================================================================
+   Motion in the conversation (js/chat.js, motion section). Timings come from the
+   tokens in os.css; delays are set inline from when each thing reached the page, so
+   a redraw mid-way carries on. Entry: fill-mode backwards (hover still lifts after).
+   ========================================================================== */
+.cx-msg.is-entering, .cx-by.is-entering, .cx-working.is-entering { animation: mo-rise var(--dur-3) var(--ease-spring) var(--enter-delay, 0ms) backwards; --rise: 8px; }
+.cx-msg.is-you.is-entering { transform-origin: 100% 100%; animation-name: cx-you-in; }
+@keyframes cx-you-in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+.cx-tile.is-entering, .cx-mails.is-entering, .cx-draft.is-entering, .cx-foot.is-entering { animation: mo-rise var(--dur-3) var(--ease-out) var(--enter-delay, 0ms) backwards; --rise: 6px; }
+/* the reply's words, fading in one after another (never moving: it reads as text, not effect) */
+.cx-w { animation: mo-fade 280ms var(--ease-out) backwards; }
+
+/* the live status line: a fixed-width clock (it never nudges the words) and the words with a soft shimmer */
+.cx-working { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: var(--space-3); }
+.cx-working .cx-working-time { order: 1; min-width: 4ch; text-align: left; font-size: var(--fs-meta); color: var(--faint); font-variant-numeric: tabular-nums; }
+.cx-working .cx-working-text { order: 2; display: inline-block; color: var(--muted);
+  background: linear-gradient(90deg, var(--muted) 0%, var(--muted) 38%, var(--ink) 50%, var(--muted) 62%, var(--muted) 100%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: cx-shimmer 2.2s linear infinite; }
+@keyframes cx-shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.cx-pulse::after { will-change: transform, opacity; }
+
+/* "New reply": a quiet chip above the bar when a reply lands while you read further up */
+.cx-composer { position: relative; }
+.cx-newchip {
+  position: absolute; left: 50%; bottom: calc(100% + 12px); z-index: 3; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 14px;
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill); background: var(--paper); color: var(--ink); font: inherit; font-size: var(--fs-meta); font-weight: 500;
+  box-shadow: 0 4px 14px rgba(10,14,17,.12); cursor: pointer; transform: translateX(-50%);
+  animation: cx-chip-in var(--dur-3) var(--ease-spring) backwards;
+}
+.cx-newchip[hidden] { display: none; }
+.cx-newchip:hover { border-color: var(--ink); }
+.cx-newchip.is-out { opacity: 0; transform: translate(-50%, 6px); transition: opacity 140ms var(--ease-in), transform 140ms var(--ease-in); }
+.cx-newchip-arrow { font-size: 13px; line-height: 1; color: var(--muted); }
+@keyframes cx-chip-in { from { opacity: 0; transform: translate(-50%, 8px) scale(.96); } }
+.cx.is-page .cx-newchip { bottom: calc(100% + 16px); }
+
+/* tiles: a tiny lift on hover, a press on click (transform only) */
+.cx-tile { transition: border-color var(--dur-1) var(--ease-out), transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
+.cx-tile:has(> a.cx-tile-main:hover) { transform: translateY(-1px); box-shadow: 0 6px 16px -10px rgba(10,14,17,.28); }
+.cx-tile:has(> a.cx-tile-main:active) { transform: translateY(0) scale(.99); transition-duration: 60ms; }
+a.cx-tile-main:active { background: var(--hover); }
+/* Undone just now: the line draws through the name, the word changes, the tile settles */
+.cx-tile-name { position: relative; }
+.cx-tile.is-undoing .cx-tile-name { text-decoration-color: transparent; }
+.cx-tile.is-undoing .cx-tile-name::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 55%; height: 1px; background: var(--faint); transform-origin: 0 50%;
+  animation: cx-strike 360ms var(--ease-in-out) var(--undo-delay, 0ms) both;
+}
+.cx-tile.is-undoing { animation: cx-settle 420ms var(--ease-spring) var(--undo-delay, 0ms) backwards; }
+.cx-tile.is-undoing .cx-tile-state { animation: mo-fade var(--dur-2) var(--ease-out) calc(var(--undo-delay, 0ms) + 140ms) backwards; }
+@keyframes cx-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes cx-settle { 0% { transform: scale(.985); } }
+.cx-tile-undo:active:not(:disabled) { transform: scale(.96); }
+
+/* the composer's microphone (js/voice.js) */
+.cx-mic {
+  position: relative; flex: none; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted);
+  display: grid; place-items: center; cursor: pointer; transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+.cx.is-page .cx-mic { width: 36px; height: 36px; }
+.cx-mic:hover { background: var(--mist); color: var(--ink); }
+.cx-mic:active { transform: scale(.94); }
+.cx-mic:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.cx-mic .cx-mic-body { transition: fill var(--dur-2) var(--ease-out); fill: transparent; }
+.cx-mic.is-on { color: #fff; background: var(--agd-navy, #0B1E4D); }
+.cx-mic.is-on .cx-mic-body { fill: currentColor; }
+/* listening: a soft ring that keeps moving out (no level meter: no second microphone stream) */
+.cx-mic::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(37,99,235,.5); opacity: 0; pointer-events: none; }
+.cx-mic.is-on::after { animation: cx-mic-pulse 1.6s var(--ease-out) infinite; }
+@keyframes cx-mic-pulse { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(1.45); } }
+.cx-mic-menu {
+  position: absolute; right: 0; bottom: calc(100% + 10px); z-index: 4; width: min(300px, calc(100vw - 32px)); padding: var(--space-3) var(--space-4);
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-m); box-shadow: var(--shadow-float);
+  display: flex; flex-direction: column; gap: var(--space-2); animation: mo-pop var(--dur-2) var(--ease-out) backwards; transform-origin: 100% 100%;
+}
+.cx-mic-menu[hidden] { display: none; }
+.cx-mic-opt { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--ink); cursor: pointer; }
+.cx-mic-opt input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
+.cx-mic-priv { font-size: var(--fs-meta); color: var(--muted); line-height: 1.4; }
+.cx-voice-note { margin: 0; padding: 6px 2px; font-size: var(--fs-meta); color: var(--body); animation: mo-fade var(--dur-2) var(--ease-out) backwards; }
+.cx-voice-note[hidden] { display: none; }
+.agd-dock .cx-voice-note { position: absolute; left: 50%; bottom: calc(100% + 12px); transform: translateX(-50%); z-index: 3; width: max-content; max-width: 100%; padding: 6px 12px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-pill); box-shadow: 0 4px 14px rgba(10,14,17,.1); }
+/* the words it is still working out: muted, drawn over the box in step with it */
+.cx-box { position: relative; }
+.cx-ghost { position: absolute; z-index: 2; margin: 0; border: 0 solid transparent; overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word; color: var(--ink); pointer-events: none; }
+.cx-ghost[hidden] { display: none; }
+.cx-ghost-interim { color: var(--faint); }
+.cx-input.has-interim { color: transparent; caret-color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* fades only: arrivals fade where they are, the words appear together, nothing pulses */
+  .cx-msg.is-entering, .cx-by.is-entering, .cx-working.is-entering, .cx-tile.is-entering, .cx-mails.is-entering, .cx-draft.is-entering, .cx-foot.is-entering, .cx-msg.is-you.is-entering {
+    animation: mo-fade var(--dur-2) linear var(--enter-delay, 0ms) backwards !important;
+  }
+  .cx-w { animation: none !important; }
+  .cx-working .cx-working-text { animation: none !important; -webkit-text-fill-color: currentColor; background: none; }
+  .cx-newchip { animation: mo-fade var(--dur-2) linear backwards !important; }
+  .cx-newchip.is-out { transform: translateX(-50%); }
+  .cx-tile:has(> a.cx-tile-main:hover), .cx-tile:has(> a.cx-tile-main:active), .cx-mic:active, .cx-tile-undo:active:not(:disabled) { transform: none; }
+  .cx-tile.is-undoing { animation: none !important; }
+  .cx-tile.is-undoing .cx-tile-name { text-decoration-color: var(--faint); }
+  .cx-tile.is-undoing .cx-tile-name::after { display: none; }
+  .cx-mic.is-on::after { animation: none !important; opacity: 0; }
+  .cx-mic-menu { animation: mo-fade var(--dur-2) linear backwards !important; }
 }

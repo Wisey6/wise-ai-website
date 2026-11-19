@@ -59,8 +59,7 @@ test("the remove tool exists, is described with Undo, and goes through one audit
   assert.ok(t);
   assert.deepEqual(t.input_schema.properties.kind.enum.sort(), Object.keys(REMOVABLE).sort());
   assert.ok(!t.input_schema.properties.kind.enum.includes("clients"));
-  const names = CHAT_TOOLS.map((x) => x.name);
-  assert.deepEqual(names, [...names].sort());
+  assert.equal(t.defer_loading, true, "remove loads with the records group");
   const src = readFileSync(join(ROOT, "functions/agent/chat.ts"), "utf8");
   // Only deleteAudited deletes a hub record on the model's behalf (undo's own-insert removal aside).
   const deletes = src.match(/\.delete\(\)\.eq\("id", row\.id\)/g) || [];

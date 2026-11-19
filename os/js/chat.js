@@ -574,7 +574,7 @@ function tilesFor(m) {
 }
 
 /** One result tile. A link to the record when it has a page; Undo sits beside it, never inside. */
-function tile(t) {
+function tile(t, i = 0, motion = null) {
   const c = t.change || null;
   const undone = Boolean(c?.undone_at);
   const busyU = c ? S.undoing.has(c.id) : false;
@@ -591,7 +591,11 @@ function tile(t) {
   ];
   const label = [t.verb, d.name, d.meta].filter(Boolean).join(', ');
   const main = t.hash
-    ? el('a', { class: 'cx-tile-main', href: t.hash, title: t.tip || null, 'aria-label': `${label}. Open`, dataset: { act: 'open-tile' }, onClick: () => spotRecord({ table: d.table, id: d.id, hash: t.hash }) }, inner)
+    ? el('a', { class: 'cx-tile-main', href: t.hash, title: t.tip || null, 'aria-label': `${label}. Open`, dataset: { act: 'open-tile' }, onClick: (e) => {
+      // a plain click cross-fades to the page (new tab and the like stay with the browser)
+      if (!e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navigate(t.hash); }
+      spotRecord({ table: d.table, id: d.id, hash: t.hash });
+    } }, inner)
     : el('div', { class: 'cx-tile-main', title: t.tip || null }, inner);
   let side = null;
   if (c) {
@@ -603,16 +607,22 @@ function tile(t) {
   }
   const data = { tile: t.type, kind: d.kind };
   if (c) { data.change = c.id; if (c.op) data.op = c.op; }
-  return el('li', { class: `cx-tile is-${t.type}${undone ? ' is-undone' : ''}${t.hash ? '' : ' is-static'}${err ? ' has-err' : ''}`, dataset: data }, main, side);
+  const li = el('li', { class: `cx-tile is-${t.type}${undone ? ' is-undone' : ''}${t.hash ? '' : ' is-static'}${err ? ' has-err' : ''}`, dataset: data }, main, side);
+  // Undone just now: the line draws through the name and the tile settles.
+  const ja = undone && c ? Date.now() - (S.justUndone.get(c.id) || 0) : Infinity;
+  if (ja < 1400) { li.classList.add('is-undoing'); li.style.setProperty('--undo-delay', `${-ja}ms`); }
+  // Tiles follow the words, one after another (at most eight steps).
+  if (motion) entering(li, motion.age, motion.after + Math.min(i, 7) * 26);
+  return li;
 }
 
-/** The tiles under a reply, or nothing. */
-function tilesBlock(m) {
+/** The tiles under a reply, or nothing. motion: {age, after} when the reply has just landed. */
+function tilesBlock(m, motion = null) {
   const tiles = tilesFor(m);
   if (!tiles.length) return null;
   const did = tiles.some((t) => t.type !== 'see');
   return el('div', { class: 'cx-tiles-wrap', dataset: did ? { did: '' } : { links: '' } },
-    el('ul', { class: 'cx-tiles', 'aria-label': did ? 'What it did' : 'Where to look' }, tiles.map(tile)));
+    el('ul', { class: 'cx-tiles', 'aria-label': did ? 'What it did' : 'Where to look' }, tiles.map((t, i) => tile(t, i, motion))));
 }
 /** A short fingerprint of a reply's tiles, so the log redraws when a record or an undo changes. */
 const tilesStamp = (m) => tilesFor(m).map((t) => `${t.d.name}|${t.d.meta}|${t.hash || ''}|${t.change ? `${t.change.undone_at || ''}${S.undoing.has(t.change.id)}${S.undoErr.get(t.change.id) || ''}` : ''}`).join('~');
@@ -643,14 +653,15 @@ function revealPlan(words, blocks) {
 }
 /**
  * Wrap the words of `root` (text nodes only, DOM built with el()) in spans that fade in one
- * after another. Words before `from` are left as they are (already shown). `base` is the
- * delay of word `from` in ms (negative: the reveal started that long ago).
- * → the number of words in root.
+ * after another; delayOf(i) is word i's delay in ms (negative: it started that long ago).
+ * by 'block' fades whole paragraphs and list items instead (long replies).
+ * → the number of words (or blocks) in root.
  */
-function wrapWords(root, { from = 0, step = WORD_STEP, base = 0, by = 'word' } = {}) {
+const BLOCKS = ':scope > p, :scope > ul > li, :scope > ol > li';
+function wrapWords(root, delayOf, by = 'word') {
   if (by === 'block') {
-    const blocks = [...root.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li')];
-    blocks.forEach((b, i) => { if (i >= from) { b.classList.add('cx-w'); b.style.animationDelay = `${Math.round(base + (i - from) * step)}ms`; } });
+    const blocks = [...root.querySelectorAll(BLOCKS)];
+    blocks.forEach((b, i) => { b.classList.add('cx-w'); b.style.animationDelay = `${Math.round(delayOf(i))}ms`; });
     return blocks.length;
   }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -664,13 +675,11 @@ function wrapWords(root, { from = 0, step = WORD_STEP, base = 0, by = 'word' } =
     for (const part of parts) {
       if (!part) continue;
       if (/^\s+$/.test(part)) { frag.append(part); continue; }
-      if (i >= from) {
-        const w = document.createElement('span');
-        w.className = 'cx-w';
-        w.style.animationDelay = `${Math.round(base + (i - from) * step)}ms`;
-        w.textContent = part;
-        frag.append(w);
-      } else frag.append(part);
+      const w = document.createElement('span');
+      w.className = 'cx-w';
+      w.style.animationDelay = `${Math.round(delayOf(i))}ms`;
+      w.textContent = part;
+      frag.append(w);
       i++;
     }
     t.replaceWith(frag);
@@ -695,18 +704,20 @@ export function replyRenderer(container, { age = 0 } = {}) {
       fill(container, buffer.trim() ? richText(buffer) : el('p', { class: 'muted' }, 'No reply came back.'));
       const total = countWords(buffer);
       if (reduced || !buffer.trim()) { shown = total; return; }
-      const blocks = container.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').length;
+      const blocks = container.querySelectorAll(BLOCKS).length;
       const plan = revealPlan(total, blocks);
-      const sinceStart = Date.now() - started;
-      if (sinceStart > plan.total + 400 && shown === 0) { shown = total; return; }   // an old reply: plain
-      // words already shown keep their timing (they started `sinceStart` ago); new ones follow on
-      if (plan.by === 'block' && shown === 0) wrapWords(container, { by: 'block', step: plan.step, base: -sinceStart });
-      else wrapWords(container, { from: 0, step: plan.step, base: -sinceStart });
+      const since = Date.now() - started;
+      if (since > plan.total + 400 && shown === 0) { shown = total; return; }   // an old reply: plain
+      // Words already placed keep their timing; words new in this chunk follow on from now.
+      const before = shown;
+      if (plan.by === 'block' && before === 0) wrapWords(container, (i) => i * plan.step - since, 'block');
+      else if (before === 0) wrapWords(container, (i) => i * plan.step - since);
+      else wrapWords(container, (i) => (i < before ? -10000 : (i - before) * plan.step));   // a later chunk: only the new words fade in, from now
       shown = total;
     },
     done() { started = Date.now(); },
     get words() { return shown; },
-    get revealMs() { const t = countWords(buffer); return reduced ? 0 : revealPlan(t, container.querySelectorAll(':scope > p, :scope > ul > li, :scope > ol > li').length).total; }
+    get revealMs() { return reduced ? 0 : revealPlan(countWords(buffer), container.querySelectorAll(BLOCKS).length).total; }
   };
 }
 
@@ -720,20 +731,29 @@ function agentMsg(m) {
   const reads = readsOf(m);
   const draftHash = m.draft ? safeHash(`#inbox/${m.draft.lead_id}`) : null;
   const meta = [MODEL_NAME[m.model] || null, Number(m.cost_usd) > 0 ? usd(m.cost_usd) : null].filter(Boolean).join(' · ');
+  // A reply that has just landed: the name line rises in, the words come in progressively,
+  // then the cards and tiles. An older one is drawn plainly (its age is past the window).
+  const age = ageOf(m.id);
+  const text = el('div', { class: 'cx-text' });
+  const words = replyRenderer(text, { age });
+  words.appendText(m.text);
+  const after = words.revealMs + 60;
+  const motion = age < ENTER_WINDOW + after ? { age, after } : null;
+  const late = (node) => (motion && node ? entering(node, age, after, 'is-entering') : node);
   return el('li', { class: 'cx-msg is-agent', dataset: { msg: String(m.id ?? ''), role: 'assistant' } },
-    el('p', { class: 'cx-by' }, el('span', { class: 'cx-by-name' }, 'Wise AI'), m.at ? el('span', { class: 'cx-by-time' }, timeOnly(m.at)) : null),
-    el('div', { class: 'cx-text' }, m.text.trim() ? richText(m.text) : el('p', { class: 'muted' }, 'No reply came back.')),
-    draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
+    entering(el('p', { class: 'cx-by' }, el('span', { class: 'cx-by-name' }, 'Wise AI'), m.at ? el('span', { class: 'cx-by-time' }, timeOnly(m.at)) : null), age),
+    text,
+    late(draftHash ? el('p', { class: 'cx-draft', dataset: { draftNotice: m.draft.lead_id } }, icon('message', 14),
       el('span', {}, 'Draft is in the inbox reply box. Nothing was sent.'),
-      el('a', { href: draftHash }, 'Open the inbox', icon('arrow', 12))) : null,
-    emailCards(m, [...S.msgs.values()].flatMap((e) => e.list || [])),
-    tilesBlock(m),
-    reads.length || meta
+      el('a', { href: draftHash }, 'Open the inbox', icon('arrow', 12))) : null),
+    late(emailCards(m, [...S.msgs.values()].flatMap((e) => e.list || []))),
+    tilesBlock(m, motion),
+    late(reads.length || meta
       ? el('div', { class: 'cx-foot' },
         reads.length ? el('details', { class: 'cx-reads' }, el('summary', {}, `Looked up ${plural(reads.length, 'thing')}`),
           el('ul', {}, reads.map((s) => el('li', {}, stepText(s) || humanTool(s.tool))))) : null,
         meta ? el('span', { class: 'cx-cost tnum' }, meta) : null)
-      : null);
+      : null));
 }
 
 function sendIcon() {
@@ -845,9 +865,20 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   const sendBtn = el('button', { type: 'submit', class: 'cx-send', 'aria-label': 'Send', title: 'Send (Enter)', dataset: { act: 'chat-send' } }, sendIcon());
   const count = el('span', { class: 'cx-count tnum', hidden: true });
   const notice = el('div', { class: 'cx-notice' });
-  const form = el('form', { class: 'cx-composer', novalidate: true },
-    notice,
-    el('div', { class: 'cx-box' }, lead, box, tools, sendBtn),
+  const live = el('p', { class: 'sr-only', 'aria-live': 'polite' });
+  const form = el('form', { class: 'cx-composer', novalidate: true }, notice);
+  // Dictation (where the browser can): a microphone beside Send. voice.js
+  const voice = voiceInput({
+    box, form,
+    onInput: () => { S.drafts.set(keyOf(), box.value); grow(); drawCount(); paintSend(); },
+    submit: () => form.requestSubmit(),
+    announce: (t) => { live.textContent = t; },
+    active: () => (dock ? !document.querySelector('.cx.is-page') : node.isConnected)
+  });
+  if (dock) form.addEventListener('cx-voice-shortcut', () => window.dispatchEvent(new Event('wiseos:agent-dock')));
+  form.append(
+    ...[voice.note].filter(Boolean),
+    el('div', { class: 'cx-box' }, lead, box, tools, voice.button, voice.menu, sendBtn),
     el('div', { class: 'cx-under' }, el('span', { class: 'cx-hint' }, el('kbd', {}, 'Enter'), 'to send', el('span', { class: 'cx-hint-sep', 'aria-hidden': 'true' }, '·'), el('kbd', {}, 'Shift'), el('kbd', {}, 'Enter'), 'for a new line'), count));
   let grownFor = null;
   const grow = () => {
@@ -876,7 +907,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     const t = box.value.trim();
     if (!t) { box.focus(); return; }
     if (!ready() || S.pending.has(keyOf())) return;
-    scrollNext = 'bottom';
+    scrollNext = 'send';
     send(t);
     box.value = ''; grow(); drawCount();
     box.focus();
@@ -889,7 +920,6 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   };
 
   /* -- conversation */
-  const live = el('p', { class: 'sr-only', 'aria-live': 'polite' });
   const log = el('ol', { class: 'cx-log', 'aria-label': 'Conversation' });
   const scroller = el('div', { class: 'cx-scroll' }, log);
   const convTitle = el('h2', { class: 'cx-title', id: `cx-title-${mode}` });
@@ -986,6 +1016,9 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
 
   let logKey = null;
   let lastCount = 0;
+  let lastSeenMsgs = 0;
+  let drawnKey = null;
+  let wasSettled = false;
   function drawLog(force = false) {
     const k = keyOf();
     const entry = S.current ? S.msgs.get(S.current) : null;
@@ -995,7 +1028,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     const lk = JSON.stringify([k, entry?.status, msgs.map((m) => m.id), Boolean(pend), changeStamp, mailStamp()]);
     if (!force && lk === logKey) return;
     logKey = lk;
-    const atBottom = dock ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40 : true;
+    const atBottom = dock ? scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40 : pageNearEnd();
     const prevTop = scroller.scrollTop;
     const items = [];
     if (S.current && !msgs.length && entry?.status !== 'error' && !pend) items.push(el('li', { class: 'cx-loading', dataset: { chatLoading: '' } }, el('span', { class: 'cx-pulse', 'aria-hidden': 'true' }), 'Opening the conversation…'));
@@ -1011,26 +1044,68 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
     }
     if (pend) {
       items.push(youMsg({ id: 'pending', text: pend.text, at: pend.at }, { pending: true }));
-      items.push(el('li', { class: 'cx-working', dataset: { working: '' } },
+      // The live status line: the time it has taken (fixed width, so nothing shifts as it
+      // ticks) and what it is doing, with a soft shimmer running through the words.
+      items.push(entering(el('li', { class: 'cx-working', dataset: { working: '' } },
         el('span', { class: 'cx-pulse', 'aria-hidden': 'true' }),
         el('span', { class: 'cx-working-text' }, phrase(0)),
-        el('span', { class: 'cx-working-time tnum' })));
+        el('span', { class: 'cx-working-time tnum', 'aria-hidden': 'true' }, '0:00')), ageOf(`w:${pend.at}`), 140));
     }
     fill(log, items);
-    // Keep the reader where they were unless something new arrived.
-    const grew = msgs.length > lastCount || Boolean(pend);
-    if (msgs.length > lastCount && lastCount && !pend) live.textContent = 'Reply received.';
-    lastCount = msgs.length;
+    // Keep the reader where they were unless something new arrived; never pull them down
+    // while they are reading further up: a "New reply" chip says there is more below.
+    const newCount = msgs.length + (pend ? 1 : 0);
+    // A conversation just opened, or its history just loaded: that is not "new", it goes
+    // straight to the end without any animation.
+    const fresh = drawnKey !== k || !wasSettled;
+    drawnKey = k;
+    wasSettled = !S.current || entry?.status === 'ok' || Boolean(pend);
+    if (fresh && scrollNext !== 'send') { lastSeenMsgs = msgs.length; lastCount = newCount; if (!scrollNext) scrollNext = 'bottom'; }
+    const grew = newCount > lastCount;
+    const replied = msgs.length > lastSeenMsgs;
+    if (replied && lastSeenMsgs && !pend) live.textContent = 'Reply received.';
+    lastSeenMsgs = msgs.length;
+    lastCount = newCount;
+    const mine = scrollNext === 'send';
+    const smooth = reducedMotion() ? 'auto' : 'smooth';
     if (dock) {
-      if (scrollNext === 'bottom' || (grew && atBottom)) scroller.scrollTop = scroller.scrollHeight;
-      else scroller.scrollTop = prevTop;
-    } else if ((scrollNext === 'bottom' || grew) && log.lastElementChild && node.isConnected && msgs.length + (pend ? 1 : 0) > 1) {
+      if (scrollNext === 'bottom') { scroller.scrollTop = scroller.scrollHeight; showChip(false); }
+      else if (grew && (atBottom || mine)) { scroller.scrollTop = prevTop; scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth }); showChip(false); }
+      else { scroller.scrollTop = prevTop; if (grew && replied) showChip(true); }
+    } else if (log.lastElementChild && node.isConnected && newCount > 1) {
       const last = log.lastElementChild;
-      requestAnimationFrame(() => last.scrollIntoView({ block: 'end', behavior: scrollNext === 'bottom' && !grew ? 'auto' : 'smooth' }));
+      if (scrollNext === 'bottom') requestAnimationFrame(() => last.scrollIntoView({ block: 'end', behavior: 'auto' }));
+      else if (grew && (atBottom || mine)) { requestAnimationFrame(() => last.scrollIntoView({ block: 'end', behavior: smooth })); showChip(false); }
+      else if (grew && replied) showChip(true);
     }
     scrollNext = null;
     tickWorking();
   }
+
+  /* -- "New reply": shown when a reply lands while the reader is further up */
+  const chip = el('button', { type: 'button', class: 'cx-newchip', hidden: true, dataset: { act: 'chat-newreply' } }, 'New reply', el('span', { class: 'cx-newchip-arrow', 'aria-hidden': 'true' }, '↓'));
+  form.prepend(chip);
+  function showChip(on) {
+    if (chip.hidden === !on) return;
+    if (on) { chip.hidden = false; chip.classList.remove('is-out'); return; }
+    if (reducedMotion()) { chip.hidden = true; return; }
+    chip.classList.add('is-out');
+    setTimeout(() => { if (chip.classList.contains('is-out')) { chip.hidden = true; chip.classList.remove('is-out'); } }, 160);
+  }
+  chip.addEventListener('click', () => {
+    const smooth = reducedMotion() ? 'auto' : 'smooth';
+    if (dock) scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth });
+    else log.lastElementChild?.scrollIntoView({ block: 'end', behavior: smooth });
+    showChip(false);
+    box.focus({ preventScroll: true });
+  });
+  function pageNearEnd() {
+    const last = log.lastElementChild;
+    if (!last || !node.isConnected) return true;
+    return last.getBoundingClientRect().top < window.innerHeight - 40;
+  }
+  scroller.addEventListener('scroll', () => { if (!chip.hidden && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40) showChip(false); }, { passive: true });
+  window.addEventListener('scroll', () => { if (!dock && !chip.hidden && node.isConnected && log.lastElementChild && log.lastElementChild.getBoundingClientRect().bottom < window.innerHeight - 60) showChip(false); }, { passive: true });
 
   function tickWorking() {
     const pend = S.pending.get(keyOf());
@@ -1039,9 +1114,16 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
       const p = S.pending.get(keyOf());
       const w = log.querySelector('.cx-working');
       if (!p || !w) return;
-      const s = Math.max(0, Math.round((Date.now() - Date.parse(p.at)) / 1000));
-      w.querySelector('.cx-working-text').textContent = phrase(s);
-      w.querySelector('.cx-working-time').textContent = s >= 3 ? `${s} s` : '';
+      const s = Math.max(0, Math.floor((Date.now() - Date.parse(p.at)) / 1000));
+      const t = w.querySelector('.cx-working-text');
+      const words = phrase(s);
+      if (t.textContent !== words) {
+        t.textContent = words;
+        if (!reducedMotion()) t.animate([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.16,1,.3,1)' });
+      }
+      const clock = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      const c = w.querySelector('.cx-working-time');
+      if (c.textContent !== clock) c.textContent = clock;
     };
     paint();
     if (!timer) timer = setInterval(() => { if (!node.isConnected && !dock) { clearInterval(timer); timer = 0; return; } paint(); }, 1000);
@@ -1073,7 +1155,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
       const t = box.value.trim() || err.text;
       if (!t) return;
       box.value = ''; grow(); drawCount();
-      scrollNext = 'bottom';
+      scrollNext = 'send';
       send(t);
     });
     const dismiss = el('button', { type: 'button', class: 'cx-icon-btn', 'aria-label': 'Dismiss', onClick: () => { S.errors.delete(k); noticeKey = null; drawNotice(); } }, icon('x', 14));
@@ -1136,7 +1218,7 @@ export function chatSurface({ mode = 'page', active = () => true, side = [], foo
   grow();
   update();
   return {
-    node, update, focus, onOpen, setView, composer: form, input: box, scroller,
+    node, update, focus, onOpen, setView, composer: form, input: box, scroller, voice,
     get view() { return view; },
     title: () => (S.current ? chatById(S.current)?.title || 'Conversation' : 'New conversation'),
     newChat: () => { newChat(); setView('chat'); focus(); },

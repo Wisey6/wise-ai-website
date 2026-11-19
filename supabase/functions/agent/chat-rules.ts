@@ -625,7 +625,7 @@ const nonEmpty = (v: unknown) => (typeof v === "string" ? v.trim().length > 0 : 
 /** Email tools whose results are written by people outside the business. */
 export const MAIL_READ_TOOLS = ["search_email", "read_email", "read_thread"];
 /** Tools still allowed after email was read in the same turn (drafting is harmless: only the person can send). */
-export const MAIL_TAINT_ALLOWED = ["find", "get", "numbers", "find_files", "open_file", "read_file", "search_email", "read_email", "read_thread", "draft_email", "update_draft", "draft_message", "forget",
+export const MAIL_TAINT_ALLOWED = ["find", "get", "numbers", "load_tools", "find_files", "open_file", "read_file", "search_email", "read_email", "read_thread", "draft_email", "update_draft", "draft_message", "forget",
   // The person's own calendar: reading, and adding or changing their own events (undoable, nobody is emailed;
   // anything with guests waits for their button). Removing an event waits like any removal.
   "find_events", "get_event", "free_times", "save_event"];

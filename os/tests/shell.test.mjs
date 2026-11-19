@@ -135,47 +135,34 @@ try {
   await page.waitForSelector('.do-list, .all-clear');
   check(await page.locator('section[aria-labelledby="do-next-h"]').count() === 1, 'Home shows the Do next card');
 
-  /* ----------------------------------------------------- sidebar (dock) */
+  /* ----------------------------------------------------- sidebar
+     Open by default from 1100px and steady under the pointer; `[` or the toggle folds it
+     into the icon strip (remembered in wiseos.sidebar), where group icons fly out. */
   const railState = () => page.locator('.rail').getAttribute('data-state');
   const viewX = async () => (await page.locator('#view').boundingBox()).x;
   await page.mouse.move(900, 500);
-  await page.waitForTimeout(700);
-  check(await railState() === 'dock', 'sidebar starts as the collapsed dock by default');
-  check(Math.round((await page.locator('.rail').boundingBox()).width) === 64, 'dock is 64px wide');
+  await page.waitForTimeout(400);
+  check(await railState() === 'open', 'sidebar is open by default');
+  check(Math.round((await page.locator('.rail').boundingBox()).width) === 240, 'open sidebar is 240px');
+  check(await page.locator('.rail-full .nav-group').count() === 5, 'the open sidebar shows the grouped map');
   const x0 = await viewX();
-  // Brushing past does not open it.
-  await page.mouse.move(30, 420);
-  await page.mouse.move(900, 500);
-  await page.waitForTimeout(350);
-  check(await railState() === 'dock', 'brushing past the dock does not expand it');
-  // Hover expands as an overlay; the content does not move.
+  // Hovering moves nothing.
+  const navBoxes = async () => page.evaluate(() => [...document.querySelectorAll('.rail, .rail-full .nav-item')].map((n) => { const r = n.getBoundingClientRect(); return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)}`; }).join('|'));
+  const b0 = await navBoxes();
   await page.mouse.move(30, 420);
   await page.waitForTimeout(500);
-  check(await railState() === 'peek', 'hovering the dock expands the sidebar');
-  check(Math.round((await page.locator('.rail').boundingBox()).width) === 240, 'expanded sidebar is 240px');
-  check(Math.abs((await viewX()) - x0) < 1, 'hover expansion overlays the content without shifting it');
-  check(await page.locator('.rail-full .nav-group').count() === 5, 'expanded sidebar shows the grouped map');
-  await page.mouse.move(900, 500);
-  await page.waitForTimeout(120);
-  check(await railState() === 'peek', 'sidebar waits before tucking away');
-  await page.waitForTimeout(450);
-  check(await railState() === 'dock', 'leaving the sidebar tucks it back into the dock');
-  // Keyboard focus expands it; Escape tucks it away.
-  await page.locator('.rail-full a[data-route="leads"]').focus();
+  await page.mouse.move(120, 300);
   await page.waitForTimeout(300);
-  check(await railState() === 'peek', 'keyboard focus in the sidebar expands it');
-  check(await page.evaluate(() => getComputedStyle(document.querySelector('.rail-full')).opacity) === '1', 'focused sidebar labels are visible');
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(350);
-  check(await railState() === 'dock', 'Escape tucks the sidebar away');
+  check(await railState() === 'open' && await navBoxes() === b0 && Math.abs((await viewX()) - x0) < 1, 'hovering the sidebar moves nothing');
+  await page.mouse.move(900, 500);
   // Every section is live now (Agents included); nothing in the map is a dimmed placeholder.
   check(await page.locator('.rail-full .nav-item.is-soon').count() === 0, 'no planned (dimmed) sections remain in the sidebar');
   const live = await page.evaluate(() => [...document.querySelectorAll('.rail-full a.nav-item[data-route]')].map((n) => n.dataset.route));
   check(['pipeline', 'proposals', 'clients', 'projects', 'roi-reports', 'income', 'costs', 'runway', 'library', 'agents'].every((r) => live.includes(r)), 'Sell, Deliver, Money, Library and Agents are live links in the sidebar');
-  // The collapsed dock: one icon per area, lit when the route is inside it.
+  // The folded strip: one icon per area, lit when the route is inside it.
   const dockAreas = await page.evaluate(() => [...document.querySelectorAll('.rail-dock .dock-list .dock-item')].map((n) => n.dataset.area || n.dataset.route));
-  check(JSON.stringify(dockAreas) === JSON.stringify(['home', 'Grow', 'Sell', 'Deliver', 'Money', 'Know', 'agents']), `the dock shows one icon per area (${dockAreas.join(', ')})`);
-  check(await page.locator('.rail-dock .dock-foot a[data-route="settings"]').count() === 1, 'Settings sits at the foot of the dock');
+  check(JSON.stringify(dockAreas) === JSON.stringify(['home', 'Grow', 'Sell', 'Deliver', 'Money', 'Know', 'agents']), `the strip shows one icon per area (${dockAreas.join(', ')})`);
+  check(await page.locator('.rail-dock .dock-foot a[data-route="settings"]').count() === 1, 'Settings sits at the foot of the strip');
   await page.evaluate(() => { location.hash = '#campaigns'; });
   await page.waitForTimeout(400);
   check(await page.locator('.dock-area[data-area="Grow"].is-active').count() === 1, 'the Grow icon is lit on a Grow section');
@@ -183,34 +170,39 @@ try {
   await page.waitForTimeout(400);
   const roiHref = await page.locator('.rail-full a.nav-item', { hasText: 'ROI calculator' }).getAttribute('href');
   check(roiHref === '../roi.html', 'ROI calculator links to the public page');
-  await page.mouse.move(900, 500);
-  await page.waitForTimeout(600);
-  // `[` pins and unpins; the choice survives a reload.
+  // `[` folds and opens; the choice survives a reload.
   await page.evaluate(() => document.activeElement?.blur());
   await page.keyboard.press('[');
   await page.waitForTimeout(400);
-  check(await railState() === 'pinned', '[ pins the sidebar open');
-  check((await viewX()) - x0 > 150, `pinned sidebar makes room for the content (${Math.round((await viewX()) - x0)}px)`);
-  check(await page.locator('.rail-pin[aria-pressed="true"]').count() === 1, 'pin button reports pressed');
-  await reloadSignedIn(page); // sessions are not persisted: sign in again after a reload
-  check(await railState() === 'pinned', 'pinned sidebar persists across reload');
-  check(await page.evaluate(() => localStorage.getItem('wiseos.nav')) === 'pinned', 'pin choice stored in wiseos.nav');
-  await page.locator('.rail-pin').click();
+  check(await railState() === 'collapsed', '[ folds the sidebar');
+  check(Math.round((await page.locator('.rail').boundingBox()).width) === 64, 'folded it is the 64px strip');
+  check(x0 - (await viewX()) > 150, `the content takes the room back (${Math.round(x0 - (await viewX()))}px)`);
+  check(await page.evaluate(() => localStorage.getItem('wiseos.sidebar')) === 'collapsed', 'the choice is stored in wiseos.sidebar');
+  // Folded: hovering a group icon shows its pages beside it.
+  await page.locator('.dock-area[data-area="Grow"]').hover();
+  await page.waitForTimeout(400);
+  check(await page.locator('.rail-fly[data-fly="Grow"]:not([hidden]) a[data-route="inbox"]').count() === 1, 'hovering a folded group icon shows its pages');
+  check(Math.round((await page.locator('.rail').boundingBox()).width) === 64, 'the strip does not widen on hover');
   await page.mouse.move(900, 500);
-  await page.waitForTimeout(600);
-  check(await railState() === 'dock', 'pin button unpins back to the dock');
+  await page.waitForTimeout(500);
+  await reloadSignedIn(page); // sessions are not persisted: sign in again after a reload
+  check(await railState() === 'collapsed', 'folded sidebar persists across reload');
+  await page.locator('.dock-expand').click();
+  await page.mouse.move(900, 500);
+  await page.waitForTimeout(400);
+  check(await railState() === 'open', 'the expand control opens it again');
   await page.keyboard.press('[');
   await page.waitForTimeout(300);
   await page.keyboard.press('[');
   await page.waitForTimeout(300);
   await reloadSignedIn(page); // sessions are not persisted: sign in again after a reload
-  check(await railState() === 'dock', 'unpinned choice persists across reload');
+  check(await railState() === 'open', 'open choice persists across reload');
   await page.evaluate(() => { location.hash = '#leads'; });
   await page.waitForSelector('.leads-page');
   await page.locator('.leads-bar input[type=search]').focus();
   await page.keyboard.press('[');
   await page.waitForTimeout(300);
-  check(await railState() === 'dock', '[ typed in a text field does not toggle the sidebar');
+  check(await railState() === 'open', '[ typed in a text field does not toggle the sidebar');
   await page.fill('.leads-bar input[type=search]', '');
   await page.evaluate(() => { location.hash = '#home'; });
   await page.waitForSelector('.do-list, .all-clear');

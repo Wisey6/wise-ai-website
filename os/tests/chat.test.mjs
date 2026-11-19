@@ -382,6 +382,8 @@ try {
     await shot(page, 'dock-populated-1440');
     await page.fill('.agd-dock .cx-input', 'kept while closed');
     await page.keyboard.press('Escape');
+    // the sheet folds away into the bar (about 300 ms) before it is hidden
+    await page.waitForSelector('.agd-panel', { state: 'hidden', timeout: 2000 }).catch(() => {});
     check(await page.locator('.agd-panel').isHidden() && await page.evaluate(() => document.activeElement?.classList.contains('agd-launch')), 'Escape closes the dropdown and focus returns to the owl');
     await page.click('.agd-launch');
     await page.waitForSelector('.agd-panel.is-in');
