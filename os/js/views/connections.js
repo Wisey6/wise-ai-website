@@ -34,15 +34,17 @@ function statusNode(stateKey, word, detail) {
  * The "How to set up" button expands numbered steps in place.
  */
 function connRow(key, name, does, attrs = {}) {
-  const status = el('div', { class: 'con-status' });
+  // The email row keeps the hooks it had under Your sign-in (data-mail-status, -err, -acts).
+  const hook = (name) => (attrs.mailRow !== undefined ? { [name]: '' } : {});
+  const status = el('div', { class: 'con-status', dataset: hook('mailStatus') });
   const note = el('p', { class: 'con-note small muted' });
-  const err = el('p', { class: 'set-err con-err', role: 'alert' });
-  const acts = el('div', { class: 'con-acts' });
+  const err = el('p', { class: 'set-err con-err', role: 'alert', dataset: hook('mailErr') });
+  const acts = el('div', { class: 'con-acts', dataset: hook('mailActs') });
   const steps = el('div', { class: 'con-steps', id: `con-steps-${key}`, hidden: true });
   const node = el('li', { class: 'con-row', dataset: { conn: key, ...attrs } },
     el('div', { class: 'con-main' },
       el('h3', { class: 'con-name' }, name),
-      el('p', { class: 'con-does', dataset: attrs.mailRow !== undefined ? { mailNote: '' } : {} }, ...[].concat(does)),
+      el('p', { class: 'con-does', dataset: hook('mailNote') }, ...[].concat(does)),
       note, err),
     status, acts, steps);
 
