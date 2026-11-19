@@ -7,7 +7,7 @@
 // way to send.
 import { fn, sb, state } from './api.js?v=20261119a';
 
-const SETTINGS_PATH = 'Settings, under Your sign-in';
+const SETTINGS_PATH = 'Settings, under Connections';
 
 /** Plain-English text for each failure code and for the ?mail= sign-in result. */
 export const MAIL_ERRORS = {

@@ -20,6 +20,9 @@ async function call(name, action, body = {}) {
   return { ok: false, error: 'server_error', message: 'Something went wrong. Try again in a minute.' };
 }
 
+/** Call the Google Drive function whatever the Files page is showing (Settings, Connections). */
+export async function gdriveCall(action, body = {}) { return call('gdrive', action, body); }
+
 /** Call the current provider's function. Never throws: resolves to the body with `ok`. */
 export async function od(action, body = {}) { return call(current.fn, action, body); }
 
