@@ -22,11 +22,13 @@ export function modelSetting(v: unknown): ChatModelSetting {
 
 const RX = (words: string[]) => new RegExp(`\\b(${words.join("|")})`, "i");
 
-const FILES = RX(["file", "files", "folder", "drive", "document", "doc\\b", "docs", "spreadsheet", "sheet", "slides", "pdf", "receipt", "template", "contract", "proposal doc", "upload", "rename", "organi[sz]e", "tidy", "filing", "brief\\b", "read the", "pull up", "open the", "start here", "hub page"]);
+const FILES = RX(["file", "files", "folder", "drive", "document", "doc\\b", "docs", "spreadsheet", "sheet", "slides", "pdf", "receipt", "template", "contract", "proposal doc", "upload", "rename", "organi[sz]e", "tidy", "filing", "read the", "pull up", "open the", "start here", "hub page"]);
 const EMAIL = RX(["email", "e-mail", "emails", "mail\\b", "inbox", "gmail", "reply to", "replied", "draft (an|a|the)? ?(email|reply)", "write to", "send .{0,40}(email|note)", "unread", "cc\\b", "sent me", "wrote"]);
-const CAL = RX(["calendar", "meeting", "meetings", "appointment", "event", "events", "schedule", "free time", "free slot", "availability", "available", "what'?s on", "book (a|in)", "invite", "diary", "tomorrow at", "at \\d{1,2}(:\\d\\d)? ?(am|pm)"]);
-const RECORDS = RX(["client", "clients", "job\\b", "jobs", "project", "projects", "invoice", "invoices", "bill\\b", "cost", "costs", "subscription", "expense", "library", "playbook", "standard", "write (it|this|that) up", "save (it|this|that)", "archive", "hide", "remove", "delete", "get rid", "forget", "retainer", "paid", "gst", "won\\b"]);
-const SCOUT = RX(["find (me )?(some |more |\\d+ )?(new )?(leads|prospects|businesses)", "lead scout", "scout", "prospect", "look for (new )?(leads|businesses)", "search (the web|online) for", "leads like"]);
+const CAL = RX(["calendar", "meeting", "meetings", "appointment", "event", "events", "schedule", "free time", "free slot", "availability", "available", "what'?s on", "what is on", "on (today|tomorrow|this week|next week|monday|tuesday|wednesday|thursday|friday)", "book (a|in)", "invite", "diary", "tomorrow at", "at \\d{1,2}(:\\d\\d)? ?(am|pm)"]);
+// Records group: only when the message changes one of those kinds (reading them is core: find/get/numbers).
+const RECORD_WRITE = /\b(add|create|new|make|set up|update|change|edit|rename|mark|record|log|save|end|cancel|stop|raise|issue|bill|put|close)\s+(?:[\w'$.,-]+\s+){0,3}?(client|clients|job|jobs|project|projects|invoice|invoices|cost|costs|subscription|expense|retainer|library|playbook|standard)\b/i;
+const RECORD_ALWAYS = /\b(archive|unarchive|hide|remove|delete|get rid of|forget|playbook|write (it|this|that) up|(as|is|was|been|got) paid|mark(ed)? .{0,30}paid|invoice (them|him|her))\b/i;
+const SCOUT = RX(["find (me )?(some |more |\\d+ |a few |new )*(leads|prospects|businesses)", "lead scout", "scout", "prospect", "look for (new )?(leads|businesses)", "search (the web|online) for", "leads like"]);
 
 /** Tool groups to load up front for this message (the model can still load others with load_tools). */
 export function pickGroups(message: string, connected: { files: boolean; email: boolean; calendar: boolean }): ToolGroup[] {
@@ -35,7 +37,7 @@ export function pickGroups(message: string, connected: { files: boolean; email: 
   if (FILES.test(m) && connected.files) out.add("files");
   if (EMAIL.test(m) && connected.email) out.add("email");
   if (CAL.test(m) && connected.calendar) out.add("calendar");
-  if (RECORDS.test(m)) out.add("records");
+  if (RECORD_ALWAYS.test(m) || RECORD_WRITE.test(m)) out.add("records");
   if (SCOUT.test(m)) out.add("scout");
   return TOOL_GROUPS.filter((g) => out.has(g));
 }
@@ -51,6 +53,9 @@ export function needsPlanning(message: string, groups: ToolGroup[]): string | nu
   const verbs = m.match(/\b(add|create|make|set up|open|update|change|move|mark|log|record|book|archive|remove|delete|assign|rename)\b/gi) ?? [];
   const lines = m.split(/\n|;|\bthen\b|\balso\b/i).filter((x) => x.trim().length > 3).length;
   if (verbs.length >= 3 && lines >= 3) return "several changes";
+  // Records of three or more kinds to create or change in one go (a client, its job and a task).
+  const kinds = new Set((m.match(/\b(client|job|project|task|deal|lead|invoice|cost|proposal|library entry)s?\b/gi) ?? []).map((k) => k.toLowerCase().replace(/s$/, "").replace("project", "job")));
+  if (verbs.length >= 2 && kinds.size >= 3) return "several changes";
   return null;
 }
 

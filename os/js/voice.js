@@ -176,7 +176,8 @@ export function voiceInput({ box, form, onInput = () => {}, submit = () => {}, a
   }
   /** Take what is in the box now as the place to insert (the person may have typed). */
   function anchor() {
-    const at = typeof box.selectionStart === 'number' && document.activeElement === box ? box.selectionStart : box.value.length;
+    // a textarea keeps its cursor while the microphone button has the focus
+    const at = typeof box.selectionStart === 'number' ? box.selectionStart : box.value.length;
     pre = box.value.slice(0, at); post = box.value.slice(at); said = ''; interim = '';
   }
   function commit() {
