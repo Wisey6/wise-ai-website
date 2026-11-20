@@ -43,6 +43,8 @@ import Anthropic from "npm:@anthropic-ai/sdk@0";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { adminClient, requireOperator } from "../_shared/admin.ts";
+import { safeEqual } from "../_shared/crypto.ts";
+import { batchesFor, decideCandidate, linkApply, linkPeek, runScout, scheduleDue, scoutBlocked, sendDigest } from "./scout.ts";
 import {
   AGENTS, type AgentName, DAILY_LIMITS, HAIKU, MAX_TOKENS, SONNET, type Totals,
   addDays, addUsage, cleanResearch, costOf, dayWindowStart, emptyTotals, extractJson, filterLinked, hostOf,
@@ -455,16 +457,105 @@ async function runDoer(ctx: Ctx, instruction: string) {
   return respond(ctx, 200, { ok: true, result: { note, actions, dropped: check.rejected.length, rejected: check.rejected } }, { id, model, cost });
 }
 
+// ------------------------------------------------------------------ lead scout doors
+
+async function loadCtx(req: Request): Promise<Ctx> {
+  const db = adminClient();
+  const { data: settings, error } = await db.from("settings").select("*").eq("id", 1).single();
+  if (error) throw error;
+  const now = new Date();
+  return { req, db, settings, now, tz: String(settings.timezone || "Australia/Brisbane"), spent: await monthSpend(db, now), cap: Number(settings.agent_monthly_cap_usd), started: Date.now() };
+}
+
+let cronSecret: string | null = null;
+/** The schedule (pg_cron) and the chat's hand-off. Rejected without the Vault secret. */
+async function scoutInternal(req: Request, body: Row): Promise<Response> {
+  const ctx = await loadCtx(req);
+  if (!cronSecret) {
+    const { data } = await ctx.db.rpc("scout_secret", { p_name: "scout_cron_secret" });
+    cronSecret = data ? String(data) : null;
+  }
+  const given = req.headers.get("x-scout-secret") ?? "";
+  if (!cronSecret || cronSecret.length < 32 || !safeEqual(given, cronSecret)) return json(req, 401, { ok: false, error: "unauthorized" });
+  if (!Deno.env.get("ANTHROPIC_API_KEY")) return json(req, 503, { ok: false, error: "ai_not_configured" });
+  if (ctx.settings.agents_enabled !== true) return json(req, 200, { ok: true, skipped: "agents off" });
+  if (body.trigger === "chat") {
+    const member = isUuid(body.member_id) ? String(body.member_id) : null;
+    const count = Number.isInteger(body.count) ? Math.max(1, Math.min(10, Number(body.count))) : 5;
+    const r = await runScout(ctx, { trigger: "chat", count, brief: typeof body.brief === "string" ? body.brief.slice(0, 2000) : null, memberId: member });
+    return json(req, 200, r);
+  }
+  // The schedule: at most one batch per call, each day once (claimed in the database).
+  const due = scheduleDue(ctx.now, ctx.settings);
+  if (!due.due) return json(req, 200, { ok: true, skipped: due.why });
+  const max = Number(ctx.settings.scout_daily_max ?? 10);
+  const maxBatches = batchesFor(max);
+  const { data: claim, error } = await ctx.db.rpc("scout_claim_day", { p_day: due.day, p_max_batches: maxBatches });
+  if (error) throw error;
+  if (!claim?.ok) return json(req, 200, { ok: true, skipped: claim?.why ?? "claimed" });
+  const left = max - Number(claim.found ?? 0);
+  let found = 0, done = false, emailed = false;
+  let r: Awaited<ReturnType<typeof runScout>> | null = null;
+  try {
+    const blocked = await scoutBlocked(ctx);
+    if (blocked || left <= 0) done = true;
+    else {
+      r = await runScout(ctx, { trigger: "schedule", count: Math.min(6, left) });
+      found = r.kept;
+      done = !r.ok || r.kept === 0 || Number(claim.found ?? 0) + r.kept >= max || Number(claim.batch) >= maxBatches;
+    }
+    if (done) {
+      // One email for the day: every candidate the schedule found today that is still waiting.
+      const runs = must<Row[]>(await ctx.db.from("agent_runs").select("id").eq("agent", "scout").gte("at", dayWindowStart(ctx.now, ctx.tz)).eq("input->>trigger", "schedule"));
+      const ids = runs.length ? must<Row[]>(await ctx.db.from("lead_candidates").select("id").in("run_id", runs.map((x) => x.id)).eq("status", "proposed")).map((x) => String(x.id)) : [];
+      if (ids.length) emailed = (await sendDigest(ctx.db, ids, `Good morning. The lead scout found ${ids.length} ${ids.length === 1 ? "business" : "businesses"} that fit your brief.`)).sent;
+    }
+  } finally {
+    await ctx.db.rpc("scout_finish_day", { p_day: due.day, p_found: found, p_done: done, p_emailed: emailed });
+  }
+  return json(req, 200, { ok: true, batch: claim.batch, found, done, emailed, run_id: r?.run_id ?? null, cost_usd: r?.cost_usd ?? 0 });
+}
+
+/** The emailed Approve / Skip links: peek (what it does) and apply (the button). No session needed. */
+async function scoutLink(req: Request, body: Row): Promise<Response> {
+  const token = typeof body.d === "string" ? body.d.trim().slice(0, 200) : "";
+  if (!token) return json(req, 400, { ok: false, error: "bad_link" });
+  const db = adminClient();
+  if (body.op === "apply") return json(req, 200, await linkApply(db, token, typeof body.reason === "string" ? body.reason : null));
+  return json(req, 200, await linkPeek(db, token));
+}
+
+/** The scout's settings, spend and queue for the hub. */
+async function scoutStatus(ctx: Ctx): Promise<Row> {
+  const s = ctx.settings;
+  const { data: runs } = await ctx.db.from("agent_runs").select("cost_usd, at, status, output").eq("agent", "scout").gte("at", monthStartUtc(ctx.now)).order("at", { ascending: false });
+  const list = (runs ?? []) as Row[];
+  const { count } = await ctx.db.from("lead_candidates").select("id", { count: "exact", head: true }).eq("status", "proposed");
+  const due = scheduleDue(ctx.now, s);
+  return {
+    ok: true,
+    settings: { scout_enabled: s.scout_enabled, scout_brief: s.scout_brief, scout_daily_max: s.scout_daily_max, scout_days: s.scout_days, scout_hour: s.scout_hour, scout_monthly_cap_usd: s.scout_monthly_cap_usd },
+    spent_usd: list.reduce((a, r) => a + Number(r.cost_usd || 0), 0), cap_usd: Number(s.scout_monthly_cap_usd ?? 10),
+    runs_this_month: list.filter((r) => r.status !== "capped").length,
+    last_run: list[0] ? { at: list[0].at, status: list[0].status, kept: (list[0].output as Row | null)?.kept ?? 0 } : null,
+    waiting: count ?? 0, schedule_now: due.why,
+  };
+}
+
 // ------------------------------------------------------------------ entry
 
 Deno.serve(async (req) => {
   const early = preflight(req);
   if (early) return early;
   try {
-    const userId = await requireOperator(req);
-    if (!userId) return json(req, 401, { ok: false, error: "unauthorized" });
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json(req, 400, { ok: false, error: "bad_request" });
+    // The lead scout's two doors that carry no operator session: the schedule (and the chat's
+    // hand-off), which must carry the Vault secret, and the emailed links, which carry a signed token.
+    if (req.headers.has("x-scout-secret")) return await scoutInternal(req, body);
+    if (body.action === "scout_link") return await scoutLink(req, body);
+    const userId = await requireOperator(req);
+    if (!userId) return json(req, 401, { ok: false, error: "unauthorized" });
     const db = adminClient();
     const { data: settings, error: sErr } = await db.from("settings").select("*").eq("id", 1).single();
     if (sErr) throw sErr;
@@ -491,7 +582,7 @@ Deno.serve(async (req) => {
     }
 
     // The assistant's own actions and turns need to know who is asking.
-    const isChat = body.agent === "chat" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete", "token_profile"].includes(String(body.action));
+    const isChat = body.agent === "chat" || body.agent === "scout" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete", "token_profile", "scout_decide", "scout_status"].includes(String(body.action));
     let member: Member | null = null;
     if (isChat) {
       const { data: m, error: mErr } = await db.rpc("hq_member_for_user", { p_user_id: userId });
@@ -508,6 +599,26 @@ Deno.serve(async (req) => {
       const out = [];
       for (const m of models) out.push(await tokenProfile(m, parts));
       return json(req, 200, { ok: true, profile: out });
+    }
+    if (body.action === "scout_decide") {
+      if (!isUuid(body.candidate_id) || !["approve", "reject"].includes(body.decision)) return json(req, 400, { ok: false, error: "bad_request", detail: "candidate_id and decision ('approve' | 'reject') are required" });
+      const d = await decideCandidate(db, body.candidate_id, body.decision, { memberId: member!.id, via: "hub" }, typeof body.reason === "string" ? body.reason : null);
+      return json(req, 200, d);
+    }
+    if (body.action === "scout_status") return json(req, 200, await scoutStatus(ctx));
+    if (body.agent === "scout") {
+      if (!configured) return json(req, 503, { ok: false, error: "ai_not_configured" });
+      if (!enabled) return json(req, 403, { ok: false, error: "disabled" });
+      const count = Number.isInteger(body.count) ? Math.max(1, Math.min(10, Number(body.count))) : 5;
+      const brief = typeof body.brief_override === "string" && body.brief_override.trim() ? body.brief_override.trim().slice(0, 2000) : null;
+      const r = await runScout(ctx, {
+        trigger: "manual", count, brief, memberId: member!.id,
+        model: member!.role === "owner" && typeof body.model === "string" ? body.model : undefined,
+      });
+      let emailed: Row | null = null;
+      if (r.ok && r.candidate_ids.length && body.notify === true) emailed = await sendDigest(db, r.candidate_ids, `The lead scout found ${r.candidate_ids.length} ${r.candidate_ids.length === 1 ? "business" : "businesses"} for you to look at.`);
+      const code = r.ok ? 200 : r.error === "cap_reached" || r.error === "scout_cap_reached" ? 402 : r.error === "daily_limit" ? 429 : r.error === "ai_error" ? 502 : 200;
+      return json(req, code, { ...r, ...(emailed ? { emailed } : {}), spent_usd: ctx.spent + r.cost_usd, cap_usd: ctx.cap });
     }
     if (body.action !== undefined && isChat) return await chatAction({ ...ctx, member: member! }, body);
     if (body.agent === "chat") {

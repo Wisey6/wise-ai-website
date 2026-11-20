@@ -25,13 +25,15 @@ export type Usage = {
   output_tokens?: number | null;
   cache_creation_input_tokens?: number | null;
   cache_read_input_tokens?: number | null;
-  server_tool_use?: { web_search_requests?: number | null } | null;
+  server_tool_use?: { web_search_requests?: number | null; web_fetch_requests?: number | null } | null;
+  cache_creation?: { ephemeral_5m_input_tokens?: number | null; ephemeral_1h_input_tokens?: number | null } | null;
 };
 
-export type Totals = { input: number; cacheWrite: number; cacheRead: number; output: number; searches: number };
+// cacheWrite counts every cache write; cacheWrite1h is the part written with the 1-hour TTL (billed 2x, not 1.25x).
+export type Totals = { input: number; cacheWrite: number; cacheRead: number; output: number; searches: number; cacheWrite1h?: number; fetches?: number };
 
 export function emptyTotals(): Totals {
-  return { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, searches: 0 };
+  return { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, searches: 0, cacheWrite1h: 0, fetches: 0 };
 }
 
 /** Adds one response's usage to running totals (several calls when a turn is resumed). */
@@ -43,6 +45,8 @@ export function addUsage(t: Totals, u: Usage | null | undefined): Totals {
     cacheRead: t.cacheRead + n(u?.cache_read_input_tokens),
     output: t.output + n(u?.output_tokens),
     searches: t.searches + n(u?.server_tool_use?.web_search_requests),
+    cacheWrite1h: (t.cacheWrite1h ?? 0) + n(u?.cache_creation?.ephemeral_1h_input_tokens),
+    fetches: (t.fetches ?? 0) + n(u?.server_tool_use?.web_fetch_requests),
   };
 }
 
@@ -53,7 +57,8 @@ function priceKey(model: string): string {
 /** US dollars for the totals at list price (cache reads and writes at their own rates). */
 export function costOf(model: string, t: Totals): number {
   const [pin, pout, pread, pwrite] = PRICE[priceKey(model)];
-  const tokens = (t.input * pin + t.cacheWrite * pwrite + t.cacheRead * pread + t.output * pout) / 1_000_000;
+  const w1h = Math.min(t.cacheWrite1h ?? 0, t.cacheWrite);
+  const tokens = (t.input * pin + (t.cacheWrite - w1h) * pwrite + w1h * pin * 2 + t.cacheRead * pread + t.output * pout) / 1_000_000;
   return Math.round((tokens + t.searches * SEARCH_PRICE) * 1_000_000) / 1_000_000;
 }
 
