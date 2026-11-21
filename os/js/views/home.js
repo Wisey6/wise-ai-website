@@ -4,6 +4,7 @@ import { el, icon, statusBadge, timeAgo, timeOnly, dayLabel, dayKey, money, num,
 import { isAuMobile, leadName, leadById, isSuppressed, formatValue, isMine, rowById } from '../api.js?v=20261119b';
 import { ownerBadge, ownerName, readScope, scopeToggle, meId } from '../owners.js?v=20261119b';
 import { agentsInfo, briefingPanel, todaysBriefing, pendingActions } from './agents.js?v=20261119b';
+import { SCOUT_KIND } from '../scout-api.js?v=20261119b';
 
 const DAY = 86400000;
 const seenEvents = new Set();
@@ -515,6 +516,26 @@ function chartCard(state) {
       el('span', {}, shortDate(days[0])), el('span', {}, shortDate(days[7])), el('span', { class: 'is-today' }, 'Today')));
 }
 
+/* ------------------------------------------------------------ lead scout
+   Only when the scout found businesses that wait for a yes or no. The cards are the live
+   agent_actions rows ('lead.add'), newest first; nothing is sent to any of them. */
+function scoutCard(state) {
+  const waiting = (state.agent_actions || []).filter((a) => a.kind === SCOUT_KIND && a.status === 'proposed')
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  if (!waiting.length) return null;
+  const shown = waiting.slice(0, 3);
+  return el('section', { class: 'card today-card sc-today', 'aria-labelledby': 'scout-h', dataset: { todayScout: String(waiting.length) } },
+    el('div', { class: 'card-head' },
+      el('div', { class: 'stack' }, el('p', { class: 'eyebrow' }, 'Lead scout'),
+        el('h2', { class: 'h2', id: 'scout-h' }, `${num(waiting.length)} to review`)),
+      el('a', { class: 'card-link', href: '#scout', dataset: { act: 'scout-review' } }, 'Review', icon('arrow', 14))),
+    el('ul', { class: 'sc-today-names' }, shown.map((a) => {
+      const p = a.payload || {};
+      return el('li', {}, el('b', {}, String(p.business || 'A business')), el('span', {}, [p.industry, p.suburb].filter(Boolean).join(' · ')));
+    })),
+    el('p', { class: 'sc-today-line' }, waiting.length > shown.length ? `And ${num(waiting.length - shown.length)} more. Approving only adds them to Leads.` : 'Approving only adds them to Leads. Nothing is sent.'));
+}
+
 /* ------------------------------------------------------------ calls */
 function callsCard(state) {
   const now = Date.now();
@@ -709,7 +730,7 @@ export default function home(ctx) {
     businessNumbers(state).hasData ? null : bizStrip(state),
     el('div', { class: 'today-grid' },
       el('div', { class: 'today-col c1' }, doNextCard(state, scope)),
-      el('div', { class: 'today-col c2' }, callsCard(mine), pipelineCard(mine)),
+      el('div', { class: 'today-col c2' }, scoutCard(state), callsCard(mine), pipelineCard(mine)),
       el('div', { class: 'today-col c3' }, chartCard(state), feedCard(state))));
   firstPaint = false;
   return node;

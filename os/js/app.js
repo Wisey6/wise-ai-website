@@ -19,6 +19,7 @@ export const NAV = [
   { id: 'home', label: 'Today', icon: 'home', tab: true, view: () => import('./views/home.js?v=20261119b') },
   { group: 'Grow', icon: 'grow', items: [
     { id: 'leads', label: 'Leads', icon: 'leads', tab: true, view: () => import('./views/leads.js?v=20261119b') },
+    { id: 'scout', label: 'Lead scout', icon: 'search', badge: 'scout', view: () => import('./views/scout.js?v=20261119b') },
     { id: 'inbox', label: 'Inbox', icon: 'inbox', tab: true, badge: 'unread', view: () => import('./views/inbox.js?v=20261119b') },
     { id: 'campaigns', label: 'Campaigns', icon: 'send', tab: true, view: () => import('./views/campaigns.js?v=20261119b') },
     { id: 'bookings', label: 'Bookings', icon: 'calendar', view: () => import('./views/bookings.js?v=20261119b') }
@@ -453,7 +454,7 @@ let rail = null;
 const soonTag = () => el('span', { class: 'soon-tag' }, 'Soon');
 
 function countBadge(r, cls = 'nav-count') {
-  if (r.badge !== 'unread' && r.badge !== 'approvals') return null;
+  if (!['unread', 'approvals', 'scout'].includes(r.badge)) return null;
   const c = el('span', { class: cls, hidden: true, dataset: { count: r.badge } });
   navCounts.push(c);
   return c;
@@ -581,7 +582,7 @@ function buildRail() {
     : el('a', { class: 'fly-item', href: `#${r.id}`, dataset: { route: r.id } }, el('span', { class: 'nav-label' }, r.label), countBadge(r)));
   const areaItem = (g, i) => {
     const live = g.items.filter((it) => it.view);
-    const badged = live.find((it) => it.badge);
+    const badged = live.find((it) => it.badge === 'unread') || live.find((it) => it.badge);
     const id = `rail-fly-${i}`;
     const trig = el('a', {
       class: 'dock-item dock-area dock-nav', href: `#${live[0].id}`, 'aria-label': g.group, 'aria-expanded': 'false', 'aria-controls': id,
@@ -747,6 +748,8 @@ function railController(shell, parts) {
   function aimingAtOpen() {
     const now = performance.now();
     const recent = trail.filter((t) => now - t[2] < 250);
+    // A quick flick may land on a neighbour in one move: start from where the pointer rested.
+    if (recent.length < 2 && trail.length > recent.length) recent.unshift(trail[trail.length - recent.length - 1]);
     if (!openSlot || recent.length < 2) return false;
     const [px, py] = recent[0];
     const [x, y] = recent[recent.length - 1];
@@ -976,13 +979,14 @@ function markActive() {
 function updateBadges() {
   // Unread replies on your own leads and on leads nobody owns yet.
   const unread = state.leads.filter((l) => l.unread && !l.archived && isMine(l)).length;
-  const approvals = (state.agent_actions || []).filter((a) => a.status === 'proposed').length;
+  const approvals = (state.agent_actions || []).filter((a) => a.status === 'proposed' && a.kind !== 'lead.add').length;
+  const scout = (state.agent_actions || []).filter((a) => a.status === 'proposed' && a.kind === 'lead.add').length;
   navCounts = navCounts.filter((c) => c.isConnected);
   for (const c of navCounts) {
-    const n = c.dataset.count === 'approvals' ? approvals : unread;
+    const n = c.dataset.count === 'approvals' ? approvals : c.dataset.count === 'scout' ? scout : unread;
     c.hidden = !n;
     c.textContent = n > 99 ? '99+' : String(n);
-    c.setAttribute('aria-label', c.dataset.count === 'approvals' ? `${n} waiting for approval` : `${n} unread`);
+    c.setAttribute('aria-label', c.dataset.count === 'approvals' ? `${n} waiting for approval` : c.dataset.count === 'scout' ? `${n} to review` : `${n} unread`);
   }
   const r = ROUTES.find((x) => x.id === current.route);
   document.title = `${unread ? `(${unread}) ` : ''}${r ? `${r.label} · ` : ''}Wise AI OS`;

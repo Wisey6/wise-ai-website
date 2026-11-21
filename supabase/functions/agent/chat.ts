@@ -20,6 +20,8 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "../_shared/cors.ts";
+import { FUNCTIONS_BASE } from "../_shared/admin.ts";
+import { scoutBlocked } from "./scout.ts";
 import { startOfLocalDay } from "../_shared/time.ts";
 import {
   DAILY_LIMITS, HAIKU, SONNET, type Totals, addUsage, costOf, dayWindowStart, emptyTotals, inputTokens, isUuid,
@@ -435,7 +437,7 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
 
   const byModel: Record<string, Totals> = {};
   const totalCost = () => Object.entries(byModel).reduce((sum, [m, tt]) => sum + costOf(m, tt), 0);
-  const allTotals = () => Object.values(byModel).reduce((a, b) => addUsage(a, { input_tokens: b.input, output_tokens: b.output, cache_creation_input_tokens: b.cacheWrite, cache_read_input_tokens: b.cacheRead }), emptyTotals());
+  const allTotals = () => Object.values(byModel).reduce((a, b) => addUsage(a, { input_tokens: b.input, output_tokens: b.output, cache_creation_input_tokens: b.cacheWrite, cache_read_input_tokens: b.cacheRead, cache_creation: { ephemeral_1h_input_tokens: b.cacheWrite1h ?? 0 } }), emptyTotals());
   let model = choice.model;
   let usedModel = model;
   const route: Row = { setting, first: model, reason: choice.reason, groups, escalated: null };
@@ -486,18 +488,20 @@ export async function runChat(ctx: ChatCtx, body: Row): Promise<Response> {
       // Assistant content goes back unchanged (thinking blocks included); all results in ONE user message.
       messages.push({ role: "assistant", content: res.content });
       const results: Msg[] = [];
+      const afters: string[] = [];
       for (const u of uses) {
         if (toolCalls >= MAX_TOOL_CALLS) {
           results.push({ type: "tool_result", tool_use_id: u.id, is_error: true, content: "Step limit for this message reached. Stop now and tell the person what you did and what is left to do." });
           continue;
         }
         toolCalls++;
-        const out = await runTool(t, u.name, u.input ?? {});
+        const { after, ...out } = await runTool(t, u.name, u.input ?? {});
         if (out.is_error) toolErrors++;
         else if (READ_TOOLS.includes(u.name)) readCalls++;
+        if (after) afters.push(after);
         results.push({ type: "tool_result", tool_use_id: u.id, ...out });
       }
-      messages.push({ role: "user", content: results });
+      messages.push({ role: "user", content: [...results, ...afters.map((text) => ({ type: "text", text }))] });
     }
     if (iterations >= MAX_ITERATIONS && !finalText && !declined) stopNote = "I hit my step limit for one message before finishing.";
   };
@@ -618,7 +622,7 @@ async function updateRun(t: Turn, r: { status: string; model: string; totals: To
 // ------------------------------------------------------------------ tools
 
 // deno-lint-ignore no-explicit-any
-type ToolOut = { content: string | any[]; is_error?: boolean };
+type ToolOut = { content: string | any[]; is_error?: boolean; after?: string };
 const READ_TOOLS = ["find", "get", "numbers", "find_files", "open_file", "read_file", ...MAIL_READ_TOOLS];
 
 async function runTool(t: Turn, name: string, rawInput: Row): Promise<ToolOut> {
@@ -665,11 +669,11 @@ function loadTools(t: Turn, input: Row): ToolOut {
   const already = t.loaded.has(g);
   t.loaded.add(g);
   if (already) return { content: `The ${g} tools are already loaded.` };
+  // A tool_result that surfaces tools may hold only tool_reference blocks; the group's rules go in a
+  // text block after the results (see the loop).
   return {
-    content: [
-      { type: "text", text: `Loaded the ${g} tools.\n${GROUP_RULES[g] ?? ""}` },
-      ...GROUP_NAMES[g].map((name) => ({ type: "tool_reference", tool_name: name })),
-    ],
+    content: GROUP_NAMES[g].map((name) => ({ type: "tool_reference", tool_name: name })),
+    after: `<tool_notes>\nLoaded the ${g} tools.\n${GROUP_RULES[g] ?? ""}\n</tool_notes>`,
   };
 }
 
@@ -1205,6 +1209,27 @@ const TOOLS: Record<string, (t: Turn, input: Row) => Promise<Row>> = {
     }).select("id").single());
     t.steps.push({ tool: "remember", kind: "memory", ok: true, text: `Remembered (${scope === "me" ? "for you" : "for the business"}): ${trimText(text, 120)}`, row_id: row.id });
     return { ok: true, id: row.id, scope };
+  },
+
+  async find_leads(t, input) {
+    // The scout runs in its own invocation (it can take a couple of minutes); results land in the
+    // review queue with hub approval cards. This turn only starts it.
+    const blocked = await scoutBlocked({ db: t.db, settings: t.settings, tz: t.tz, now: t.now, started: t.started });
+    if (blocked) refuse(blocked === "daily_limit" ? "The lead scout has done its runs for today." : "The lead scout's monthly budget is used up (Settings).");
+    const { data: secret } = await t.db.rpc("scout_secret", { p_name: "scout_cron_secret" });
+    if (!secret) refuse("The lead scout is not set up yet.");
+    const count = Number.isInteger(input.count) ? Math.max(1, Math.min(10, input.count)) : 5;
+    const brief = typeof input.brief === "string" && input.brief.trim() ? scrubText(input.brief, 600) : null;
+    const call = fetch(`${FUNCTIONS_BASE}/agent`, {
+      method: "POST", headers: { "content-type": "application/json", "x-scout-secret": String(secret) },
+      body: JSON.stringify({ agent: "scout", trigger: "chat", count, brief, member_id: t.member.id }),
+    }).then((r) => r.body?.cancel()).catch((e) => console.error("scout hand-off", (e as Error).message));
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt?.waitUntil) rt.waitUntil(call); else await new Promise((r) => setTimeout(r, 300));
+    t.steps.push({ tool: "find_leads", kind: "note", ok: true, text: `Asked the lead scout for ${count} businesses${brief ? ` (${trimText(brief, 80)})` : ""}`, link: "#agents/approvals" });
+    t.links.push({ label: "Lead review", hash: "#agents/approvals", weight: 2 });
+    return { ok: true, started: true, count, note: "The scout is searching now (a minute or two). Each business it verifies appears in the approvals list in the hub; nothing is added to Leads or sent until the owner approves." };
   },
 
   async forget(t, input) {

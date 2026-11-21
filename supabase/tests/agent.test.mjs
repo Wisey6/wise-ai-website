@@ -415,7 +415,7 @@ test("cost maths", () => {
   let t = emptyTotals();
   t = addUsage(t, { input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 10000, cache_creation_input_tokens: 2000, server_tool_use: { web_search_requests: 2 } });
   t = addUsage(t, { input_tokens: 1000, output_tokens: 500 });
-  assert.deepEqual(t, { input: 2000, cacheWrite: 2000, cacheRead: 10000, output: 1000, searches: 2 });
+  assert.deepEqual(t, { input: 2000, cacheWrite: 2000, cacheRead: 10000, output: 1000, searches: 2, cacheWrite1h: 0, fetches: 0 });
   // Sonnet 5.5: (2000*2 + 2000*2.5 (cache write) + 10000*0.1 (cache read) + 1000*10)/1e6 + 2*0.01 = 0.02 + 0.02
   assert.equal(costOf("claude-sonnet-5-5", t), 0.04);
   // Haiku 5.5: (2000*0.1 + 2000*0.125 + 10000*0.01 + 1000*0.5)/1e6 = 0.00105 + searches 0.02
@@ -424,6 +424,9 @@ test("cost maths", () => {
   assert.equal(costOf("claude-opus-5-5", t), 0.06);
   assert.equal(costOf("claude-sonnet-5", emptyTotals()), 0);
   assert.equal(addUsage(emptyTotals(), null).input, 0);
+  // A 1-hour cache write is billed at 2x input, a 5-minute one at 1.25x (Haiku 5.5: 0.2 vs 0.125 per MTok).
+  const h = addUsage(emptyTotals(), { cache_creation_input_tokens: 10000, cache_creation: { ephemeral_1h_input_tokens: 10000 } });
+  assert.equal(costOf("claude-haiku-5-5", h), 0.002);
 });
 
 test("budget and daily limits", () => {
