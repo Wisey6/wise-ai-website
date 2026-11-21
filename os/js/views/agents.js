@@ -90,7 +90,8 @@ export function agentsInfo() {
 }
 
 /** Proposed changes waiting for Tyler, newest first. */
-export const pendingActions = () => state.agent_actions.filter((x) => x.status === 'proposed');
+// The lead scout's finds ('lead.add') are reviewed on the Scout page (#scout), not here.
+export const pendingActions = () => state.agent_actions.filter((x) => x.status === 'proposed' && x.kind !== 'lead.add');
 
 /** "Connected · On" (or why not) as [tone, text]. */
 function statusLine(info) {
@@ -354,7 +355,8 @@ const KIND = {
   'deal.create': ['New deal', 'new deal', 'new deals'],
   'deal.update': ['Deal update', 'deal update', 'deal updates'],
   'message.draft': ['Reply draft', 'reply draft', 'reply drafts'],
-  'invoice.draft': ['Draft invoice', 'draft invoice', 'draft invoices']
+  'invoice.draft': ['Draft invoice', 'draft invoice', 'draft invoices'],
+  'lead.add': ['New lead from the scout', 'new lead', 'new leads']
 };
 const STAGE = { qualified: 'Qualified', proposal: 'Proposal', negotiation: 'Negotiation', won: 'Won', lost: 'Lost' };
 const DECIDED = { applied: ['ok', 'Done'], rejected: ['mute', 'Rejected'], failed: ['bad', 'Could not apply'], approved: ['info', 'Approved'] };
@@ -782,7 +784,10 @@ function approvalsView(updaters) {
       .sort((a, b) => String(b.decided_at || b.created_at).localeCompare(String(a.decided_at || a.created_at)));
     const groups = new Map();
     pending.forEach((a) => { const g = a.run_id || 'none'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(a); });
+    const scouted = state.agent_actions.filter((a) => a.status === 'proposed' && a.kind === 'lead.add').length;
     fill(node,
+      scouted ? el('a', { class: 'callout ag-scout-link', href: '#scout', dataset: { scoutLink: '' } }, icon('search', 15),
+        el('span', {}, `${plural(scouted, 'business', 'businesses')} from the lead scout ${scouted === 1 ? 'waits' : 'wait'} for you in Lead scout.`), icon('arrow', 14)) : null,
       pending.length
         ? el('div', { class: 'stack loose' },
           el('p', { class: 'small muted' }, 'Newest first. Approving makes exactly the change shown, with your own access, and nothing else. Rejecting changes nothing.'),
@@ -867,7 +872,7 @@ function runDetail(id, updaters) {
       (() => {
         const acts = state.agent_actions.filter((a) => a.run_id === r.id);
         return acts.length ? el('section', { class: 'ag-run-sec' }, el('p', { class: 'ag-rc-label' }, 'What it suggested'),
-          el('ul', { class: 'ag-decided-list' }, acts.map((a) => (a.status === 'proposed' ? el('li', { class: 'ag-decided' }, el('span', { class: 'ag-decided-what' }, el('span', { class: 'small faint' }, KIND[a.kind]?.[0] || a.kind), el('span', {}, a.summary)), el('a', { class: 'small ag-open', href: '#agents/approvals' }, 'Waiting for you', icon('arrow', 12))) : actionCard(a))))) : null;
+          el('ul', { class: 'ag-decided-list' }, acts.map((a) => (a.status === 'proposed' ? el('li', { class: 'ag-decided' }, el('span', { class: 'ag-decided-what' }, el('span', { class: 'small faint' }, KIND[a.kind]?.[0] || a.kind), el('span', {}, a.summary)), el('a', { class: 'small ag-open', href: a.kind === 'lead.add' ? '#scout' : '#agents/approvals' }, 'Waiting for you', icon('arrow', 12))) : actionCard(a))))) : null;
       })());
   });
   return node;
