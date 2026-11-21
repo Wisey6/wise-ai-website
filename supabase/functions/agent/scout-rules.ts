@@ -213,6 +213,60 @@ export function batchesFor(dailyMax: number): number {
   return Math.min(6, Math.max(1, Math.ceil(Math.max(1, Math.min(30, dailyMax)) / BATCH_SIZE) + 1));
 }
 
+// ------------------------------------------------------------------ settings the hub may change
+
+export const SCOUT_SETTING_KEYS = ["scout_enabled", "scout_brief", "scout_daily_max", "scout_days", "scout_hour", "scout_monthly_cap_usd"] as const;
+/** Changing the scout's own monthly cap is for the owner only. */
+export const OWNER_ONLY_SCOUT_KEYS = ["scout_monthly_cap_usd"];
+
+/** Checks a settings patch from the hub. Returns the clean patch or why it is refused. Unknown keys are refused. */
+export function checkScoutSettings(raw: unknown): { ok: true; patch: Row } | { ok: false; detail: string } {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, detail: "patch must be an object" };
+  const r = raw as Row;
+  const patch: Row = {};
+  for (const k of Object.keys(r)) {
+    if (!(SCOUT_SETTING_KEYS as readonly string[]).includes(k)) return { ok: false, detail: `unknown setting: ${k.slice(0, 40)}` };
+  }
+  if ("scout_enabled" in r) {
+    if (typeof r.scout_enabled !== "boolean") return { ok: false, detail: "scout_enabled must be true or false" };
+    patch.scout_enabled = r.scout_enabled;
+  }
+  if ("scout_brief" in r) {
+    if (r.scout_brief !== null && typeof r.scout_brief !== "string") return { ok: false, detail: "scout_brief must be text" };
+    const b = r.scout_brief === null ? "" : String(r.scout_brief).replace(/\r\n/g, "\n").trim();
+    if (b.length > 2000) return { ok: false, detail: "scout_brief: at most 2,000 characters" };
+    patch.scout_brief = b || null;
+  }
+  if ("scout_daily_max" in r) {
+    if (!Number.isInteger(r.scout_daily_max) || r.scout_daily_max < 1 || r.scout_daily_max > 30) return { ok: false, detail: "scout_daily_max must be a whole number from 1 to 30" };
+    patch.scout_daily_max = r.scout_daily_max;
+  }
+  if ("scout_days" in r) {
+    const d = r.scout_days;
+    if (!Array.isArray(d) || d.some((x) => !Number.isInteger(x) || x < 1 || x > 7)) return { ok: false, detail: "scout_days must be a list of weekdays 1 (Monday) to 7 (Sunday)" };
+    patch.scout_days = [...new Set(d as number[])].sort((a, b) => a - b);
+  }
+  if ("scout_hour" in r) {
+    if (!Number.isInteger(r.scout_hour) || r.scout_hour < 0 || r.scout_hour > 23) return { ok: false, detail: "scout_hour must be a whole hour from 0 to 23" };
+    patch.scout_hour = r.scout_hour;
+  }
+  if ("scout_monthly_cap_usd" in r) {
+    const v = Number(r.scout_monthly_cap_usd);
+    if (typeof r.scout_monthly_cap_usd !== "number" || !Number.isFinite(v) || v < 0 || v > 100) return { ok: false, detail: "scout_monthly_cap_usd must be a number from 0 to 100" };
+    patch.scout_monthly_cap_usd = Math.round(v * 100) / 100;
+  }
+  if (!Object.keys(patch).length) return { ok: false, detail: "nothing to change" };
+  return { ok: true, patch };
+}
+
+/** The candidate ids of a decide request: one id or a list (1-50), all uuids, no repeats. */
+export function decideIds(body: Row): string[] | null {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const list = Array.isArray(body.candidate_ids) ? body.candidate_ids : body.candidate_id !== undefined ? [body.candidate_id] : null;
+  if (!list || !list.length || list.length > 50 || list.some((x) => typeof x !== "string" || !uuid.test(x))) return null;
+  return [...new Set(list.map((x: string) => x.toLowerCase()))];
+}
+
 // ------------------------------------------------------------------ signed links
 
 const enc = new TextEncoder();

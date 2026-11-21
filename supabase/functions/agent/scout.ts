@@ -4,8 +4,10 @@
 //
 // ─── GUARANTEES (in code) ─────────────────────────────────────────────────────────────────
 //  1. It never creates a lead by itself and never contacts anyone. A lead is made only by
-//     decideCandidate(... 'approve'), called by a person: the hub button, a signed email link that
-//     the owner presses on a confirmation page (POST, single use, 7 days), or the chat.
+//     decideCandidate(... 'approve'), called by a person: the hub button or a signed email link that
+//     the owner presses on a confirmation page (POST, single use, 7 days). Approving adds the lead
+//     (with an agent_changes row, so Undo removes it) and nothing else: no message, no draft.
+//     The only email is the digest, to settings.notify_email (the owner's notification address).
 //  2. Only what public pages show: the number must be on a page the run read, and the page text
 //     (the scout's own fetch result, or our own GET of it) must show that number; observations must
 //     cite pages it read; the business name must appear on the page. Otherwise the candidate is dropped.
@@ -302,7 +304,7 @@ export async function runScout(ctx: ScoutCtx, o: ScoutOpts): Promise<ScoutResult
 
 // ------------------------------------------------------------------ decisions (one path for hub, email and chat)
 
-export type Decision = { ok: true; status: string; lead_id?: string; hash?: string; business: string; draft_proposed?: boolean } | { ok: false; error: string; status?: string; business?: string; lead_id?: string };
+export type Decision = { ok: true; status: string; lead_id?: string; hash?: string; business: string; change_id?: string } | { ok: false; error: string; status?: string; business?: string; lead_id?: string };
 
 export async function decideCandidate(db: SupabaseClient, id: string, decision: "approve" | "reject", by: { memberId: string | null; via: "hub" | "email" | "chat" }, reason?: string | null): Promise<Decision> {
   const now = new Date().toISOString();
@@ -341,26 +343,49 @@ export async function decideCandidate(db: SupabaseClient, id: string, decision: 
     business: c.business, contact_name: c.contact_first_name, phone: c.phone, website: c.website, suburb: c.suburb, industry: c.industry,
     source: "scout", number_source_url: c.number_source_url, status: "new", hook: c.hook, pain: c.pain, est_monthly_value: c.est_monthly_value,
     owner_id: by.memberId, notes,
-  }).select("id").single();
+  }).select("*").single();
   if (ins.error) {
     if (ins.error.code === "23505") { await undo("already a lead (same phone)"); return { ok: false, error: "duplicate", business: c.business }; }
     await db.from("lead_candidates").update({ status: "proposed", decided_at: null, decided_by: null, decided_via: null }).eq("id", id);
     throw new Error(ins.error.message);
   }
-  const leadId = String(ins.data.id);
+  const lead = ins.data as Row;
+  const leadId = String(lead.id);
+  // The same audit row the assistant writes, so {action:'undo', change_id} removes the lead again.
+  // Approving does nothing else: no event, no draft, no message (c.first_text stays on the candidate).
+  const ch = await db.from("agent_changes").insert({
+    chat_id: null, run_id: c.run_id ?? null, member_id: by.memberId, table_name: "leads", row_id: leadId, op: "insert",
+    before: null, after: lead, summary: `Created lead ${c.business} (approved from the lead scout, ${by.via})`.slice(0, 300),
+  }).select("id").single();
+  if (ch.error) console.error("scout change row", ch.error.message);
   await db.from("lead_candidates").update({ lead_id: leadId }).eq("id", id);
   await closeCard("applied", "Lead added");
-  await db.from("events").insert({ kind: "scout", lead_id: leadId, summary: `Lead scout: ${c.business} approved (${by.via})`.slice(0, 500) });
-  // The next step, still behind a person: a first text as a DRAFT proposal (mobiles only; sms-send's rules apply when sent).
-  let draft = false;
-  if (c.phone_kind === "mobile" && c.first_text) {
-    const d = await db.from("agent_actions").insert({
-      run_id: c.run_id, kind: "message.draft", status: "proposed", payload: { lead_id: leadId, body: String(c.first_text).slice(0, 600) },
-      summary: `First text for ${c.business} (a draft; nothing is sent)`.slice(0, 200), reason: c.hook ? `From the scout's hook: ${c.hook}` : null,
-    });
-    draft = !d.error;
+  return { ok: true, status: "approved", lead_id: leadId, hash: `#leads/${leadId}`, business: c.business, change_id: ch.data?.id ? String(ch.data.id) : undefined };
+}
+
+/** The fields of a candidate the hub shows. */
+export const CANDIDATE_FIELDS = "id, created_at, run_id, status, business, suburb, industry, website, phone, phone_kind, number_source_url, contact_first_name, observations, hook, pain, est_monthly_value, value_reasoning, first_text, score, score_reason, decided_at, decided_by, decided_via, reject_reason, lead_id, action_id, expires_at";
+const STATUSES = ["proposed", "approved", "rejected", "expired"];
+
+/** The review queue for the hub: newest first, keyset paging on created_at. */
+export async function listCandidates(db: SupabaseClient, q: { status?: unknown; limit?: unknown; before?: unknown; run_id?: unknown }): Promise<{ ok: true; items: Row[]; next_before: string | null } | { ok: false; error: string; detail: string }> {
+  const status = q.status === undefined ? "proposed" : String(q.status);
+  if (status !== "all" && !STATUSES.includes(status)) return { ok: false, error: "bad_request", detail: "status must be proposed, approved, rejected, expired or all" };
+  const limit = q.limit === undefined ? 50 : Number(q.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) return { ok: false, error: "bad_request", detail: "limit must be 1-200" };
+  let sel = db.from("lead_candidates").select(CANDIDATE_FIELDS);
+  if (status !== "all") sel = sel.eq("status", status);
+  if (q.run_id !== undefined) {
+    if (typeof q.run_id !== "string" || !/^[0-9a-f-]{36}$/i.test(q.run_id)) return { ok: false, error: "bad_request", detail: "run_id must be a uuid" };
+    sel = sel.eq("run_id", q.run_id);
   }
-  return { ok: true, status: "approved", lead_id: leadId, hash: `#leads/${leadId}`, business: c.business, draft_proposed: draft };
+  if (q.before !== undefined) {
+    if (typeof q.before !== "string" || Number.isNaN(Date.parse(q.before))) return { ok: false, error: "bad_request", detail: "before must be a created_at timestamp" };
+    sel = sel.lt("created_at", q.before);
+  }
+  const rows = must<Row[]>(await sel.order("created_at", { ascending: false }).limit(limit));
+  const items = rows.map((r) => ({ ...r, open: r.lead_id ? `#leads/${r.lead_id}` : null }));
+  return { ok: true, items, next_before: rows.length === limit ? String(rows[rows.length - 1].created_at) : null };
 }
 
 // ------------------------------------------------------------------ email links and the digest
@@ -419,9 +444,12 @@ const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": 
 export async function sendDigest(db: SupabaseClient, candidateIds: string[], headline: string): Promise<{ sent: boolean; why?: string }> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) return { sent: false, why: "email_not_configured" };
+  // Only ever to the owner's notification address (settings.notify_email, the same one every hub
+  // notice uses); the links are bound to the owner's member id.
+  const { data: s } = await db.from("settings").select("notify_email").eq("id", 1).single();
+  const to = String(s?.notify_email ?? "").trim();
   const { data: owner } = await db.rpc("scout_owner_contact");
-  const to = owner?.email ? String(owner.email) : "";
-  if (!to || !owner?.member_id) return { sent: false, why: "no_owner_email" };
+  if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to) || !owner?.member_id) return { sent: false, why: "no_owner_email" };
   const cands = must<Row[]>(await db.from("lead_candidates").select("*").in("id", candidateIds).eq("status", "proposed").order("score", { ascending: false }));
   if (!cands.length) return { sent: false, why: "nothing_to_send" };
   const member = String(owner.member_id);

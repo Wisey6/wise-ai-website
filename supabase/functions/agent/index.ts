@@ -1,10 +1,10 @@
 // agent: four tightly scoped AI assistants for the Wise AI OS hub.
 //
 // ─── GUARANTEES (enforced in this code, not just in prompts) ───────────────────────────────
-//  1. WRITES: the only tables this function ever writes are `agent_runs` and `agent_actions`
-//     (see `logRun`, `markRun` and the one insert in `runDoer`). Every other table is only
-//     ever read (`select`). No code path updates leads, clients, deals, tasks, income, settings
-//     or anything else.
+//  1. WRITES (the four older agents): the only tables they write are `agent_runs` and
+//     `agent_actions` (see `logRun`, `markRun` and the one insert in `runDoer`). The chat (chat.ts)
+//     and the lead scout (scout.ts, plus the scout_* doors below, which also save the scout's own
+//     settings) list their own write guarantees.
 //  2. SENDS NOTHING: there is no SMS, email, invoice or HTTP call to any service except the
 //     Anthropic API (and Supabase itself). The model's only tools are Anthropic's server-side
 //     web_fetch / web_search (researcher only), which read public pages and cannot write.
@@ -35,6 +35,11 @@
 //        through one audited, allowlisted helper that records every change in agent_changes (undoable).
 //        Guarantees 1 and 4 above apply to the four older agents; chat.ts lists its own.
 //   POST {action:'chat_rename'|'chat_archive'|'chat_delete', chat_id, …} · {action:'undo', change_id} · {action:'memory_delete', id}
+//   Lead scout (scout.ts; full contract in README "Lead scout"): POST {agent:'scout', count?, brief_override?, notify?}
+//        · {action:'scout_status'} · {action:'scout_candidates', status?, limit?, before?, run_id?}
+//        · {action:'scout_decide', candidate_id | candidate_ids[], decision:'approve'|'reject', reason?}
+//        · {action:'scout_settings', patch?} · {action:'scout_link', d, op?:'apply', reason?} (no session; signed token)
+//        · header x-scout-secret (pg_cron schedule and the chat's hand-off; Vault secret)
 //   Every run response: {ok, result?, run_id, model, cost_usd, spent_usd, cap_usd}
 //   Errors: 401 unauthorized · 400 bad_request · 402 cap_reached · 403 disabled · 429 daily_limit
 //           503 ai_not_configured · 200 {ok:false, error:'declined'|'too_long'|'bad_output'|'empty'}
@@ -44,7 +49,8 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, preflight } from "../_shared/cors.ts";
 import { adminClient, requireOperator } from "../_shared/admin.ts";
 import { safeEqual } from "../_shared/crypto.ts";
-import { batchesFor, decideCandidate, linkApply, linkPeek, runScout, scheduleDue, scoutBlocked, sendDigest } from "./scout.ts";
+import { batchesFor, decideCandidate, linkApply, linkPeek, listCandidates, runScout, scheduleDue, scoutBlocked, sendDigest } from "./scout.ts";
+import { OWNER_ONLY_SCOUT_KEYS, SCOUT_SETTING_KEYS, checkScoutSettings, decideIds } from "./scout-rules.ts";
 import {
   AGENTS, type AgentName, DAILY_LIMITS, HAIKU, MAX_TOKENS, SONNET, type Totals,
   addDays, addUsage, cleanResearch, costOf, dayWindowStart, emptyTotals, extractJson, filterLinked, hostOf,
@@ -582,7 +588,7 @@ Deno.serve(async (req) => {
     }
 
     // The assistant's own actions and turns need to know who is asking.
-    const isChat = body.agent === "chat" || body.agent === "scout" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete", "token_profile", "scout_decide", "scout_status"].includes(String(body.action));
+    const isChat = body.agent === "chat" || body.agent === "scout" || ["chat_rename", "chat_archive", "chat_delete", "undo", "memory_delete", "token_profile", "scout_decide", "scout_status", "scout_candidates", "scout_settings"].includes(String(body.action));
     let member: Member | null = null;
     if (isChat) {
       const { data: m, error: mErr } = await db.rpc("hq_member_for_user", { p_user_id: userId });
@@ -601,11 +607,37 @@ Deno.serve(async (req) => {
       return json(req, 200, { ok: true, profile: out });
     }
     if (body.action === "scout_decide") {
-      if (!isUuid(body.candidate_id) || !["approve", "reject"].includes(body.decision)) return json(req, 400, { ok: false, error: "bad_request", detail: "candidate_id and decision ('approve' | 'reject') are required" });
-      const d = await decideCandidate(db, body.candidate_id, body.decision, { memberId: member!.id, via: "hub" }, typeof body.reason === "string" ? body.reason : null);
-      return json(req, 200, d);
+      const ids = decideIds(body);
+      if (!ids || !["approve", "reject"].includes(body.decision)) return json(req, 400, { ok: false, error: "bad_request", detail: "candidate_id (or candidate_ids, 1-50) and decision ('approve' | 'reject') are required" });
+      const reason = typeof body.reason === "string" ? body.reason : null;
+      const results: Row[] = [];
+      for (const id of ids) {
+        try {
+          results.push({ candidate_id: id, ...await decideCandidate(db, id, body.decision, { memberId: member!.id, via: "hub" }, reason) });
+        } catch (e) {
+          console.error("scout_decide", (e as Error).message);
+          results.push({ candidate_id: id, ok: false, error: "server_error" });
+        }
+      }
+      // One id: the decision itself (as before); several: a list.
+      if (body.candidate_ids === undefined) return json(req, 200, results[0]);
+      return json(req, 200, { ok: results.every((r) => r.ok), results, approved: results.filter((r) => r.ok && r.status === "approved").length, rejected: results.filter((r) => r.ok && r.status === "rejected").length });
     }
     if (body.action === "scout_status") return json(req, 200, await scoutStatus(ctx));
+    if (body.action === "scout_candidates") {
+      const r = await listCandidates(db, { status: body.status, limit: body.limit, before: body.before, run_id: body.run_id });
+      return json(req, r.ok ? 200 : 400, r);
+    }
+    if (body.action === "scout_settings") {
+      const pick = (s: Row) => Object.fromEntries(SCOUT_SETTING_KEYS.map((k) => [k, s[k] ?? null]));
+      if (body.patch === undefined) return json(req, 200, { ok: true, settings: pick(settings), can_change_cap: member!.role === "owner" });
+      const c = checkScoutSettings(body.patch);
+      if (!c.ok) return json(req, 400, { ok: false, error: "bad_request", detail: c.detail });
+      if (member!.role !== "owner" && OWNER_ONLY_SCOUT_KEYS.some((k) => k in c.patch)) return json(req, 403, { ok: false, error: "owner_only", detail: "Only the owner can change the scout's monthly budget." });
+      const { data: saved, error: uErr } = await db.from("settings").update(c.patch).eq("id", 1).select("*").single();
+      if (uErr) throw uErr;
+      return json(req, 200, { ok: true, settings: pick(saved), can_change_cap: member!.role === "owner" });
+    }
     if (body.agent === "scout") {
       if (!configured) return json(req, 503, { ok: false, error: "ai_not_configured" });
       if (!enabled) return json(req, 403, { ok: false, error: "disabled" });
